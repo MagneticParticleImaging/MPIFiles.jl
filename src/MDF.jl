@@ -28,12 +28,13 @@ end
 # general parameters
 version(f::MDFFile) = VersionNumber( h5read(f.filename, "/version") )
 uuid(f::MDFFile) = h5read(f.filename, "/uuid")
-date(f::MDFFile) = DateTime( h5read(f.filename, "/date") )
+time(f::MDFFile) = DateTime( h5read(f.filename, "/date") )
 
 
 # study parameters
 studyName(f::MDFFile) = h5read(f.filename, "/study/name")
-studyExperiment(f::MDFFile) = h5read(f.filename, "/study/experiment")
+studyExperiment(f::MDFFileV1) = parse(Int64,h5read(f.filename, "/study/experiment"))
+studyExperiment(f::MDFFileV2) = h5read(f.filename, "/study/experiment")
 studyDescription(f::MDFFile) = h5read(f.filename, "/study/description")
 studySubject(f::MDFFile) = h5read(f.filename, "/study/subject")
 studyIsSimulation(f::MDFFileV2) = Bool( h5read(f.filename, "/study/isSimulation") )
@@ -53,7 +54,9 @@ tracerVolume(f::MDFFile) = h5read(f.filename, "/tracer/volume")
 tracerConcentration(f::MDFFile) = h5read(f.filename, "/tracer/concentration")
 tracerSolute(f::MDFFileV2) = h5read(f.filename, "/tracer/solute")
 tracerSolute(f::MDFFileV1) = "Fe"
-tracerTime(f::MDFFile) = DateTime( h5read(f.filename, "/tracer/time") )
+tracerInjectionTime(f::MDFFileV1) = DateTime( h5read(f.filename, "/tracer/time") )
+tracerInjectionTime(f::MDFFileV2) = DateTime( h5read(f.filename, "/tracer/injectionTime") )
+tracerVendor(f::MDFFile) = h5read(f.filename, "/tracer/vendor")
 
 # scanner parameters
 scannerFacility(f::MDFFile) = h5read(f.filename, "/scanner/facility")
@@ -63,16 +66,53 @@ scannerModel(f::MDFFile) = h5read(f.filename, "/scanner/model")
 scannerTopology(f::MDFFile) = h5read(f.filename, "/scanner/topology")
 
 # acquisition parameters
-export acqTime, acqNumFrames, acqNumBGFrames, acqFramePeriod, acqNumPatches,
-       acqGradient, acqOffsetField, acqFov, acqFovCenter
+acqStartTime(f::MDFFileV1) = DateTime( h5read(f.filename, "/acquisition/time") )
+acqStartTime(f::MDFFileV2) = DateTime( h5read(f.filename, "/acquisition/startTime") )
+acqNumFrames(f::MDFFile) = h5read(f.filename, "/acquisition/numFrames")
+acqNumBGFrames(f::MDFFileV2) = h5read(f.filename, "/acquisition/numBGFrames")
+acqFramePeriod(f::MDFFile) = h5read(f.filename, "/acquisition/framePeriod")
+acqNumPatches(f::MDFFile) = h5read(f.filename, "/acquisition/numPatches")
+acqGradient(f::MDFFile) = addLeadingSingleton(
+                              h5read(f.filename, "/acquisition/gradient"),2 )
+acqOffsetField(f::MDFFileV2) = h5read(f.filename, "/acquisition/offsetField")
+acqFov(f::MDFFileV1) = addLeadingSingleton(
+               h5read(f.filename, "/acquisition/drivefield/fieldOfView"),2 )
+acqFov(f::MDFFileV2) = h5read(f.filename, "/acquisition/fieldOfView")
+acqFovCenter(f::MDFFileV1) = addLeadingSingleton(
+              h5read(f.filename, "/acquisition/drivefield/fieldOfViewCenter"),2 )
+acqFovCenter(f::MDFFileV2) = h5read(f.filename, "/acquisition/fieldOfViewCenter")
 
 # drive-field parameters
-export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
-       dfDivider, dfWaveform, dfPeriod
+dfNumChannels(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/numChannels")
+dfStrength(f::MDFFileV1) = addTrailingSingleton( addLeadingSingleton(
+         h5read(f.filename, "/acquisition/drivefield/strength"), 2), 3)
+dfStrength(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/strength")
+dfPhase(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/phase")
+dfBaseFrequency(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/baseFrequency")
+dfCustomWaveform(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/customWaveform")
+dfDivider(f::MDFFileV1) = addTrailingSingleton(
+                h5read(f.filename, "/acquisition/drivefield/divider"),2)
+dfDivider(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/divider")
+dfWaveform(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/waveform")
+dfPeriod(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/period")
 
 # receiver parameters
-export rxNumChannels, rxNumAverages, rxBandwidth, rxNumSamplingPoints, rxFrequencies,
-       rxTransferFunction
+rxNumChannels(f::MDFFile) = h5read(f.filename, "/acquisition/receiver/numChannels")
+rxNumAverages(f::MDFFileV1) = h5read(f.filename, "/acquisition/drivefield/averages")
+rxNumAverages(f::MDFFileV2) = h5read(f.filename, "/acquisition/receiver/numAverages")
+# THE FOLLOWING IS NOT FULLY CORRECT!!!
+rxBandwidth(f::MDFFileV1) =
+    repeat( [h5read(f.filename, "/acquisition/receiver/bandwidth")], outer=rxNumChannels(f))
+rxBandwidth(f::MDFFileV2) = h5read(f.filename, "/acquisition/receiver/bandwidth")
+rxNumSamplingPoints(f::MDFFileV1) =
+    repeat( [h5read(f.filename, "/acquisition/receiver/numSamplingPoints")], outer=rxNumChannels(f))
+rxNumSamplingPoints(f::MDFFileV2) = h5read(f.filename, "/acquisition/receiver/numSamplingPoints")
+function rxFrequencies(f::MDFFileV1)
+  a = h5read(f.filename, "/acquisition/receiver/frequencies")
+  return reshape( repeat(a , outer=rxNumChannels(f)), length(a), rxNumChannels(f) )
+end
+rxFrequencies(f::MDFFileV2) = h5read(f.filename, "/acquisition/receiver/frequencies")
+rxTransferFunction(f::MDFFile) = h5read(f.filename, "/acquisition/receiver/transferFunction")
 
 # measurements
 export measUnit, measRawDataConversion,
@@ -86,71 +126,31 @@ export calibSystemMatrixData, calibSNR, calibFov, calibFovCenter, calibSize,
 # reconstruction results
 export recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions
 
-
-
-
-
-# study properties
-subjectName(f::MDFFile) = h5read(f.filename, "/study/subject")
-studyName(f::MDFFile) = h5read(f.filename, "/study/name")
-measPath(f::MDFFile) = h5read(f.filename, "/study/_measPath")
-expno(f::MDFFile) = h5read(f.filename, "/study/experiment")
-description(f::MDFFile) = h5read(f.filename, "/study/description")
-isReference(f::MDFFile) = Bool( h5read(f.filename, "/study/reference") )
-isSimulation(f::MDFFile) = Bool( h5read(f.filename, "/study/simulation") )
-
-# scanner properties
-
-facility(f::MDFFile) = h5read(f.filename, "/scanner/facility")
-operator(f::MDFFile) = h5read(f.filename, "/scanner/operator")
-manufacturer(f::MDFFile) = h5read(f.filename, "/scanner/manufacturer")
-model(f::MDFFile) = h5read(f.filename, "/scanner/model")
-topology(f::MDFFile) = h5read(f.filename, "/scanner/topology")
-
-# tracer properties
-tracer(f::MDFFile) = h5read(f.filename, "/tracer/name")
-tracerVendor(f::MDFFile)  = h5read(f.filename, "/tracer/vendor")
-tracerBatch(f::MDFFile) = h5read(f.filename, "/tracer/batch")
-tracerVolume(f::MDFFile) = h5read(f.filename, "/tracer/volume")
-tracerConcentration(f::MDFFile) = h5read(f.filename, "/tracer/concentration")
-timeTracerInjection(f::MDFFile) = DateTime( h5read(f.filename, "/tracer/time") )
-
-# general acquisition properties
-sfGradient(f::MDFFile) = h5read(f.filename, "/acquisition/gradient")
-numScans(f::MDFFile) = h5read(f.filename, "/acquisition/numFrames")
-acqDate(f::MDFFile) = DateTime( h5read(f.filename, "/acquisition/time") )
-numPatches(f::MDFFile) = h5read(f.filename, "/acquisition/numPatches")
-framePeriod(f::MDFFile) = h5read(f.filename, "/acquisition/framePeriod")
-
-# drive-field properties
-dfStrength(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/strength")
-dfFov(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/fieldOfView")
-dfcycle(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/period")
-dfBaseFrequency(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/baseFrequency")
-dfDivider(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/divider")
-dfRepetitionTime(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/repetitionTime")
-ffPos(f::MDFFile; alpha=[0,0,0]) = h5read(f.filename, "/acquisition/drivefield/fieldOfViewCenter") #FIXME
-numAverages(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/averages")
-numDfChannels(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/numChannels")
-
-# receiver properties
-bandwidth(f::MDFFile) = h5read(f.filename, "/acquisition/receiver/bandwidth")
-frequencies(f::MDFFile) = h5read(f.filename, "/acquisition/receiver/frequencies")
-numFreq(f::MDFFile) = div(numTimePoints(f),2)+1
-numReceivers(f::MDFFile) = h5read(f.filename, "/acquisition/receiver/numChannels")
-numTimePoints(f::MDFFile) = first(h5read(f.filename, "/acquisition/receiver/numSamplingPoints")) # komisch, Tobi fragen!
-
-# system function properties
-gridSize(f::MDFFile) = h5read(f.filename, "/calibration/size")
-fov(f::MDFFile) = h5read(f.filename, "/calibration/fieldOfView")
-deltaSampleConcentration(f::MDFFile) = 1.0
-
-# measurements properties
-samplePosition(f::MDFFile) = h5read(f.filename, "/measurement/samplePosition")
-numSamplePosition(f::MDFFile) = h5read(f.filename, "/measurement/numSamplePosition")
-
+# additional functions that should be implemented by an MPIFile
 filepath(f::MDFFile) = f.filename
 
+
+# Helper functions
+function addLeadingSingleton(a::Array,dim)
+  if ndims(a) == dim
+    return a
+  else
+    return reshape(a,1,size(a)...)
+  end
+end
+
+function addTrailingSingleton(a::Array,dim)
+  if ndims(a) == dim
+    return a
+  else
+    return reshape(a,size(a)...,1)
+  end
+end
+
+
+
+
+#= TODO
 type MDFTimeDataHandle
   filename::String
 end
@@ -163,7 +163,4 @@ function getindex(raw::MDFTimeDataHandle, x, y, z)
   data = h5read(raw.filename, "/measurement/dataTD", ( x, y, z) )
   return data
 end
-
-
-export date
-date(f::MDFFile) = h5read(f.filename, "/dates")
+=#
