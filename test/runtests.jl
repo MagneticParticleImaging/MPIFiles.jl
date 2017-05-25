@@ -17,6 +17,8 @@ if !isfile(fnMeasV1)
   save(streamMeas, fnMeasV1)
 end
 
+# Measurement File V1
+
 mdfv1 = MPIFile(fnMeasV1)
 @test typeof(mdfv1) == MDFFileV1
 
@@ -53,7 +55,9 @@ mdfv1 = MPIFile(fnMeasV1)
 @test acqFovCenter(mdfv1) == [0.0 0.0 -0.0]
 
 @test dfNumChannels(mdfv1) == 3
+@test dfWaveform(mdfv1) == "sine"
 @test dfStrength(mdfv1)[:,:,1] == [0.014 0.014 0.0]
+@test dfPhase(mdfv1)[:,:,1] == [1.5707963267948966 1.5707963267948966 1.5707963267948966]
 @test dfBaseFrequency(mdfv1) == 2500000.0
 @test dfDivider(mdfv1)[:,1] == [102; 96; 99]
 @test dfPeriod(mdfv1) == 6.528E-4
@@ -62,3 +66,21 @@ mdfv1 = MPIFile(fnMeasV1)
 @test rxBandwidth(mdfv1)[1] == 1250000.0
 @test rxNumSamplingPoints(mdfv1)[1] == 1632
 @test rxNumAverages(mdfv1) == 1
+
+@test size( measData(mdfv1) ) == (1632,3,1,500)
+
+# Calibration File V1
+
+smv1 = MPIFile(fnSMV1)
+@test typeof(smv1) == MDFFileV1
+
+@test size( calibSystemMatrixData(smv1) ) == (1936,817,3,1)
+@test size( calibSNR(smv1) ) == (817,3)
+@test calibFov(smv1) == [0.044; 0.044; 0.001]
+@test calibFovCenter(smv1) == [0.0; -0.0; 0.0]
+@test calibSize(smv1) == [44; 44; 1]
+@test calibOrder(smv1) == "xyz"
+#@test calibPositions(smv1) == ???  # not contained in that file
+#@test calibOffsetField(smv1) == ??? # not contained in that file
+@test calibDeltaSampleSize(smv1) == [0.001; 0.001; 0.001]
+@test calibMethod(smv1) == "robot"

@@ -69,6 +69,7 @@ scannerTopology(f::MDFFile) = h5read(f.filename, "/scanner/topology")
 acqStartTime(f::MDFFileV1) = DateTime( h5read(f.filename, "/acquisition/time") )
 acqStartTime(f::MDFFileV2) = DateTime( h5read(f.filename, "/acquisition/startTime") )
 acqNumFrames(f::MDFFile) = h5read(f.filename, "/acquisition/numFrames")
+acqNumBGFrames(f::MDFFileV1) = 0
 acqNumBGFrames(f::MDFFileV2) = h5read(f.filename, "/acquisition/numBGFrames")
 acqFramePeriod(f::MDFFile) = h5read(f.filename, "/acquisition/framePeriod")
 acqNumPatches(f::MDFFile) = h5read(f.filename, "/acquisition/numPatches")
@@ -87,12 +88,14 @@ dfNumChannels(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/numChann
 dfStrength(f::MDFFileV1) = addTrailingSingleton( addLeadingSingleton(
          h5read(f.filename, "/acquisition/drivefield/strength"), 2), 3)
 dfStrength(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/strength")
+dfPhase(f::MDFFileV1) = dfStrength(f) .*0 .+  1.5707963267948966
 dfPhase(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/phase")
 dfBaseFrequency(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/baseFrequency")
 dfCustomWaveform(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/customWaveform")
 dfDivider(f::MDFFileV1) = addTrailingSingleton(
                 h5read(f.filename, "/acquisition/drivefield/divider"),2)
 dfDivider(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/divider")
+dfWaveform(f::MDFFileV1) = "sine"
 dfWaveform(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/waveform")
 dfPeriod(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/period")
 
@@ -115,16 +118,69 @@ rxFrequencies(f::MDFFileV2) = h5read(f.filename, "/acquisition/receiver/frequenc
 rxTransferFunction(f::MDFFile) = h5read(f.filename, "/acquisition/receiver/transferFunction")
 
 # measurements
-export measUnit, measRawDataConversion,
-       measData, measDataTimeOrder, measBGData, measBGDataTimeOrder
+measUnit(f::MDFFileV1) = "a.u."
+measUnit(f::MDFFileV2) = h5read(f.filename, "/measurement/unit")
+measRawDataConversion(f::MDFFileV1) = 1.0
+measRawDataConversion(f::MDFFileV2) = h5read(f.filename, "/measurement/rawDataConversion")
+function measData(f::MDFFileV1)
+  tdExists = h5open(f.filename, "r") do file
+      g = file["/measurement"]
+      exists(g, "dataTD")
+  end
+
+  if tdExists
+    data = h5read(f.filename, "/measurement/dataTD")
+    if ndims(data) == 3
+      return reshape(data,size(data,1),size(data,2),1,size(data,3))
+    else
+      return data
+    end
+  else
+    data = h5read(f.filename, "/measurement/dataFD")
+    dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
+    dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
+    return reshape(dataTD,size(dataTD,1),size(dataTD,2),1,size(dataTD,3))
+  end
+end
+measData(f::MDFFileV2) = h5read(f.filename, "/measurement/data")
+measDataTimeOrder(f::MDFFileV2) = h5read(f.filename, "/measurement/dataTimeOrder")
+measBGData(f::MDFFileV2) = h5read(f.filename, "/measurement/backgroundData")
+measBGDataTimeOrder(f::MDFFileV2) = h5read(f.filename, "/measurement/backgroundDataTimeOrder")
 
 # calibrations
-export calibSystemMatrixData, calibSNR, calibFov, calibFovCenter, calibSize,
-       calibOrder, calibPositions, calibOffsetField, calibDeltaSampleSize,
-       calibMethod
+function calibSystemMatrixData(f::MDFFileV1)
+  data = h5read(f.filename, "/calibration/dataFD")
+  if ndims(data) == 4
+    return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),1))
+  else
+    return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
+  end
+end
+function calibSystemMatrixData(f::MDFFileV2)
+  data = h5read(f.filename, "/calibration/systemMatrixData")
+  return reinterpret(Complex{eltype(data)}, data,
+               (size(data,2),size(data,3),size(data,4),size(data,5)))
+end
+calibSNR(f::MDFFileV1) = h5read(f.filename, "/calibration/snrFD")
+calibSNR(f::MDFFileV2) = h5read(f.filename, "/calibration/snr")
+calibFov(f::MDFFile) = h5read(f.filename, "/calibration/fieldOfView")
+calibFovCenter(f::MDFFile) = h5read(f.filename, "/calibration/fieldOfViewCenter")
+calibSize(f::MDFFile) = h5read(f.filename, "/calibration/size")
+calibOrder(f::MDFFile) = h5read(f.filename, "/calibration/order")
+calibPositions(f::MDFFile) = h5read(f.filename, "/calibration/positions")
+calibOffsetField(f::MDFFile) = h5read(f.filename, "/calibration/offsetField")
+calibDeltaSampleSize(f::MDFFile) = h5read(f.filename, "/calibration/deltaSampleSize")
+calibMethod(f::MDFFile) = h5read(f.filename, "/calibration/method")
 
 # reconstruction results
-export recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions
+recoData(f::MDFFileV1) = addTrailingSingleton(
+         h5read(f.filename, "/reconstruction/data"), 3)
+recoData(f::MDFFileV2) = h5read(f.filename, "/reconstruction/data")
+recoFov(f::MDFFile) = h5read(f.filename, "/reconstruction/fieldOfView")
+recoFovCenter(f::MDFFile) = h5read(f.filename, "/reconstruction/fieldOfViewCenter")
+recoSize(f::MDFFile) = h5read(f.filename, "/reconstruction/size")
+recoOrder(f::MDFFile) = h5read(f.filename, "/reconstruction/order")
+recoPositions(f::MDFFile) = h5read(f.filename, "/reconstruction/positions")
 
 # additional functions that should be implemented by an MPIFile
 filepath(f::MDFFile) = f.filename
@@ -146,6 +202,14 @@ function addTrailingSingleton(a::Array,dim)
     return reshape(a,size(a)...,1)
   end
 end
+
+
+
+
+
+
+
+
 
 
 
