@@ -25,6 +25,22 @@ function (::Type{MDFFile})(filename::String)
   end
 end
 
+function h5exists(filename, parameter)
+  return h5open(filename) do file
+    exists(file, parameter)
+  end
+end
+
+function h5readornull(filename, parameter)
+  if h5exists(filename, parameter)
+    return h5read(filename, parameter)
+  else
+    return nothing
+  end
+end
+
+
+
 # general parameters
 version(f::MDFFile) = VersionNumber( h5read(f.filename, "/version") )
 uuid(f::MDFFile) = h5read(f.filename, "/uuid")
@@ -70,18 +86,20 @@ acqStartTime(f::MDFFileV1) = DateTime( h5read(f.filename, "/acquisition/time") )
 acqStartTime(f::MDFFileV2) = DateTime( h5read(f.filename, "/acquisition/startTime") )
 acqNumFrames(f::MDFFile) = h5read(f.filename, "/acquisition/numFrames")
 acqNumBGFrames(f::MDFFileV1) = 0
-acqNumBGFrames(f::MDFFileV2) = h5read(f.filename, "/acquisition/numBGFrames")
+acqNumBGFrames(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/numBackgroundFrames")
 acqFramePeriod(f::MDFFile) = h5read(f.filename, "/acquisition/framePeriod")
 acqNumPatches(f::MDFFile) = h5read(f.filename, "/acquisition/numPatches")
-acqGradient(f::MDFFile) = addLeadingSingleton(
+acqGradient(f::MDFFileV1) = addLeadingSingleton(
                               h5read(f.filename, "/acquisition/gradient"),2 )
-acqOffsetField(f::MDFFileV2) = h5read(f.filename, "/acquisition/offsetField")
+acqGradient(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/gradient")
+acqOffsetField(f::MDFFileV1) = nothing
+acqOffsetField(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/offsetField")
 acqFov(f::MDFFileV1) = addLeadingSingleton(
                h5read(f.filename, "/acquisition/drivefield/fieldOfView"),2 )
-acqFov(f::MDFFileV2) = h5read(f.filename, "/acquisition/fieldOfView")
+acqFov(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/fieldOfView")
 acqFovCenter(f::MDFFileV1) = addLeadingSingleton(
               h5read(f.filename, "/acquisition/drivefield/fieldOfViewCenter"),2 )
-acqFovCenter(f::MDFFileV2) = h5read(f.filename, "/acquisition/fieldOfViewCenter")
+acqFovCenter(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/fieldOfViewCenter")
 
 # drive-field parameters
 dfNumChannels(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/numChannels")
@@ -114,8 +132,8 @@ function rxFrequencies(f::MDFFileV1)
   a = h5read(f.filename, "/acquisition/receiver/frequencies")
   return reshape( repeat(a , outer=rxNumChannels(f)), length(a), rxNumChannels(f) )
 end
-rxFrequencies(f::MDFFileV2) = h5read(f.filename, "/acquisition/receiver/frequencies")
-rxTransferFunction(f::MDFFile) = h5read(f.filename, "/acquisition/receiver/transferFunction")
+rxFrequencies(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/receiver/frequencies")
+rxTransferFunction(f::MDFFile) = h5readornull(f.filename, "/acquisition/receiver/transferFunction")
 
 # measurements
 measUnit(f::MDFFileV1) = "a.u."
@@ -123,10 +141,10 @@ measUnit(f::MDFFileV2) = h5read(f.filename, "/measurement/unit")
 measRawDataConversion(f::MDFFileV1) = 1.0
 measRawDataConversion(f::MDFFileV2) = h5read(f.filename, "/measurement/rawDataConversion")
 function measData(f::MDFFileV1)
-  tdExists = h5open(f.filename, "r") do file
-      g = file["/measurement"]
-      exists(g, "dataTD")
+  if !h5exists(f.filename, "/measurement")
+    return nothing
   end
+  tdExists = h5exists(f.filename, "/measurement/dataTD")
 
   if tdExists
     data = h5read(f.filename, "/measurement/dataTD")
@@ -143,9 +161,10 @@ function measData(f::MDFFileV1)
   end
 end
 measData(f::MDFFileV2) = h5read(f.filename, "/measurement/data")
+measDataTimeOrder(f::MDFFileV1) = collect(1:acqNumFrames(f))
 measDataTimeOrder(f::MDFFileV2) = h5read(f.filename, "/measurement/dataTimeOrder")
-measBGData(f::MDFFileV2) = h5read(f.filename, "/measurement/backgroundData")
-measBGDataTimeOrder(f::MDFFileV2) = h5read(f.filename, "/measurement/backgroundDataTimeOrder")
+measBGData(f::MDFFile) = h5readornull(f.filename, "/measurement/backgroundData")
+measBGDataTimeOrder(f::MDFFile) = h5readornull(f.filename, "/measurement/backgroundDataTimeOrder")
 
 # calibrations
 function calibSystemMatrixData(f::MDFFileV1)
@@ -161,14 +180,14 @@ function calibSystemMatrixData(f::MDFFileV2)
   return reinterpret(Complex{eltype(data)}, data,
                (size(data,2),size(data,3),size(data,4),size(data,5)))
 end
-calibSNR(f::MDFFileV1) = h5read(f.filename, "/calibration/snrFD")
-calibSNR(f::MDFFileV2) = h5read(f.filename, "/calibration/snr")
-calibFov(f::MDFFile) = h5read(f.filename, "/calibration/fieldOfView")
-calibFovCenter(f::MDFFile) = h5read(f.filename, "/calibration/fieldOfViewCenter")
+calibSNR(f::MDFFileV1) = h5readornull(f.filename, "/calibration/snrFD")
+calibSNR(f::MDFFileV2) = h5readornull(f.filename, "/calibration/snr")
+calibFov(f::MDFFile) = h5readornull(f.filename, "/calibration/fieldOfView")
+calibFovCenter(f::MDFFile) = h5readornull(f.filename, "/calibration/fieldOfViewCenter")
 calibSize(f::MDFFile) = h5read(f.filename, "/calibration/size")
 calibOrder(f::MDFFile) = h5read(f.filename, "/calibration/order")
-calibPositions(f::MDFFile) = h5read(f.filename, "/calibration/positions")
-calibOffsetField(f::MDFFile) = h5read(f.filename, "/calibration/offsetField")
+calibPositions(f::MDFFile) = h5readornull(f.filename, "/calibration/positions")
+calibOffsetField(f::MDFFile) = h5readornull(f.filename, "/calibration/offsetField")
 calibDeltaSampleSize(f::MDFFile) = h5read(f.filename, "/calibration/deltaSampleSize")
 calibMethod(f::MDFFile) = h5read(f.filename, "/calibration/method")
 

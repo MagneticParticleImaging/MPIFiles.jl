@@ -6,7 +6,9 @@ using Requests
 # Download test files
 
 fnMeasV1 = "measurement_V1.mdf"
+fnMeasV2 = "measurement_V2.mdf"
 fnSMV1 = "systemMatrix_V1.mdf"
+fnSMV2 = "systemMatrix_V2.mdf"
 
 if !isfile(fnSMV1)
   streamSM = get("http://media.tuhh.de/ibi/mdf/systemMatrix.h5")
@@ -17,70 +19,86 @@ if !isfile(fnMeasV1)
   save(streamMeas, fnMeasV1)
 end
 
+saveasMDF(fnMeasV2, fnMeasV1)
+saveasMDF(fnSMV2, fnSMV1)
+
+#loadFullDataset(MPIFile(fnMeasV2))
+
 # Measurement File V1
 
 mdfv1 = MPIFile(fnMeasV1)
 @test typeof(mdfv1) == MDFFileV1
 
+mdfv2 = MPIFile(fnMeasV2)
+@test typeof(mdfv2) == MDFFileV2
+
+# only test this for v1
 @test uuid(mdfv1) == "4b0ffb8429f5f38849f292a206bba885"
 @test version(mdfv1) == v"1.0.0"
 @test time(mdfv1) == DateTime("2016-02-08T14:28:34.673")
 
-@test studyName(mdfv1) == "Wuerfelphantom"
-@test studyExperiment(mdfv1) == 18
-@test studyDescription(mdfv1) == "n.a."
-@test studySubject(mdfv1) == "Wuerfelphantom"
-@test studyIsSimulation(mdfv1) == false
-@test studyIsCalibration(mdfv1) == false
+for mdf in (mdfv1,mdfv2)
+  @test studyName(mdf) == "Wuerfelphantom"
+  @test studyExperiment(mdf) == 18
+  @test studyDescription(mdf) == "n.a."
+  @test studySubject(mdf) == "Wuerfelphantom"
+  @test studyIsSimulation(mdf) == false
+  @test studyIsCalibration(mdf) == false
 
-@test scannerFacility(mdfv1) == "University Medical Center Hamburg-Eppendorf, Germany"
-@test scannerOperator(mdfv1) == "n.a."
-@test scannerManufacturer(mdfv1) == "Bruker/Philips"
-@test scannerModel(mdfv1) == "n.a."
-@test scannerTopology(mdfv1) == "FFP"
+  @test scannerFacility(mdf) == "University Medical Center Hamburg-Eppendorf, Germany"
+  @test scannerOperator(mdf) == "n.a."
+  @test scannerManufacturer(mdf) == "Bruker/Philips"
+  @test scannerModel(mdf) == "n.a."
+  @test scannerTopology(mdf) == "FFP"
 
-@test tracerName(mdfv1) == "Resovist"
-@test tracerBatch(mdfv1) == "0"
-@test tracerVendor(mdfv1) == "n.a."
-@test tracerVolume(mdfv1) == 0.0
-@test tracerConcentration(mdfv1) == 0.5
-@test tracerInjectionTime(mdfv1) == DateTime("2015-09-15T11:17:23.011")
+  @test tracerName(mdf) == "Resovist"
+  @test tracerBatch(mdf) == "0"
+  @test tracerVendor(mdf) == "n.a."
+  @test tracerVolume(mdf) == 0.0
+  @test tracerConcentration(mdf) == 0.5
+  @test tracerInjectionTime(mdf) == DateTime("2015-09-15T11:17:23.011")
 
-@test acqStartTime(mdfv1) == DateTime("2015-09-15T11:17:23.011")
-@test acqGradient(mdfv1) == [-1.25 -1.25 2.5]
-@test acqFramePeriod(mdfv1) == 6.528E-4
-@test acqNumFrames(mdfv1) == 500
-@test acqNumPatches(mdfv1) == 1
-@test acqFov(mdfv1) == [0.0224 0.0224 0.0]
-@test acqFovCenter(mdfv1) == [0.0 0.0 -0.0]
+  @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
+  @test acqGradient(mdf) == [-1.25 -1.25 2.5]
+  @test acqFramePeriod(mdf) == 6.528E-4
+  @test acqNumFrames(mdf) == 500
+  @test acqNumPatches(mdf) == 1
+  @test acqFov(mdf) == [0.0224 0.0224 0.0]
+  @test acqFovCenter(mdf) == [0.0 0.0 -0.0]
 
-@test dfNumChannels(mdfv1) == 3
-@test dfWaveform(mdfv1) == "sine"
-@test dfStrength(mdfv1)[:,:,1] == [0.014 0.014 0.0]
-@test dfPhase(mdfv1)[:,:,1] == [1.5707963267948966 1.5707963267948966 1.5707963267948966]
-@test dfBaseFrequency(mdfv1) == 2500000.0
-@test dfDivider(mdfv1)[:,1] == [102; 96; 99]
-@test dfPeriod(mdfv1) == 6.528E-4
+  @test dfNumChannels(mdf) == 3
+  @test dfWaveform(mdf) == "sine"
+  @test dfStrength(mdf)[:,:,1] == [0.014 0.014 0.0]
+  @test dfPhase(mdf)[:,:,1] == [1.5707963267948966 1.5707963267948966 1.5707963267948966]
+  @test dfBaseFrequency(mdf) == 2500000.0
+  @test dfDivider(mdf)[:,1] == [102; 96; 99]
+  @test dfPeriod(mdf) == 6.528E-4
 
-@test rxNumChannels(mdfv1) == 3
-@test rxBandwidth(mdfv1)[1] == 1250000.0
-@test rxNumSamplingPoints(mdfv1)[1] == 1632
-@test rxNumAverages(mdfv1) == 1
+  @test rxNumChannels(mdf) == 3
+  @test rxBandwidth(mdf)[1] == 1250000.0
+  @test rxNumSamplingPoints(mdf)[1] == 1632
+  @test rxNumAverages(mdf) == 1
 
-@test size( measData(mdfv1) ) == (1632,3,1,500)
+  @test size( measData(mdf) ) == (1632,3,1,500)
+end
 
 # Calibration File V1
 
 smv1 = MPIFile(fnSMV1)
 @test typeof(smv1) == MDFFileV1
 
-@test size( calibSystemMatrixData(smv1) ) == (1936,817,3,1)
-@test size( calibSNR(smv1) ) == (817,3)
-@test calibFov(smv1) == [0.044; 0.044; 0.001]
-@test calibFovCenter(smv1) == [0.0; -0.0; 0.0]
-@test calibSize(smv1) == [44; 44; 1]
-@test calibOrder(smv1) == "xyz"
-#@test calibPositions(smv1) == ???  # not contained in that file
-#@test calibOffsetField(smv1) == ??? # not contained in that file
-@test calibDeltaSampleSize(smv1) == [0.001; 0.001; 0.001]
-@test calibMethod(smv1) == "robot"
+smv2 = MPIFile(fnSMV2)
+@test typeof(smv2) == MDFFileV2
+
+for sm in (smv1,smv2)
+  @test size( calibSystemMatrixData(sm) ) == (1936,817,3,1)
+  @test size( calibSNR(sm) ) == (817,3)
+  @test calibFov(sm) == [0.044; 0.044; 0.001]
+  @test calibFovCenter(sm) == [0.0; -0.0; 0.0]
+  @test calibSize(sm) == [44; 44; 1]
+  @test calibOrder(sm) == "xyz"
+  @test calibPositions(smv1) == nothing
+  @test calibOffsetField(smv1) == nothing
+  @test calibDeltaSampleSize(sm) == [0.001; 0.001; 0.001]
+  @test calibMethod(sm) == "robot"
+end

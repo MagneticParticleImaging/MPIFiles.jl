@@ -171,7 +171,7 @@ end
 include("Measurements.jl")
 include("SystemMatrix.jl")
 include("FrequencyFilter.jl")
-
+include("Conversion.jl")
 
 ### Misc functions ###
 #include("Misc.jl")
