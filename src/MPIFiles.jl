@@ -2,7 +2,7 @@ module MPIFiles
 
 using Graphics: @mustimplement
 
-import Base: ndims, call, time
+import Base: ndims, time, show, getindex
 
 ### export list ###
 
@@ -149,8 +149,9 @@ abstract MPIFile
 
 
 ### Concrete implementations ###
-include("Brukerfile.jl")
 include("MDF.jl")
+#include("RawFile.jl")
+#include("Brukerfile.jl")
 
 # This dispatches on the file extension and automatically
 # generates the correct type

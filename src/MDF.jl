@@ -25,6 +25,14 @@ function (::Type{MDFFile})(filename::String)
   end
 end
 
+function Base.show(io::IO, f::MDFFileV1)
+  print(io, "MDF v1: ", f.path)
+end
+
+function Base.show(io::IO, f::MDFFileV2)
+  print(io, "MDF v2: ", f.path)
+end
+
 function h5exists(filename, parameter)
   return h5open(filename) do file
     exists(file, parameter)
@@ -39,107 +47,103 @@ function h5readornull(filename, parameter)
   end
 end
 
+function getindex(f::MDFFile, parameter)
+   return h5readornull(f.filename, parameter)
+end
+
 
 
 # general parameters
-version(f::MDFFile) = VersionNumber( h5read(f.filename, "/version") )
-uuid(f::MDFFile) = h5read(f.filename, "/uuid")
-time(f::MDFFile) = DateTime( h5read(f.filename, "/date") )
+version(f::MDFFile) = VersionNumber( f["/version"] )
+uuid(f::MDFFile) = f["/uuid"]
+time(f::MDFFile) = DateTime( f["/date"] )
 
 
 # study parameters
-studyName(f::MDFFile) = h5read(f.filename, "/study/name")
-studyExperiment(f::MDFFileV1) = parse(Int64,h5read(f.filename, "/study/experiment"))
-studyExperiment(f::MDFFileV2) = h5read(f.filename, "/study/experiment")
-studyDescription(f::MDFFile) = h5read(f.filename, "/study/description")
-studySubject(f::MDFFile) = h5read(f.filename, "/study/subject")
-studyIsSimulation(f::MDFFileV2) = Bool( h5read(f.filename, "/study/isSimulation") )
-studyIsSimulation(f::MDFFileV1) = Bool( h5read(f.filename, "/study/simulation") )
-studyIsCalibration(f::MDFFileV2) = Bool( h5read(f.filename, "/study/isCalibration") )
-function studyIsCalibration(f::MDFFileV1)
-  return h5open(f.filename, "r") do file
-    g = file["/"]
-    exists(g, "calibration")
-  end
-end
+studyName(f::MDFFile) = f["/study/name"]
+studyExperiment(f::MDFFileV1) = parse(Int64, f["/study/experiment"])
+studyExperiment(f::MDFFileV2) = f["/study/experiment"]
+studyDescription(f::MDFFile) = f["/study/description"]
+studySubject(f::MDFFile) = f["/study/subject"]
+studyIsSimulation(f::MDFFileV2) = Bool( f["/study/isSimulation"] )
+studyIsSimulation(f::MDFFileV1) = Bool( f["/study/simulation"] )
+studyIsCalibration(f::MDFFileV2) = Bool( f["/study/isCalibration"] )
+studyIsCalibration(f::MDFFileV1) = h5exists(f.filename, "/calibration")
 
 # tracer parameters
-tracerName(f::MDFFile) = h5read(f.filename, "/tracer/name")
-tracerBatch(f::MDFFile) = h5read(f.filename, "/tracer/batch")
-tracerVolume(f::MDFFile) = h5read(f.filename, "/tracer/volume")
-tracerConcentration(f::MDFFile) = h5read(f.filename, "/tracer/concentration")
-tracerSolute(f::MDFFileV2) = h5read(f.filename, "/tracer/solute")
+tracerName(f::MDFFile) = f["/tracer/name"]
+tracerBatch(f::MDFFile) = f["/tracer/batch"]
+tracerVolume(f::MDFFile) = f["/tracer/volume"]
+tracerConcentration(f::MDFFile) = f["/tracer/concentration"]
+tracerSolute(f::MDFFileV2) = f["/tracer/solute"]
 tracerSolute(f::MDFFileV1) = "Fe"
-tracerInjectionTime(f::MDFFileV1) = DateTime( h5read(f.filename, "/tracer/time") )
-tracerInjectionTime(f::MDFFileV2) = DateTime( h5read(f.filename, "/tracer/injectionTime") )
-tracerVendor(f::MDFFile) = h5read(f.filename, "/tracer/vendor")
+tracerInjectionTime(f::MDFFileV1) = DateTime( f["/tracer/time"] )
+tracerInjectionTime(f::MDFFileV2) = DateTime( f["/tracer/injectionTime"] )
+tracerVendor(f::MDFFile) = f["/tracer/vendor"]
 
 # scanner parameters
-scannerFacility(f::MDFFile) = h5read(f.filename, "/scanner/facility")
-scannerOperator(f::MDFFile) = h5read(f.filename, "/scanner/operator")
-scannerManufacturer(f::MDFFile) = h5read(f.filename, "/scanner/manufacturer")
-scannerModel(f::MDFFile) = h5read(f.filename, "/scanner/model")
-scannerTopology(f::MDFFile) = h5read(f.filename, "/scanner/topology")
+scannerFacility(f::MDFFile) = f["/scanner/facility"]
+scannerOperator(f::MDFFile) = f["/scanner/operator"]
+scannerManufacturer(f::MDFFile) = f["/scanner/manufacturer"]
+scannerModel(f::MDFFile) = f["/scanner/model"]
+scannerTopology(f::MDFFile) = f["/scanner/topology"]
 
 # acquisition parameters
-acqStartTime(f::MDFFileV1) = DateTime( h5read(f.filename, "/acquisition/time") )
-acqStartTime(f::MDFFileV2) = DateTime( h5read(f.filename, "/acquisition/startTime") )
-acqNumFrames(f::MDFFile) = h5read(f.filename, "/acquisition/numFrames")
+acqStartTime(f::MDFFileV1) = DateTime( f["/acquisition/time"] )
+acqStartTime(f::MDFFileV2) = DateTime( f["/acquisition/startTime"] )
+acqNumFrames(f::MDFFile) = f["/acquisition/numFrames"]
 acqNumBGFrames(f::MDFFileV1) = 0
-acqNumBGFrames(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/numBackgroundFrames")
-acqFramePeriod(f::MDFFile) = h5read(f.filename, "/acquisition/framePeriod")
-acqNumPatches(f::MDFFile) = h5read(f.filename, "/acquisition/numPatches")
-acqGradient(f::MDFFileV1) = addLeadingSingleton(
-                              h5read(f.filename, "/acquisition/gradient"),2 )
-acqGradient(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/gradient")
-acqOffsetField(f::MDFFileV1) = nothing
-acqOffsetField(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/offsetField")
-acqFov(f::MDFFileV1) = addLeadingSingleton(
-               h5read(f.filename, "/acquisition/drivefield/fieldOfView"),2 )
-acqFov(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/fieldOfView")
+acqNumBGFrames(f::MDFFileV2) = f["/acquisition/numBackgroundFrames"]
+acqFramePeriod(f::MDFFile) = f["/acquisition/framePeriod"]
+acqNumPatches(f::MDFFile) = f["/acquisition/numPatches"]
+acqGradient(f::MDFFileV1) = addLeadingSingleton(f["/acquisition/gradient"],2)
+acqGradient(f::MDFFileV2) = f["/acquisition/gradient"]
+acqOffsetField(f::MDFFile) = f["/acquisition/offsetField"]
+acqFov(f::MDFFileV1) = addLeadingSingleton( f["/acquisition/drivefield/fieldOfView"],2 )
+acqFov(f::MDFFileV2) = f["/acquisition/fieldOfView"]
 acqFovCenter(f::MDFFileV1) = addLeadingSingleton(
-              h5read(f.filename, "/acquisition/drivefield/fieldOfViewCenter"),2 )
-acqFovCenter(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/fieldOfViewCenter")
+              f["/acquisition/drivefield/fieldOfViewCenter"],2 )
+acqFovCenter(f::MDFFileV2) = f["/acquisition/fieldOfViewCenter"]
 
 # drive-field parameters
-dfNumChannels(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/numChannels")
+dfNumChannels(f::MDFFile) = f["/acquisition/drivefield/numChannels"]
 dfStrength(f::MDFFileV1) = addTrailingSingleton( addLeadingSingleton(
-         h5read(f.filename, "/acquisition/drivefield/strength"), 2), 3)
-dfStrength(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/strength")
-dfPhase(f::MDFFileV1) = dfStrength(f) .*0 .+  1.5707963267948966
-dfPhase(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/phase")
-dfBaseFrequency(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/baseFrequency")
-dfCustomWaveform(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/customWaveform")
+         f["/acquisition/drivefield/strength"], 2), 3)
+dfStrength(f::MDFFileV2) = f["/acquisition/drivefield/strength"]
+dfPhase(f::MDFFileV1) = dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
+dfPhase(f::MDFFileV2) = f["/acquisition/drivefield/phase"]
+dfBaseFrequency(f::MDFFile) = f["/acquisition/drivefield/baseFrequency"]
+dfCustomWaveform(f::MDFFileV2) = f["/acquisition/drivefield/customWaveform"]
 dfDivider(f::MDFFileV1) = addTrailingSingleton(
-                h5read(f.filename, "/acquisition/drivefield/divider"),2)
-dfDivider(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/divider")
+                f["/acquisition/drivefield/divider"],2)
+dfDivider(f::MDFFileV2) = f["/acquisition/drivefield/divider"]
 dfWaveform(f::MDFFileV1) = "sine"
-dfWaveform(f::MDFFileV2) = h5read(f.filename, "/acquisition/drivefield/waveform")
-dfPeriod(f::MDFFile) = h5read(f.filename, "/acquisition/drivefield/period")
+dfWaveform(f::MDFFileV2) = f["/acquisition/drivefield/waveform"]
+dfPeriod(f::MDFFile) = f["/acquisition/drivefield/period"]
 
 # receiver parameters
-rxNumChannels(f::MDFFile) = h5read(f.filename, "/acquisition/receiver/numChannels")
-rxNumAverages(f::MDFFileV1) = h5read(f.filename, "/acquisition/drivefield/averages")
-rxNumAverages(f::MDFFileV2) = h5read(f.filename, "/acquisition/receiver/numAverages")
+rxNumChannels(f::MDFFile) = f["/acquisition/receiver/numChannels"]
+rxNumAverages(f::MDFFileV1) = f["/acquisition/drivefield/averages"]
+rxNumAverages(f::MDFFileV2) = f["/acquisition/receiver/numAverages"]
 # THE FOLLOWING IS NOT FULLY CORRECT!!!
 rxBandwidth(f::MDFFileV1) =
-    repeat( [h5read(f.filename, "/acquisition/receiver/bandwidth")], outer=rxNumChannels(f))
-rxBandwidth(f::MDFFileV2) = h5read(f.filename, "/acquisition/receiver/bandwidth")
+    repeat( [f["/acquisition/receiver/bandwidth"]], outer=rxNumChannels(f))
+rxBandwidth(f::MDFFileV2) = f["/acquisition/receiver/bandwidth"]
 rxNumSamplingPoints(f::MDFFileV1) =
-    repeat( [h5read(f.filename, "/acquisition/receiver/numSamplingPoints")], outer=rxNumChannels(f))
-rxNumSamplingPoints(f::MDFFileV2) = h5read(f.filename, "/acquisition/receiver/numSamplingPoints")
+    repeat( [f["/acquisition/receiver/numSamplingPoints"]], outer=rxNumChannels(f))
+rxNumSamplingPoints(f::MDFFileV2) = f["/acquisition/receiver/numSamplingPoints"]
 function rxFrequencies(f::MDFFileV1)
-  a = h5read(f.filename, "/acquisition/receiver/frequencies")
+  a = f["/acquisition/receiver/frequencies"]
   return reshape( repeat(a , outer=rxNumChannels(f)), length(a), rxNumChannels(f) )
 end
-rxFrequencies(f::MDFFileV2) = h5readornull(f.filename, "/acquisition/receiver/frequencies")
-rxTransferFunction(f::MDFFile) = h5readornull(f.filename, "/acquisition/receiver/transferFunction")
+rxFrequencies(f::MDFFileV2) = f["/acquisition/receiver/frequencies"]
+rxTransferFunction(f::MDFFile) = f["/acquisition/receiver/transferFunction"]
 
 # measurements
 measUnit(f::MDFFileV1) = "a.u."
-measUnit(f::MDFFileV2) = h5read(f.filename, "/measurement/unit")
+measUnit(f::MDFFileV2) = f["/measurement/unit"]
 measRawDataConversion(f::MDFFileV1) = 1.0
-measRawDataConversion(f::MDFFileV2) = h5read(f.filename, "/measurement/rawDataConversion")
+measRawDataConversion(f::MDFFileV2) = f["/measurement/rawDataConversion"]
 function measData(f::MDFFileV1)
   if !h5exists(f.filename, "/measurement")
     return nothing
@@ -147,28 +151,28 @@ function measData(f::MDFFileV1)
   tdExists = h5exists(f.filename, "/measurement/dataTD")
 
   if tdExists
-    data = h5read(f.filename, "/measurement/dataTD")
+    data = f["/measurement/dataTD"]
     if ndims(data) == 3
       return reshape(data,size(data,1),size(data,2),1,size(data,3))
     else
       return data
     end
   else
-    data = h5read(f.filename, "/measurement/dataFD")
+    data = f["/measurement/dataFD"]
     dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
     dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
     return reshape(dataTD,size(dataTD,1),size(dataTD,2),1,size(dataTD,3))
   end
 end
-measData(f::MDFFileV2) = h5read(f.filename, "/measurement/data")
+measData(f::MDFFileV2) = f["/measurement/data"]
 measDataTimeOrder(f::MDFFileV1) = collect(1:acqNumFrames(f))
-measDataTimeOrder(f::MDFFileV2) = h5read(f.filename, "/measurement/dataTimeOrder")
-measBGData(f::MDFFile) = h5readornull(f.filename, "/measurement/backgroundData")
-measBGDataTimeOrder(f::MDFFile) = h5readornull(f.filename, "/measurement/backgroundDataTimeOrder")
+measDataTimeOrder(f::MDFFileV2) = f["/measurement/dataTimeOrder"]
+measBGData(f::MDFFile) = f["/measurement/backgroundData"]
+measBGDataTimeOrder(f::MDFFile) = f["/measurement/backgroundDataTimeOrder"]
 
 # calibrations
 function calibSystemMatrixData(f::MDFFileV1)
-  data = h5read(f.filename, "/calibration/dataFD")
+  data = f["/calibration/dataFD"]
   if ndims(data) == 4
     return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),1))
   else
@@ -176,30 +180,30 @@ function calibSystemMatrixData(f::MDFFileV1)
   end
 end
 function calibSystemMatrixData(f::MDFFileV2)
-  data = h5read(f.filename, "/calibration/systemMatrixData")
+  data = f["/calibration/systemMatrixData"]
   return reinterpret(Complex{eltype(data)}, data,
                (size(data,2),size(data,3),size(data,4),size(data,5)))
 end
-calibSNR(f::MDFFileV1) = h5readornull(f.filename, "/calibration/snrFD")
-calibSNR(f::MDFFileV2) = h5readornull(f.filename, "/calibration/snr")
-calibFov(f::MDFFile) = h5readornull(f.filename, "/calibration/fieldOfView")
-calibFovCenter(f::MDFFile) = h5readornull(f.filename, "/calibration/fieldOfViewCenter")
-calibSize(f::MDFFile) = h5read(f.filename, "/calibration/size")
-calibOrder(f::MDFFile) = h5read(f.filename, "/calibration/order")
-calibPositions(f::MDFFile) = h5readornull(f.filename, "/calibration/positions")
-calibOffsetField(f::MDFFile) = h5readornull(f.filename, "/calibration/offsetField")
-calibDeltaSampleSize(f::MDFFile) = h5read(f.filename, "/calibration/deltaSampleSize")
-calibMethod(f::MDFFile) = h5read(f.filename, "/calibration/method")
+calibSNR(f::MDFFileV1) = f["/calibration/snrFD"]
+calibSNR(f::MDFFileV2) = f["/calibration/snr"]
+calibFov(f::MDFFile) = f["/calibration/fieldOfView"]
+calibFovCenter(f::MDFFile) = f["/calibration/fieldOfViewCenter"]
+calibSize(f::MDFFile) = f["/calibration/size"]
+calibOrder(f::MDFFile) = f["/calibration/order"]
+calibPositions(f::MDFFile) = f["/calibration/positions"]
+calibOffsetField(f::MDFFile) = f["/calibration/offsetField"]
+calibDeltaSampleSize(f::MDFFile) = f["/calibration/deltaSampleSize"]
+calibMethod(f::MDFFile) = f["/calibration/method"]
 
 # reconstruction results
 recoData(f::MDFFileV1) = addTrailingSingleton(
-         h5read(f.filename, "/reconstruction/data"), 3)
-recoData(f::MDFFileV2) = h5read(f.filename, "/reconstruction/data")
-recoFov(f::MDFFile) = h5read(f.filename, "/reconstruction/fieldOfView")
-recoFovCenter(f::MDFFile) = h5read(f.filename, "/reconstruction/fieldOfViewCenter")
-recoSize(f::MDFFile) = h5read(f.filename, "/reconstruction/size")
-recoOrder(f::MDFFile) = h5read(f.filename, "/reconstruction/order")
-recoPositions(f::MDFFile) = h5read(f.filename, "/reconstruction/positions")
+         f[ "/reconstruction/data"], 3)
+recoData(f::MDFFileV2) = f["/reconstruction/data"]
+recoFov(f::MDFFile) = f["/reconstruction/fieldOfView"]
+recoFovCenter(f::MDFFile) = f["/reconstruction/fieldOfViewCenter"]
+recoSize(f::MDFFile) = f["/reconstruction/size"]
+recoOrder(f::MDFFile) = f["/reconstruction/order"]
+recoPositions(f::MDFFile) = f["/reconstruction/positions"]
 
 # additional functions that should be implemented by an MPIFile
 filepath(f::MDFFile) = f.filename
