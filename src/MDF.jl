@@ -58,7 +58,6 @@ version(f::MDFFile) = VersionNumber( f["/version"] )
 uuid(f::MDFFile) = f["/uuid"]
 time(f::MDFFile) = DateTime( f["/date"] )
 
-
 # study parameters
 studyName(f::MDFFile) = f["/study/name"]
 studyExperiment(f::MDFFileV1) = parse(Int64, f["/study/experiment"])

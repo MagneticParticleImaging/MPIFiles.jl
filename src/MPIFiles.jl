@@ -150,8 +150,12 @@ abstract MPIFile
 
 ### Concrete implementations ###
 include("MDF.jl")
-#include("RawFile.jl")
-#include("Brukerfile.jl")
+
+#TODO Move to misc
+rxNumFrequencies(f::MPIFile) = floor(Int,rxNumSamplingPoints(f) ./ 2 .+ 1)
+
+include("RawFile.jl")
+include("Brukerfile.jl")
 
 # This dispatches on the file extension and automatically
 # generates the correct type
