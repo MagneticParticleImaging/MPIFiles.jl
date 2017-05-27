@@ -1,13 +1,19 @@
 # This file contains routines to generate MDF files
 export saveasMDF, loadFullDataset
 
+function setparam!(params::Dict, parameter, value)
+  if value != nothing
+    params[parameter] = value
+  end
+end
+
 function loadFullDataset(f)
   params = Dict{String,Any}()
 
   # general parameters
   params["version"] = version(f)
-  params["uuid"] = uuid(f)
-  params["time"] = time(f)
+  setparam!(params, "uuid", uuid(f))
+  setparam!(params, "time", time(f))
 
   # study parameters
   params["studyName"] = studyName(f)
@@ -39,22 +45,10 @@ function loadFullDataset(f)
   params["acqFramePeriod"] = acqFramePeriod(f)
   params["acqNumPatches"] = acqNumPatches(f)
   params["acqStartTime"] = acqStartTime(f)
-  p = acqGradient(f)
-  if p != nothing
-    params["acqGradient"] = p
-  end
-  p = acqOffsetField(f)
-  if p != nothing
-    params["acqOffsetField"] = p
-  end
-  p = acqFov(f)
-  if p != nothing
-    params["acqFov"] = p
-  end
-  p = acqFovCenter(f)
-  if p != nothing
-    params["acqFovCenter"] = p
-  end
+  setparam!(params, "acqGradient", acqGradient(f))
+  setparam!(params, "acqOffsetField", acqOffsetField(f))
+  setparam!(params, "acqFov", acqFov(f))
+  setparam!(params, "acqFovCenter", acqFovCenter(f))
 
   # drivefield parameters
   params["dfNumChannels"] = dfNumChannels(f)
@@ -73,57 +67,28 @@ function loadFullDataset(f)
   params["rxNumAverages"] = rxNumAverages(f)
   params["rxBandwidth"] = rxBandwidth(f)
   params["rxNumSamplingPoints"] = rxNumSamplingPoints(f)
-  p = rxFrequencies(f)
-  if p != nothing
-    params["rxFrequencies"] = p
-  end
-  p = rxTransferFunction(f)
-  if p != nothing
-    params["rxTransferFunction"] = p
-  end
+  setparam!(params, "rxFrequencies", rxFrequencies(f))
+  setparam!(params, "rxTransferFunction", rxTransferFunction(f))
 
   # measurement
   params["measUnit"] = measUnit(f)
   params["measRawDataConversion"] = measRawDataConversion(f)
-  p = measData(f)
-  if p != nothing
-    params["measData"] = p
-  end
-  p = measDataTimeOrder(f)
-  if p != nothing
-    params["measDataTimeOrder"] = p
-  end
-  p = measBGData(f)
-  if p != nothing
-    params["measBGData"] = p
-  end
-  p = measBGDataTimeOrder(f)
-  if p != nothing
-    params["measBGDataTimeOrder"] = p
-  end
+  setparam!(params, "measData", measData(f))
+  setparam!(params, "measDataTimeOrder", measDataTimeOrder(f))
+  setparam!(params, "measBGData", measBGData(f))
+  setparam!(params, "measBGDataTimeOrder", measBGDataTimeOrder(f))
 
   if params["studyIsCalibration"]
-    p = calibSystemMatrixData(f)
-    if p != nothing
-      params["calibSystemMatrixData"] = p
-    end
-    p = calibSNR(f)
-    if p != nothing
-      params["calibSNR"] = p
-    end
+    setparam!(params, "calibSystemMatrixData", calibSystemMatrixData(f))
+    setparam!(params, "calibSNR", calibSNR(f))
+
     params["calibFov"] = calibFov(f)
     params["calibFovCenter"] = calibFovCenter(f)
     params["calibSize"] = calibSize(f)
     params["calibOrder"] = calibOrder(f)
-    p = calibPositions(f)
-    if p != nothing
-      params["calibPositions"] = p
-    end
-    p = calibOffsetField(f)
-    if p != nothing
-      params["calibOffsetField"] = p
-    end
-    params["calibDeltaSampleSize"] = calibDeltaSampleSize(f)
+    setparam!(params, "calibPositions", calibPositions(f))
+    setparam!(params, "calibOffsetField", calibOffsetField(f))
+    setparam!(params, "calibDeltaSampleSize", calibDeltaSampleSize(f))
     params["calibMethod"] = calibMethod(f)
   end
 
@@ -253,7 +218,9 @@ function saveasMDF(file::HDF5File, params::Dict)
     if haskey(params,"calibOffsetField")
       write(file, "/calibration/offsetField",  params["calibOffsetField"])
     end
-    write(file, "/calibration/deltaSampleSize",  params["calibDeltaSampleSize"])
+    if haskey(params,"calibDeltaSampleSize")
+      write(file, "/calibration/deltaSampleSize",  params["calibDeltaSampleSize"])
+    end
     write(file, "/calibration/method",  params["calibMethod"])
   end
 

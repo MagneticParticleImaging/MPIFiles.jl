@@ -55,7 +55,7 @@ b = MPIFile(fnMeasBruker)
 sm = MPIFile(fnSMBruker)
 @test typeof(sm) == BrukerFile
 
-#TODO @test size( calibSystemMatrixData(sm) ) == (1936,817,3,1)
+@test size( calibSystemMatrixData(sm) ) == (100,26929,3,1)
 @test size( calibSNR(sm) ) == (26929,3)
 @test calibFov(sm) == [0.001,0.001,0.04]
 @test calibFovCenter(sm) == [0.0; -0.0; 0.0]
@@ -65,3 +65,9 @@ sm = MPIFile(fnSMBruker)
 @test calibOffsetField(sm) == nothing
 @test calibDeltaSampleSize(sm) == nothing #TODO
 @test calibMethod(sm) == "robot"
+
+fnMeasConv = "measurement_conv.mdf"
+fnSMConv = "systemMatrix_conv.mdf"
+
+saveasMDF(fnMeasConv, fnMeasBruker)
+saveasMDF(fnSMConv, fnSMBruker)

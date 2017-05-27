@@ -205,13 +205,15 @@ measBGDataTimeOrder(b::BrukerFile) = nothing
 
 # calibrations
 function calibSystemMatrixData(b::BrukerFile)
-  #TODO
-  data = f["/calibration/dataFD"]
-  if ndims(data) == 4
-    return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),1))
-  else
-    return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
-  end
+  bgcorrection = true
+  localSFFilename = bgcorrection ? "systemMatrixBG" : "systemMatrix"
+  sfFilename = joinpath(b.path,"pdata", "1", localSFFilename)
+  nFreq = rxNumFrequencies(b)[1]
+
+  data = Rawfile(sfFilename, Complex128,
+                 [prod(calibSize(b)),nFreq,rxNumChannels(b)], extRaw="")
+  S = data[]
+  return reshape(S,size(S,1),size(S,2),size(S,3),1)
 end
 
 function calibSNR(b::BrukerFile)
