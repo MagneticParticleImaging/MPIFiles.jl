@@ -175,15 +175,8 @@ dfPeriod(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000
 # receiver parameters
 rxNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
 rxNumAverages(b::BrukerFile) = parse(Int,b["NA"])
-rxBandwidth(b::BrukerFile) =
-    repeat( [parse(Float64,b["PVM_MPI_Bandwidth"])*1e6], outer=rxNumChannels(b))
-rxNumSamplingPoints(b::BrukerFile) =
-    repeat( [ parse(Int64,b["ACQ_size"][1]) ], outer=rxNumChannels(b))
-function rxFrequencies(b::BrukerFile)
-  numFreq = rxNumFrequencies(b)[1]
-  a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(b)[1]
-  return reshape( repeat(a , outer=rxNumChannels(b)), length(a), rxNumChannels(b) )
-end
+rxBandwidth(b::BrukerFile) = parse(Float64,b["PVM_MPI_Bandwidth"])*1e6
+rxNumSamplingPoints(b::BrukerFile) = parse(Int64,b["ACQ_size"][1])
 rxTransferFunction(b::BrukerFile) = nothing
 
 # measurements
@@ -194,7 +187,7 @@ function measData(b::BrukerFile)
   dType = rxNumAverages(b) == 1 ? Int16 : Int32
 
   raw = Rawfile(dataFilename, dType,
-             [rxNumSamplingPoints(b)[1],rxNumChannels(b),acqNumFrames(b)],
+             [rxNumSamplingPoints(b),rxNumChannels(b),acqNumFrames(b)],
              extRaw=".job0") #Int or Uint?
   data = raw[]
   return reshape(data,size(data,1),size(data,2),1,size(data,3))
@@ -208,7 +201,7 @@ function calibSystemMatrixData(b::BrukerFile)
   bgcorrection = true
   localSFFilename = bgcorrection ? "systemMatrixBG" : "systemMatrix"
   sfFilename = joinpath(b.path,"pdata", "1", localSFFilename)
-  nFreq = rxNumFrequencies(b)[1]
+  nFreq = rxNumFrequencies(b)
 
   data = Rawfile(sfFilename, Complex128,
                  [prod(calibSize(b)),nFreq,rxNumChannels(b)], extRaw="")
@@ -218,7 +211,7 @@ end
 
 function calibSNR(b::BrukerFile)
   snrFilename = joinpath(b.path,"pdata", "1", "snr")
-  data = Rawfile(snrFilename, Float64, [rxNumFrequencies(b)[1],rxNumChannels(b)], extRaw="")
+  data = Rawfile(snrFilename, Float64, [rxNumFrequencies(b),rxNumChannels(b)], extRaw="")
   return data[]
 end
 calibFov(b::BrukerFile) = [parse(Float64,s) for s = b["PVM_Fov"] ] * 1e-3

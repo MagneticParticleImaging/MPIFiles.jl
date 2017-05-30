@@ -70,8 +70,8 @@ for mdf in (mdfv1,mdfv2)
   @test dfPeriod(mdf) == 6.528E-4
 
   @test rxNumChannels(mdf) == 3
-  @test rxBandwidth(mdf)[1] == 1250000.0
-  @test rxNumSamplingPoints(mdf)[1] == 1632
+  @test rxBandwidth(mdf) == 1250000.0
+  @test rxNumSamplingPoints(mdf) == 1632
   @test rxNumAverages(mdf) == 1
 
   @test size( measData(mdf) ) == (1632,3,1,500)

@@ -32,7 +32,7 @@ export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
        dfDivider, dfWaveform, dfPeriod
 
 # receiver parameters
-export rxNumChannels, rxNumAverages, rxBandwidth, rxNumSamplingPoints, rxFrequencies,
+export rxNumChannels, rxNumAverages, rxBandwidth, rxNumSamplingPoints, 
        rxTransferFunction
 
 # measurements
@@ -109,7 +109,6 @@ abstract MPIFile
 @mustimplement rxNumAverages(f::MPIFile)
 @mustimplement rxBandwidth(f::MPIFile)
 @mustimplement rxNumSamplingPoints(f::MPIFile)
-@mustimplement rxFrequencies(f::MPIFile)
 @mustimplement rxTransferFunction(f::MPIFile)
 
 # measurements
@@ -153,6 +152,12 @@ include("MDF.jl")
 
 #TODO Move to misc
 rxNumFrequencies(f::MPIFile) = floor(Int,rxNumSamplingPoints(f) ./ 2 .+ 1)
+function rxFrequencies(f::MPIFile)
+  numFreq = rxNumFrequencies(f)
+  a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(b)
+  return a
+end
+
 
 include("RawFile.jl")
 include("Brukerfile.jl")

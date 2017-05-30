@@ -45,8 +45,8 @@ b = MPIFile(fnMeasBruker)
 @test dfPeriod(b) == 0.0215424
 
 @test rxNumChannels(b) == 3
-@test rxBandwidth(b)[1] == 1250000.0
-@test rxNumSamplingPoints(b)[1] == 53856
+@test rxBandwidth(b) == 1250000.0
+@test rxNumSamplingPoints(b) == 53856
 @test rxNumAverages(b) == 100
 
 @test size( measData(b) ) == (53856,3,1,40)

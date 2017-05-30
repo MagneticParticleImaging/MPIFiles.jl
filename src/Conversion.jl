@@ -67,7 +67,6 @@ function loadFullDataset(f)
   params["rxNumAverages"] = rxNumAverages(f)
   params["rxBandwidth"] = rxBandwidth(f)
   params["rxNumSamplingPoints"] = rxNumSamplingPoints(f)
-  setparam!(params, "rxFrequencies", rxFrequencies(f))
   setparam!(params, "rxTransferFunction", rxTransferFunction(f))
 
   # measurement
@@ -109,7 +108,7 @@ function saveasMDF(file::HDF5File, params::Dict)
   # general parameters
   write(file, "/version", "2.0")
   write(file, "/uuid", get(params,"uuid",hex(rand(UInt128))) )
-  write(file, "/date", "$( get(params,"time", Dates.unix2datetime(time())) )")
+  write(file, "/time", "$( get(params,"time", Dates.unix2datetime(time())) )")
 
   # study parameters
   write(file, "/study/name", get(params,"studyName","default") )
@@ -168,13 +167,10 @@ function saveasMDF(file::HDF5File, params::Dict)
   end
 
   # receiver parameters
-  write(file, "/acquisition/receiver/numChannels", length(params["rxBandwidth"]))
+  write(file, "/acquisition/receiver/numChannels", params["rxNumChannels"])
   write(file, "/acquisition/receiver/numAverages",  params["rxNumAverages"])
   write(file, "/acquisition/receiver/bandwidth", params["rxBandwidth"])
   write(file, "/acquisition/receiver/numSamplingPoints", params["rxNumSamplingPoints"])
-  if haskey(params,"rxFrequencies")
-    write(file, "/acquisition/receiver/frequencies", params["rxFrequencies"])
-  end
 
   if haskey(params,"rxTransferFunction")
     tf = params["rxTransferFunction"]

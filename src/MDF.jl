@@ -56,7 +56,8 @@ end
 # general parameters
 version(f::MDFFile) = VersionNumber( f["/version"] )
 uuid(f::MDFFile) = f["/uuid"]
-time(f::MDFFile) = DateTime( f["/date"] )
+time(f::MDFFileV1) = DateTime( f["/date"] )
+time(f::MDFFileV2) = DateTime( f["/time"] )
 
 # study parameters
 studyName(f::MDFFile) = f["/study/name"]
@@ -124,18 +125,8 @@ dfPeriod(f::MDFFile) = f["/acquisition/drivefield/period"]
 rxNumChannels(f::MDFFile) = f["/acquisition/receiver/numChannels"]
 rxNumAverages(f::MDFFileV1) = f["/acquisition/drivefield/averages"]
 rxNumAverages(f::MDFFileV2) = f["/acquisition/receiver/numAverages"]
-# THE FOLLOWING IS NOT FULLY CORRECT!!!
-rxBandwidth(f::MDFFileV1) =
-    repeat( [f["/acquisition/receiver/bandwidth"]], outer=rxNumChannels(f))
-rxBandwidth(f::MDFFileV2) = f["/acquisition/receiver/bandwidth"]
-rxNumSamplingPoints(f::MDFFileV1) =
-    repeat( [f["/acquisition/receiver/numSamplingPoints"]], outer=rxNumChannels(f))
-rxNumSamplingPoints(f::MDFFileV2) = f["/acquisition/receiver/numSamplingPoints"]
-function rxFrequencies(f::MDFFileV1)
-  a = f["/acquisition/receiver/frequencies"]
-  return reshape( repeat(a , outer=rxNumChannels(f)), length(a), rxNumChannels(f) )
-end
-rxFrequencies(f::MDFFileV2) = f["/acquisition/receiver/frequencies"]
+rxBandwidth(f::MDFFile) = f["/acquisition/receiver/bandwidth"]
+rxNumSamplingPoints(f::MDFFile) = f["/acquisition/receiver/numSamplingPoints"]
 rxTransferFunction(f::MDFFile) = f["/acquisition/receiver/transferFunction"]
 
 # measurements
