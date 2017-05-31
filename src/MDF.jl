@@ -61,14 +61,23 @@ time(f::MDFFileV2) = DateTime( f["/time"] )
 
 # study parameters
 studyName(f::MDFFile) = f["/study/name"]
-studyExperiment(f::MDFFileV1) = parse(Int64, f["/study/experiment"])
-studyExperiment(f::MDFFileV2) = f["/study/experiment"]
-studyDescription(f::MDFFile) = f["/study/description"]
-studySubject(f::MDFFile) = f["/study/subject"]
-studyIsSimulation(f::MDFFileV2) = Bool( f["/study/isSimulation"] )
-studyIsSimulation(f::MDFFileV1) = Bool( f["/study/simulation"] )
-studyIsCalibration(f::MDFFileV2) = Bool( f["/study/isCalibration"] )
-studyIsCalibration(f::MDFFileV1) = h5exists(f.filename, "/calibration")
+studyNumber(f::MDFFileV1) = 0
+studyNumber(f::MDFFileV2) = f["/study/number"]
+studyDescription(f::MDFFileV1) = "n.a."
+studyDescription(f::MDFFileV2) = f["/study/description"]
+
+# experiment parameters
+experimentName(f::MDFFileV1) = "n.a."
+experimentName(f::MDFFileV2) = f["/experiment/name"]
+experimentNumber(f::MDFFileV1) = parse(Int64, f["/study/experiment"])
+experimentNumber(f::MDFFileV2) = f["/experiment/number"]
+experimentDescription(f::MDFFileV1) = f["/study/description"]
+experimentDescription(f::MDFFileV2) = f["/experiment/description"]
+experimentSubject(f::MDFFileV1) = f["/study/subject"]
+experimentSubject(f::MDFFileV2) = f["/experiment/subject"]
+experimentIsSimulation(f::MDFFileV2) = Bool( f["/experiment/isSimulation"] )
+experimentIsSimulation(f::MDFFileV1) = Bool( f["/study/simulation"] )
+experimentIsCalibration(f::MDFFile) = h5exists(f.filename, "/calibration")
 
 # tracer parameters
 tracerName(f::MDFFile) = f["/tracer/name"]
@@ -99,11 +108,9 @@ acqNumPatches(f::MDFFile) = f["/acquisition/numPatches"]
 acqGradient(f::MDFFileV1) = addLeadingSingleton(f["/acquisition/gradient"],2)
 acqGradient(f::MDFFileV2) = f["/acquisition/gradient"]
 acqOffsetField(f::MDFFile) = f["/acquisition/offsetField"]
-acqFov(f::MDFFileV1) = addLeadingSingleton( f["/acquisition/drivefield/fieldOfView"],2 )
-acqFov(f::MDFFileV2) = f["/acquisition/fieldOfView"]
-acqFovCenter(f::MDFFileV1) = addLeadingSingleton(
+acqOffsetFieldShift(f::MDFFileV1) = addLeadingSingleton(
               f["/acquisition/drivefield/fieldOfViewCenter"],2 )
-acqFovCenter(f::MDFFileV2) = f["/acquisition/fieldOfViewCenter"]
+acqOffsetFieldShift(f::MDFFileV2) = f["/acquisition/offsetFieldShift"]
 
 # drive-field parameters
 dfNumChannels(f::MDFFile) = f["/acquisition/drivefield/numChannels"]
@@ -132,8 +139,8 @@ rxTransferFunction(f::MDFFile) = f["/acquisition/receiver/transferFunction"]
 # measurements
 measUnit(f::MDFFileV1) = "a.u."
 measUnit(f::MDFFileV2) = f["/measurement/unit"]
-measRawDataConversion(f::MDFFileV1) = 1.0
-measRawDataConversion(f::MDFFileV2) = f["/measurement/rawDataConversion"]
+measDataConversionFactor(f::MDFFileV1) = 1.0
+measDataConversionFactor(f::MDFFileV2) = f["/measurement/rawDataConversion"]
 function measData(f::MDFFileV1)
   if !h5exists(f.filename, "/measurement")
     return nothing
@@ -155,10 +162,8 @@ function measData(f::MDFFileV1)
   end
 end
 measData(f::MDFFileV2) = f["/measurement/data"]
-measDataTimeOrder(f::MDFFileV1) = collect(1:acqNumFrames(f))
-measDataTimeOrder(f::MDFFileV2) = f["/measurement/dataTimeOrder"]
-measBGData(f::MDFFile) = f["/measurement/backgroundData"]
-measBGDataTimeOrder(f::MDFFile) = f["/measurement/backgroundDataTimeOrder"]
+measIsBG(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
+measIsBG(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundData"])
 
 # calibrations
 function calibSystemMatrixData(f::MDFFileV1)

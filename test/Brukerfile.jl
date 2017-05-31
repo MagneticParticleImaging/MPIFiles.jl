@@ -9,11 +9,15 @@ b = MPIFile(fnMeasBruker)
 @test typeof(b) == BrukerFile
 
 @test studyName(b) == "1DSensitivity_1DSensitivity_1"
-@test studyExperiment(b) == 61
-@test studyDescription(b) == "leer (E61)"
-@test studySubject(b) == "1DSensitivity"
-@test studyIsSimulation(b) == false
-@test studyIsCalibration(b) == false
+@test studyNumber(b) == 1
+@test studyDescription(b) == "n.a."
+
+@test experimentName(b) == "leer (E61)"
+@test experimentNumber(b) == 61
+@test experimentDescription(b) == "leer (E61)"
+@test experimentSubject(b) == "1DSensitivity"
+@test experimentIsSimulation(b) == false
+@test experimentIsCalibration(b) == false
 
 @test scannerFacility(b) == "Universitätsklinikum Hamburg Eppendorf"
 @test scannerOperator(b) == "nmrsu"
@@ -21,20 +25,19 @@ b = MPIFile(fnMeasBruker)
 @test scannerModel(b) == "Preclinical MPI System"
 @test scannerTopology(b) == "FFP"
 
-@test tracerName(b) == ""
-@test tracerBatch(b) == ""
-@test tracerVendor(b) == "n.a."
-@test tracerVolume(b) == 0.0
-@test tracerConcentration(b) == 0.5
-@test tracerInjectionTime(b) == DateTime("2015-01-20T10:52:31.897")
+@test tracerName(b)[1] == ""
+@test tracerBatch(b)[1] == ""
+@test tracerVendor(b)[1] == "n.a."
+@test tracerVolume(b)[1] == 0.0
+@test tracerConcentration(b)[1] == 0.5
+@test tracerInjectionTime(b)[1] == DateTime("2015-01-20T10:52:31.897")
 
 @test acqStartTime(b) == DateTime("2015-01-20T10:52:31.897")
 @test acqGradient(b) == [-0.5 -0.5 1.0]
 @test acqFramePeriod(b) == 2.15424
 @test acqNumFrames(b) == 40
 @test acqNumPatches(b) == 1
-@test acqFov(b) == [0.0 0.0 0.028]
-@test acqFovCenter(b) == [0.0 0.0 -0.0]
+@test acqOffsetFieldShift(b) == [0.0 0.0 -0.0]
 
 @test dfNumChannels(b) == 3
 @test dfWaveform(b) == "sine"

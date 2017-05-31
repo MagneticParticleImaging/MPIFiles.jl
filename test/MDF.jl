@@ -34,11 +34,15 @@ mdfv2 = MPIFile(fnMeasV2)
 
 for mdf in (mdfv1,mdfv2)
   @test studyName(mdf) == "Wuerfelphantom"
-  @test studyExperiment(mdf) == 18
+  @test studyNumber(mdf) == 0
   @test studyDescription(mdf) == "n.a."
-  @test studySubject(mdf) == "Wuerfelphantom"
-  @test studyIsSimulation(mdf) == false
-  @test studyIsCalibration(mdf) == false
+
+  @test experimentName(mdf) == "n.a."
+  @test experimentNumber(mdf) == 18
+  @test experimentDescription(mdf) == "n.a."
+  @test experimentSubject(mdf) == "Wuerfelphantom"
+  @test experimentIsSimulation(mdf) == false
+  @test experimentIsCalibration(mdf) == false
 
   @test scannerFacility(mdf) == "University Medical Center Hamburg-Eppendorf, Germany"
   @test scannerOperator(mdf) == "n.a."
@@ -58,8 +62,7 @@ for mdf in (mdfv1,mdfv2)
   @test acqFramePeriod(mdf) == 6.528E-4
   @test acqNumFrames(mdf) == 500
   @test acqNumPatches(mdf) == 1
-  @test acqFov(mdf) == [0.0224 0.0224 0.0]
-  @test acqFovCenter(mdf) == [0.0 0.0 -0.0]
+  @test acqOffsetFieldShift(mdf) == [0.0 0.0 -0.0]
 
   @test dfNumChannels(mdf) == 3
   @test dfWaveform(mdf) == "sine"

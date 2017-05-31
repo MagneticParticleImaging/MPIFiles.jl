@@ -17,11 +17,16 @@ function loadFullDataset(f)
 
   # study parameters
   params["studyName"] = studyName(f)
-  params["studyExperiment"] = studyExperiment(f)
+  params["studyNumber"] = studyNumber(f)
   params["studyDescription"] = studyDescription(f)
-  params["studySubject"] = studySubject(f)
-  params["studyIsSimulation"] = studyIsSimulation(f)
-  params["studyIsCalibration"] = studyIsCalibration(f)
+
+  # experiment parameters
+  params["experimentName"] = experimentName(f)
+  params["experimentNumber"] = experimentNumber(f)
+  params["experimentDescription"] = experimentDescription(f)
+  params["experimentSubject"] = experimentSubject(f)
+  params["experimentIsSimulation"] = experimentIsSimulation(f)
+  params["experimentIsCalibration"] = experimentIsCalibration(f)
 
   # tracer parameters
   params["tracerName"] = tracerName(f)
@@ -47,8 +52,7 @@ function loadFullDataset(f)
   params["acqStartTime"] = acqStartTime(f)
   setparam!(params, "acqGradient", acqGradient(f))
   setparam!(params, "acqOffsetField", acqOffsetField(f))
-  setparam!(params, "acqFov", acqFov(f))
-  setparam!(params, "acqFovCenter", acqFovCenter(f))
+  setparam!(params, "acqOffsetFieldShift", acqOffsetFieldShift(f))
 
   # drivefield parameters
   params["dfNumChannels"] = dfNumChannels(f)
@@ -71,13 +75,11 @@ function loadFullDataset(f)
 
   # measurement
   params["measUnit"] = measUnit(f)
-  params["measRawDataConversion"] = measRawDataConversion(f)
+  params["measDataConversionFactor"] = measDataConversionFactor(f)
   setparam!(params, "measData", measData(f))
-  setparam!(params, "measDataTimeOrder", measDataTimeOrder(f))
-  setparam!(params, "measBGData", measBGData(f))
-  setparam!(params, "measBGDataTimeOrder", measBGDataTimeOrder(f))
+  setparam!(params, "measIsBG", measIsBG(f))
 
-  if params["studyIsCalibration"]
+  if params["experimentIsCalibration"]
     setparam!(params, "calibSystemMatrixData", calibSystemMatrixData(f))
     setparam!(params, "calibSNR", calibSNR(f))
 
@@ -112,11 +114,15 @@ function saveasMDF(file::HDF5File, params::Dict)
 
   # study parameters
   write(file, "/study/name", get(params,"studyName","default") )
-  write(file, "/study/experiment", get(params,"studyExperiment",0))
+  write(file, "/study/number", get(params,"studyNumber",0))
   write(file, "/study/description", get(params,"studyDescription","n.a."))
-  write(file, "/study/subject", get(params,"studySubject","n.a."))
-  write(file, "/study/isSimulation", Int(get(params,"studyIsSimulation",false)))
-  write(file, "/study/isCalibration", Int(haskey(params,"calibSize")))
+
+  # experiment parameters
+  write(file, "/experiment/name", get(params,"experimentName","default") )
+  write(file, "/experiment/number", get(params,"experimentNumber",0))
+  write(file, "/experiment/description", get(params,"experimentDescription","n.a."))
+  write(file, "/experiment/subject", get(params,"experimentSubject","n.a."))
+  write(file, "/experiment/isSimulation", Int(get(params,"experimentIsSimulation",false)))
 
   # tracer parameters
   write(file, "/tracer/name", get(params,"tracerName","n.a") )
@@ -147,11 +153,8 @@ function saveasMDF(file::HDF5File, params::Dict)
   if haskey(params,"acqOffsetField")
     write(file, "/acquisition/offsetField", params["acqOffsetField"])
   end
-  if haskey(params,"acqFov")
-    write(file, "/acquisition/fieldOfView", params["acqFov"])
-  end
-  if haskey(params,"acqFovCenter")
-    write(file, "/acquisition/fieldOfViewCenter", params["acqFovCenter"])
+  if haskey(params,"acqOffsetFieldShift")
+    write(file, "/acquisition/offsetFieldShift", params["acqOffsetFieldShift"])
   end
 
   # drivefield parameters
@@ -180,22 +183,16 @@ function saveasMDF(file::HDF5File, params::Dict)
 
   # measurements
   write(file, "/measurement/unit",  params["measUnit"])
-  write(file, "/measurement/rawDataConversion",  params["measRawDataConversion"])
+  write(file, "/measurement/dataConversionFactor",  params["measDataConversionFactor"])
   if haskey(params,"measData")
-    write(file, "/measurement/data",  params["measData"])
+    write(file, "/measurement/data", params["measData"])
   end
-  if haskey(params,"measDataTimeOrder")
-    write(file, "/measurement/dataTimeOrder",  params["measDataTimeOrder"])
-  end
-  if haskey(params,"measBGData")
-    write(file, "/measurement/backgroundData",  params["measBGData"])
-  end
-  if haskey(params,"measBGDataTimeOrder")
-    write(file, "/measurement/backgroundDataTimeOrder",  params["measBGDataTimeOrder"])
+  if haskey(params,"measIsBG")
+    write(file, "/measurement/isBackgroundData",  convert(Array{Int8},params["measIsBG"]))
   end
 
   # calibrations
-  if params["studyIsCalibration"]
+  if params["experimentIsCalibration"]
     if haskey(params,"calibSystemMatrixData")
       S = params["calibSystemMatrixData"]
       S = reinterpret(typeof((S[1]).re),S,(2,size(S)...))

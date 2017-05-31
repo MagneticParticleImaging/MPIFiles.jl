@@ -12,8 +12,11 @@ export MPIFile
 export version, uuid
 
 # study parameters
-export studyName, studyExperiment, studyDescription, studySubject,
-       studyIsSimulation, studyIsCalibration
+export studyName, studyNumber, studyDescription
+
+# experiment parameters
+export experimentName, experimentNumber, experimentDescription, experimentSubject,
+      experimentIsSimulation, experimentIsCalibration
 
 # tracer parameters
 export tracerName, tracerBatch, tracerVolume, tracerConcentration,
@@ -25,19 +28,18 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerModel,
 
 # acquisition parameters
 export acqStartTime, acqNumFrames, acqNumBGFrames, acqFramePeriod, acqNumPatches,
-       acqGradient, acqOffsetField, acqFov, acqFovCenter
+       acqGradient, acqOffsetField, acqOffsetFieldShift
 
 # drive-field parameters
 export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
        dfDivider, dfWaveform, dfPeriod
 
 # receiver parameters
-export rxNumChannels, rxNumAverages, rxBandwidth, rxNumSamplingPoints, 
+export rxNumChannels, rxNumAverages, rxBandwidth, rxNumSamplingPoints,
        rxTransferFunction
 
 # measurements
-export measUnit, measRawDataConversion,
-       measData, measDataTimeOrder, measBGData, measBGDataTimeOrder
+export measUnit, measDataConversionFactor, measData, measIsBackgroundData
 
 # calibrations
 export calibSystemMatrixData, calibSNR, calibFov, calibFovCenter, calibSize,
@@ -62,11 +64,16 @@ abstract MPIFile
 
 # study parameters
 @mustimplement studyName(f::MPIFile)
-@mustimplement studyExperiment(f::MPIFile)
+@mustimplement studyNumber(f::MPIFile)
 @mustimplement studyDescription(f::MPIFile)
-@mustimplement studySubject(f::MPIFile)
-@mustimplement studyIsSimulation(f::MPIFile)
-@mustimplement studyIsCalibration(f::MPIFile)
+
+# study parameters
+@mustimplement experimentName(f::MPIFile)
+@mustimplement experimentNumber(f::MPIFile)
+@mustimplement experimentDescription(f::MPIFile)
+@mustimplement experimentSubject(f::MPIFile)
+@mustimplement experimentIsSimulation(f::MPIFile)
+@mustimplement experimentIsCalibration(f::MPIFile)
 
 # tracer parameters
 @mustimplement tracerName(f::MPIFile)
@@ -91,8 +98,7 @@ abstract MPIFile
 @mustimplement acqNumPatches(f::MPIFile)
 @mustimplement acqGradient(f::MPIFile)
 @mustimplement acqOffsetField(f::MPIFile)
-@mustimplement acqFov(f::MPIFile)
-@mustimplement acqFovCenter(f::MPIFile)
+@mustimplement acqOffsetFieldShift(f::MPIFile)
 
 # drive-field parameters
 @mustimplement dfNumChannels(f::MPIFile)
@@ -115,9 +121,7 @@ abstract MPIFile
 @mustimplement measUnit(f::MPIFile)
 @mustimplement measRawDataConversion(f::MPIFile)
 @mustimplement measData(f::MPIFile)
-@mustimplement measDataTimeOrder(f::MPIFile)
-@mustimplement measBGData(f::MPIFile)
-@mustimplement measBGDataTimeOrder(f::MPIFile)
+@mustimplement measIsBG(f::MPIFile)
 
 # calibrations
 @mustimplement calibSystemMatrixData(f::MPIFile)
@@ -156,6 +160,9 @@ function rxFrequencies(f::MPIFile)
   numFreq = rxNumFrequencies(f)
   a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(b)
   return a
+end
+function acqFov(b::MPIFile)
+ return addLeadingSingleton( 2*vec(dfStrength(b)) ./ vec(abs( acqGradient(b) )),2)
 end
 
 

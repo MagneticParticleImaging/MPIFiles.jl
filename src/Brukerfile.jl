@@ -92,31 +92,36 @@ uuid(b::BrukerFile) = nothing
 time(b::BrukerFile) = nothing
 
 # study parameters
-studyName(b::BrukerFile) = string(studySubject(b),"_",
+studyName(b::BrukerFile) = string(experimentSubject(b),"_",
                                   latin1toutf8(b["VisuStudyId"]),"_",
                                   b["VisuStudyNumber"])
-studyExperiment(b::BrukerFile) = parse(Int64,b["VisuExperimentNumber"])
-studyDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
-studySubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
-studyIsSimulation(b::BrukerFile) = false
-studyIsCalibration(b::BrukerFile) = b["PVM_Matrix"] != nothing
+studyNumber(b::BrukerFile) = parse(Int64,b["VisuStudyNumber"])
+studyDescription(b::BrukerFile) = "n.a."
+
+# study parameters
+experimentName(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
+experimentNumber(b::BrukerFile) = parse(Int64,b["VisuExperimentNumber"])
+experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
+experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
+experimentIsSimulation(b::BrukerFile) = false
+experimentIsCalibration(b::BrukerFile) = b["PVM_Matrix"] != nothing
 
 # tracer parameters
-tracerName(b::BrukerFile) = b["PVM_MPI_Tracer"]
-tracerBatch(b::BrukerFile) = b["PVM_MPI_TracerBatch"]
-tracerVolume(b::BrukerFile) = parse(Float64,b["PVM_MPI_TracerVolume"])*1e-6
-tracerConcentration(b::BrukerFile) = parse(Float64,b["PVM_MPI_TracerConcentration"])
-tracerSolute(b::BrukerFile) = "Fe"
+tracerName(b::BrukerFile) = [b["PVM_MPI_Tracer"]]
+tracerBatch(b::BrukerFile) = [b["PVM_MPI_TracerBatch"]]
+tracerVolume(b::BrukerFile) = [parse(Float64,b["PVM_MPI_TracerVolume"])*1e-6]
+tracerConcentration(b::BrukerFile) = [parse(Float64,b["PVM_MPI_TracerConcentration"])]
+tracerSolute(b::BrukerFile) = ["Fe"]
 function tracerInjectionTime(b::BrukerFile)
   initialFrames = b["MPI_InitialFrames"]
   if initialFrames == nothing
-    return acqStartTime(b)
+    return [acqStartTime(b)]
   else
-    return acqStartTime(b) + Dates.Millisecond(
-       round(Int64,parse(Int64, initialFrames)*dfPeriod(b)*1000 ) )
+    return [acqStartTime(b) + Dates.Millisecond(
+       round(Int64,parse(Int64, initialFrames)*dfPeriod(b)*1000 ) )]
   end
 end
-tracerVendor(b::BrukerFile) = "n.a."
+tracerVendor(b::BrukerFile) = ["n.a."]
 
 # scanner parameters
 scannerFacility(b::BrukerFile) = latin1toutf8(b["ACQ_institution"])
@@ -148,10 +153,7 @@ function acqOffsetField(b::BrukerFile) #TODO NOT correct
   calibFac = [2.5/49.45, -2.5*0.008/-22.73, 2.5*0.008/-22.73, 1.5*0.0094/13.2963]
   return addLeadingSingleton( Float64[voltage[d]*calibFac[d] for d=2:4],2)
 end
-function acqFov(b::BrukerFile)
- return addLeadingSingleton( 2*vec(dfStrength(b)) ./ vec(abs( acqGradient(b) )),2)
-end
-acqFovCenter(b::BrukerFile) = acqOffsetField(b) ./ acqGradient(b)
+acqOffsetFieldShift(b::BrukerFile) = acqOffsetField(b) ./ acqGradient(b)
 
 
 # drive-field parameters
@@ -181,7 +183,7 @@ rxTransferFunction(b::BrukerFile) = nothing
 
 # measurements
 measUnit(b::BrukerFile) = "a.u."
-measRawDataConversion(b::BrukerFile) = 1.0
+measDataConversionFactor(b::BrukerFile) = 1.0
 function measData(b::BrukerFile)
   dataFilename = joinpath(b.path,"rawdata")
   dType = rxNumAverages(b) == 1 ? Int16 : Int32
@@ -192,9 +194,7 @@ function measData(b::BrukerFile)
   data = raw[]
   return reshape(data,size(data,1),size(data,2),1,size(data,3))
 end
-measDataTimeOrder(b::BrukerFile) = collect(1:acqNumFrames(b))
-measBGData(b::BrukerFile) = nothing
-measBGDataTimeOrder(b::BrukerFile) = nothing
+measIsBG(f::BrukerFile) = zeros(Bool, acqNumFrames(f))
 
 # calibrations
 function calibSystemMatrixData(b::BrukerFile)
