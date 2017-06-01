@@ -10,87 +10,33 @@ end
 function loadFullDataset(f)
   params = Dict{String,Any}()
 
-  # general parameters
-  params["version"] = version(f)
-  setparam!(params, "uuid", uuid(f))
-  setparam!(params, "time", time(f))
+  for op in [:version, :uuid, :time, :studyName, :studyNumber, :studyDescription,
+            :experimentName, :experimentNumber, :experimentDescription, :experimentSubject,
+            :experimentIsSimulation, :experimentIsCalibration,
+            :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
+            :tracerSolute, :tracerInjectionTime,
+            :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerModel,
+            :scannerTopology, :acqNumFrames, :acqNumBGFrames, :acqFramePeriod,
+            :acqNumPatches, :acqStartTime, :acqGradient, :acqOffsetField, :acqOffsetFieldShift,
+            :dfNumChannels, :dfStrength, :dfPhase, :dfBaseFrequency, :dfDivider,
+            :dfPeriod, :dfWaveform, :rxNumChannels, :rxNumAverages, :rxBandwidth,
+            :rxNumSamplingPoints, :rxTransferFunction, :measUnit,
+            :measDataConversionFactor, :measData, :measIsBG]
+    setparam!(params, string(op), eval(op)(f))
+  end
 
-  # study parameters
-  params["studyName"] = studyName(f)
-  params["studyNumber"] = studyNumber(f)
-  params["studyDescription"] = studyDescription(f)
 
-  # experiment parameters
-  params["experimentName"] = experimentName(f)
-  params["experimentNumber"] = experimentNumber(f)
-  params["experimentDescription"] = experimentDescription(f)
-  params["experimentSubject"] = experimentSubject(f)
-  params["experimentIsSimulation"] = experimentIsSimulation(f)
-  params["experimentIsCalibration"] = experimentIsCalibration(f)
-
-  # tracer parameters
-  params["tracerName"] = tracerName(f)
-  params["tracerBatch"] = tracerBatch(f)
-  params["tracerVendor"] = tracerVendor(f)
-  params["tracerVolume"] = tracerVolume(f)
-  params["tracerConcentration"] = tracerConcentration(f)
-  params["tracerSolute"] = tracerSolute(f)
-  params["tracerInjectionTime"] = tracerInjectionTime(f)
-
-  # scanner parameters
-  params["scannerFacility"] = scannerFacility(f)
-  params["scannerOperator"] = scannerOperator(f)
-  params["scannerManufacturer"] = scannerManufacturer(f)
-  params["scannerModel"] = scannerModel(f)
-  params["scannerTopology"] = scannerTopology(f)
-
-  # acquisition parameters
-  params["acqNumFrames"] = acqNumFrames(f)
-  params["acqNumBGFrames"] = acqNumBGFrames(f)
-  params["acqFramePeriod"] = acqFramePeriod(f)
-  params["acqNumPatches"] = acqNumPatches(f)
-  params["acqStartTime"] = acqStartTime(f)
-  setparam!(params, "acqGradient", acqGradient(f))
-  setparam!(params, "acqOffsetField", acqOffsetField(f))
-  setparam!(params, "acqOffsetFieldShift", acqOffsetFieldShift(f))
-
-  # drivefield parameters
-  params["dfNumChannels"] = dfNumChannels(f)
-  params["dfStrength"] = dfStrength(f)
-  params["dfPhase"] = dfPhase(f)
-  params["dfBaseFrequency"] = dfBaseFrequency(f)
-  params["dfDivider"] = dfDivider(f)
-  params["dfPeriod"] = dfPeriod(f)
-  params["dfWaveform"] = dfWaveform(f)
   if params["dfWaveform"] == "custom"
     params["dfCustomWaveform"] = dfCustomWaveform(f)
   end
 
-  # receiver parameters
-  params["rxNumChannels"] = rxNumChannels(f)
-  params["rxNumAverages"] = rxNumAverages(f)
-  params["rxBandwidth"] = rxBandwidth(f)
-  params["rxNumSamplingPoints"] = rxNumSamplingPoints(f)
-  setparam!(params, "rxTransferFunction", rxTransferFunction(f))
-
-  # measurement
-  params["measUnit"] = measUnit(f)
-  params["measDataConversionFactor"] = measDataConversionFactor(f)
-  setparam!(params, "measData", measData(f))
-  setparam!(params, "measIsBG", measIsBG(f))
 
   if params["experimentIsCalibration"]
-    setparam!(params, "calibSystemMatrixData", calibSystemMatrixData(f))
-    setparam!(params, "calibSNR", calibSNR(f))
-
-    params["calibFov"] = calibFov(f)
-    params["calibFovCenter"] = calibFovCenter(f)
-    params["calibSize"] = calibSize(f)
-    params["calibOrder"] = calibOrder(f)
-    setparam!(params, "calibPositions", calibPositions(f))
-    setparam!(params, "calibOffsetField", calibOffsetField(f))
-    setparam!(params, "calibDeltaSampleSize", calibDeltaSampleSize(f))
-    params["calibMethod"] = calibMethod(f)
+    for op in [:calibSystemMatrixData, :calibSNR, :calibFov, :calibFovCenter,
+               :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
+               :calibDeltaSampleSize, :calibMethod]
+      setparam!(params, string(op), eval(op)(f))
+    end
   end
 
   return params
