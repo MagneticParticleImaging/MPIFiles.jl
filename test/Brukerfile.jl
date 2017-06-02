@@ -58,7 +58,14 @@ b = MPIFile(fnMeasBruker)
 sm = MPIFile(fnSMBruker)
 @test typeof(sm) == BrukerFile
 
-@test size( calibSystemMatrixData(sm) ) == (100,26929,3,1)
+@test experimentHasProcessing(sm) == true
+@test size( procData(sm) ) == (100,26929,3,1)
+@test procIsFourierTransformed(sm) == true
+@test procIsAveraged(sm) == false
+@test procIsTFCorrected(sm) == false
+@test procIsTransposed(sm) == true
+@test procIsBGCorrected(sm) == true
+
 @test size( calibSNR(sm) ) == (26929,3)
 @test calibFov(sm) == [0.001,0.001,0.04]
 @test calibFovCenter(sm) == [0.0; -0.0; 0.0]

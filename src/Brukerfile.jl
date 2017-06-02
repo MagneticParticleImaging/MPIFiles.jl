@@ -105,6 +105,7 @@ experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
 experimentIsSimulation(b::BrukerFile) = false
 experimentIsCalibration(b::BrukerFile) = b["PVM_Matrix"] != nothing
+experimentHasProcessing(b::BrukerFile) = experimentIsCalibration(b)
 
 # tracer parameters
 tracerName(b::BrukerFile) = [b["PVM_MPI_Tracer"]]
@@ -196,8 +197,13 @@ function measData(b::BrukerFile)
 end
 measIsBG(f::BrukerFile) = zeros(Bool, acqNumFrames(f))
 
-# calibrations
-function calibSystemMatrixData(b::BrukerFile)
+# processing
+# Brukerfiles do only contain processing data in the calibration scans
+function procData(b::BrukerFile)
+  if !experimentIsCalibration(b)
+    return nothing
+  end
+
   bgcorrection = true
   localSFFilename = bgcorrection ? "systemMatrixBG" : "systemMatrix"
   sfFilename = joinpath(b.path,"pdata", "1", localSFFilename)
@@ -209,6 +215,63 @@ function calibSystemMatrixData(b::BrukerFile)
   return reshape(S,size(S,1),size(S,2),size(S,3),1)
 end
 
+function procIsFourierTransformed(b::BrukerFile)
+  if !experimentIsCalibration(b)
+    return nothing
+  else
+    return true
+  end
+end
+
+function procIsTFCorrected(b::BrukerFile)
+  if !experimentIsCalibration(b)
+    return nothing
+  else
+    return false
+  end
+end
+
+function procIsAveraged(b::BrukerFile)
+  if !experimentIsCalibration(b)
+    return nothing
+  else
+    return false # I don't think so. Averaging is only applied internally
+  end
+end
+
+function procIsFramesSelected(b::BrukerFile)
+  if !experimentIsCalibration(b)
+    return nothing
+  else
+    return false # Not sure
+  end
+end
+
+function procIsBGCorrected(b::BrukerFile)
+  if !experimentIsCalibration(b)
+    return nothing
+  else
+    return true
+  end
+end
+
+function procIsTransposed(b::BrukerFile)
+  if !experimentIsCalibration(b)
+    return nothing
+  else
+    return true
+  end
+end
+
+function procFramePermutation(b::BrukerFile)
+  if !experimentIsCalibration(b)
+    return nothing
+  else
+    return nothing # TODO
+  end
+end
+
+# calibrations
 function calibSNR(b::BrukerFile)
   snrFilename = joinpath(b.path,"pdata", "1", "snr")
   data = Rawfile(snrFilename, Float64, [rxNumFrequencies(b),rxNumChannels(b)], extRaw="")

@@ -10,9 +10,10 @@ end
 function loadFullDataset(f)
   params = Dict{String,Any}()
 
+  # call API function and store result in a parameter Dict
   for op in [:version, :uuid, :time, :studyName, :studyNumber, :studyDescription,
             :experimentName, :experimentNumber, :experimentDescription, :experimentSubject,
-            :experimentIsSimulation, :experimentIsCalibration,
+            :experimentIsSimulation, :experimentIsCalibration, :experimentHasProcessing,
             :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
             :tracerSolute, :tracerInjectionTime,
             :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerModel,
@@ -21,7 +22,7 @@ function loadFullDataset(f)
             :dfNumChannels, :dfStrength, :dfPhase, :dfBaseFrequency, :dfDivider,
             :dfPeriod, :dfWaveform, :rxNumChannels, :rxNumAverages, :rxBandwidth,
             :rxNumSamplingPoints, :rxTransferFunction, :measUnit,
-            :measDataConversionFactor, :measData, :measIsBG]
+            :measDataConversionFactor, :measData, :measIsBG,]
     setparam!(params, string(op), eval(op)(f))
   end
 
@@ -30,9 +31,16 @@ function loadFullDataset(f)
     params["dfCustomWaveform"] = dfCustomWaveform(f)
   end
 
+  if params["experimentHasProcessing"]
+    for op in [:procData, :procIsFourierTransformed, :procIsTFCorrected,
+               :procIsAveraged, :procIsFramesSelected, :procIsBGCorrected,
+               :procIsTransposed, :procFramePermutation]
+      setparam!(params, string(op), eval(op)(f))
+    end
+  end
 
   if params["experimentIsCalibration"]
-    for op in [:calibSystemMatrixData, :calibSNR, :calibFov, :calibFovCenter,
+    for op in [:calibSNR, :calibFov, :calibFovCenter,
                :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
                :calibDeltaSampleSize, :calibMethod]
       setparam!(params, string(op), eval(op)(f))
@@ -68,7 +76,7 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/experiment/number", get(params,"experimentNumber",0))
   write(file, "/experiment/description", get(params,"experimentDescription","n.a."))
   write(file, "/experiment/subject", get(params,"experimentSubject","n.a."))
-  write(file, "/experiment/isSimulation", Int(get(params,"experimentIsSimulation",false)))
+  write(file, "/experiment/isSimulation", Int8(get(params,"experimentIsSimulation",false)))
 
   # tracer parameters
   write(file, "/tracer/name", get(params,"tracerName","n.a") )
@@ -135,6 +143,27 @@ function saveasMDF(file::HDF5File, params::Dict)
   end
   if haskey(params,"measIsBG")
     write(file, "/measurement/isBackgroundData",  convert(Array{Int8},params["measIsBG"]))
+  end
+
+  # processing
+
+  if params["experimentHasProcessing"]
+    if params["procIsTransposed"]
+      S = params["procData"]
+      S = reinterpret(typeof((S[1]).re),S,(2,size(S)...))
+      write(file, "/processing/data", S)
+    else
+      write(file, "/processing/data", S)
+    end
+    write(file, "/processing/isFourierTransformed", Int8(params["procIsFourierTransformed"]))
+    write(file, "/processing/isTransferFunctionCorrected", Int8(params["procIsTFCorrected"]))
+    write(file, "/processing/isAveraged",  Int8(params["procIsAveraged"]))
+    write(file, "/processing/isFramesSelected", Int8(params["procIsFramesSelected"]))
+    write(file, "/processing/isBackgroundCorrected",  Int8(params["procIsBGCorrected"]))
+    write(file, "/processing/isTransposed",  Int8(params["procIsTransposed"]))
+    if haskey(params,"procFramePermutation")
+      write(file, "/processing/framePermutation",  params["procFramePermutation"])
+    end
   end
 
   # calibrations

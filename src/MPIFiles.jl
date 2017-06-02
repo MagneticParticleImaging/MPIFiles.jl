@@ -16,7 +16,7 @@ export studyName, studyNumber, studyDescription
 
 # experiment parameters
 export experimentName, experimentNumber, experimentDescription, experimentSubject,
-      experimentIsSimulation, experimentIsCalibration
+      experimentIsSimulation, experimentIsCalibration, experimentHasProcessing
 
 # tracer parameters
 export tracerName, tracerBatch, tracerVolume, tracerConcentration,
@@ -40,6 +40,11 @@ export rxNumChannels, rxNumAverages, rxBandwidth, rxNumSamplingPoints,
 
 # measurements
 export measUnit, measDataConversionFactor, measData, measIsBackgroundData
+
+# processing
+export procData, procIsFourierTransformed, procIsTFCorrected, procIsAveraged,
+       procIsFramesSelected, procIsBGCorrected, procIsTransposed,
+       procFramePermutation
 
 # calibrations
 export calibSystemMatrixData, calibSNR, calibFov, calibFovCenter, calibSize,
@@ -67,13 +72,14 @@ abstract MPIFile
 @mustimplement studyNumber(f::MPIFile)
 @mustimplement studyDescription(f::MPIFile)
 
-# study parameters
+# experiment parameters
 @mustimplement experimentName(f::MPIFile)
 @mustimplement experimentNumber(f::MPIFile)
 @mustimplement experimentDescription(f::MPIFile)
 @mustimplement experimentSubject(f::MPIFile)
 @mustimplement experimentIsSimulation(f::MPIFile)
 @mustimplement experimentIsCalibration(f::MPIFile)
+@mustimplement experimentHasProcessing(f::MPIFile)
 
 # tracer parameters
 @mustimplement tracerName(f::MPIFile)
@@ -119,12 +125,21 @@ abstract MPIFile
 
 # measurements
 @mustimplement measUnit(f::MPIFile)
-@mustimplement measRawDataConversion(f::MPIFile)
+@mustimplement measDataConversionFactor(f::MPIFile)
 @mustimplement measData(f::MPIFile)
 @mustimplement measIsBG(f::MPIFile)
 
+# processing
+@mustimplement procData(f::MPIFile)
+@mustimplement procIsFourierTransformed(f::MPIFile)
+@mustimplement procIsTFCorrected(f::MPIFile)
+@mustimplement procIsAveraged(f::MPIFile)
+@mustimplement procIsFramesSelected(f::MPIFile)
+@mustimplement procIsBGCorrected(f::MPIFile)
+@mustimplement procIsTransposed(f::MPIFile)
+@mustimplement procFramePermutation(f::MPIFile)
+
 # calibrations
-@mustimplement calibSystemMatrixData(f::MPIFile)
 @mustimplement calibSNR(f::MPIFile)
 @mustimplement calibFov(f::MPIFile)
 @mustimplement calibFovCenter(f::MPIFile)

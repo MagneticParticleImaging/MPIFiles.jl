@@ -43,6 +43,7 @@ for mdf in (mdfv1,mdfv2)
   @test experimentSubject(mdf) == "Wuerfelphantom"
   @test experimentIsSimulation(mdf) == false
   @test experimentIsCalibration(mdf) == false
+  @test experimentHasProcessing(mdf) == false
 
   @test scannerFacility(mdf) == "University Medical Center Hamburg-Eppendorf, Germany"
   @test scannerOperator(mdf) == "n.a."
@@ -89,7 +90,14 @@ smv2 = MPIFile(fnSMV2)
 @test typeof(smv2) == MDFFileV2
 
 for sm in (smv1,smv2)
-  @test size( calibSystemMatrixData(sm) ) == (1936,817,3,1)
+  @test experimentHasProcessing(sm) == true
+  @test size( procData(sm) ) == (1936,817,3,1)
+  @test procIsFourierTransformed(sm) == true
+  @test procIsAveraged(sm) == false
+  @test procIsTFCorrected(sm) == false
+  @test procIsTransposed(sm) == true
+  @test procIsBGCorrected(sm) == true
+
   @test size( calibSNR(sm) ) == (817,3)
   @test calibFov(sm) == [0.044; 0.044; 0.001]
   @test calibFovCenter(sm) == [0.0; -0.0; 0.0]

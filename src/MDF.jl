@@ -78,6 +78,8 @@ experimentSubject(f::MDFFileV2) = f["/experiment/subject"]
 experimentIsSimulation(f::MDFFileV2) = Bool( f["/experiment/isSimulation"] )
 experimentIsSimulation(f::MDFFileV1) = Bool( f["/study/simulation"] )
 experimentIsCalibration(f::MDFFile) = h5exists(f.filename, "/calibration")
+experimentHasProcessing(f::MDFFileV1) = experimentIsCalibration(f)
+experimentHasProcessing(f::MDFFileV2) = h5exists(f.filename, "/processing")
 
 # tracer parameters
 tracerName(f::MDFFile) = f["/tracer/name"]
@@ -165,8 +167,12 @@ measData(f::MDFFileV2) = f["/measurement/data"]
 measIsBG(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
 measIsBG(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundData"])
 
-# calibrations
-function calibSystemMatrixData(f::MDFFileV1)
+# processings
+function procData(f::MDFFileV1)
+  if !experimentIsCalibration(f)
+    return nothing
+  end
+
   data = f["/calibration/dataFD"]
   if ndims(data) == 4
     return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),1))
@@ -174,11 +180,82 @@ function calibSystemMatrixData(f::MDFFileV1)
     return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
   end
 end
-function calibSystemMatrixData(f::MDFFileV2)
-  data = f["/calibration/systemMatrixData"]
-  return reinterpret(Complex{eltype(data)}, data,
+
+function procData(f::MDFFileV2)
+  data = f["/processing/data"]
+  if procIsFourierTransformed(f)
+    return reinterpret(Complex{eltype(data)}, data,
                (size(data,2),size(data,3),size(data,4),size(data,5)))
+  else
+    return data
+  end
 end
+
+function procIsFourierTransformed(f::MDFFileV1)
+  if !experimentIsCalibration(f)
+    return nothing
+  else
+    return true
+  end
+end
+procIsFourierTransformed(f::MDFFileV2) = Bool(f["/processing/isFourierTransformed"])
+
+function procIsTFCorrected(f::MDFFileV1)
+  if !experimentIsCalibration(f)
+    return nothing
+  else
+    return false
+  end
+end
+procIsTFCorrected(f::MDFFileV2) = Bool(f["/processing/isTransferFunctionCorrected"])
+
+function procIsAveraged(f::MDFFileV1)
+  if !experimentIsCalibration(f)
+    return nothing
+  else
+    return false
+  end
+end
+procIsAveraged(f::MDFFileV2) = Bool(f["/processing/isAveraged"])
+
+function procIsFramesSelected(f::MDFFileV1)
+  if !experimentIsCalibration(f)
+    return nothing
+  else
+    return false
+  end
+end
+procIsFramesSelected(f::MDFFileV2) = Bool(f["/processing/isFramesSelected"])
+
+function procIsBGCorrected(f::MDFFileV1)
+  if !experimentIsCalibration(f)
+    return nothing
+  else
+    return true
+  end
+end
+procIsBGCorrected(f::MDFFileV2) = Bool(f["/processing/isBackgroundCorrected"])
+
+function procIsTransposed(f::MDFFileV1)
+  if !experimentIsCalibration(f)
+    return nothing
+  else
+    return true
+  end
+end
+procIsTransposed(f::MDFFileV2) = Bool(f["/processing/isTransposed"])
+
+function procFramePermutation(f::MDFFileV1)
+  if !experimentIsCalibration(f)
+    return nothing
+  else
+    return nothing # TODO
+  end
+end
+procFramePermutation(f::MDFFileV2) = f["/processing/framePermutation"]
+
+
+#calibrations
 calibSNR(f::MDFFileV1) = f["/calibration/snrFD"]
 calibSNR(f::MDFFileV2) = f["/calibration/snr"]
 calibFov(f::MDFFile) = f["/calibration/fieldOfView"]
