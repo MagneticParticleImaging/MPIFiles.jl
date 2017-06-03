@@ -184,22 +184,25 @@ rxTransferFunction(b::BrukerFile) = nothing
 
 # measurements
 measUnit(b::BrukerFile) = "a.u."
-measDataConversionFactor(b::BrukerFile) = 1.0
-function measData(b::BrukerFile)
+measDataConversionFactor(b::BrukerFile) = [1.0/rxNumAverages(b), 0.0]
+function measData(b::BrukerFile, frames=1:acqNumFrames(b), patches=1:acqNumPatches(b),
+                  receivers=1:rxNumChannels(b))
+
   dataFilename = joinpath(b.path,"rawdata")
   dType = rxNumAverages(b) == 1 ? Int16 : Int32
 
   raw = Rawfile(dataFilename, dType,
              [rxNumSamplingPoints(b),rxNumChannels(b),acqNumFrames(b)],
              extRaw=".job0") #Int or Uint?
-  data = raw[]
+  data = raw[:,receivers,frames]
+
   return reshape(data,size(data,1),size(data,2),1,size(data,3))
 end
 measIsBG(f::BrukerFile) = zeros(Bool, acqNumFrames(f))
 
 # processing
 # Brukerfiles do only contain processing data in the calibration scans
-function procData(b::BrukerFile)
+function procData(b::BrukerFile, frames=nothing)
   if !experimentIsCalibration(b)
     return nothing
   end

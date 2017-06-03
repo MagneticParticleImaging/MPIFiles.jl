@@ -33,6 +33,7 @@ mdfv2 = MPIFile(fnMeasV2)
 @test time(mdfv1) == DateTime("2016-02-08T14:28:34.673")
 
 for mdf in (mdfv1,mdfv2)
+  println("Test $mdf")
   @test studyName(mdf) == "Wuerfelphantom"
   @test studyNumber(mdf) == 0
   @test studyDescription(mdf) == "n.a."
@@ -79,32 +80,20 @@ for mdf in (mdfv1,mdfv2)
   @test rxNumAverages(mdf) == 1
 
   @test size( measData(mdf) ) == (1632,3,1,500)
-end
 
-# Calibration File V1
+  @test size(getMeasurements(mdf, frames=1:acqNumFrames(mdf), numAverages=1,
+              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
 
-smv1 = MPIFile(fnSMV1)
-@test typeof(smv1) == MDFFileV1
+  @test size(getMeasurements(mdf, frames=1:acqNumFrames(mdf), numAverages=10,
+              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,50)
 
-smv2 = MPIFile(fnSMV2)
-@test typeof(smv2) == MDFFileV2
+  @test size(getMeasurements(mdf, frames=1:acqNumFrames(mdf), numAverages=10,
+              spectralLeakageCorrection=true, fourierTransform=false)) == (1632,3,1,50)
 
-for sm in (smv1,smv2)
-  @test experimentHasProcessing(sm) == true
-  @test size( procData(sm) ) == (1936,817,3,1)
-  @test procIsFourierTransformed(sm) == true
-  @test procIsAveraged(sm) == false
-  @test procIsTFCorrected(sm) == false
-  @test procIsTransposed(sm) == true
-  @test procIsBGCorrected(sm) == true
+  @test size(getMeasurements(mdf, frames=1:acqNumFrames(mdf), numAverages=10,
+              fourierTransform=true)) == (817,3,1,50)
 
-  @test size( calibSNR(sm) ) == (817,3)
-  @test calibFov(sm) == [0.044; 0.044; 0.001]
-  @test calibFovCenter(sm) == [0.0; -0.0; 0.0]
-  @test calibSize(sm) == [44; 44; 1]
-  @test calibOrder(sm) == "xyz"
-  @test calibPositions(smv1) == nothing
-  @test calibOffsetField(smv1) == nothing
-  @test calibDeltaSampleSize(sm) == [0.001; 0.001; 0.001]
-  @test calibMethod(sm) == "robot"
+  @test size(getMeasurements(mdf, frames=1:acqNumFrames(mdf), numAverages=10,
+              fourierTransform=true, loadasreal=true)) == (1634,3,1,50)
+
 end

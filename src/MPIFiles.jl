@@ -166,8 +166,8 @@ abstract MPIFile
 
 
 
-### Concrete implementations ###
-include("MDF.jl")
+
+
 
 #TODO Move to misc
 rxNumFrequencies(f::MPIFile) = floor(Int,rxNumSamplingPoints(f) ./ 2 .+ 1)
@@ -176,11 +176,50 @@ function rxFrequencies(f::MPIFile)
   a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(b)
   return a
 end
-function acqFov(b::MPIFile)
- return addLeadingSingleton( 2*vec(dfStrength(b)) ./ vec(abs( acqGradient(b) )),2)
+function acqFov(f::MPIFile)
+ return addLeadingSingleton( 2*vec(dfStrength(f)) ./ vec(abs( acqGradient(f) )),2)
+end
+export acqNumAllFrames
+acqNumAllFrames(f::MPIFile) = acqNumFrames(f) + acqNumBGFrames(f)
+
+function measBGFrameIdx(f::MPIFile)
+  idx = zeros(Int64, acqNumBGFrames(f))
+  j = 1
+  mask = measIsBG(f)
+  for i=1:acqNumAllFrames(f)
+    if mask[i]
+      idx[j] = i
+      j += 1
+    end
+  end
+  return idx
 end
 
+function measFGFrameIdx(f::MPIFile)
+  idx = zeros(Int64, acqNumFrames(f))
+  j = 1
+  mask = measIsBG(f)
+  for i=1:acqNumAllFrames(f)
+    if !mask[i]
+      idx[j] = i
+      j += 1
+    end
+  end
+  return idx
+end
 
+function measDataConv(f::MPIFile, args...)
+  data = measData(f, args...)
+  a = measDataConversionFactor(f)
+  data = map(Float32, data)
+  scale!(data, a[1])
+  data[:] .+= a[2]
+  return data
+end
+
+### Concrete implementations ###
+
+include("MDF.jl")
 include("RawFile.jl")
 include("Brukerfile.jl")
 
@@ -199,6 +238,8 @@ end
 function (::Type{MPIFile})(filenames::Vector)
   return map(x->MPIFile(x),filenames)
 end
+
+optParam(param, default) = (param == nothing) ? default : param
 
 include("Measurements.jl")
 include("SystemMatrix.jl")

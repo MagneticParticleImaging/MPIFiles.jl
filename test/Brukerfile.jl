@@ -54,6 +54,21 @@ b = MPIFile(fnMeasBruker)
 
 @test size( measData(b) ) == (53856,3,1,40)
 
+@test size(getMeasurements(b, numAverages=1,
+            spectralLeakageCorrection=false, fourierTransform=false)) == (53856,3,1,40)
+
+@test size(getMeasurements(b, numAverages=10,
+            spectralLeakageCorrection=false, fourierTransform=false)) == (53856,3,1,4)
+
+@test size(getMeasurements(b, numAverages=10,
+            spectralLeakageCorrection=true, fourierTransform=false)) == (53856,3,1,4)
+
+@test size(getMeasurements(b, numAverages=10,
+            fourierTransform=true)) == (26929,3,1,4)
+
+@test size(getMeasurements(b, numAverages=10,
+            fourierTransform=true, loadasreal=true)) == (53858,3,1,4)
+
 
 sm = MPIFile(fnSMBruker)
 @test typeof(sm) == BrukerFile

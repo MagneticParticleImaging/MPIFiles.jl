@@ -26,11 +26,11 @@ function (::Type{MDFFile})(filename::String)
 end
 
 function Base.show(io::IO, f::MDFFileV1)
-  print(io, "MDF v1: ", f.path)
+  print(io, "MDF v1: ", f.filename)
 end
 
 function Base.show(io::IO, f::MDFFileV2)
-  print(io, "MDF v2: ", f.path)
+  print(io, "MDF v2: ", f.filename)
 end
 
 function h5exists(filename, parameter)
@@ -141,34 +141,57 @@ rxTransferFunction(f::MDFFile) = f["/acquisition/receiver/transferFunction"]
 # measurements
 measUnit(f::MDFFileV1) = "a.u."
 measUnit(f::MDFFileV2) = f["/measurement/unit"]
-measDataConversionFactor(f::MDFFileV1) = 1.0
-measDataConversionFactor(f::MDFFileV2) = f["/measurement/rawDataConversion"]
-function measData(f::MDFFileV1)
+measDataConversionFactor(f::MDFFileV1) = [1.0, 0.0]
+measDataConversionFactor(f::MDFFileV2) = f["/measurement/dataConversionFactor"]
+function measData(f::MDFFileV1, frames=1:acqNumAllFrames(f), patches=1:acqNumPatches(f),
+                  receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     return nothing
   end
   tdExists = h5exists(f.filename, "/measurement/dataTD")
 
   if tdExists
-    data = f["/measurement/dataTD"]
-    if ndims(data) == 3
-      return reshape(data,size(data,1),size(data,2),1,size(data,3))
-    else
-      return data
+    dims = h5open(f.filename,"r") do file
+      size(file["/measurement/dataTD"])
     end
+    data = zeros(Float64, dims[1], length(receivers), length(frames))
+    for (i,fr) in enumerate(frames)
+      data[:,:,:,i] = h5read(f.filename, "/measurement/dataTD", (:,  receivers, fr) )
+    end
+    return reshape(data,size(data,1),size(data,2),1,size(data,3))
   else
-    data = f["/measurement/dataFD"]
+    dims = h5open(f.filename,"r") do file
+      size(file["/measurement/dataFD"])
+    end
+    data = zeros(Float64, dims[1], dims[2], length(receivers), length(frames))
+    for (i,fr) in enumerate(frames)
+      data[:,:,:,i] = h5read(f.filename, "/measurement/dataFD", (:, :, receivers, fr) )
+    end
+
     dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
     dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
     return reshape(dataTD,size(dataTD,1),size(dataTD,2),1,size(dataTD,3))
   end
 end
-measData(f::MDFFileV2) = f["/measurement/data"]
+function measData(f::MDFFileV2, frames=1:acqNumAllFrames(f), patches=1:acqNumPatches(f),
+                  receivers=1:rxNumChannels(f))
+  if !h5exists(f.filename, "/measurement")
+    return nothing
+  end
+  dims = h5open(f.filename,"r") do file
+    size(file["/measurement/data"])
+  end
+  data = zeros(Float64, dims[1], length(receivers), length(patches), length(frames))
+  for (i,fr) in enumerate(frames)
+    data[:,:,:,i] = h5read(f.filename, "/measurement/data", (:, receivers, patches, fr) )
+  end
+  return data
+end
 measIsBG(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
 measIsBG(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundData"])
 
 # processings
-function procData(f::MDFFileV1)
+function procData(f::MDFFileV1, frames=nothing)
   if !experimentIsCalibration(f)
     return nothing
   end
@@ -181,8 +204,15 @@ function procData(f::MDFFileV1)
   end
 end
 
-function procData(f::MDFFileV2)
-  data = f["/processing/data"]
+function procData(f::MDFFileV2, frames=nothing)
+  if !h5exists(f.filename, "/processing")
+    return nothing
+  end
+  if frames == nothing
+    data = h5read(f.filename, "/processing/data", (:, :, :, :, :) )
+  else
+    data = h5read(f.filename, "/processing/data", (:, :, :, :, frames) )
+  end
   if procIsFourierTransformed(f)
     return reinterpret(Complex{eltype(data)}, data,
                (size(data,2),size(data,3),size(data,4),size(data,5)))
@@ -190,6 +220,7 @@ function procData(f::MDFFileV2)
     return data
   end
 end
+
 
 function procIsFourierTransformed(f::MDFFileV1)
   if !experimentIsCalibration(f)
