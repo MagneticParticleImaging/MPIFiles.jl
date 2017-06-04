@@ -8,11 +8,17 @@ abstract MDFFile <: MPIFile
 # are the same we use the abstract type MDFFile
 type MDFFileV1 <: MDFFile
   filename::String
+  mmap_measData
 end
+
+MDFFileV1(filename::String) = MDFFileV1(filename,nothing)
 
 type MDFFileV2 <: MDFFile
   filename::String
+  mmap_measData
 end
+
+MDFFileV2(filename::String) = MDFFileV2(filename,nothing)
 
 # This dispatches on the file extension and automatically
 # generates the correct type
@@ -151,23 +157,29 @@ function measData(f::MDFFileV1, frames=1:acqNumAllFrames(f), patches=1:acqNumPat
   tdExists = h5exists(f.filename, "/measurement/dataTD")
 
   if tdExists
-    #dims = h5open(f.filename,"r") do file
-    #  size(file["/measurement/dataTD"])
-    #end
+    if f.mmap_measData == nothing
+      h5open(f.filename,"r") do file
+        f.mmap_measData = readmmap(file["/measurement/dataTD"])
+      end
+    end
     #data = zeros(Float64, dims[1], length(receivers), length(frames))
     data = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
-      data[:,:,:,i] = h5read(f.filename, "/measurement/dataTD", (:,  receivers, fr) )
+      data[:,:,:,i] = f.mmap_measData[:, receivers, fr]
+      #h5read(f.filename, "/measurement/dataTD", (:,  receivers, fr) )
     end
     return reshape(data,size(data,1),size(data,2),1,size(data,3))
   else
-    #dims = h5open(f.filename,"r") do file
-    #  size(file["/measurement/dataFD"])
-    #end
+    if f.mmap_measData == nothing
+      h5open(f.filename,"r") do file
+        f.mmap_measData = readmmap(file["/measurement/dataFD"])
+      end
+    end
     #data = zeros(Float64, dims[1], dims[2], length(receivers), length(frames))
     data = zeros(Float64, 2, rxNumFrequencies(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
-      data[:,:,:,i] = h5read(f.filename, "/measurement/dataFD", (:, :, receivers, fr) )
+      data[:,:,:,i] = f.mmap_measData[:,:,receivers, fr]
+      #h5read(f.filename, "/measurement/dataFD", (:, :, receivers, fr) )
     end
 
     dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
@@ -180,13 +192,16 @@ function measData(f::MDFFileV2, frames=1:acqNumAllFrames(f), patches=1:acqNumPat
   if !h5exists(f.filename, "/measurement")
     return nothing
   end
-  #dims = h5open(f.filename,"r") do file
-  #  size(file["/measurement/data"])
-  #end
+  if f.mmap_measData == nothing
+    h5open(f.filename,"r") do file
+      f.mmap_measData = readmmap(file["/measurement/data"])
+    end
+  end
   data = zeros(Float64, rxNumSamplingPoints(f), length(receivers),
                         length(patches), length(frames))
   for (i,fr) in enumerate(frames)
-    data[:,:,:,i] = h5read(f.filename, "/measurement/data", (:, receivers, patches, fr) )
+    data[:,:,:,i] = f.mmap_measData[:, receivers, patches, fr]
+    #h5read(f.filename, "/measurement/data", (:, receivers, patches, fr) )
   end
   return data
 end

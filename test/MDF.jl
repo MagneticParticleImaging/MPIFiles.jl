@@ -81,19 +81,51 @@ for mdf in (mdfv1,mdfv2)
 
   @test size( measData(mdf) ) == (1632,3,1,500)
 
-  @test size(getMeasurements(mdf, frames=1:acqNumFrames(mdf), numAverages=1,
+  @test size(getMeasurements(mdf, numAverages=1,
               spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
 
-  @test size(getMeasurements(mdf, frames=1:acqNumFrames(mdf), numAverages=10,
+  @test size(getMeasurements(mdf, numAverages=10,
               spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,50)
 
-  @test size(getMeasurements(mdf, frames=1:acqNumFrames(mdf), numAverages=10,
-              spectralLeakageCorrection=true, fourierTransform=false)) == (1632,3,1,50)
+  @test size(getMeasurements(mdf, numAverages=10,
+              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,50)
 
-  @test size(getMeasurements(mdf, frames=1:acqNumFrames(mdf), numAverages=10,
+  @test size(getMeasurements(mdf, numAverages=10,
               fourierTransform=true)) == (817,3,1,50)
 
-  @test size(getMeasurements(mdf, frames=1:acqNumFrames(mdf), numAverages=10,
+  @test size(getMeasurements(mdf, numAverages=10,
               fourierTransform=true, loadasreal=true)) == (1634,3,1,50)
 
+end
+
+
+
+# Calibration File V1
+
+smv1 = MPIFile(fnSMV1)
+@test typeof(smv1) == MDFFileV1
+
+smv2 = MPIFile(fnSMV2)
+@test typeof(smv2) == MDFFileV2
+
+for sm in (smv1,smv2)
+  println("Test $sm")
+
+  @test experimentHasProcessing(sm) == true
+  @test size( procData(sm) ) == (1936,817,3,1)
+  @test procIsFourierTransformed(sm) == true
+  @test procIsAveraged(sm) == false
+  @test procIsTFCorrected(sm) == false
+  @test procIsTransposed(sm) == true
+  @test procIsBGCorrected(sm) == true
+
+  @test size( calibSNR(sm) ) == (817,3)
+  @test calibFov(sm) == [0.044; 0.044; 0.001]
+  @test calibFovCenter(sm) == [0.0; -0.0; 0.0]
+  @test calibSize(sm) == [44; 44; 1]
+  @test calibOrder(sm) == "xyz"
+  @test calibPositions(smv1) == nothing
+  @test calibOffsetField(smv1) == nothing
+  @test calibDeltaSampleSize(sm) == [0.001; 0.001; 0.001]
+  @test calibMethod(sm) == "robot"
 end
