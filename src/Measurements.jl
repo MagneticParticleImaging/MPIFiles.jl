@@ -140,8 +140,8 @@ function getMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
   end
 end
 
-function getMeasurements(f::MPIFile, frequencies; loadasasreal=true, kargs...)
-  data = getMeasurements(f, fourierTransform=true, loadasasreal=false; kargs...)
+function getMeasurements(f::MPIFile, frequencies; loadasreal=false, kargs...)
+  data = getMeasurements(f, fourierTransform=true, loadasreal=false; kargs...)
   data = reshape(data, size(data,1)*size(data,2), size(data,3), size(data,4))
   data = data[frequencies, :, :]
   if loadasreal
