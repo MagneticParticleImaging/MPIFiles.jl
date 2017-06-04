@@ -151,19 +151,21 @@ function measData(f::MDFFileV1, frames=1:acqNumAllFrames(f), patches=1:acqNumPat
   tdExists = h5exists(f.filename, "/measurement/dataTD")
 
   if tdExists
-    dims = h5open(f.filename,"r") do file
-      size(file["/measurement/dataTD"])
-    end
-    data = zeros(Float64, dims[1], length(receivers), length(frames))
+    #dims = h5open(f.filename,"r") do file
+    #  size(file["/measurement/dataTD"])
+    #end
+    #data = zeros(Float64, dims[1], length(receivers), length(frames))
+    data = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
       data[:,:,:,i] = h5read(f.filename, "/measurement/dataTD", (:,  receivers, fr) )
     end
     return reshape(data,size(data,1),size(data,2),1,size(data,3))
   else
-    dims = h5open(f.filename,"r") do file
-      size(file["/measurement/dataFD"])
-    end
-    data = zeros(Float64, dims[1], dims[2], length(receivers), length(frames))
+    #dims = h5open(f.filename,"r") do file
+    #  size(file["/measurement/dataFD"])
+    #end
+    #data = zeros(Float64, dims[1], dims[2], length(receivers), length(frames))
+    data = zeros(Float64, 2, rxNumFrequencies(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
       data[:,:,:,i] = h5read(f.filename, "/measurement/dataFD", (:, :, receivers, fr) )
     end
@@ -178,10 +180,11 @@ function measData(f::MDFFileV2, frames=1:acqNumAllFrames(f), patches=1:acqNumPat
   if !h5exists(f.filename, "/measurement")
     return nothing
   end
-  dims = h5open(f.filename,"r") do file
-    size(file["/measurement/data"])
-  end
-  data = zeros(Float64, dims[1], length(receivers), length(patches), length(frames))
+  #dims = h5open(f.filename,"r") do file
+  #  size(file["/measurement/data"])
+  #end
+  data = zeros(Float64, rxNumSamplingPoints(f), length(receivers),
+                        length(patches), length(frames))
   for (i,fr) in enumerate(frames)
     data[:,:,:,i] = h5read(f.filename, "/measurement/data", (:, receivers, patches, fr) )
   end
