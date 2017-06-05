@@ -87,14 +87,16 @@ for mdf in (mdfv1,mdfv2)
   @test size(getMeasurements(mdf, numAverages=10,
               spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,50)
 
-  @test size(getMeasurements(mdf, numAverages=10,
-              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,50)
+  @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
+              spectralLeakageCorrection=true, fourierTransform=false)) == (1632,3,1,50)
 
-  @test size(getMeasurements(mdf, numAverages=10,
+  @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
               fourierTransform=true)) == (817,3,1,50)
 
-  @test size(getMeasurements(mdf, numAverages=10,
+  @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
               fourierTransform=true, loadasreal=true)) == (1634,3,1,50)
+
+  @test size(getMeasurements(mdf,1:10, numAverages=10)) == (10,1,50)
 
 end
 
@@ -128,4 +130,10 @@ for sm in (smv1,smv2)
   @test calibOffsetField(smv1) == nothing
   @test calibDeltaSampleSize(sm) == [0.001; 0.001; 0.001]
   @test calibMethod(sm) == "robot"
+
+  @test size(filterFrequencies(sm, SNRThresh = 5)) == (147,)
+  #@test size(filterFrequencies(sm, numUsedFreqs = 100)) == (100,) # not working
+
+  @test size(getSystemMatrix(sm,1:10)) == (1936,10)
+  @test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (1936,20)
 end

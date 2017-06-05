@@ -8,17 +8,21 @@ abstract MDFFile <: MPIFile
 # are the same we use the abstract type MDFFile
 type MDFFileV1 <: MDFFile
   filename::String
+  param_cache
   mmap_measData
+  mmap_procData
 end
 
-MDFFileV1(filename::String) = MDFFileV1(filename,nothing)
+MDFFileV1(filename::String) = MDFFileV1(filename,Dict{String,Any}(),nothing,nothing)
 
 type MDFFileV2 <: MDFFile
   filename::String
+  param_cache
   mmap_measData
+  mmap_procData
 end
 
-MDFFileV2(filename::String) = MDFFileV2(filename,nothing)
+MDFFileV2(filename::String) = MDFFileV2(filename,Dict{String,Any}(),nothing,nothing)
 
 # This dispatches on the file extension and automatically
 # generates the correct type
@@ -54,7 +58,10 @@ function h5readornull(filename, parameter)
 end
 
 function getindex(f::MDFFile, parameter)
-   return h5readornull(f.filename, parameter)
+  if !haskey(f.param_cache,parameter)
+    f.param_cache[parameter] = h5readornull(f.filename, parameter)
+  end
+  return f.param_cache[parameter]
 end
 
 
@@ -209,7 +216,7 @@ measIsBG(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
 measIsBG(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundData"])
 
 # processings
-function procData(f::MDFFileV1, frames=nothing)
+function procData(f::MDFFileV1; frames=nothing)
   if !experimentIsCalibration(f)
     return nothing
   end
@@ -222,19 +229,63 @@ function procData(f::MDFFileV1, frames=nothing)
   end
 end
 
-function procData(f::MDFFileV2, frames=nothing)
+function procData(f::MDFFileV1, rows)
+  if !experimentIsCalibration(f)
+    return nothing
+  end
+  if f.mmap_procData == nothing
+    h5open(f.filename,"r") do file
+      f.mmap_procData = readmmap(file["/calibration/dataFD"])
+    end
+  end
+  data = f.mmap_procData[:, :, rows]
+  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
+end
+
+function procData(f::MDFFileV2; frames=:)
   if !h5exists(f.filename, "/processing")
     return nothing
   end
-  if frames == nothing
-    data = h5read(f.filename, "/processing/data", (:, :, :, :, :) )
-  else
-    data = h5read(f.filename, "/processing/data", (:, :, :, :, frames) )
+  if f.mmap_procData == nothing
+    h5open(f.filename,"r") do file
+      f.mmap_procData = readmmap(file["/processing/data"])
+    end
   end
+  data = f.mmap_procData[:, :, :, :, frames]
+
   if procIsFourierTransformed(f)
+    if procIsTransposed(f)
+      data = f.mmap_procData[:, frames, :, :, :]
+    else
+      data = f.mmap_procData[:, :, :, :, frames]
+    end
+
     return reinterpret(Complex{eltype(data)}, data,
                (size(data,2),size(data,3),size(data,4),size(data,5)))
   else
+    if procIsTransposed(f)
+      data = f.mmap_procData[frames, :, :, :]
+    else
+      data = f.mmap_procData[:, :, :, frames]
+    end
+    return data
+  end
+end
+
+function procData(f::MDFFileV2, rows)
+  if !h5exists(f.filename, "/processing") || !procIsTransposed(f)
+    return nothing
+  end
+  if f.mmap_procData == nothing
+    h5open(f.filename,"r") do file
+      f.mmap_procData = readmmap(file["/processing/data"])
+    end
+  end
+  if procIsFourierTransformed(f)
+    data = f.mmap_procData[:, :, rows]
+    return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
+  else
+    data = f.mmap_procData[:, rows]
     return data
   end
 end

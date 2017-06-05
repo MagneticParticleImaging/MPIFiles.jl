@@ -131,6 +131,7 @@ abstract MPIFile
 
 # processing
 @mustimplement procData(f::MPIFile)
+@mustimplement procData(f::MPIFile, frequencies)
 @mustimplement procIsFourierTransformed(f::MPIFile)
 @mustimplement procIsTFCorrected(f::MPIFile)
 @mustimplement procIsAveraged(f::MPIFile)
@@ -149,7 +150,6 @@ abstract MPIFile
 @mustimplement calibOffsetField(f::MPIFile)
 @mustimplement calibDeltaSampleSize(f::MPIFile)
 @mustimplement calibMethod(f::MPIFile)
-
 
 # reconstruction results
 @mustimplement recoData(f::MPIFile)
@@ -196,9 +196,12 @@ function measBGFrameIdx(f::MPIFile)
 end
 
 function measFGFrameIdx(f::MPIFile)
+  mask = measIsBG(f)
+  if acqNumBGFrames(f) == 0
+    return 1:acqNumFrames(f)
+  end
   idx = zeros(Int64, acqNumFrames(f))
   j = 1
-  mask = measIsBG(f)
   for i=1:acqNumAllFrames(f)
     if !mask[i]
       idx[j] = i

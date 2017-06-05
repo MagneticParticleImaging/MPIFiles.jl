@@ -202,7 +202,7 @@ measIsBG(f::BrukerFile) = zeros(Bool, acqNumFrames(f))
 
 # processing
 # Brukerfiles do only contain processing data in the calibration scans
-function procData(b::BrukerFile, frames=nothing)
+function procData(b::BrukerFile; frames=:)
   if !experimentIsCalibration(b)
     return nothing
   end
@@ -215,7 +215,25 @@ function procData(b::BrukerFile, frames=nothing)
   data = Rawfile(sfFilename, Complex128,
                  [prod(calibSize(b)),nFreq,rxNumChannels(b)], extRaw="")
   S = data[]
+  scale!(S,1.0/rxNumAverages(b))
   return reshape(S,size(S,1),size(S,2),size(S,3),1)
+end
+
+function procData(b::BrukerFile, rows)
+  if !experimentIsCalibration(b)
+    return nothing
+  end
+
+  bgcorrection = true
+  localSFFilename = bgcorrection ? "systemMatrixBG" : "systemMatrix"
+  sfFilename = joinpath(b.path,"pdata", "1", localSFFilename)
+  nFreq = rxNumFrequencies(b)
+
+  data = Rawfile(sfFilename, Complex128,
+                 [prod(calibSize(b)),nFreq*rxNumChannels(b)], extRaw="")
+  S = data[:,rows]
+  scale!(S,1.0/rxNumAverages(b))
+  return S
 end
 
 function procIsFourierTransformed(b::BrukerFile)
