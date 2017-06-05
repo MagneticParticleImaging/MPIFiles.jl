@@ -25,7 +25,7 @@ mdfv2b = MPIFile(fnRecoV2b)
 for mdf in (mdfv1,mdfv2,mdfv2b)
   println("Test $mdf")
   @test recoSize(mdf) == [40,40,1]
-  @test norm(recoFovCenter(mdf) - [0.0,0.0,0.0]) < eps()
+  @test norm(recoFovCenter(mdf) - [0.0,0.0,0.0]) < eps() # Image conversion fails
   @test recoFov(mdf) == [0.044,0.044,0.001]
   @test recoOrder(mdf) == "xyz"
   @test recoPositions(mdf) == nothing
