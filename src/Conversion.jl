@@ -1,5 +1,5 @@
 # This file contains routines to generate MDF files
-export saveasMDF, loadFullDataset
+export saveasMDF, loadFullDataset, loadMetadata
 
 function setparam!(params::Dict, parameter, value)
   if value != nothing
@@ -8,27 +8,11 @@ function setparam!(params::Dict, parameter, value)
 end
 
 function loadFullDataset(f)
-  params = Dict{String,Any}()
+  params = loadMetadata(f)
 
   # call API function and store result in a parameter Dict
-  for op in [:version, :uuid, :time, :studyName, :studyNumber, :studyDescription,
-            :experimentName, :experimentNumber, :experimentDescription, :experimentSubject,
-            :experimentIsSimulation, :experimentIsCalibration, :experimentHasProcessing,
-            :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
-            :tracerSolute, :tracerInjectionTime,
-            :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerModel,
-            :scannerTopology, :acqNumFrames, :acqNumBGFrames, :acqFramePeriod,
-            :acqNumPatches, :acqStartTime, :acqGradient, :acqOffsetField, :acqOffsetFieldShift,
-            :dfNumChannels, :dfStrength, :dfPhase, :dfBaseFrequency, :dfDivider,
-            :dfPeriod, :dfWaveform, :rxNumChannels, :rxNumAverages, :rxBandwidth,
-            :rxNumSamplingPoints, :rxTransferFunction, :measUnit,
-            :measDataConversionFactor, :measData, :measIsBG,]
+  for op in [:measUnit, :measData, :measDataConversionFactor, :measIsBG]
     setparam!(params, string(op), eval(op)(f))
-  end
-
-
-  if params["dfWaveform"] == "custom"
-    params["dfCustomWaveform"] = dfCustomWaveform(f)
   end
 
   if params["experimentHasProcessing"]
@@ -50,6 +34,32 @@ function loadFullDataset(f)
   return params
 end
 
+function loadMetadata(f)
+  params = Dict{String,Any}()
+
+  # call API function and store result in a parameter Dict
+  for op in [:version, :uuid, :time, :studyName, :studyNumber, :studyDescription,
+            :experimentName, :experimentNumber, :experimentDescription, :experimentSubject,
+            :experimentIsSimulation, :experimentIsCalibration, :experimentHasProcessing,
+            :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
+            :tracerSolute, :tracerInjectionTime,
+            :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerModel,
+            :scannerTopology, :acqNumFrames, :acqNumBGFrames, :acqFramePeriod,
+            :acqNumPatches, :acqStartTime, :acqGradient, :acqOffsetField, :acqOffsetFieldShift,
+            :dfNumChannels, :dfStrength, :dfPhase, :dfBaseFrequency, :dfDivider,
+            :dfPeriod, :dfWaveform, :rxNumChannels, :rxNumAverages, :rxBandwidth,
+            :rxNumSamplingPoints, :rxTransferFunction]
+    setparam!(params, string(op), eval(op)(f))
+  end
+
+
+  if params["dfWaveform"] == "custom"
+    params["dfCustomWaveform"] = dfCustomWaveform(f)
+  end
+
+  return params
+end
+
 function saveasMDF(filenameOut::String, filenameIn::String)
   saveasMDF(filenameOut, loadFullDataset(MPIFile(filenameIn)) )
 end
@@ -57,6 +67,14 @@ end
 function saveasMDF(filename::String, params::Dict)
   h5open(filename, "w") do file
     saveasMDF(file, params)
+  end
+end
+
+hasKeyAndValue(paramDict,param) = haskey(paramDict, param) && paramDict[param] != nothing
+
+function writeIfAvailable(file, paramOut, paramDict, paramIn )
+  if hasKeyAndValue(paramDict, paramIn)
+    write(file, paramOut, paramDict[paramIn])
   end
 end
 
@@ -101,15 +119,9 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/acquisition/numPatches", get(params,"acqNumPatches",1))
   write(file, "/acquisition/startTime", "$( get(params,"acqStartTime", Dates.unix2datetime(time())) )")
 
-  if haskey(params,"acqGradient")
-    write(file, "/acquisition/gradient", params["acqGradient"])
-  end
-  if haskey(params,"acqOffsetField")
-    write(file, "/acquisition/offsetField", params["acqOffsetField"])
-  end
-  if haskey(params,"acqOffsetFieldShift")
-    write(file, "/acquisition/offsetFieldShift", params["acqOffsetFieldShift"])
-  end
+  writeIfAvailable(file, "/acquisition/gradient", params, "acqGradient")
+  writeIfAvailable(file, "/acquisition/offsetField", params, "acqOffsetField")
+  writeIfAvailable(file, "/acquisition/offsetFieldShift", params, "acqOffsetFieldShift")
 
   # drivefield parameters
   write(file, "/acquisition/drivefield/numChannels", size(params["dfStrength"],2) )
@@ -129,24 +141,23 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/acquisition/receiver/bandwidth", params["rxBandwidth"])
   write(file, "/acquisition/receiver/numSamplingPoints", params["rxNumSamplingPoints"])
 
-  if haskey(params,"rxTransferFunction")
+  if hasKeyAndValue(params,"rxTransferFunction")
     tf = params["rxTransferFunction"]
     tfR = reinterpret(Float64, tf, (2, size(tf)...))
     write(file, "/acquisition/receiver/transferFunction", tfR)
   end
 
   # measurements
-  write(file, "/measurement/unit",  params["measUnit"])
-  write(file, "/measurement/dataConversionFactor",  params["measDataConversionFactor"])
-  if haskey(params,"measData")
+  if hasKeyAndValue(params, "measData")
+    write(file, "/measurement/unit",  params["measUnit"])
+    write(file, "/measurement/dataConversionFactor",  params["measDataConversionFactor"])
     write(file, "/measurement/data", params["measData"])
-  end
-  if haskey(params,"measIsBG")
-    write(file, "/measurement/isBackgroundData",  convert(Array{Int8},params["measIsBG"]))
+    if hasKeyAndValue(params,"measIsBG")
+      write(file, "/measurement/isBackgroundData",  convert(Array{Int8},params["measIsBG"]))
+    end
   end
 
   # processing
-
   if params["experimentHasProcessing"]
     if params["procIsTransposed"]
       S = params["procData"]
@@ -168,31 +179,34 @@ function saveasMDF(file::HDF5File, params::Dict)
 
   # calibrations
   if params["experimentIsCalibration"]
-    if haskey(params,"calibSystemMatrixData")
-      S = params["calibSystemMatrixData"]
-      S = reinterpret(typeof((S[1]).re),S,(2,size(S)...))
-      write(file, "/calibration/systemMatrixData", S)
-    end
-    if haskey(params,"calibSNR")
+    if hasKeyAndValue(params,"calibSNR")
       write(file, "/calibration/snr",  params["calibSNR"])
     end
     write(file, "/calibration/fieldOfView",  params["calibFov"])
     write(file, "/calibration/fieldOfViewCenter",  params["calibFovCenter"])
     write(file, "/calibration/size",  params["calibSize"])
     write(file, "/calibration/order",  params["calibOrder"])
-    if haskey(params,"calibPositions")
+    if hasKeyAndValue(params,"calibPositions")
       write(file, "/calibration/positions",  params["calibPositions"])
     end
-    if haskey(params,"calibOffsetField")
+    if hasKeyAndValue(params,"calibOffsetField")
       write(file, "/calibration/offsetField",  params["calibOffsetField"])
     end
-    if haskey(params,"calibDeltaSampleSize")
+    if hasKeyAndValue(params,"calibDeltaSampleSize")
       write(file, "/calibration/deltaSampleSize",  params["calibDeltaSampleSize"])
     end
     write(file, "/calibration/method",  params["calibMethod"])
   end
 
+  # measurements
+  if hasKeyAndValue(params, "/reconstruction/data")
+    write(file, "/reconstruction/data", params["recoData"])
+    write(file, "/reconstruction/fieldOfView", params["recoFov"])
+    write(file, "/reconstruction/fieldOfViewCenter", params["recoFovCenter"])
+    write(file, "/reconstruction/size", params["recoSize"])
+    write(file, "/reconstruction/order", get(params,"recoOrder", "xyz"))
 
+  end
   #TODO reconstruction results
 
 end
