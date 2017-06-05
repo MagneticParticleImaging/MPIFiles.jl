@@ -93,7 +93,8 @@ experimentIsSimulation(f::MDFFileV1) = Bool( f["/study/simulation"] )
 experimentIsCalibration(f::MDFFile) = h5exists(f.filename, "/calibration")
 experimentHasProcessing(f::MDFFileV1) = experimentIsCalibration(f)
 experimentHasProcessing(f::MDFFileV2) = h5exists(f.filename, "/processing")
-
+experimentHasReconstruction(f::MDFFile) = h5exists(f.filename, "/reconstruction")
+experimentHasMeasurement(f::MDFFile) = h5exists(f.filename, "/measurement")
 # tracer parameters
 tracerName(f::MDFFile) = f["/tracer/name"]
 tracerBatch(f::MDFFile) = f["/tracer/batch"]
@@ -368,7 +369,7 @@ calibDeltaSampleSize(f::MDFFile) = f["/calibration/deltaSampleSize"]
 calibMethod(f::MDFFile) = f["/calibration/method"]
 
 # reconstruction results
-recoData(f::MDFFileV1) = addTrailingSingleton(
+recoData(f::MDFFileV1) = addLeadingSingleton(
          f[ "/reconstruction/data"], 3)
 recoData(f::MDFFileV2) = f["/reconstruction/data"]
 recoFov(f::MDFFile) = f["/reconstruction/fieldOfView"]
@@ -376,6 +377,14 @@ recoFovCenter(f::MDFFile) = f["/reconstruction/fieldOfViewCenter"]
 recoSize(f::MDFFile) = f["/reconstruction/size"]
 recoOrder(f::MDFFile) = f["/reconstruction/order"]
 recoPositions(f::MDFFile) = f["/reconstruction/positions"]
+
+# this is non-standard
+function recoParameters(f::MDFFile)
+  if !h5exists(f.filename, "/reconstruction/parameters")
+    return nothing
+  end
+  return loadParams(f.filename, "/reconstruction/parameters")
+end
 
 # additional functions that should be implemented by an MPIFile
 filepath(f::MDFFile) = f.filename

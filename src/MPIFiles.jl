@@ -80,6 +80,8 @@ abstract MPIFile
 @mustimplement experimentIsSimulation(f::MPIFile)
 @mustimplement experimentIsCalibration(f::MPIFile)
 @mustimplement experimentHasProcessing(f::MPIFile)
+@mustimplement experimentHasReconstruction(f::MPIFile)
+@mustimplement experimentHasMeasurement(f::MPIFile)
 
 # tracer parameters
 @mustimplement tracerName(f::MPIFile)
@@ -222,6 +224,7 @@ end
 
 ### Concrete implementations ###
 
+include("Custom.jl")
 include("MDF.jl")
 include("RawFile.jl")
 include("Brukerfile.jl")
@@ -248,6 +251,7 @@ include("Measurements.jl")
 include("SystemMatrix.jl")
 include("FrequencyFilter.jl")
 include("Conversion.jl")
+include("Image.jl")
 
 ### Misc functions ###
 #include("Misc.jl")

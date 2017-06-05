@@ -11,11 +11,13 @@ function loadFullDataset(f)
   params = loadMetadata(f)
 
   # call API function and store result in a parameter Dict
-  for op in [:measUnit, :measData, :measDataConversionFactor, :measIsBG]
-    setparam!(params, string(op), eval(op)(f))
+  if experimentHasMeasurement(f)
+    for op in [:measUnit, :measData, :measDataConversionFactor, :measIsBG]
+      setparam!(params, string(op), eval(op)(f))
+    end
   end
 
-  if params["experimentHasProcessing"]
+  if experimentHasProcessing(f)
     for op in [:procData, :procIsFourierTransformed, :procIsTFCorrected,
                :procIsAveraged, :procIsFramesSelected, :procIsBGCorrected,
                :procIsTransposed, :procFramePermutation]
@@ -23,10 +25,17 @@ function loadFullDataset(f)
     end
   end
 
-  if params["experimentIsCalibration"]
+  if experimentIsCalibration(f)
     for op in [:calibSNR, :calibFov, :calibFovCenter,
                :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
                :calibDeltaSampleSize, :calibMethod]
+      setparam!(params, string(op), eval(op)(f))
+    end
+  end
+
+  if experimentHasReconstruction(f)
+    for op in [:recoData, :recoSize, :recoFov, :recoFovCenter, :recoOrder,
+               :recoPositions, :recoParameters]
       setparam!(params, string(op), eval(op)(f))
     end
   end
@@ -198,15 +207,19 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/calibration/method",  params["calibMethod"])
   end
 
-  # measurements
-  if hasKeyAndValue(params, "/reconstruction/data")
+  # reconstruction
+  if hasKeyAndValue(params, "recoData")
     write(file, "/reconstruction/data", params["recoData"])
     write(file, "/reconstruction/fieldOfView", params["recoFov"])
     write(file, "/reconstruction/fieldOfViewCenter", params["recoFovCenter"])
     write(file, "/reconstruction/size", params["recoSize"])
     write(file, "/reconstruction/order", get(params,"recoOrder", "xyz"))
-
+    if hasKeyAndValue(params,"recoPositions")
+      write(file, "/reconstruction/positions", params["recoPositions"])
+    end
+    if hasKeyAndValue(params,"recoParameters")
+      saveParams(file, "/reconstruction/parameters", params["recoParameters"])
+    end
   end
-  #TODO reconstruction results
 
 end

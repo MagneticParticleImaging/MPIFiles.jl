@@ -106,6 +106,8 @@ experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
 experimentIsSimulation(b::BrukerFile) = false
 experimentIsCalibration(b::BrukerFile) = b["PVM_Matrix"] != nothing
 experimentHasProcessing(b::BrukerFile) = experimentIsCalibration(b)
+experimentHasReconstruction(b::BrukerFile) = false # fixme later
+experimentHasMeasurement(b::BrukerFile) = true
 
 # tracer parameters
 tracerName(b::BrukerFile) = [b["PVM_MPI_Tracer"]]
