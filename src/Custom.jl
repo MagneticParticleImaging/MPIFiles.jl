@@ -1,5 +1,7 @@
 # loading and storing custom parameters 
 
+export ColoringParams, loadParams, saveParams
+
 function saveParams(filename::AbstractString, path, params::Dict)
   h5open(filename, "w") do file
     saveParams(file, path, params)

@@ -172,14 +172,18 @@ abstract MPIFile
 
 
 #TODO Move to misc
+export rxNumFrequencies, acqFov, acqFovCenter, rxFrequencies
 rxNumFrequencies(f::MPIFile) = floor(Int,rxNumSamplingPoints(f) ./ 2 .+ 1)
 function rxFrequencies(f::MPIFile)
   numFreq = rxNumFrequencies(f)
-  a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(b)
+  a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(f)
   return a
 end
 function acqFov(f::MPIFile)
  return addLeadingSingleton( 2*vec(dfStrength(f)) ./ vec(abs( acqGradient(f) )),2)
+end
+function acqFovCenter(f::MPIFile)
+ return addLeadingSingleton( vec(acqOffsetField(f)) ./ vec(abs( acqGradient(f) )),2)
 end
 export acqNumAllFrames
 acqNumAllFrames(f::MPIFile) = acqNumFrames(f) + acqNumBGFrames(f)

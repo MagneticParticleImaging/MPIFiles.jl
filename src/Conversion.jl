@@ -112,7 +112,8 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/tracer/volume", get(params,"tracerVolume",0.0))
   write(file, "/tracer/concentration", get(params,"tracerConcentration",0.0) )
   write(file, "/tracer/solute", get(params,"tracerSolute","Fe") )
-  write(file, "/tracer/injectionTime", "$( get(params,"tracerInjectionTime", Dates.unix2datetime(time())) )")
+  tr = [string(t) for t in get(params,"tracerInjectionTime", [Dates.unix2datetime(time())]) ]
+  write(file, "/tracer/injectionTime", tr)
 
   # scanner parameters
   write(file, "/scanner/facility", get(params,"scannerFacility","n.a") )

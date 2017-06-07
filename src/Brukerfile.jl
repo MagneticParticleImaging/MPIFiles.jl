@@ -1,15 +1,18 @@
-
 include("Jcampdx.jl")
 
-
-export BrukerFile
+export BrukerFile, latin1toutf8
 
 function latin1toutf8(str::AbstractString)
+  
+
   buff = Char[]
   for c in str.data
     push!(buff,c)
   end
   string(buff...)
+end
+function latin1toutf8(str::Void)
+println(stacktrace())  
 end
 
 type BrukerFile <: MPIFile
@@ -29,6 +32,13 @@ type BrukerFile <: MPIFile
     paramsProc = JcampdxFile()
     return new(path, params, paramsProc, false, false, false,
                false, false, false, maxEntriesAcqp)
+  end
+
+  function BrukerFile()
+    params = JcampdxFile()
+    paramsProc = JcampdxFile()
+    return new("", params, paramsProc, false, false, false,
+               false, false, false, 1)
   end
 
 end
@@ -298,7 +308,7 @@ end
 function calibSNR(b::BrukerFile)
   snrFilename = joinpath(b.path,"pdata", "1", "snr")
   data = Rawfile(snrFilename, Float64, [rxNumFrequencies(b),rxNumChannels(b)], extRaw="")
-  return data[]
+  return addTrailingSingleton(data[],3)
 end
 calibFov(b::BrukerFile) = [parse(Float64,s) for s = b["PVM_Fov"] ] * 1e-3
 calibFovCenter(b::BrukerFile) =

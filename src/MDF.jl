@@ -357,7 +357,7 @@ procFramePermutation(f::MDFFileV2) = f["/processing/framePermutation"]
 
 
 #calibrations
-calibSNR(f::MDFFileV1) = f["/calibration/snrFD"]
+calibSNR(f::MDFFileV1) = addTrailingSingleton(f["/calibration/snrFD"],3)
 calibSNR(f::MDFFileV2) = f["/calibration/snr"]
 calibFov(f::MDFFile) = f["/calibration/fieldOfView"]
 calibFovCenter(f::MDFFile) = f["/calibration/fieldOfViewCenter"]
