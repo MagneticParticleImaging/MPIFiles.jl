@@ -90,7 +90,7 @@ end
 function saveasMDF(file::HDF5File, params::Dict)
   # general parameters
   write(file, "/version", "2.0")
-  write(file, "/uuid", get(params,"uuid",hex(rand(UInt128))) )
+  write(file, "/uuid", get(params,"uuid",string(Base.Random.uuid4()) )
   write(file, "/time", "$( get(params,"time", Dates.unix2datetime(time())) )")
 
   # study parameters
