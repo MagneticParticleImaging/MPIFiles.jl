@@ -47,8 +47,9 @@ function loadMetadata(f)
   params = Dict{String,Any}()
 
   # call API function and store result in a parameter Dict
-  for op in [:version, :uuid, :time, :studyName, :studyNumber, :studyDescription,
-            :experimentName, :experimentNumber, :experimentDescription, :experimentSubject,
+  for op in [:version, :uuid, :time, :studyName, :studyNumber, :studyUuid, :studyDescription,
+            :experimentName, :experimentNumber, :experimentUuid, :experimentDescription, 
+            :experimentSubject,
             :experimentIsSimulation, :experimentIsCalibration, :experimentHasProcessing,
             :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
             :tracerSolute, :tracerInjectionTime,
@@ -90,17 +91,29 @@ end
 function saveasMDF(file::HDF5File, params::Dict)
   # general parameters
   write(file, "/version", "2.0")
-  write(file, "/uuid", get(params,"uuid",string(Base.Random.uuid4()) )
+  write(file, "/uuid", string(get(params,"uuid",Base.Random.uuid4() )))
   write(file, "/time", "$( get(params,"time", Dates.unix2datetime(time())) )")
 
   # study parameters
   write(file, "/study/name", get(params,"studyName","default") )
   write(file, "/study/number", get(params,"studyNumber",0))
+  if hasKeyAndValue(params,"studyUuid")
+    studyUuid = params["studyUuid"]
+  else
+    studyUuid = Base.Random.uuid4()
+  end
+  write(file, "/study/uuid", string(studyUuid))
   write(file, "/study/description", get(params,"studyDescription","n.a."))
 
   # experiment parameters
   write(file, "/experiment/name", get(params,"experimentName","default") )
   write(file, "/experiment/number", get(params,"experimentNumber",0))
+  if hasKeyAndValue(params,"experimentUuid")
+    expUuid = params["experimentUuid"]
+  else
+    expUuid = Base.Random.uuid4()
+  end
+  write(file, "/experiment/uuid", string(expUuid))
   write(file, "/experiment/description", get(params,"experimentDescription","n.a."))
   write(file, "/experiment/subject", get(params,"experimentSubject","n.a."))
   write(file, "/experiment/isSimulation", Int8(get(params,"experimentIsSimulation",false)))

@@ -3,16 +3,15 @@ include("Jcampdx.jl")
 export BrukerFile, latin1toutf8
 
 function latin1toutf8(str::AbstractString)
-  
-
   buff = Char[]
   for c in str.data
     push!(buff,c)
   end
   string(buff...)
 end
+
 function latin1toutf8(str::Void)
-println(stacktrace())  
+  println(stacktrace())  
 end
 
 type BrukerFile <: MPIFile
@@ -98,7 +97,7 @@ selectedReceivers(b::BrukerFile) = b["ACQ_ReceiverSelect"] .== "Yes"
 
 # general parameters
 version(b::BrukerFile) = nothing
-uuid(b::BrukerFile) = nothing
+uuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
 time(b::BrukerFile) = nothing
 
 # study parameters
@@ -106,11 +105,13 @@ studyName(b::BrukerFile) = string(experimentSubject(b),"_",
                                   latin1toutf8(b["VisuStudyId"]),"_",
                                   b["VisuStudyNumber"])
 studyNumber(b::BrukerFile) = parse(Int64,b["VisuStudyNumber"])
+studyUuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
 studyDescription(b::BrukerFile) = "n.a."
 
 # study parameters
 experimentName(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentNumber(b::BrukerFile) = parse(Int64,b["VisuExperimentNumber"])
+experimentUuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
 experimentIsSimulation(b::BrukerFile) = false

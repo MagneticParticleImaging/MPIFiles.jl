@@ -68,7 +68,7 @@ end
 
 # general parameters
 version(f::MDFFile) = VersionNumber( f["/version"] )
-uuid(f::MDFFile) = f["/uuid"]
+uuid(f::MDFFile) = str2uuid(f["/uuid"])
 time(f::MDFFileV1) = DateTime( f["/date"] )
 time(f::MDFFileV2) = DateTime( f["/time"] )
 
@@ -76,6 +76,8 @@ time(f::MDFFileV2) = DateTime( f["/time"] )
 studyName(f::MDFFile) = f["/study/name"]
 studyNumber(f::MDFFileV1) = 0
 studyNumber(f::MDFFileV2) = f["/study/number"]
+studyUuid(f::MDFFileV1) = nothing
+studyUuid(f::MDFFileV2) = str2uuid(f["/study/uuid"])
 studyDescription(f::MDFFileV1) = "n.a."
 studyDescription(f::MDFFileV2) = f["/study/description"]
 
@@ -84,6 +86,8 @@ experimentName(f::MDFFileV1) = "n.a."
 experimentName(f::MDFFileV2) = f["/experiment/name"]
 experimentNumber(f::MDFFileV1) = parse(Int64, f["/study/experiment"])
 experimentNumber(f::MDFFileV2) = f["/experiment/number"]
+experimentUuid(f::MDFFileV1) = nothing
+experimentUuid(f::MDFFileV2) = str2uuid(f["/experiment/uuid"])
 experimentDescription(f::MDFFileV1) = f["/study/description"]
 experimentDescription(f::MDFFileV2) = f["/experiment/description"]
 experimentSubject(f::MDFFileV1) = f["/study/subject"]
@@ -96,15 +100,31 @@ experimentHasProcessing(f::MDFFileV2) = h5exists(f.filename, "/processing")
 experimentHasReconstruction(f::MDFFile) = h5exists(f.filename, "/reconstruction")
 experimentHasMeasurement(f::MDFFile) = h5exists(f.filename, "/measurement")
 # tracer parameters
-tracerName(f::MDFFile) = f["/tracer/name"]
-tracerBatch(f::MDFFile) = f["/tracer/batch"]
-tracerVolume(f::MDFFile) = f["/tracer/volume"]
-tracerConcentration(f::MDFFile) = f["/tracer/concentration"]
+tracerName(f::MDFFileV1) = [f["/tracer/name"]]
+tracerName(f::MDFFileV2) = f["/tracer/name"]
+tracerBatch(f::MDFFileV1) = [f["/tracer/batch"]]
+tracerBatch(f::MDFFileV2) = f["/tracer/batch"]
+tracerVolume(f::MDFFileV1) = [f["/tracer/volume"]]
+tracerVolume(f::MDFFileV2) = f["/tracer/volume"]
+tracerConcentration(f::MDFFileV1) = [f["/tracer/concentration"]]
+tracerConcentration(f::MDFFileV2) = f["/tracer/concentration"]
 tracerSolute(f::MDFFileV2) = f["/tracer/solute"]
-tracerSolute(f::MDFFileV1) = "Fe"
-tracerInjectionTime(f::MDFFileV1) = DateTime( f["/tracer/time"] )
+tracerSolute(f::MDFFileV1) = ["Fe"]
+function tracerInjectionTime(f::MDFFile) 
+  p = typeof(f) == MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
+  if f[p] == nothing
+    return nothing
+  end
+
+  if typeof(f[p]) == String
+    return [DateTime(f[p])]
+  else
+    return [DateTime(y) for y in f[p]]
+  end
+end
 tracerInjectionTime(f::MDFFileV2) = DateTime( f["/tracer/injectionTime"] )
-tracerVendor(f::MDFFile) = f["/tracer/vendor"]
+tracerVendor(f::MDFFileV1) = [f["/tracer/vendor"]]
+tracerVendor(f::MDFFileV2) = f["/tracer/vendor"]
 
 # scanner parameters
 scannerFacility(f::MDFFile) = f["/scanner/facility"]

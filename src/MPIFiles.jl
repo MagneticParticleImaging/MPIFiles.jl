@@ -12,10 +12,10 @@ export MPIFile
 export version, uuid
 
 # study parameters
-export studyName, studyNumber, studyDescription
+export studyName, studyNumber, studyUuid, studyDescription
 
 # experiment parameters
-export experimentName, experimentNumber, experimentDescription, experimentSubject,
+export experimentName, experimentNumber, experimentUuid, experimentDescription, experimentSubject,
       experimentIsSimulation, experimentIsCalibration, experimentHasProcessing
 
 # tracer parameters
@@ -70,11 +70,13 @@ abstract MPIFile
 # study parameters
 @mustimplement studyName(f::MPIFile)
 @mustimplement studyNumber(f::MPIFile)
+@mustimplement studyUuid(f::MPIFile)
 @mustimplement studyDescription(f::MPIFile)
 
 # experiment parameters
 @mustimplement experimentName(f::MPIFile)
 @mustimplement experimentNumber(f::MPIFile)
+@mustimplement experimentUuid(f::MPIFile)
 @mustimplement experimentDescription(f::MPIFile)
 @mustimplement experimentSubject(f::MPIFile)
 @mustimplement experimentIsSimulation(f::MPIFile)
@@ -166,10 +168,14 @@ abstract MPIFile
 
 
 
-
-
-
-
+function str2uuid(str::String)
+  if contains(str,"-")
+    str_ = str
+  else
+    str_ = string(str[1:8],"-",str[9:12],"-",str[13:16],"-",str[17:20],"-",str[21:end])
+  end
+  return Base.Random.UUID(str_)
+end
 
 #TODO Move to misc
 export rxNumFrequencies, acqFov, acqFovCenter, rxFrequencies

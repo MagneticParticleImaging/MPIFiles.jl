@@ -21,12 +21,17 @@ imcenter(img::ImageMeta) = imcenter(data(img))
 
 
 function saveRecoDataMDF(filename, image::ImageMeta)
-  L = size(image,ndims(image))
 
-  C = size(image,1)
+  C = colordim(image) == 0 ? 1 : size(image,colordim(image)) 
+  L = timedim(image) == 0 ? 1 : size(image,timedim(image))
+  
+  if colordim(image) == 0
+    grid = size(image)[1:3]
+  else
+    grid = size(image)[2:4]
+  end 
   N = div(length(data(image)), L*C)
   c = reshape(convert(Array,image), C, N, L )
-  grid = size(image)[2:4]
 
   params = properties(image)
   params["recoData"] = c

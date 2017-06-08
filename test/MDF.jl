@@ -28,7 +28,7 @@ mdfv2 = MPIFile(fnMeasV2)
 @test typeof(mdfv2) == MDFFileV2
 
 # only test this for v1
-@test uuid(mdfv1) == "4b0ffb8429f5f38849f292a206bba885"
+@test uuid(mdfv1) == Base.Random.UUID("4b0ffb84-29f5-f388-49f2-92a206bba885")
 @test version(mdfv1) == v"1.0.0"
 @test time(mdfv1) == DateTime("2016-02-08T14:28:34.673")
 
@@ -52,12 +52,12 @@ for mdf in (mdfv1,mdfv2)
   @test scannerModel(mdf) == "n.a."
   @test scannerTopology(mdf) == "FFP"
 
-  @test tracerName(mdf) == "Resovist"
-  @test tracerBatch(mdf) == "0"
-  @test tracerVendor(mdf) == "n.a."
-  @test tracerVolume(mdf) == 0.0
-  @test tracerConcentration(mdf) == 0.5
-  @test tracerInjectionTime(mdf) == DateTime("2015-09-15T11:17:23.011")
+  @test tracerName(mdf) == ["Resovist"]
+  @test tracerBatch(mdf) == ["0"]
+  @test tracerVendor(mdf) == ["n.a."]
+  @test tracerVolume(mdf) == [0.0]
+  @test tracerConcentration(mdf) == [0.5]
+  @test tracerInjectionTime(mdf) == [DateTime("2015-09-15T11:17:23.011")]
 
   @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
   @test acqGradient(mdf) == [-1.25 -1.25 2.5]
@@ -121,7 +121,7 @@ for sm in (smv1,smv2)
   @test procIsTransposed(sm) == true
   @test procIsBGCorrected(sm) == true
 
-  @test size( calibSNR(sm) ) == (817,3)
+  @test size( calibSNR(sm) ) == (817,3,1)
   @test calibFov(sm) == [0.044; 0.044; 0.001]
   @test calibFovCenter(sm) == [0.0; -0.0; 0.0]
   @test calibSize(sm) == [44; 44; 1]
