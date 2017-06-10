@@ -179,6 +179,7 @@ function str2uuid(str::String)
   end
   return Base.Random.UUID(str_)
 end
+str2uuid(str::Void) = str
 
 #TODO Move to misc
 export rxNumFrequencies, acqFov, acqFovCenter, rxFrequencies
