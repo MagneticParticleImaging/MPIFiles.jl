@@ -12,7 +12,8 @@ function loadFullDataset(f)
 
   # call API function and store result in a parameter Dict
   if experimentHasMeasurement(f)
-    for op in [:measUnit, :measData, :measDataConversionFactor, :measIsBG]
+    for op in [:measUnit, :measData, :measDataConversionFactor, :measBGData,
+               :measDataTimeOrder, :measBGDataTimeOrder]
       setparam!(params, string(op), eval(op)(f))
     end
   end
@@ -175,8 +176,14 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/measurement/unit",  params["measUnit"])
     write(file, "/measurement/dataConversionFactor",  params["measDataConversionFactor"])
     write(file, "/measurement/data", params["measData"])
-    if hasKeyAndValue(params,"measIsBG")
-      write(file, "/measurement/isBackgroundData",  convert(Array{Int8},params["measIsBG"]))
+    if hasKeyAndValue(params,"measBGData")
+      write(file, "/measurement/backgroundData", params["measBGData"])
+    end
+    if hasKeyAndValue(params,"measDataTimeOrder")
+      write(file, "/measurement/dataTimeOrder", params["measDataTimeOrder"])
+    end
+    if hasKeyAndValue(params,"measBGDataTimeOrder")
+      write(file, "/measurement/backgroundDataTimeOrder", params["measBGDataTimeOrder"])
     end
   end
 

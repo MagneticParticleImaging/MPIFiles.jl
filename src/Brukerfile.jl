@@ -211,7 +211,9 @@ function measData(b::BrukerFile, frames=1:acqNumFrames(b), patches=1:acqNumPatch
 
   return reshape(data,size(data,1),size(data,2),1,size(data,3))
 end
-measIsBG(f::BrukerFile) = zeros(Bool, acqNumFrames(f))
+measBGData(f::BrukerFile) = nothing
+measDataTimeOrder(f::BrukerFile) = nothing
+measBGDataTimeOrder(f::BrukerFile) = nothing
 
 # processing
 # Brukerfiles do only contain processing data in the calibration scans

@@ -1,6 +1,6 @@
 export getMeasurements, getMeasurementsLowLevel, getMeasurementsFT
 
-function spectralLeakageCorrection_(f::MPIFile, frames)
+function spectralLeakageCorrection_(f::MPIFile, isBG, frames)
   #println("Apply Spectral Cleaning")
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
@@ -20,17 +20,17 @@ function spectralLeakageCorrection_(f::MPIFile, frames)
     for p in 1:numPatches
       for r in 1:numReceivers
         if fr==1
-          tmp = measDataConv(f, fr:fr+1, p, r)
+          tmp = measDataConv(f, fr:fr+1, p, r, backgroundData=isBG)
           data[:,r,p,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
                             +  tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
                             );
         elseif fr==numFrames
-          tmp = measDataConv(f, fr-1:fr, p, r)
+          tmp = measDataConv(f, fr-1:fr, p, r, backgroundData=isBG)
           data[:,r,p,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
                             +    tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
                             );
         else
-          tmp = measDataConv(f, fr-1:fr+1, p, r)
+          tmp = measDataConv(f, fr-1:fr+1, p, r, backgroundData=isBG)
           data[:,r,p,i] = 1/3 * (tmp[:,1,1,1] .* window3[1:numTimePoints]
                             +  tmp[:,1,1,2] .* window3[1+numTimePoints:2*numTimePoints]
                             +  tmp[:,1,1,3] .* window3[1+2*numTimePoints:3*numTimePoints]
@@ -47,8 +47,8 @@ function returnasreal{T}(u::AbstractArray{Complex{T}})
 end
 returnasreal{T<:Real}(u::AbstractArray{T}) = u
 
-function getMeasurementsLowLevel(f::MPIFile; frames=1:acqNumAllFrames(f),
-            numAverages=1,  verbose = false,
+function getMeasurementsLowLevel(f::MPIFile; frames=1:acqNumFrames(f),
+            numAverages=1,  verbose = false, backgroundData = false,
             spectralLeakageCorrection=true)
 
   verbose && println( rxNumSamplingPoints(f), " ",
@@ -56,9 +56,9 @@ function getMeasurementsLowLevel(f::MPIFile; frames=1:acqNumAllFrames(f),
 
   if numAverages == 1
     if !spectralLeakageCorrection # || hasSpectralCleaning(f)
-      data = measDataConv(f, frames)
+      data = measDataConv(f, frames, backgroundData=backgroundData)
     else
-      data = spectralLeakageCorrection_(f, frames)
+      data = spectralLeakageCorrection_(f, backgroundData, frames)
     end
   else
     nFrames = length(frames)
@@ -75,9 +75,9 @@ function getMeasurementsLowLevel(f::MPIFile; frames=1:acqNumAllFrames(f),
       index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
 
       if !spectralLeakageCorrection #|| hasSpectralCleaning(f)
-        tmp = measDataConv(f, frames[index1:index2])
+        tmp = measDataConv(f, frames[index1:index2], backgroundData=backgroundData)
       else
-        tmp = spectralLeakageCorrection_(f, frames[index1:index2])
+        tmp = spectralLeakageCorrection_(f, backgroundData, frames[index1:index2])
       end
       data[:,:,:,i] = mean(tmp,4)
       next!(p)
@@ -119,13 +119,12 @@ function getMeasurementsLowLevelFromProc(f::MPIFile; frames=1:acqNumFrames(f),
   return data
 end
 
-function getMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
+function getMeasurements(f::MPIFile; frames=1:acqNumFrames(f), backgroundData=false,
       loadas32bit=true, loadasreal=false, fourierTransform=true, kargs...)
   if experimentHasProcessing(f)
     data = getMeasurementsLowLevelFromProc(f; frames=frames, kargs...)
   else
-    idx = measFGFrameIdx(f)
-    data = getMeasurementsLowLevel(f; frames=idx[frames], kargs...)
+    data = getMeasurementsLowLevel(f; backgroundData=backgroundData, frames=frames, kargs...)
   end
 
   data = loadas32bit ? map(Float32,data) : map(Float64,data)

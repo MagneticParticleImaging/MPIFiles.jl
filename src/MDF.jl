@@ -10,19 +10,21 @@ type MDFFileV1 <: MDFFile
   filename::String
   param_cache
   mmap_measData
+  mmap_measBGData
   mmap_procData
 end
 
-MDFFileV1(filename::String) = MDFFileV1(filename,Dict{String,Any}(),nothing,nothing)
+MDFFileV1(filename::String) = MDFFileV1(filename,Dict{String,Any}(),nothing,nothing,nothing)
 
 type MDFFileV2 <: MDFFile
   filename::String
   param_cache
   mmap_measData
+  mmap_measBGData
   mmap_procData
 end
 
-MDFFileV2(filename::String) = MDFFileV2(filename,Dict{String,Any}(),nothing,nothing)
+MDFFileV2(filename::String) = MDFFileV2(filename,Dict{String,Any}(),nothing,nothing,nothing)
 
 # This dispatches on the file extension and automatically
 # generates the correct type
@@ -177,7 +179,7 @@ measUnit(f::MDFFileV1) = "a.u."
 measUnit(f::MDFFileV2) = f["/measurement/unit"]
 measDataConversionFactor(f::MDFFileV1) = [1.0, 0.0]
 measDataConversionFactor(f::MDFFileV2) = f["/measurement/dataConversionFactor"]
-function measData(f::MDFFileV1, frames=1:acqNumAllFrames(f), patches=1:acqNumPatches(f),
+function measData(f::MDFFileV1, frames=1:acqNumFrames(f), patches=1:acqNumPatches(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     return nothing
@@ -215,7 +217,7 @@ function measData(f::MDFFileV1, frames=1:acqNumAllFrames(f), patches=1:acqNumPat
     return reshape(dataTD,size(dataTD,1),size(dataTD,2),1,size(dataTD,3))
   end
 end
-function measData(f::MDFFileV2, frames=1:acqNumAllFrames(f), patches=1:acqNumPatches(f),
+function measData(f::MDFFileV2, frames=1:acqNumFrames(f), patches=1:acqNumPatches(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     return nothing
@@ -229,12 +231,31 @@ function measData(f::MDFFileV2, frames=1:acqNumAllFrames(f), patches=1:acqNumPat
                         length(patches), length(frames))
   for (i,fr) in enumerate(frames)
     data[:,:,:,i] = f.mmap_measData[:, receivers, patches, fr]
-    #h5read(f.filename, "/measurement/data", (:, receivers, patches, fr) )
   end
   return data
 end
-measIsBG(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
-measIsBG(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundData"])
+measBGData(f::MDFFileV1) = nothing
+function measBGData(f::MDFFileV2, frames=1:acqNumBGFrames(f), patches=1:acqNumPatches(f),
+                  receivers=1:rxNumChannels(f))
+  if !h5exists(f.filename, "/measurement")
+    return nothing
+  end
+  if f.mmap_measBGData == nothing
+    h5open(f.filename,"r") do file
+      f.mmap_measBGData = readmmap(file["/measurement/backgroundData"])
+    end
+  end
+  data = zeros(Float64, rxNumSamplingPoints(f), length(receivers),
+                        length(patches), length(frames))
+  for (i,fr) in enumerate(frames)
+    data[:,:,:,i] = f.mmap_measBGData[:, receivers, patches, fr]
+  end
+  return data
+end
+measDataTimeOrder(f::MDFFileV1) = nothing
+measDataTimeOrder(f::MDFFileV2) = f["/measurement/dataTimeOrder"]
+measBGDataTimeOrder(f::MDFFileV1) = nothing
+measBGDataTimeOrder(f::MDFFileV2) = f["/measurement/backgroundDataTimeOrder"]
 
 # processings
 function procData(f::MDFFileV1; frames=nothing)

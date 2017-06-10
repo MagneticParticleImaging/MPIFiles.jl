@@ -39,7 +39,8 @@ export rxNumChannels, rxNumAverages, rxBandwidth, rxNumSamplingPoints,
        rxTransferFunction
 
 # measurements
-export measUnit, measDataConversionFactor, measData, measIsBackgroundData
+export measUnit, measDataConversionFactor, measData, measBGData, 
+       measDataTimeOrder, measBGDataTimeOrder
 
 # processing
 export procData, procIsFourierTransformed, procIsTFCorrected, procIsAveraged,
@@ -131,7 +132,9 @@ abstract MPIFile
 @mustimplement measUnit(f::MPIFile)
 @mustimplement measDataConversionFactor(f::MPIFile)
 @mustimplement measData(f::MPIFile)
-@mustimplement measIsBG(f::MPIFile)
+@mustimplement measBGData(f::MPIFile)
+@mustimplement measDataTimeOrder(f::MPIFile)
+@mustimplement measBGDataTimeOrder(f::MPIFile)
 
 # processing
 @mustimplement procData(f::MPIFile)
@@ -191,40 +194,17 @@ end
 function acqFovCenter(f::MPIFile)
  return addLeadingSingleton( vec(acqOffsetField(f)) ./ vec(abs( acqGradient(f) )),2)
 end
-export acqNumAllFrames
-acqNumAllFrames(f::MPIFile) = acqNumFrames(f) + acqNumBGFrames(f)
 
-function measBGFrameIdx(f::MPIFile)
-  idx = zeros(Int64, acqNumBGFrames(f))
-  j = 1
-  mask = measIsBG(f)
-  for i=1:acqNumAllFrames(f)
-    if mask[i]
-      idx[j] = i
-      j += 1
-    end
+function measData(f::MPIFile, args...; backgroundData=false, kargs...) 
+  if backgroundData
+    measBGData(f,args...;kargs...)
+  else
+    measData(f,args...;kargs...)
   end
-  return idx
 end
 
-function measFGFrameIdx(f::MPIFile)
-  mask = measIsBG(f)
-  if acqNumBGFrames(f) == 0
-    return 1:acqNumFrames(f)
-  end
-  idx = zeros(Int64, acqNumFrames(f))
-  j = 1
-  for i=1:acqNumAllFrames(f)
-    if !mask[i]
-      idx[j] = i
-      j += 1
-    end
-  end
-  return idx
-end
-
-function measDataConv(f::MPIFile, args...)
-  data = measData(f, args...)
+function measDataConv(f::MPIFile, args...;backgroundData=false)
+  data = measData(f, args..., backgroundData=backgroundData)
   a = measDataConversionFactor(f)
   data = map(Float32, data)
   scale!(data, a[1])
