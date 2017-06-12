@@ -16,7 +16,8 @@ export studyName, studyNumber, studyUuid, studyDescription
 
 # experiment parameters
 export experimentName, experimentNumber, experimentUuid, experimentDescription, experimentSubject,
-      experimentIsSimulation, experimentIsCalibration, experimentHasProcessing
+      experimentIsSimulation, experimentIsCalibration, experimentHasProcessing, 
+      experimentHasMeasurement, experimentHasReconstruction
 
 # tracer parameters
 export tracerName, tracerBatch, tracerVolume, tracerConcentration,

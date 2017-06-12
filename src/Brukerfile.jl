@@ -160,12 +160,12 @@ function acqNumBGFrames(b::BrukerFile)
 end
 acqFramePeriod(b::BrukerFile) = dfPeriod(b) * rxNumAverages(b)
 acqNumPatches(b::BrukerFile) = 1
-acqGradient(b::BrukerFile) = [-0.5 -0.5 1.0].*
-      parse(Float64,b["ACQ_MPI_selection_field_gradient"])
+acqGradient(b::BrukerFile) = addTrailingSingleton([-0.5, -0.5, 1.0].*
+      parse(Float64,b["ACQ_MPI_selection_field_gradient"]),2)
 function acqOffsetField(b::BrukerFile) #TODO NOT correct
   voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
   calibFac = [2.5/49.45, -2.5*0.008/-22.73, 2.5*0.008/-22.73, 1.5*0.0094/13.2963]
-  return addLeadingSingleton( Float64[voltage[d]*calibFac[d] for d=2:4],2)
+  return addTrailingSingleton( Float64[voltage[d]*calibFac[d] for d=2:4],2)
 end
 acqOffsetFieldShift(b::BrukerFile) = acqOffsetField(b) ./ acqGradient(b)
 
