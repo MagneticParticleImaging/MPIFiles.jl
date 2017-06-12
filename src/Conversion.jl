@@ -1,5 +1,5 @@
 # This file contains routines to generate MDF files
-export saveasMDF, loadFullDataset, loadMetadata
+export saveasMDF, loadFullDataset, loadMetadata, setparam!
 
 function setparam!(params::Dict, parameter, value)
   if value != nothing
@@ -208,25 +208,15 @@ function saveasMDF(file::HDF5File, params::Dict)
   end
 
   # calibrations
-  if params["experimentIsCalibration"]
-    if hasKeyAndValue(params,"calibSNR")
-      write(file, "/calibration/snr",  params["calibSNR"])
-    end
-    write(file, "/calibration/fieldOfView",  params["calibFov"])
-    write(file, "/calibration/fieldOfViewCenter",  params["calibFovCenter"])
-    write(file, "/calibration/size",  params["calibSize"])
-    write(file, "/calibration/order",  params["calibOrder"])
-    if hasKeyAndValue(params,"calibPositions")
-      write(file, "/calibration/positions",  params["calibPositions"])
-    end
-    if hasKeyAndValue(params,"calibOffsetField")
-      write(file, "/calibration/offsetField",  params["calibOffsetField"])
-    end
-    if hasKeyAndValue(params,"calibDeltaSampleSize")
-      write(file, "/calibration/deltaSampleSize",  params["calibDeltaSampleSize"])
-    end
-    write(file, "/calibration/method",  params["calibMethod"])
-  end
+  writeIfAvailable(file, "/calibration/snr",  params, "calibSNR")
+  writeIfAvailable(file, "/calibration/fieldOfView",  params, "calibFov")
+  writeIfAvailable(file, "/calibration/fieldOfViewCenter",  params, "calibFovCenter")
+  writeIfAvailable(file, "/calibration/size",  params, "calibSize")
+  writeIfAvailable(file, "/calibration/order",  params, "calibOrder")
+  writeIfAvailable(file, "/calibration/positions",  params, "calibPositions")
+  writeIfAvailable(file, "/calibration/offsetField",  params, "calibOffsetField")
+  writeIfAvailable(file, "/calibration/deltaSampleSize",  params, "calibDeltaSampleSize")
+  writeIfAvailable(file, "/calibration/method",  params, "calibMethod")
 
   # reconstruction
   if hasKeyAndValue(params, "recoData")
