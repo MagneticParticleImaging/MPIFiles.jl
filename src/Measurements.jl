@@ -119,19 +119,23 @@ function getAveragedMeasurements(f::MPIFile; frames=1:measNumFrames(f),
   return data
 end
 
-function getMeasurements(f::MPIFile; frames=1:measNumFrames(f),
+function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:measNumFrames(f),
       loadasreal=false, fourierTransform=measIsFourierTransformed(f),
       transposed=measIsTransposed(f), bgCorrection=false, frequencies=nothing,
       tfCorrection=measIsTFCorrected(f),  kargs...)
 
-  idx = measFGFrameIdx(f)
-  data = getAveragedMeasurements(f; frames=idx[frames], kargs...)
+  if neglectBGFrames
+    idx = measFGFrameIdx(f)
+    data = getAveragedMeasurements(f; frames=idx[frames], kargs...)
 
-  if bgCorrection
-    idxBG = measBGFrameIdx(f)
-    dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
+    if bgCorrection
+      idxBG = measBGFrameIdx(f)
+      dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
 
-    # do something clever now :-)
+      # do something clever now :-)
+    end
+  else
+    data = getAveragedMeasurements(f; frames=frames, kargs...)
   end
 
   if fourierTransform && !measIsFourierTransformed(f)

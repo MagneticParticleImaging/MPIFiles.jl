@@ -108,7 +108,7 @@ tracerConcentration(f::MDFFileV1) = [f["/tracer/concentration"]]
 tracerConcentration(f::MDFFileV2) = f["/tracer/concentration"]
 tracerSolute(f::MDFFileV2) = f["/tracer/solute"]
 tracerSolute(f::MDFFileV1) = ["Fe"]
-function tracerInjectionTime(f::MDFFile) 
+function tracerInjectionTime(f::MDFFile)
   p = typeof(f) == MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
   if f[p] == nothing
     return nothing
@@ -178,7 +178,7 @@ function measNumFrames(f::MDFFileV1)
       h5open(f.filename,"r") do file
         f.mmap_measData = readmmap(file["/calibration/dataFD"])
       end
-    end    
+    end
     return size(f.mmap_measData,2)
   else
     return f["/acquisition/numFrames"]
@@ -257,7 +257,21 @@ function measData(f::MDFFileV2, frames=1:measNumFrames(f), patches=1:acqNumPatch
   end
 end
 
-function systemMatrix(f::MDFFileV2, rows, bgCorrection)
+function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
+  if !experimentIsCalibration(f)
+    return nothing
+  end
+  if f.mmap_measData == nothing
+    h5open(f.filename,"r") do file
+      f.mmap_measData = readmmap(file["/calibration/dataFD"])
+    end
+  end
+
+  data = f.mmap_measData[:, :, rows]
+  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
+end
+
+function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
   if !h5exists(f.filename, "/measurement") || !measIsTransposed(f) ||
     !measIsFourierTransformed(f)
     return nothing
@@ -267,22 +281,29 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection)
       f.mmap_measData = readmmap(file["/measurement/data"])
     end
   end
-  
   data = f.mmap_measData[:, :, rows]
-  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
+
+  fgdata = data[:,measFGFrameIdx(f),:]
+  if bgCorrection
+    bgdata = data[:,measBGFrameIdx(f),:]
+    fgdata[:,:,:] .-= mean(bgdata,2)
+  end
+  return reinterpret(Complex{eltype(fgdata)}, fgdata, (size(fgdata,2),size(fgdata,3)))
 end
 
-function systemMatrix(f::MDFFileV1, rows, bgCorrection)
-  if !experimentIsCalibration(f)
-    return nothing
+function systemMatrixWithBG(f::MDFFileV2)
+  if !h5exists(f.filename, "/measurement") || !measIsTransposed(f) ||
+      !measIsFourierTransformed(f)
+      return nothing
   end
   if f.mmap_measData == nothing
     h5open(f.filename,"r") do file
-      f.mmap_measData = readmmap(file["/calibration/dataFD"])
+      f.mmap_measData = readmmap(file["/measurement/data"])
     end
   end
-  data = f.mmap_measData[:, :, rows]
-  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
+
+  data = f.mmap_measData[:, :, :, :, :]
+  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
 end
 
 

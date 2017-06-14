@@ -214,27 +214,32 @@ function measData(b::BrukerFile, frames=1:measNumFrames(b), patches=1:acqNumPatc
   return reshape(data,size(data,1),size(data,2),1,size(data,3))
 end
 
-
-# processing
-# Brukerfiles do only contain processing data in the calibration scans
-function systemMatrix(b::BrukerFile; frames=:)
+export systemMatrixWithBG, systemMatrix
+function systemMatrixWithBG(b::BrukerFile)
   if !experimentIsCalibration(b)
     return nothing
   end
 
-  bgcorrection = true
-  localSFFilename = bgcorrection ? "systemMatrixBG" : "systemMatrix"
-  sfFilename = joinpath(b.path,"pdata", "1", localSFFilename)
+  sfFilename = joinpath(b.path,"pdata", "1", "systemMatrix")
   nFreq = rxNumFrequencies(b)
 
   data = Rawfile(sfFilename, Complex128,
                  [prod(calibSize(b)),nFreq,rxNumChannels(b)], extRaw="")
   S = data[]
   scale!(S,1.0/rxNumAverages(b))
-  return reshape(S,size(S,1),size(S,2),size(S,3),1)
+  S = reshape(S,size(S,1),size(S,2),size(S,3),1)
+
+  bgFilename = joinpath(b.path,"pdata", "1", "background")
+
+  bgdata = Rawfile(bgFilename, Complex128,
+                 [measNumBGFrames(b),nFreq,rxNumChannels(b)], extRaw="")[]
+  scale!(bgdata,1.0/rxNumAverages(b))
+  #bgdata = permutedims(bgdata,[3,1,2])
+  bgdata = reshape(bgdata,size(bgdata,1),size(bgdata,2),size(bgdata,3),1)
+  return cat(1,S,bgdata)
 end
 
-function systemMatrix(b::BrukerFile, rows, bgCorrection)
+function systemMatrix(b::BrukerFile, rows, bgCorrection=true)
   if !experimentIsCalibration(b)
     return nothing
   end
@@ -251,11 +256,7 @@ function systemMatrix(b::BrukerFile, rows, bgCorrection)
 end
 
 function measIsFourierTransformed(b::BrukerFile)
-  if !experimentIsCalibration(b)
-    return false
-  else
-    return true
-  end
+  return false
 end
 
 function measIsTFCorrected(b::BrukerFile)
@@ -263,35 +264,19 @@ function measIsTFCorrected(b::BrukerFile)
 end
 
 function measIsAveraged(b::BrukerFile)
-  if !experimentIsCalibration(b)
-    return true
-  else
-    return false # I don't think so. Averaging is only applied internally
-  end
+  return false
 end
 
 function measIsFrameSelection(b::BrukerFile)
-  if !experimentIsCalibration(b)
-    return true
-  else
-    return false # Not sure
-  end
+  return false
 end
 
 function measIsBGCorrected(b::BrukerFile)
-  if !experimentIsCalibration(b)
-    return true
-  else
-    return true
-  end
+  return false
 end
 
 function measIsTransposed(b::BrukerFile)
-  if !experimentIsCalibration(b)
-    return false
-  else
-    return true
-  end
+  return false
 end
 
 function measFramePermutation(b::BrukerFile)

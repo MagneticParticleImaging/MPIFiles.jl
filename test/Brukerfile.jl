@@ -1,6 +1,9 @@
-
 fnMeasBruker = "measurement_Bruker"
 fnSMBruker = "systemMatrix_Bruker"
+fnMeasV1 = "measurement_V1.mdf"
+fnMeasV2 = "measurement_V2.mdf"
+fnSMV1 = "systemMatrix_V1.mdf"
+fnSMV2 = "systemMatrix_V2.mdf"
 
 if !isdir(fnSMBruker)
   streamSM = get("http://media.tuhh.de/ibi/"*fnSMBruker*".zip")
@@ -13,99 +16,116 @@ if !isdir(fnMeasBruker)
   run(`unzip $(fnMeasBruker).zip`)
 end
 
+saveasMDF(fnMeasV2, fnMeasBruker)#, frames=1:100)
+saveasMDF(fnSMV2, fnSMBruker, applyCalibPostprocessing=true)
 
-# Measurement File Bruker
+mdfBruker = MPIFile(fnMeasBruker)
+@test typeof(mdfBruker) == BrukerFile
 
-b = MPIFile(fnMeasBruker)
-@test typeof(b) == BrukerFile
+mdfv2 = MPIFile(fnMeasV2)
+@test typeof(mdfv2) == MDFFileV2
 
-@test studyName(b) == "1DSensitivity_1DSensitivity_1"
-@test studyNumber(b) == 1
-@test studyDescription(b) == "n.a."
+for mdf in (mdfBruker,mdfv2)
+  println("Test $mdf")
+  @test studyName(mdf) == "Wuerfelphantom_Wuerfelphantom_1"
+  @test studyNumber(mdf) == 1
+  @test studyDescription(mdf) == "n.a."
 
-@test experimentName(b) == "leer (E61)"
-@test experimentNumber(b) == 61
-@test experimentDescription(b) == "leer (E61)"
-@test experimentSubject(b) == "1DSensitivity"
-@test experimentIsSimulation(b) == false
-@test experimentIsCalibration(b) == false
+  @test experimentName(mdf) == "fuenf (E18)"
+  @test experimentNumber(mdf) == 18
+  @test experimentDescription(mdf) == "fuenf (E18)"
+  @test experimentSubject(mdf) == "Wuerfelphantom"
+  @test experimentIsSimulation(mdf) == false
+  @test experimentIsCalibration(mdf) == false
 
-@test scannerFacility(b) == "Universitätsklinikum Hamburg Eppendorf"
-@test scannerOperator(b) == "nmrsu"
-@test scannerManufacturer(b) == "Bruker/Philips"
-@test scannerModel(b) == "Preclinical MPI System"
-@test scannerTopology(b) == "FFP"
+  @test scannerFacility(mdf) == "Universitätsklinikum Hamburg Eppendorf"
+  @test scannerOperator(mdf) == "nmrsu"
+  @test scannerManufacturer(mdf) == "Bruker/Philips"
+  @test scannerModel(mdf) == "Preclinical MPI System"
+  @test scannerTopology(mdf) == "FFP"
 
-@test tracerName(b)[1] == ""
-@test tracerBatch(b)[1] == ""
-@test tracerVendor(b)[1] == "n.a."
-@test tracerVolume(b)[1] == 0.0
-@test tracerConcentration(b)[1] == 0.5
-@test tracerInjectionTime(b)[1] == DateTime("2015-01-20T10:52:31.897")
+  @test tracerName(mdf) == ["Resovist"]
+  @test tracerBatch(mdf) == ["0"]
+  @test tracerVendor(mdf) == ["n.a."]
+  @test tracerVolume(mdf) == [0.0]
+  @test tracerConcentration(mdf) == [0.5]
+  @test tracerInjectionTime(mdf) == [DateTime("2015-09-15T11:17:23.011")]
 
-@test acqStartTime(b) == DateTime("2015-01-20T10:52:31.897")
-@test acqGradient(b)[:,1] == [-0.5; -0.5; 1.0]
-@test acqFramePeriod(b) == 2.15424
-@test acqNumPatches(b) == 1
-@test acqOffsetFieldShift(b)[:,1] == [0.0; 0.0; -0.0]
+  @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
+  @test acqGradient(mdf)[:,1] == [-1.25; -1.25; 2.5]
+  @test acqFramePeriod(mdf) == 6.528E-4
+  @test acqNumPatches(mdf) == 1
+  @test acqOffsetFieldShift(mdf)[:,1] == [0.0; 0.0; -0.0]
 
-@test dfNumChannels(b) == 3
-@test dfWaveform(b) == "sine"
-@test dfStrength(b)[:,:,1] == [0.0 0.0 0.014]
-@test dfPhase(b)[:,:,1] == [1.5707963267948966 1.5707963267948966 1.5707963267948966]
-@test dfBaseFrequency(b) == 2500000.0
-@test dfDivider(b)[:,1] == [102; 96; 99]
-@test dfPeriod(b) == 0.0215424
+  @test dfNumChannels(mdf) == 3
+  @test dfWaveform(mdf) == "sine"
+  @test dfStrength(mdf)[:,:,1] == [0.014 0.014 0.0]
+  @test dfPhase(mdf)[:,:,1] == [1.5707963267948966 1.5707963267948966 1.5707963267948966]
+  @test dfBaseFrequency(mdf) == 2500000.0
+  @test dfDivider(mdf)[:,1] == [102; 96; 99]
+  @test dfPeriod(mdf) == 6.528E-4
 
-@test rxNumChannels(b) == 3
-@test rxBandwidth(b) == 1250000.0
-@test rxNumSamplingPoints(b) == 53856
-@test rxNumAverages(b) == 100
+  @test rxNumChannels(mdf) == 3
+  @test rxBandwidth(mdf) == 1250000.0
+  @test rxNumSamplingPoints(mdf) == 1632
+  @test rxNumAverages(mdf) == 1
 
-@test measNumFrames(b) == 40
-@test size( measData(b) ) == (53856,3,1,40)
+  @test measNumFrames(mdf) == 500
+  @test size( measData(mdf) ) == (1632,3,1,500)
 
-@test size(getMeasurements(b, numAverages=1,
-            spectralLeakageCorrection=false, fourierTransform=false)) == (53856,3,1,40)
+  N = measNumFrames(mdf)
 
-@test size(getMeasurements(b, numAverages=10,
-            spectralLeakageCorrection=false, fourierTransform=false)) == (53856,3,1,4)
+  @test size(getMeasurements(mdf, numAverages=1,
+              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
 
-@test size(getMeasurements(b, numAverages=10,
-            spectralLeakageCorrection=true, fourierTransform=false)) == (53856,3,1,4)
+  @test size(getMeasurements(mdf, numAverages=10,
+              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,50)
 
-@test size(getMeasurements(b, numAverages=10,
-            fourierTransform=true)) == (26929,3,1,4)
+  @test size(getMeasurements(mdf, numAverages=10, frames=1:100,
+              spectralLeakageCorrection=true, fourierTransform=false)) == (1632,3,1,10)
 
-@test size(getMeasurements(b, numAverages=10,
-            fourierTransform=true, loadasreal=true)) == (53858,3,1,4)
+  @test size(getMeasurements(mdf, numAverages=10, frames=1:100,
+              fourierTransform=true)) == (817,3,1,10)
+
+  @test size(getMeasurements(mdf, numAverages=10, frames=1:100,
+              fourierTransform=true, loadasreal=true)) == (1634,3,1,10)
+
+  @test size(getMeasurements(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
+
+end
 
 
-sm = MPIFile(fnSMBruker)
-@test typeof(sm) == BrukerFile
 
-@test size( MPIFiles.systemMatrix(sm) ) == (100,26929,3,1)
-@test measIsFourierTransformed(sm) == true
-#@test measIsAveraged(sm) == false
-@test measIsTFCorrected(sm) == false
-@test measIsTransposed(sm) == true
-#@test measIsBGCorrected(sm) == true
+# Calibration File V1
 
-@test size( calibSNR(sm) ) == (26929,3,1)
-@test calibFov(sm) == [0.001,0.001,0.04]
-@test calibFovCenter(sm) == [0.0; -0.0; 0.0]
-@test calibSize(sm) == [1,1,100]
-@test calibOrder(sm) == "xyz"
-@test calibPositions(sm) == nothing
-@test calibOffsetField(sm) == nothing
-@test calibDeltaSampleSize(sm) == nothing #TODO
-@test calibMethod(sm) == "robot"
+smBruker = MPIFile(fnSMBruker)
+@test typeof(smBruker) == BrukerFile
 
-fnMeasConv = "measurement_conv.mdf"
-fnSMConv = "systemMatrix_conv.mdf"
+smv2 = MPIFile(fnSMV2)
+@test typeof(smv2) == MDFFileV2
 
-@test size(getSystemMatrix(sm,1:10)) == (100,10)
-@test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (100,20)
+for sm in (smBruker,smv2)
+  println("Test $sm")
 
-saveasMDF(fnMeasConv, fnMeasBruker)
-saveasMDF(fnSMConv, fnSMBruker)
+  @test size( systemMatrixWithBG(sm) ) == (1959,817,3,1)
+  @test size( systemMatrix(sm,1:10) ) == (1936,10)
+  #@test measIsFourierTransformed(sm) == true
+  #@test measIsAveraged(sm) == false
+  #@test measIsTFCorrected(sm) == false
+  #@test measIsTransposed(sm) == true
+  #@test measIsBGCorrected(sm) == true
+
+  @test size( calibSNR(sm) ) == (817,3,1)
+  @test calibFov(sm) == [0.044; 0.044; 0.001]
+  @test calibFovCenter(sm) == [0.0; -0.0; 0.0]
+  @test calibSize(sm) == [44; 44; 1]
+  @test calibOrder(sm) == "xyz"
+  @test calibDeltaSampleSize(sm) == nothing #[0.001; 0.001; 0.001]
+  @test calibMethod(sm) == "robot"
+
+  @test size(filterFrequencies(sm, SNRThresh = 5)) == (147,)
+  #@test size(filterFrequencies(sm, numUsedFreqs = 100)) == (100,) # not working
+
+  @test size(getSystemMatrix(sm,1:10)) == (1936,10)
+  @test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (1936,20)
+end

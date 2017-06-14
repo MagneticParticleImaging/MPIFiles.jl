@@ -1,5 +1,5 @@
 # This file contains routines to generate MDF files
-export saveasMDF, loadFullDataset, loadMetadata, setparam!
+export saveasMDF, loadDataset, loadMetadata, setparam!
 
 function setparam!(params::Dict, parameter, value)
   if value != nothing
@@ -7,17 +7,44 @@ function setparam!(params::Dict, parameter, value)
   end
 end
 
-function loadFullDataset(f)
+
+
+# we do not support all conversion possibilities
+function loadDataset(f::MPIFile; frames=1:measNumFrames(f), applyCalibPostprocessing=false)
   params = loadMetadata(f)
 
   # call API function and store result in a parameter Dict
   if experimentHasMeasurement(f)
-    for op in [:measUnit, :measData, :measDataConversionFactor, :measNumFrames,
-               :measIsFourierTransformed, :measIsTFCorrected,
-               :measIsAveraged, :measIsFrameSelection, :measIsBGCorrected,
-               :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
-               :measIsBGFrame, :measNumAverages, :measIsSpectralLeakageCorrected]
-      setparam!(params, string(op), eval(op)(f))
+    if !applyCalibPostprocessing
+      for op in [:measUnit, :measDataConversionFactor,
+                 :measIsFourierTransformed, :measIsTFCorrected,
+                 :measIsAveraged, :measIsFrameSelection, :measIsBGCorrected,
+                 :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
+                 :measNumAverages, :measIsSpectralLeakageCorrected]
+          setparam!(params, string(op), eval(op)(f))
+      end
+      setparam!(params, "measData", measData(f,frames))
+      setparam!(params, "measNumFrames", length(frames))
+      setparam!(params, "measIsBGFrame", measIsBGFrame(f)[frames])
+    else
+      data = systemMatrixWithBG(f)
+      setparam!(params, "measData", data)
+      setparam!(params, "measNumFrames", size(data,1))
+
+      setparam!(params, "measIsBGFrame",
+           cat(1,zeros(Bool,measNumFGFrames(f)),ones(Bool,measNumBGFrames(f))) )
+      params["measDataConversionFactor"]=[1,0]
+      params["measUnit"]="V"
+      params["measIsFourierTransformed"]=true
+      params["measIsTFCorrected"]=false
+      params["measIsAveraged"]=false
+      params["measIsFrameSelection"]=true
+      params["measIsBGCorrected"]=false
+      params["measIsTransposed"]=true
+      params["measIsFramePermutation"]=true
+      params["measIsFrequencySelection"]=false
+      params["measNumAverages"]=1
+      params["measIsSpectralLeakageCorrected"]=true
     end
   end
 
@@ -44,7 +71,7 @@ function loadMetadata(f)
 
   # call API function and store result in a parameter Dict
   for op in [:version, :uuid, :time, :studyName, :studyNumber, :studyUuid, :studyDescription,
-            :experimentName, :experimentNumber, :experimentUuid, :experimentDescription, 
+            :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
             :experimentSubject,
             :experimentIsSimulation, :experimentIsCalibration,
             :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
@@ -66,8 +93,8 @@ function loadMetadata(f)
   return params
 end
 
-function saveasMDF(filenameOut::String, filenameIn::String)
-  saveasMDF(filenameOut, loadFullDataset(MPIFile(filenameIn)) )
+function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
+  saveasMDF(filenameOut, loadDataset(MPIFile(filenameIn);kargs...) )
 end
 
 function saveasMDF(filename::String, params::Dict)
@@ -170,7 +197,7 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/measurement/dataConversionFactor",  params["measDataConversionFactor"])
     write(file, "/measurement/numFrames", get(params,"measNumFrames",1))
     meas = params["measData"]
-    if eltype(meas) <: Complex 
+    if eltype(meas) <: Complex
       meas = reinterpret(typeof((meas[1]).re),meas,(2,size(meas)...))
       write(file, "/measurement/data", meas)
     else

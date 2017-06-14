@@ -16,11 +16,11 @@ end
 
 function getSystemMatrix(f::MPIFile, frequencies; bgCorrection=false, loadasreal=false,
                          kargs...)
-  if measIsTransposed(f) && measIsFourierTransformed(f)
+  #if measIsTransposed(f) && measIsFourierTransformed(f)
     data = systemMatrix(f, frequencies, bgCorrection)
-  else
-    error("TODO: implement making a SF using getMeasurement")
-  end
+  #else
+  #  error("TODO: implement making a SF using getMeasurement")
+  #end
   S = map(Complex64, data)
 
   if loadasreal
@@ -29,5 +29,3 @@ function getSystemMatrix(f::MPIFile, frequencies; bgCorrection=false, loadasreal
     return S
   end
 end
-
-# TODO: Sparse system matrix loading
