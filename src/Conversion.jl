@@ -12,16 +12,11 @@ function loadFullDataset(f)
 
   # call API function and store result in a parameter Dict
   if experimentHasMeasurement(f)
-    for op in [:measUnit, :measData, :measDataConversionFactor, :measBGData,
-               :measDataTimeOrder, :measBGDataTimeOrder]
-      setparam!(params, string(op), eval(op)(f))
-    end
-  end
-
-  if experimentHasProcessing(f)
-    for op in [:procData, :procIsFourierTransformed, :procIsTFCorrected,
-               :procIsAveraged, :procIsFramesSelected, :procIsBGCorrected,
-               :procIsTransposed, :procFramePermutation]
+    for op in [:measUnit, :measData, :measDataConversionFactor, :measNumFrames,
+               :measIsFourierTransformed, :measIsTFCorrected,
+               :measIsAveraged, :measIsFrameSelection, :measIsBGCorrected,
+               :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
+               :measIsBGFrame, :measNumAverages, :measIsSpectralLeakageCorrected]
       setparam!(params, string(op), eval(op)(f))
     end
   end
@@ -51,11 +46,11 @@ function loadMetadata(f)
   for op in [:version, :uuid, :time, :studyName, :studyNumber, :studyUuid, :studyDescription,
             :experimentName, :experimentNumber, :experimentUuid, :experimentDescription, 
             :experimentSubject,
-            :experimentIsSimulation, :experimentIsCalibration, :experimentHasProcessing,
+            :experimentIsSimulation, :experimentIsCalibration,
             :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
             :tracerSolute, :tracerInjectionTime,
             :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerModel,
-            :scannerTopology, :acqNumFrames, :acqNumBGFrames, :acqFramePeriod,
+            :scannerTopology, :acqFramePeriod,
             :acqNumPatches, :acqStartTime, :acqGradient, :acqOffsetField, :acqOffsetFieldShift,
             :dfNumChannels, :dfStrength, :dfPhase, :dfBaseFrequency, :dfDivider,
             :dfPeriod, :dfWaveform, :rxNumChannels, :rxNumAverages, :rxBandwidth,
@@ -137,8 +132,6 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/scanner/topology", get(params,"scannerTopology","FFP"))
 
   # acquisition parameters
-  write(file, "/acquisition/numFrames", get(params,"acqNumFrames",1))
-  write(file, "/acquisition/numBackgroundFrames", get(params,"acqNumBGFrames",0))
   write(file, "/acquisition/framePeriod", get(params,"acqFramePeriod",0.0))
   write(file, "/acquisition/numPatches", get(params,"acqNumPatches",1))
   write(file, "/acquisition/startTime", "$( get(params,"acqStartTime", Dates.unix2datetime(time())) )")
@@ -175,36 +168,27 @@ function saveasMDF(file::HDF5File, params::Dict)
   if hasKeyAndValue(params, "measData")
     write(file, "/measurement/unit",  params["measUnit"])
     write(file, "/measurement/dataConversionFactor",  params["measDataConversionFactor"])
-    write(file, "/measurement/data", params["measData"])
-    if hasKeyAndValue(params,"measBGData")
-      write(file, "/measurement/backgroundData", params["measBGData"])
-    end
-    if hasKeyAndValue(params,"measDataTimeOrder")
-      write(file, "/measurement/dataTimeOrder", params["measDataTimeOrder"])
-    end
-    if hasKeyAndValue(params,"measBGDataTimeOrder")
-      write(file, "/measurement/backgroundDataTimeOrder", params["measBGDataTimeOrder"])
-    end
-  end
-
-  # processing
-  if params["experimentHasProcessing"]
-    if params["procIsTransposed"]
-      S = params["procData"]
-      S = reinterpret(typeof((S[1]).re),S,(2,size(S)...))
-      write(file, "/processing/data", S)
+    write(file, "/measurement/numFrames", get(params,"measNumFrames",1))
+    meas = params["measData"]
+    if eltype(meas) <: Complex 
+      meas = reinterpret(typeof((meas[1]).re),meas,(2,size(meas)...))
+      write(file, "/measurement/data", meas)
     else
-      write(file, "/processing/data", S)
+      write(file, "/measurement/data", meas)
     end
-    write(file, "/processing/isFourierTransformed", Int8(params["procIsFourierTransformed"]))
-    write(file, "/processing/isTransferFunctionCorrected", Int8(params["procIsTFCorrected"]))
-    write(file, "/processing/isAveraged",  Int8(params["procIsAveraged"]))
-    write(file, "/processing/isFramesSelected", Int8(params["procIsFramesSelected"]))
-    write(file, "/processing/isBackgroundCorrected",  Int8(params["procIsBGCorrected"]))
-    write(file, "/processing/isTransposed",  Int8(params["procIsTransposed"]))
-    if haskey(params,"procFramePermutation")
-      write(file, "/processing/framePermutation",  params["procFramePermutation"])
+    write(file, "/measurement/isFourierTransformed", Int8(params["measIsFourierTransformed"]))
+    write(file, "/measurement/isSpectralLeakageCorrected", Int8(params["measIsSpectralLeakageCorrected"]))
+    write(file, "/measurement/isTransferFunctionCorrected", Int8(params["measIsTFCorrected"]))
+    write(file, "/measurement/isAveraged",  Int8(params["measIsAveraged"]))
+    write(file, "/measurement/isFramesSelected", Int8(params["measIsFrameSelection"]))
+    write(file, "/measurement/isFrequencySelection", Int8(params["measIsFrequencySelection"]))
+    write(file, "/measurement/isBackgroundCorrected",  Int8(params["measIsBGCorrected"]))
+    write(file, "/measurement/isTransposed",  Int8(params["measIsTransposed"]))
+    write(file, "/measurement/isFramePermutation",  Int8(params["measIsFramePermutation"]))
+    if hasKeyAndValue(params, "measIsBGFrame")
+      write(file, "/measurement/isBackgroundFrame", convert(Array{Int8},params["measIsBGFrame"]) )
     end
+    writeIfAvailable(file, "/measurement/numAverages",  params, "measNumAverages")
   end
 
   # calibrations

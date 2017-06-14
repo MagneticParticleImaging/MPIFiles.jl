@@ -14,11 +14,14 @@ function converttoreal{T}(S::AbstractArray{Complex{T},2})
   return reshape(S,(N,2*M))
 end
 
-function getSystemMatrix(f::MPIFile, frequencies; bgcorrection=false, loadasreal=false,
-                         loadas32bit=false, kargs...)
-  data = procData(f, frequencies)
-
-  S = loadas32bit ? map(Complex64, data) : map(Complex128, data)
+function getSystemMatrix(f::MPIFile, frequencies; bgCorrection=false, loadasreal=false,
+                         kargs...)
+  if measIsTransposed(f) && measIsFourierTransformed(f)
+    data = systemMatrix(f, frequencies, bgCorrection)
+  else
+    error("TODO: implement making a SF using getMeasurement")
+  end
+  S = map(Complex64, data)
 
   if loadasreal
     return converttoreal(S)

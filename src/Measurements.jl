@@ -1,10 +1,23 @@
 export getMeasurements, getMeasurementsLowLevel, getMeasurementsFT
 
-function spectralLeakageCorrection_(f::MPIFile, isBG, frames)
+function measDataConv(f::MPIFile, args...)
+  data = measData(f, args...)
+  a = measDataConversionFactor(f)
+  if eltype(a) <: Integer
+    data = map(Float32, data)
+  end
+  if a!=nothing
+    scale!(data, a[1])
+    data[:] .+= a[2]
+  end
+  return data
+end
+
+function spectralLeakageCorrection_(f::MPIFile, frames)
   #println("Apply Spectral Cleaning")
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
-  numFrames = acqNumFrames(f)
+  numFrames = measNumFrames(f)
   numPatches = acqNumPatches(f)
 
   data = zeros(numTimePoints, numReceivers, numPatches, length(frames))
@@ -20,20 +33,20 @@ function spectralLeakageCorrection_(f::MPIFile, isBG, frames)
     for p in 1:numPatches
       for r in 1:numReceivers
         if fr==1
-          tmp = measDataConv(f, fr:fr+1, p, r, backgroundData=isBG)
-          data[:,r,p,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
-                            +  tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
+          tmp = measDataConv(f, fr:fr+1, p, r)
+          data[:,r,p,i] = 1/2 * (tmp[:,1] .* window2[1:numTimePoints]
+                            +  tmp[:,2] .* window2[1+numTimePoints:2*numTimePoints]
                             );
         elseif fr==numFrames
-          tmp = measDataConv(f, fr-1:fr, p, r, backgroundData=isBG)
-          data[:,r,p,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
-                            +    tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
+          tmp = measDataConv(f, fr-1:fr, p, r)
+          data[:,r,p,i] = 1/2 * (tmp[:,1] .* window2[1:numTimePoints]
+                            +    tmp[:,2] .* window2[1+numTimePoints:2*numTimePoints]
                             );
         else
-          tmp = measDataConv(f, fr-1:fr+1, p, r, backgroundData=isBG)
-          data[:,r,p,i] = 1/3 * (tmp[:,1,1,1] .* window3[1:numTimePoints]
-                            +  tmp[:,1,1,2] .* window3[1+numTimePoints:2*numTimePoints]
-                            +  tmp[:,1,1,3] .* window3[1+2*numTimePoints:3*numTimePoints]
+          tmp = measDataConv(f, fr-1:fr+1, p, r)
+          data[:,r,p,i] = 1/3 * (tmp[:,1] .* window3[1:numTimePoints]
+                            +  tmp[:,2] .* window3[1+numTimePoints:2*numTimePoints]
+                            +  tmp[:,3] .* window3[1+2*numTimePoints:3*numTimePoints]
                             );
         end
       end
@@ -42,24 +55,33 @@ function spectralLeakageCorrection_(f::MPIFile, isBG, frames)
   return data
 end
 
+function measDataLowLevel(f::MPIFile, frames; spectralLeakageCorrection=true )
+  if measIsFourierTransformed(f)
+    return measDataConv(f, frames)
+  else
+    if !spectralLeakageCorrection || measIsSpectralLeakageCorrected(f)
+       tmp = measDataConv(f, frames)
+    else
+       tmp = spectralLeakageCorrection_(f, frames)
+    end
+  end
+end
+
+
 function returnasreal{T}(u::AbstractArray{Complex{T}})
   return reinterpret(T,u,tuple(size(u,1)*2,size(u)[2:end]...))
 end
 returnasreal{T<:Real}(u::AbstractArray{T}) = u
 
-function getMeasurementsLowLevel(f::MPIFile; frames=1:acqNumFrames(f),
-            numAverages=1,  verbose = false, backgroundData = false,
+function getAveragedMeasurements(f::MPIFile; frames=1:measNumFrames(f),
+            numAverages=1,  verbose = false, 
             spectralLeakageCorrection=true)
 
   verbose && println( rxNumSamplingPoints(f), " ",
-                      rxNumChannels(f), " ", acqNumFrames(f), )
+                      rxNumChannels(f), " ", measNumFrames(f), )
 
   if numAverages == 1
-    if !spectralLeakageCorrection # || hasSpectralCleaning(f)
-      data = measDataConv(f, frames, backgroundData=backgroundData)
-    else
-      data = spectralLeakageCorrection_(f, backgroundData, frames)
-    end
+    data = measDataLowLevel(f, frames, spectralLeakageCorrection=spectralLeakageCorrection)
   else
     nFrames = length(frames)
     nBlocks = ceil(Int, nFrames / numAverages)
@@ -67,85 +89,82 @@ function getMeasurementsLowLevel(f::MPIFile; frames=1:acqNumFrames(f),
     rem(nFrames, numAverages) != 0 && (warn("numAverages no integer divisor of nFrames.
               Last Block will be averaged over less than $numAverages Frames."))
 
-    data = zeros(rxNumSamplingPoints(f),rxNumChannels(f), acqNumPatches(f), nBlocks)
-
-    p = Progress(nBlocks, 1, "Loading measurement from $(filepath(f)) ...")
-    for i = 1:nBlocks
-      index1 = 1 + (i-1)*numAverages
-      index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
-
-      if !spectralLeakageCorrection #|| hasSpectralCleaning(f)
-        tmp = measDataConv(f, frames[index1:index2], backgroundData=backgroundData)
+    if measIsTransposed(f)
+      if measIsFourierTransformed(f)
+        data = zeros(Complex64, nBlocks, rxNumFrequencies(f), rxNumChannels(f), acqNumPatches(f))
       else
-        tmp = spectralLeakageCorrection_(f, backgroundData, frames[index1:index2])
+        data = zeros(Float32, nBlocks, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f))
       end
-      data[:,:,:,i] = mean(tmp,4)
-      next!(p)
+    else 
+      if measIsFourierTransformed(f)
+        data = zeros(Complex64, rxNumFrequencies(f), rxNumChannels(f), acqNumPatches(f), nBlocks)
+      else
+        data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f), nBlocks)
+      end
     end
-  end
-  return data
-end
-
-function getMeasurementsLowLevelFromProc(f::MPIFile; frames=1:acqNumFrames(f),
-            numAverages=1, spectralLeakageCorrection=true)
-
-  data = procData(f, frames)
-  if procIsFourierTransformed(f)
-    data = irfft(data, 2*(size(data,1)-1), 1)
-  end
-
-  if numAverages > 1
-    nFrames = size(data, 4)
-    nBlocks = ceil(Int, nFrames / numAverages)
-
-    rem(nFrames, numAverages) != 0 && (warn("numAverages no integer divisor of nFrames.
-                     Last Block will be averaged over less than $numAverages Frames."))
-
-    averagedData = zeros(eltype(data), size(data,1), size(data,2), size(data,3), nBlocks)
-
     p = Progress(nBlocks, 1, "Loading measurement from $(filepath(f)) ...")
     for i = 1:nBlocks
       index1 = 1 + (i-1)*numAverages
       index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
 
-      tmp = data[:, :, :, index1:index2]
-
-      averagedData[:, :, :, i] = mean(tmp,4)
+      tmp = measDataLowLevel(f, frames[index1:index2], spectralLeakageCorrection=spectralLeakageCorrection)
+      if measIsTransposed(f)
+        data[i,:,:,:] = mean(tmp,1)
+      else
+        data[:,:,:,i] = mean(tmp,4)
+      end
       next!(p)
     end
-    data = averagedData
+  end
+  return data
+end
+
+function getMeasurements(f::MPIFile; frames=1:measNumFrames(f),
+      loadasreal=false, fourierTransform=measIsFourierTransformed(f),
+      transposed=measIsTransposed(f), bgCorrection=false, frequencies=nothing,
+      tfCorrection=measIsTFCorrected(f),  kargs...)
+
+  idx = measFGFrameIdx(f)
+  data = getAveragedMeasurements(f; frames=idx[frames], kargs...)
+
+  if bgCorrection
+    idxBG = measBGFrameIdx(f)
+    dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
+    
+    # do something clever now :-)
+  end
+
+  if fourierTransform && !measIsFourierTransformed(f)
+    data = rfft(data, measIsTransposed(f) ? 2 : 1)
+  end
+
+  if tfCorrection && !measIsTFCorrected(f)
+    #do TF correction
+  end
+
+  if frequencies != nothing
+    # here we merge frequencies and channels
+    if !measIsTransposed(f)
+      data = reshape(data, size(data,1)*size(data,2), size(data,3), size(data,4))
+      data = data[frequencies, :, :]
+    else
+      data = reshape(data, size(data,1), size(data,2)*size(data,3), size(data,4))
+      data = data[:, frequencies, :]    
+    end
+  end
+
+  if transposed && !measIsTransposed(f)
+    if frequencies != nothing
+      data = permutedims(data, [3,1,2])
+    else
+      data = permutedims(data, [4,1,2,3])
+    end
+  end
+
+  if loadasreal
+    data = returnasreal(data)
   end
 
   return data
 end
 
-function getMeasurements(f::MPIFile; frames=1:acqNumFrames(f), backgroundData=false,
-      loadas32bit=true, loadasreal=false, fourierTransform=true, kargs...)
-  if experimentHasProcessing(f)
-    data = getMeasurementsLowLevelFromProc(f; frames=frames, kargs...)
-  else
-    data = getMeasurementsLowLevel(f; backgroundData=backgroundData, frames=frames, kargs...)
-  end
-
-  data = loadas32bit ? map(Float32,data) : map(Float64,data)
-
-  if fourierTransform
-    data = rfft(data,1)
-  end
-  if loadasreal
-    return returnasreal(data)
-  else
-    return data
-  end
-end
-
-function getMeasurements(f::MPIFile, frequencies; loadasreal=false, kargs...)
-  data = getMeasurements(f, fourierTransform=true, loadasreal=false; kargs...)
-  data = reshape(data, size(data,1)*size(data,2), size(data,3), size(data,4))
-  data = data[frequencies, :, :]
-  if loadasreal
-    return returnasreal(data)
-  else
-    return data
-  end
-end

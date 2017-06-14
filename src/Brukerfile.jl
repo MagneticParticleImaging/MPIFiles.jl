@@ -234,13 +234,12 @@ function procData(b::BrukerFile; frames=:)
   return reshape(S,size(S,1),size(S,2),size(S,3),1)
 end
 
-function procData(b::BrukerFile, rows)
+function systemMatrix(b::BrukerFile, rows, bgCorrection)
   if !experimentIsCalibration(b)
     return nothing
   end
 
-  bgcorrection = true
-  localSFFilename = bgcorrection ? "systemMatrixBG" : "systemMatrix"
+  localSFFilename = bgCorrection ? "systemMatrixBG" : "systemMatrix"
   sfFilename = joinpath(b.path,"pdata", "1", localSFFilename)
   nFreq = rxNumFrequencies(b)
 

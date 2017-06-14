@@ -16,7 +16,7 @@ export studyName, studyNumber, studyUuid, studyDescription
 
 # experiment parameters
 export experimentName, experimentNumber, experimentUuid, experimentDescription, experimentSubject,
-      experimentIsSimulation, experimentIsCalibration, experimentHasProcessing, 
+      experimentIsSimulation, experimentIsCalibration,  
       experimentHasMeasurement, experimentHasReconstruction
 
 # tracer parameters
@@ -28,7 +28,7 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerModel,
        scannerTopology
 
 # acquisition parameters
-export acqStartTime, acqNumFrames, acqNumBGFrames, acqFramePeriod, acqNumPatches,
+export acqStartTime, acqFramePeriod, acqNumPatches,
        acqGradient, acqOffsetField, acqOffsetFieldShift
 
 # drive-field parameters
@@ -40,16 +40,14 @@ export rxNumChannels, rxNumAverages, rxBandwidth, rxNumSamplingPoints,
        rxTransferFunction
 
 # measurements
-export measUnit, measDataConversionFactor, measData, measBGData, 
-       measDataTimeOrder, measBGDataTimeOrder
-
-# processing
-export procData, procIsFourierTransformed, procIsTFCorrected, procIsAveraged,
-       procIsFramesSelected, procIsBGCorrected, procIsTransposed,
-       procFramePermutation
+export measUnit, measDataConversionFactor, measData, measNumFrames,
+       measIsFourierTransformed, measIsTFCorrected, measIsAveraged,
+       measIsFrameSelection, measIsBGCorrected, measIsTransposed,
+       measIsFramePermutation, measIsFrequencySelection,
+       measIsBGFrame, measNumAverages
 
 # calibrations
-export calibSystemMatrixData, calibSNR, calibFov, calibFovCenter, calibSize,
+export calibSNR, calibFov, calibFovCenter, calibSize,
        calibOrder, calibPositions, calibOffsetField, calibDeltaSampleSize,
        calibMethod
 
@@ -83,7 +81,6 @@ abstract MPIFile
 @mustimplement experimentSubject(f::MPIFile)
 @mustimplement experimentIsSimulation(f::MPIFile)
 @mustimplement experimentIsCalibration(f::MPIFile)
-@mustimplement experimentHasProcessing(f::MPIFile)
 @mustimplement experimentHasReconstruction(f::MPIFile)
 @mustimplement experimentHasMeasurement(f::MPIFile)
 
@@ -104,8 +101,6 @@ abstract MPIFile
 
 # acquisition parameters
 @mustimplement acqStartTime(f::MPIFile)
-@mustimplement acqNumFrames(f::MPIFile)
-@mustimplement acqNumBGFrames(f::MPIFile)
 @mustimplement acqFramePeriod(f::MPIFile)
 @mustimplement acqNumPatches(f::MPIFile)
 @mustimplement acqGradient(f::MPIFile)
@@ -133,20 +128,17 @@ abstract MPIFile
 @mustimplement measUnit(f::MPIFile)
 @mustimplement measDataConversionFactor(f::MPIFile)
 @mustimplement measData(f::MPIFile)
-@mustimplement measBGData(f::MPIFile)
-@mustimplement measDataTimeOrder(f::MPIFile)
-@mustimplement measBGDataTimeOrder(f::MPIFile)
-
-# processing
-@mustimplement procData(f::MPIFile)
-@mustimplement procData(f::MPIFile, frequencies)
-@mustimplement procIsFourierTransformed(f::MPIFile)
-@mustimplement procIsTFCorrected(f::MPIFile)
-@mustimplement procIsAveraged(f::MPIFile)
-@mustimplement procIsFramesSelected(f::MPIFile)
-@mustimplement procIsBGCorrected(f::MPIFile)
-@mustimplement procIsTransposed(f::MPIFile)
-@mustimplement procFramePermutation(f::MPIFile)
+@mustimplement measNumFrames(f::MPIFile)
+@mustimplement measIsFourierTransformed(f::MPIFile)
+@mustimplement measIsTFCorrected(f::MPIFile)
+@mustimplement measIsAveraged(f::MPIFile)
+@mustimplement measIsFrameSelecton(f::MPIFile)
+@mustimplement measIsFrequencySelecton(f::MPIFile)
+@mustimplement measIsBGCorrected(f::MPIFile)
+@mustimplement measIsTransposed(f::MPIFile)
+@mustimplement measIsFramePermutation(f::MPIFile)
+@mustimplement measIsBGFrame(f::MPIFile)
+@mustimplement measNumAverages(f::MPIFile)
 
 # calibrations
 @mustimplement calibSNR(f::MPIFile)
@@ -170,8 +162,6 @@ abstract MPIFile
 # additional functions that should be implemented by an MPIFile
 @mustimplement filepath(f::MPIFile)
 
-
-
 function str2uuid(str::String)
   if contains(str,"-")
     str_ = str
@@ -191,27 +181,45 @@ function rxFrequencies(f::MPIFile)
   return a
 end
 function acqFov(f::MPIFile)
- return addLeadingSingleton( 2*vec(dfStrength(f)) ./ vec(abs( acqGradient(f) )),2)
+ return  2*dfStrength(f)[1,:,:] ./ abs( acqGradient(f) )
 end
 function acqFovCenter(f::MPIFile)
- return addLeadingSingleton( vec(acqOffsetField(f)) ./ vec(abs( acqGradient(f) )),2)
+ return acqOffsetField(f) ./ abs( acqGradient(f) )
 end
 
-function measData(f::MPIFile, args...; backgroundData=false, kargs...) 
-  if backgroundData
-    measBGData(f,args...;kargs...)
-  else
-    measData(f,args...;kargs...)
+export measNumFGFrames, measNumBGFrames, measFGFrameIdx, measBGFrameIdx
+
+measNumFGFrames(f::MPIFile) = measNumFrames(f) - measNumBGFrames(f)
+measNumBGFrames(f::MPIFile) = sum(measIsBGFrame(f))
+
+function measBGFrameIdx(f::MPIFile)
+  idx = zeros(Int64, measNumBGFrames(f))
+  j = 1
+  mask = measIsBGFrame(f)
+  for i=1:measNumFrames(f)
+    if mask[i]
+      idx[j] = i
+      j += 1
+    end
   end
+  return idx
 end
 
-function measDataConv(f::MPIFile, args...;backgroundData=false)
-  data = measData(f, args..., backgroundData=backgroundData)
-  a = measDataConversionFactor(f)
-  data = map(Float32, data)
-  scale!(data, a[1])
-  data[:] .+= a[2]
-  return data
+function measFGFrameIdx(f::MPIFile)
+  mask = measIsBGFrame(f)
+  if !any(mask)
+    #shortcut
+    return 1:measNumFrames(f)
+  end
+  idx = zeros(Int64, measNumFGFrames(f))
+  j = 1
+  for i=1:measNumFrames(f)
+    if !mask[i]
+      idx[j] = i
+      j += 1
+    end
+  end
+  return idx
 end
 
 ### Concrete implementations ###

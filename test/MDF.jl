@@ -44,7 +44,6 @@ for mdf in (mdfv1,mdfv2)
   @test experimentSubject(mdf) == "Wuerfelphantom"
   @test experimentIsSimulation(mdf) == false
   @test experimentIsCalibration(mdf) == false
-  @test experimentHasProcessing(mdf) == false
 
   @test scannerFacility(mdf) == "University Medical Center Hamburg-Eppendorf, Germany"
   @test scannerOperator(mdf) == "n.a."
@@ -62,7 +61,6 @@ for mdf in (mdfv1,mdfv2)
   @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
   @test acqGradient(mdf) == [-1.25 -1.25 2.5]
   @test acqFramePeriod(mdf) == 6.528E-4
-  @test acqNumFrames(mdf) == 500
   @test acqNumPatches(mdf) == 1
   @test acqOffsetFieldShift(mdf) == [0.0 0.0 -0.0]
 
@@ -80,6 +78,7 @@ for mdf in (mdfv1,mdfv2)
   @test rxNumAverages(mdf) == 1
 
   @test size( measData(mdf) ) == (1632,3,1,500)
+  @test measNumFrames(mdf) == 500
 
   @test size(getMeasurements(mdf, numAverages=1,
               spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
@@ -96,7 +95,7 @@ for mdf in (mdfv1,mdfv2)
   @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
               fourierTransform=true, loadasreal=true)) == (1634,3,1,50)
 
-  @test size(getMeasurements(mdf,1:10, numAverages=10)) == (10,1,50)
+  @test size(getMeasurements(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
 
 end
 
@@ -113,13 +112,12 @@ smv2 = MPIFile(fnSMV2)
 for sm in (smv1,smv2)
   println("Test $sm")
 
-  @test experimentHasProcessing(sm) == true
-  @test size( procData(sm) ) == (1936,817,3,1)
-  @test procIsFourierTransformed(sm) == true
-  @test procIsAveraged(sm) == false
-  @test procIsTFCorrected(sm) == false
-  @test procIsTransposed(sm) == true
-  @test procIsBGCorrected(sm) == true
+  @test size( measData(sm) ) == (1936,817,3,1)
+  @test measIsFourierTransformed(sm) == true
+  @test measIsAveraged(sm) == false
+  @test measIsTFCorrected(sm) == false
+  @test measIsTransposed(sm) == true
+  @test measIsBGCorrected(sm) == true
 
   @test size( calibSNR(sm) ) == (817,3,1)
   @test calibFov(sm) == [0.044; 0.044; 0.001]

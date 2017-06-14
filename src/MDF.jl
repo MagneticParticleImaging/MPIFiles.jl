@@ -10,21 +10,17 @@ type MDFFileV1 <: MDFFile
   filename::String
   param_cache
   mmap_measData
-  mmap_measBGData
-  mmap_procData
 end
 
-MDFFileV1(filename::String) = MDFFileV1(filename,Dict{String,Any}(),nothing,nothing,nothing)
+MDFFileV1(filename::String) = MDFFileV1(filename,Dict{String,Any}(),nothing)
 
 type MDFFileV2 <: MDFFile
   filename::String
   param_cache
   mmap_measData
-  mmap_measBGData
-  mmap_procData
 end
 
-MDFFileV2(filename::String) = MDFFileV2(filename,Dict{String,Any}(),nothing,nothing,nothing)
+MDFFileV2(filename::String) = MDFFileV2(filename,Dict{String,Any}(),nothing)
 
 # This dispatches on the file extension and automatically
 # generates the correct type
@@ -97,10 +93,10 @@ experimentSubject(f::MDFFileV2) = f["/experiment/subject"]
 experimentIsSimulation(f::MDFFileV2) = Bool( f["/experiment/isSimulation"] )
 experimentIsSimulation(f::MDFFileV1) = Bool( f["/study/simulation"] )
 experimentIsCalibration(f::MDFFile) = h5exists(f.filename, "/calibration")
-experimentHasProcessing(f::MDFFileV1) = experimentIsCalibration(f)
-experimentHasProcessing(f::MDFFileV2) = h5exists(f.filename, "/processing")
 experimentHasReconstruction(f::MDFFile) = h5exists(f.filename, "/reconstruction")
-experimentHasMeasurement(f::MDFFile) = h5exists(f.filename, "/measurement")
+experimentHasMeasurement(f::MDFFileV1) = h5exists(f.filename, "/measurement") ||
+                                         h5exists(f.filename, "/calibration")
+experimentHasMeasurement(f::MDFFileV2) = h5exists(f.filename, "/measurement")
 # tracer parameters
 tracerName(f::MDFFileV1) = [f["/tracer/name"]]
 tracerName(f::MDFFileV2) = f["/tracer/name"]
@@ -138,9 +134,6 @@ scannerTopology(f::MDFFile) = f["/scanner/topology"]
 # acquisition parameters
 acqStartTime(f::MDFFileV1) = DateTime( f["/acquisition/time"] )
 acqStartTime(f::MDFFileV2) = DateTime( f["/acquisition/startTime"] )
-acqNumFrames(f::MDFFile) = f["/acquisition/numFrames"]
-acqNumBGFrames(f::MDFFileV1) = 0
-acqNumBGFrames(f::MDFFileV2) = f["/acquisition/numBackgroundFrames"]
 acqFramePeriod(f::MDFFile) = f["/acquisition/framePeriod"]
 acqNumPatches(f::MDFFile) = f["/acquisition/numPatches"]
 acqGradient(f::MDFFileV1) = addLeadingSingleton(f["/acquisition/gradient"],2)
@@ -179,10 +172,30 @@ measUnit(f::MDFFileV1) = "a.u."
 measUnit(f::MDFFileV2) = f["/measurement/unit"]
 measDataConversionFactor(f::MDFFileV1) = [1.0, 0.0]
 measDataConversionFactor(f::MDFFileV2) = f["/measurement/dataConversionFactor"]
-function measData(f::MDFFileV1, frames=1:acqNumFrames(f), patches=1:acqNumPatches(f),
+function measNumFrames(f::MDFFileV1)
+  if experimentIsCalibration(f)
+    if f.mmap_measData == nothing
+      h5open(f.filename,"r") do file
+        f.mmap_measData = readmmap(file["/calibration/dataFD"])
+      end
+    end    
+    return size(f.mmap_measData,2)
+  else
+    return f["/acquisition/numFrames"]
+  end
+end
+
+measNumFrames(f::MDFFileV2) = f["/measurement/numFrames"]
+function measData(f::MDFFileV1, frames=1:measNumFrames(f), patches=1:acqNumPatches(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
-    return nothing
+    # the V1 file is a calibration
+    data = f["/calibration/dataFD"]
+    if ndims(data) == 4
+      return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),1))
+    else
+      return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
+    end
   end
   tdExists = h5exists(f.filename, "/measurement/dataTD")
 
@@ -192,11 +205,9 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), patches=1:acqNumPatche
         f.mmap_measData = readmmap(file["/measurement/dataTD"])
       end
     end
-    #data = zeros(Float64, dims[1], length(receivers), length(frames))
     data = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
       data[:,:,:,i] = f.mmap_measData[:, receivers, fr]
-      #h5read(f.filename, "/measurement/dataTD", (:,  receivers, fr) )
     end
     return reshape(data,size(data,1),size(data,2),1,size(data,3))
   else
@@ -205,11 +216,9 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), patches=1:acqNumPatche
         f.mmap_measData = readmmap(file["/measurement/dataFD"])
       end
     end
-    #data = zeros(Float64, dims[1], dims[2], length(receivers), length(frames))
     data = zeros(Float64, 2, rxNumFrequencies(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
       data[:,:,:,i] = f.mmap_measData[:,:,receivers, fr]
-      #h5read(f.filename, "/measurement/dataFD", (:, :, receivers, fr) )
     end
 
     dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
@@ -217,7 +226,8 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), patches=1:acqNumPatche
     return reshape(dataTD,size(dataTD,1),size(dataTD,2),1,size(dataTD,3))
   end
 end
-function measData(f::MDFFileV2, frames=1:acqNumFrames(f), patches=1:acqNumPatches(f),
+
+function measData(f::MDFFileV2, frames=1:measNumFrames(f), patches=1:acqNumPatches(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     return nothing
@@ -227,174 +237,109 @@ function measData(f::MDFFileV2, frames=1:acqNumFrames(f), patches=1:acqNumPatche
       f.mmap_measData = readmmap(file["/measurement/data"])
     end
   end
-  data = zeros(Float64, rxNumSamplingPoints(f), length(receivers),
-                        length(patches), length(frames))
-  for (i,fr) in enumerate(frames)
-    data[:,:,:,i] = f.mmap_measData[:, receivers, patches, fr]
-  end
-  return data
-end
-measBGData(f::MDFFileV1) = nothing
-function measBGData(f::MDFFileV2, frames=1:acqNumBGFrames(f), patches=1:acqNumPatches(f),
-                  receivers=1:rxNumChannels(f))
-  if !h5exists(f.filename, "/measurement")
-    return nothing
-  end
-  if f.mmap_measBGData == nothing
-    h5open(f.filename,"r") do file
-      f.mmap_measBGData = readmmap(file["/measurement/backgroundData"])
-    end
-  end
-  data = zeros(Float64, rxNumSamplingPoints(f), length(receivers),
-                        length(patches), length(frames))
-  for (i,fr) in enumerate(frames)
-    data[:,:,:,i] = f.mmap_measBGData[:, receivers, patches, fr]
-  end
-  return data
-end
-measDataTimeOrder(f::MDFFileV1) = nothing
-measDataTimeOrder(f::MDFFileV2) = f["/measurement/dataTimeOrder"]
-measBGDataTimeOrder(f::MDFFileV1) = nothing
-measBGDataTimeOrder(f::MDFFileV2) = f["/measurement/backgroundDataTimeOrder"]
 
-# processings
-function procData(f::MDFFileV1; frames=nothing)
-  if !experimentIsCalibration(f)
-    return nothing
-  end
-
-  data = f["/calibration/dataFD"]
-  if ndims(data) == 4
-    return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),1))
-  else
-    return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
-  end
-end
-
-function procData(f::MDFFileV1, rows)
-  if !experimentIsCalibration(f)
-    return nothing
-  end
-  if f.mmap_procData == nothing
-    h5open(f.filename,"r") do file
-      f.mmap_procData = readmmap(file["/calibration/dataFD"])
-    end
-  end
-  data = f.mmap_procData[:, :, rows]
-  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
-end
-
-function procData(f::MDFFileV2; frames=:)
-  if !h5exists(f.filename, "/processing")
-    return nothing
-  end
-  if f.mmap_procData == nothing
-    h5open(f.filename,"r") do file
-      f.mmap_procData = readmmap(file["/processing/data"])
-    end
-  end
-  data = f.mmap_procData[:, :, :, :, frames]
-
-  if procIsFourierTransformed(f)
-    if procIsTransposed(f)
-      data = f.mmap_procData[:, frames, :, :, :]
+  if measIsFourierTransformed(f)
+    if measIsTransposed(f)
+      data = f.mmap_measData[:, frames, :, receivers, patches]
     else
-      data = f.mmap_procData[:, :, :, :, frames]
+      data = f.mmap_measData[:, :, receivers, patches, frames]
     end
 
     return reinterpret(Complex{eltype(data)}, data,
                (size(data,2),size(data,3),size(data,4),size(data,5)))
   else
-    if procIsTransposed(f)
-      data = f.mmap_procData[frames, :, :, :]
+    if measIsTransposed(f)
+      data = f.mmap_measData[frames, :, receivers, patches]
     else
-      data = f.mmap_procData[:, :, :, frames]
+      data = f.mmap_measData[:, receivers, patches, frames]
     end
     return data
   end
 end
 
-function procData(f::MDFFileV2, rows)
-  if !h5exists(f.filename, "/processing") || !procIsTransposed(f)
+function systemMatrix(f::MDFFileV2, rows, bgCorrection)
+  if !h5exists(f.filename, "/measurement") || !measIsTransposed(f) ||
+    !measIsFourierTransformed(f)
     return nothing
   end
-  if f.mmap_procData == nothing
+  if f.mmap_measData == nothing
     h5open(f.filename,"r") do file
-      f.mmap_procData = readmmap(file["/processing/data"])
+      f.mmap_measData = readmmap(file["/measurement/data"])
     end
   end
-  if procIsFourierTransformed(f)
-    data = f.mmap_procData[:, :, rows]
-    return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
-  else
-    data = f.mmap_procData[:, rows]
-    return data
+  
+  data = f.mmap_measData[:, :, rows]
+  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
+end
+
+function systemMatrix(f::MDFFileV1, rows, bgCorrection)
+  if !experimentIsCalibration(f)
+    return nothing
   end
+  if f.mmap_measData == nothing
+    h5open(f.filename,"r") do file
+      f.mmap_measData = readmmap(file["/calibration/dataFD"])
+    end
+  end
+  data = f.mmap_measData[:, :, rows]
+  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
 end
 
 
-function procIsFourierTransformed(f::MDFFileV1)
+function measIsFourierTransformed(f::MDFFileV1)
   if !experimentIsCalibration(f)
-    return nothing
+    return false
   else
     return true
   end
 end
-procIsFourierTransformed(f::MDFFileV2) = Bool(f["/processing/isFourierTransformed"])
+measIsFourierTransformed(f::MDFFileV2) = Bool(f["/measurement/isFourierTransformed"])
 
-function procIsTFCorrected(f::MDFFileV1)
+measIsTFCorrected(f::MDFFileV1) = false
+measIsTFCorrected(f::MDFFileV2) = Bool(f["/measurement/isTransferFunctionCorrected"])
+
+measIsSpectralLeakageCorrected(f::MDFFileV1) = false
+measIsSpectralLeakageCorrected(f::MDFFileV2) = Bool(f["/measurement/isSpectralLeakageCorrected"])
+
+measIsAveraged(f::MDFFileV1) = false
+measIsAveraged(f::MDFFileV2) = Bool(f["/measurement/isAveraged"])
+
+measIsFrameSelection(f::MDFFileV1) = false
+measIsFrameSelection(f::MDFFileV2) = Bool(f["/measurement/isFrameSelection"])
+
+function measIsBGCorrected(f::MDFFileV1)
   if !experimentIsCalibration(f)
-    return nothing
-  else
     return false
-  end
-end
-procIsTFCorrected(f::MDFFileV2) = Bool(f["/processing/isTransferFunctionCorrected"])
-
-function procIsAveraged(f::MDFFileV1)
-  if !experimentIsCalibration(f)
-    return nothing
-  else
-    return false
-  end
-end
-procIsAveraged(f::MDFFileV2) = Bool(f["/processing/isAveraged"])
-
-function procIsFramesSelected(f::MDFFileV1)
-  if !experimentIsCalibration(f)
-    return nothing
-  else
-    return false
-  end
-end
-procIsFramesSelected(f::MDFFileV2) = Bool(f["/processing/isFramesSelected"])
-
-function procIsBGCorrected(f::MDFFileV1)
-  if !experimentIsCalibration(f)
-    return nothing
   else
     return true
   end
 end
-procIsBGCorrected(f::MDFFileV2) = Bool(f["/processing/isBackgroundCorrected"])
+measIsBGCorrected(f::MDFFileV2) = Bool(f["/measurement/isBackgroundCorrected"])
 
-function procIsTransposed(f::MDFFileV1)
+measIsFrequencySelection(f::MDFFileV1) = false
+measIsFrequencySelection(f::MDFFileV2) = Bool(f["/measurement/isFrequencySelection"])
+
+function measIsTransposed(f::MDFFileV1)
   if !experimentIsCalibration(f)
-    return nothing
+    return false
   else
     return true
   end
 end
-procIsTransposed(f::MDFFileV2) = Bool(f["/processing/isTransposed"])
+measIsTransposed(f::MDFFileV2) = Bool(f["/measurement/isTransposed"])
 
-function procFramePermutation(f::MDFFileV1)
+function measIsFramePermutation(f::MDFFileV1)
   if !experimentIsCalibration(f)
-    return nothing
+    return false
   else
-    return nothing # TODO
+    return true
   end
 end
-procFramePermutation(f::MDFFileV2) = f["/processing/framePermutation"]
+measIsFramePermutation(f::MDFFileV2) = f["/measurement/isFramePermutation"]
+measNumAverages(f::MDFFileV1) = nothing
+measNumAverages(f::MDFFileV2) = f["/measurement/numAverages"]
+measIsBGFrame(f::MDFFileV1) = zeros(Bool, measNumFrames(f))
+measIsBGFrame(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundFrame"])
 
 
 #calibrations
