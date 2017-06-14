@@ -2,6 +2,17 @@
 fnMeasBruker = "measurement_Bruker"
 fnSMBruker = "systemMatrix_Bruker"
 
+if !isdir(fnSMBruker)
+  streamSM = get("http://media.tuhh.de/ibi/"*fnSMBruker*".zip")
+  save(streamSM, fnSMBruker*".zip")
+  run(`unzip $(fnSMBruker).zip`)
+end
+if !isdir(fnMeasBruker)
+  streamMeas = get("http://media.tuhh.de/ibi/"*fnMeasBruker*".zip")
+  save(streamMeas, fnMeasBruker*".zip")
+  run(`unzip $(fnMeasBruker).zip`)
+end
+
 
 # Measurement File Bruker
 
@@ -33,11 +44,10 @@ b = MPIFile(fnMeasBruker)
 @test tracerInjectionTime(b)[1] == DateTime("2015-01-20T10:52:31.897")
 
 @test acqStartTime(b) == DateTime("2015-01-20T10:52:31.897")
-@test acqGradient(b) == [-0.5 -0.5 1.0]
+@test acqGradient(b)[:,1] == [-0.5; -0.5; 1.0]
 @test acqFramePeriod(b) == 2.15424
-@test acqNumFrames(b) == 40
 @test acqNumPatches(b) == 1
-@test acqOffsetFieldShift(b) == [0.0 0.0 -0.0]
+@test acqOffsetFieldShift(b)[:,1] == [0.0; 0.0; -0.0]
 
 @test dfNumChannels(b) == 3
 @test dfWaveform(b) == "sine"
@@ -52,6 +62,7 @@ b = MPIFile(fnMeasBruker)
 @test rxNumSamplingPoints(b) == 53856
 @test rxNumAverages(b) == 100
 
+@test measNumFrames(b) == 40
 @test size( measData(b) ) == (53856,3,1,40)
 
 @test size(getMeasurements(b, numAverages=1,
@@ -73,15 +84,14 @@ b = MPIFile(fnMeasBruker)
 sm = MPIFile(fnSMBruker)
 @test typeof(sm) == BrukerFile
 
-@test experimentHasProcessing(sm) == true
-@test size( procData(sm) ) == (100,26929,3,1)
-@test procIsFourierTransformed(sm) == true
-@test procIsAveraged(sm) == false
-@test procIsTFCorrected(sm) == false
-@test procIsTransposed(sm) == true
-@test procIsBGCorrected(sm) == true
+@test size( MPIFiles.systemMatrix(sm) ) == (100,26929,3,1)
+@test measIsFourierTransformed(sm) == true
+#@test measIsAveraged(sm) == false
+@test measIsTFCorrected(sm) == false
+@test measIsTransposed(sm) == true
+#@test measIsBGCorrected(sm) == true
 
-@test size( calibSNR(sm) ) == (26929,3)
+@test size( calibSNR(sm) ) == (26929,3,1)
 @test calibFov(sm) == [0.001,0.001,0.04]
 @test calibFovCenter(sm) == [0.0; -0.0; 0.0]
 @test calibSize(sm) == [1,1,100]
@@ -93,6 +103,9 @@ sm = MPIFile(fnSMBruker)
 
 fnMeasConv = "measurement_conv.mdf"
 fnSMConv = "systemMatrix_conv.mdf"
+
+@test size(getSystemMatrix(sm,1:10)) == (100,10)
+@test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (100,20)
 
 saveasMDF(fnMeasConv, fnMeasBruker)
 saveasMDF(fnSMConv, fnSMBruker)

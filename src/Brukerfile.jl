@@ -11,7 +11,7 @@ function latin1toutf8(str::AbstractString)
 end
 
 function latin1toutf8(str::Void)
-  println(stacktrace())  
+  println(stacktrace())
 end
 
 type BrukerFile <: MPIFile
@@ -149,15 +149,6 @@ function acqStartTime(b::BrukerFile)
   acq = b["ACQ_time"] #b["VisuAcqDate"]
   DateTime( replace(acq[2:search(acq,'+')-1],",",".") )
 end
-acqNumFrames(b::BrukerFile) = Int64(b["ACQ_jobs"][1][8])
-function acqNumBGFrames(b::BrukerFile)
-  n = b["PVM_MPI_NrBackgroundMeasurementCalibrationAllScans"]
-  if n == nothing
-    return 0
-  else
-    return parse(Int64,n)
-  end
-end
 acqFramePeriod(b::BrukerFile) = dfPeriod(b) * rxNumAverages(b)
 acqNumPatches(b::BrukerFile) = 1
 acqGradient(b::BrukerFile) = addTrailingSingleton([-0.5, -0.5, 1.0].*
@@ -198,26 +189,35 @@ rxTransferFunction(b::BrukerFile) = nothing
 # measurements
 measUnit(b::BrukerFile) = "a.u."
 measDataConversionFactor(b::BrukerFile) = [1.0/rxNumAverages(b), 0.0]
-function measData(b::BrukerFile, frames=1:acqNumFrames(b), patches=1:acqNumPatches(b),
+
+measNumFrames(b::BrukerFile) = Int64(b["ACQ_jobs"][1][8])
+function measNumBGFrames(b::BrukerFile)
+  n = b["PVM_MPI_NrBackgroundMeasurementCalibrationAllScans"]
+  if n == nothing
+    return 0
+  else
+    return parse(Int64,n)
+  end
+end
+
+function measData(b::BrukerFile, frames=1:measNumFrames(b), patches=1:acqNumPatches(b),
                   receivers=1:rxNumChannels(b))
 
   dataFilename = joinpath(b.path,"rawdata")
   dType = rxNumAverages(b) == 1 ? Int16 : Int32
 
   raw = Rawfile(dataFilename, dType,
-             [rxNumSamplingPoints(b),rxNumChannels(b),acqNumFrames(b)],
+             [rxNumSamplingPoints(b),rxNumChannels(b),measNumFrames(b)],
              extRaw=".job0") #Int or Uint?
   data = raw[:,receivers,frames]
 
   return reshape(data,size(data,1),size(data,2),1,size(data,3))
 end
-measBGData(f::BrukerFile) = nothing
-measDataTimeOrder(f::BrukerFile) = nothing
-measBGDataTimeOrder(f::BrukerFile) = nothing
+
 
 # processing
 # Brukerfiles do only contain processing data in the calibration scans
-function procData(b::BrukerFile; frames=:)
+function systemMatrix(b::BrukerFile; frames=:)
   if !experimentIsCalibration(b)
     return nothing
   end
@@ -250,61 +250,70 @@ function systemMatrix(b::BrukerFile, rows, bgCorrection)
   return S
 end
 
-function procIsFourierTransformed(b::BrukerFile)
+function measIsFourierTransformed(b::BrukerFile)
   if !experimentIsCalibration(b)
-    return nothing
+    return false
   else
     return true
   end
 end
 
-function procIsTFCorrected(b::BrukerFile)
-  if !experimentIsCalibration(b)
-    return nothing
-  else
-    return false
-  end
+function measIsTFCorrected(b::BrukerFile)
+  false
 end
 
-function procIsAveraged(b::BrukerFile)
+function measIsAveraged(b::BrukerFile)
   if !experimentIsCalibration(b)
-    return nothing
+    return true
   else
     return false # I don't think so. Averaging is only applied internally
   end
 end
 
-function procIsFramesSelected(b::BrukerFile)
+function measIsFrameSelection(b::BrukerFile)
   if !experimentIsCalibration(b)
-    return nothing
+    return true
   else
     return false # Not sure
   end
 end
 
-function procIsBGCorrected(b::BrukerFile)
+function measIsBGCorrected(b::BrukerFile)
   if !experimentIsCalibration(b)
-    return nothing
+    return true
   else
     return true
   end
 end
 
-function procIsTransposed(b::BrukerFile)
+function measIsTransposed(b::BrukerFile)
   if !experimentIsCalibration(b)
-    return nothing
+    return false
   else
     return true
   end
 end
 
-function procFramePermutation(b::BrukerFile)
+function measFramePermutation(b::BrukerFile)
   if !experimentIsCalibration(b)
     return nothing
   else
     return nothing # TODO
   end
 end
+
+# not true for SF
+measIsBGFrame(b::BrukerFile) = zeros(Bool, measNumFrames(b))
+function measIsFramePermutation(b::BrukerFile)
+  if !experimentIsCalibration(b)
+    return false
+  else
+    return true
+  end
+end
+measIsSpectralLeakageCorrected(b::BrukerFile) = get(b.params, "ACQ_MPI_spectral_cleaningl", "No") != "No"
+measIsFrequencySelection(b::BrukerFile) = false
+measNumAverages(b::BrukerFile) = nothing
 
 # calibrations
 function calibSNR(b::BrukerFile)
@@ -330,7 +339,6 @@ filepath(b::BrukerFile) = b.path
 
 # special additional methods
 
-hasSpectralCleaning(b::BrukerFile) = get(b.params, "ACQ_MPI_spectral_cleaningl", "No") != "No"
 
 function sfPath(b::BrukerFile)
   tmp = b["PVM_MPI_FilenameSystemMatrix",1]

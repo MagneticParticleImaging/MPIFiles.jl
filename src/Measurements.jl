@@ -3,7 +3,7 @@ export getMeasurements, getMeasurementsLowLevel, getMeasurementsFT
 function measDataConv(f::MPIFile, args...)
   data = measData(f, args...)
   a = measDataConversionFactor(f)
-  if eltype(a) <: Integer
+  if eltype(data) <: Integer
     data = map(Float32, data)
   end
   if a!=nothing
@@ -74,7 +74,7 @@ end
 returnasreal{T<:Real}(u::AbstractArray{T}) = u
 
 function getAveragedMeasurements(f::MPIFile; frames=1:measNumFrames(f),
-            numAverages=1,  verbose = false, 
+            numAverages=1,  verbose = false,
             spectralLeakageCorrection=true)
 
   verbose && println( rxNumSamplingPoints(f), " ",
@@ -95,7 +95,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:measNumFrames(f),
       else
         data = zeros(Float32, nBlocks, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f))
       end
-    else 
+    else
       if measIsFourierTransformed(f)
         data = zeros(Complex64, rxNumFrequencies(f), rxNumChannels(f), acqNumPatches(f), nBlocks)
       else
@@ -130,7 +130,7 @@ function getMeasurements(f::MPIFile; frames=1:measNumFrames(f),
   if bgCorrection
     idxBG = measBGFrameIdx(f)
     dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
-    
+
     # do something clever now :-)
   end
 
@@ -149,7 +149,7 @@ function getMeasurements(f::MPIFile; frames=1:measNumFrames(f),
       data = data[frequencies, :, :]
     else
       data = reshape(data, size(data,1), size(data,2)*size(data,3), size(data,4))
-      data = data[:, frequencies, :]    
+      data = data[:, frequencies, :]
     end
   end
 
@@ -167,4 +167,3 @@ function getMeasurements(f::MPIFile; frames=1:measNumFrames(f),
 
   return data
 end
-

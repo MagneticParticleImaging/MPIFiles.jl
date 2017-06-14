@@ -3,3 +3,7 @@
 *.jl.mem
 
 *.mdf
+*.zip
+
+test/measurement_Bruker/
+test/systemMatrix_Bruker/
