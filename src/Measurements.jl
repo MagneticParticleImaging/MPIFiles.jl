@@ -149,7 +149,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:measNumFrame
     end
   end
 
-  if fourierTransform && !measIsFourierTransformed(f)
+  if (fourierTransform && !measIsFourierTransformed(f) ) || (frequencies != nothing)
     data = rfft(data, measIsTransposed(f) ? 2 : 1)
   end
 

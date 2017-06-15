@@ -44,7 +44,7 @@ export measUnit, measDataConversionFactor, measData, measNumFrames,
        measIsFourierTransformed, measIsTFCorrected, measIsAveraged,
        measIsFrameSelection, measIsBGCorrected, measIsTransposed,
        measIsFramePermutation, measIsFrequencySelection,
-       measIsBGFrame, measNumAverages
+       measIsBGFrame, measNumAverages, measIsSpectralLeakageCorrected
 
 # calibrations
 export calibSNR, calibFov, calibFovCenter, calibSize,
@@ -129,6 +129,7 @@ abstract MPIFile
 @mustimplement measDataConversionFactor(f::MPIFile)
 @mustimplement measData(f::MPIFile)
 @mustimplement measNumFrames(f::MPIFile)
+@mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
 @mustimplement measIsFourierTransformed(f::MPIFile)
 @mustimplement measIsTFCorrected(f::MPIFile)
 @mustimplement measIsAveraged(f::MPIFile)
