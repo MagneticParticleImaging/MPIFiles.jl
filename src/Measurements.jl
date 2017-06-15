@@ -20,7 +20,7 @@ function spectralLeakageCorrection_(f::MPIFile, frames)
   numFrames = measNumFrames(f)
   numPatches = acqNumPatches(f)
 
-  data = zeros(numTimePoints, numReceivers, numPatches, length(frames))
+  data = zeros(Float32, numTimePoints, numReceivers, numPatches, length(frames))
   M = numTimePoints*3
   window3 = 0.5.*(1.-cos(2*π/(M-1)*(0:(M-1))))
   window3 = window3 / (sum(window3)/M)

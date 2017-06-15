@@ -60,6 +60,16 @@ const MDFStore = MDFDatasetStore("/opt/data")
 
 ### generic functions ###
 
+function ishidden(filename::AbstractString)
+  @static if is_unix()
+    s = basename(filename)
+    return (!isempty(s) && s[1] == '.')
+  else
+    attr = ccall((:GetFileAttributesA), stdcall, Cint, (Ptr{Uint8},),bytestring(filename))
+    return attr & 0x2 > 0
+  end
+end
+
 function getStudies(d::DatasetStore)
   s = Study[]
 
