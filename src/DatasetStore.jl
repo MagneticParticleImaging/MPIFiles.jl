@@ -2,7 +2,8 @@ import FileIO: save
 
 export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        studydir, BrukerDatasetStore, BrukerStore, getStudy, getStudies, getExperiment,
-       getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco
+       getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
+       findBrukerFiles, id, getVisus, getVisuPath, remove
 
 ########################################
 
@@ -97,9 +98,9 @@ function getExperiment(path::String)
   end
 
   exp = Experiment( path, parse(Int64,last(splitdir(prefix))),
-                      string(description(b)), numScans(b),
-                      round(1000.*dfFov(b),2), sfGradient(b),
-                      numAverages(b), operator(b))
+                      string(experimentDescription(b)), measNumFrames(b),
+                      round(1000.*vec(acqFov(b)),2), acqGradient(b)[:,1],
+                      rxNumAverages(b), scannerOperator(b))
 
   return exp
 end
@@ -148,7 +149,7 @@ function getStudy(d::BrukerDatasetStore, studyfolder::String)
       date = string(date[1:4],"/",date[5:6],"/",date[7:8])
 
 
-      j = MPILib.JcampdxFile()
+      j = JcampdxFile()
       subjfile = string(studypath,"/subject")
       if isfile(subjfile)
         read(j,string(studypath,"/subject"),maxEntries=14) #magic number...
@@ -168,7 +169,7 @@ function getStudy(d::BrukerDatasetStore, studyfolder::String)
 
             b = BrukerFile(joinpath(studypath, file ))
             name = studyName(b)
-            subject = subjectName(b)
+            subject = experimentSubject(b)
             found = true
             break
           end
@@ -198,6 +199,30 @@ function addStudy(d::MDFDatasetStore, study::Study)
   mkpath(studypath)
 
   nothing
+end
+
+function findBrukerFiles(path::AbstractString)
+  files = readdir(path)
+
+  bfiles = String[]
+
+  for file in files
+    if isdir(joinpath(path,file))
+     try
+      if isfile(joinpath(path,file,"acqp"))
+        push!(bfiles, joinpath(path,file))
+      else
+        rfiles = findBrukerFiles(joinpath(path,file))
+        if rfiles != nothing && length(rfiles) > 0
+          push!(bfiles, rfiles...)
+        end
+      end
+     catch
+      continue
+     end
+    end
+  end
+  bfiles
 end
 
 function getExperiments(d::BrukerDatasetStore, s::Study)
@@ -335,7 +360,7 @@ function addReco(d::MDFDatasetStore, study::Study, exp::Experiment, image)
 
   filepath = joinpath(outputpath, string(recoNum))
 
-  savedata(filepath*".mdf", image)
+  saveRecoDataMDF(filepath*".mdf", image)
   #save(filepath*".jld","recoParams",recoParams)
 end
 
