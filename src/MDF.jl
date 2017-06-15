@@ -1,6 +1,6 @@
 using HDF5
 
-export MDFFile, MDFFileV1, MDFFileV2
+export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton
 
 abstract MDFFile <: MPIFile
 
@@ -136,10 +136,10 @@ acqStartTime(f::MDFFileV1) = DateTime( f["/acquisition/time"] )
 acqStartTime(f::MDFFileV2) = DateTime( f["/acquisition/startTime"] )
 acqFramePeriod(f::MDFFile) = f["/acquisition/framePeriod"]
 acqNumPatches(f::MDFFile) = f["/acquisition/numPatches"]
-acqGradient(f::MDFFileV1) = addLeadingSingleton(f["/acquisition/gradient"],2)
+acqGradient(f::MDFFileV1) = addTrailingSingleton(f["/acquisition/gradient"],2)
 acqGradient(f::MDFFileV2) = f["/acquisition/gradient"]
 acqOffsetField(f::MDFFile) = f["/acquisition/offsetField"]
-acqOffsetFieldShift(f::MDFFileV1) = addLeadingSingleton(
+acqOffsetFieldShift(f::MDFFileV1) = addTrailingSingleton(
               f["/acquisition/drivefield/fieldOfViewCenter"],2 )
 acqOffsetFieldShift(f::MDFFileV2) = f["/acquisition/offsetFieldShift"]
 
