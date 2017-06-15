@@ -98,7 +98,7 @@ end
 
 # Calibration File
 
-smBruker = MPIFile(fnSMBruker, isCalib=true)
+smBruker = MPIFile(fnSMBruker)
 @test typeof(smBruker) == BrukerFileCalib
 
 saveasMDF(fnSMV2, smBruker)

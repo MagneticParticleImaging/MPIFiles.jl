@@ -42,9 +42,12 @@ type BrukerFileCalib <: BrukerFile
   maxEntriesAcqp
 end
 
-function (::Type{BrukerFile})(path::String; isCalib=false, maxEntriesAcqp=2000)
+_iscalib(path::String) = isfile(joinpath(path,"pdata", "1", "systemMatrix"))
+
+function (::Type{BrukerFile})(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000)
   params = JcampdxFile()
   paramsProc = JcampdxFile()
+
   if isCalib
     return BrukerFileCalib(path, params, paramsProc, false, false, false,
                false, false, false, maxEntriesAcqp)
