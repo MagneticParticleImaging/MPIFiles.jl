@@ -257,6 +257,7 @@ include("SystemMatrix.jl")
 include("FrequencyFilter.jl")
 include("Conversion.jl")
 include("Image.jl")
+include("DatasetStore.jl")
 
 ### Misc functions ###
 #include("Misc.jl")
