@@ -214,7 +214,6 @@ function measData(b::BrukerFile, frames=1:measNumFrames(b), patches=1:acqNumPatc
   return reshape(data,size(data,1),size(data,2),1,size(data,3))
 end
 
-export systemMatrixWithBG, systemMatrix
 function systemMatrixWithBG(b::BrukerFile)
   if !experimentIsCalibration(b)
     return nothing

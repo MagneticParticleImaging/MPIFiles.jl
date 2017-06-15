@@ -16,7 +16,7 @@ if !isdir(fnMeasBruker)
   run(`unzip $(fnMeasBruker).zip`)
 end
 
-saveasMDF(fnMeasV2, fnMeasBruker)#, frames=1:100)
+saveasMDF(fnMeasV2, fnMeasBruker)#, frames=1:100) <- TODO test this
 saveasMDF(fnSMV2, fnSMBruker, applyCalibPostprocessing=true)
 
 mdfBruker = MPIFile(fnMeasBruker)
@@ -109,6 +109,9 @@ for sm in (smBruker,smv2)
 
   @test size( systemMatrixWithBG(sm) ) == (1959,817,3,1)
   @test size( systemMatrix(sm,1:10) ) == (1936,10)
+
+  # The following tests are commented out for the moment
+  # since it is unclear what a BrukerFile should answer here
   #@test measIsFourierTransformed(sm) == true
   #@test measIsAveraged(sm) == false
   #@test measIsTFCorrected(sm) == false
@@ -136,6 +139,6 @@ S_loadedfromraw = getMeasurements(smBruker,
       frames=1:measNumFGFrames(smBruker),sortFrames=true,
       spectralLeakageCorrection=false,fourierTransform=true,transposed=true)
 
-S_loadedfromproc = systemMatrixWithBG(smBruker)[1:measNumFGFrames(smBruker),:,:,:]
+S_loadedfromproc = systemMatrix(smBruker)
 
 @test norm(vec(S_loadedfromraw-S_loadedfromproc)) / norm(vec(S_loadedfromproc)) < 1e-6

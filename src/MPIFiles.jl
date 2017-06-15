@@ -16,7 +16,7 @@ export studyName, studyNumber, studyUuid, studyDescription
 
 # experiment parameters
 export experimentName, experimentNumber, experimentUuid, experimentDescription, experimentSubject,
-      experimentIsSimulation, experimentIsCalibration,  
+      experimentIsSimulation, experimentIsCalibration,
       experimentHasMeasurement, experimentHasReconstruction
 
 # tracer parameters
@@ -55,7 +55,7 @@ export calibSNR, calibFov, calibFovCenter, calibSize,
 export recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions
 
 # additional functions that should be implemented by an MPIFile
-export filepath
+export filepath, systemMatrixWithBG, systemMatrix
 
 
 ### Interface of an MPIFile ###
@@ -221,6 +221,10 @@ function measFGFrameIdx(f::MPIFile)
   end
   return idx
 end
+
+# We assume that systemMatrixWithBG has already reordered the BG data
+# to the end
+systemMatrix(f::MPIFile) = systemMatrixWithBG(f)[1:measNumFGFrames(f),:,:,:]
 
 ### Concrete implementations ###
 
