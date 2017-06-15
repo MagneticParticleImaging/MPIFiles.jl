@@ -16,11 +16,11 @@ if !isdir(fnMeasBruker)
   run(`unzip $(fnMeasBruker).zip`)
 end
 
-saveasMDF(fnMeasV2, fnMeasBruker)#, frames=1:100) <- TODO test this
-saveasMDF(fnSMV2, fnSMBruker, applyCalibPostprocessing=true)
 
 mdfBruker = MPIFile(fnMeasBruker)
 @test typeof(mdfBruker) == BrukerFileMeas
+
+saveasMDF(fnMeasV2, mdfBruker)#, frames=1:100) <- TODO test this
 
 mdfv2 = MPIFile(fnMeasV2)
 @test typeof(mdfv2) == MDFFileV2
@@ -98,8 +98,10 @@ end
 
 # Calibration File
 
-smBruker = MPIFile(fnSMBruker, true)
+smBruker = MPIFile(fnSMBruker, isCalib=true)
 @test typeof(smBruker) == BrukerFileCalib
+
+saveasMDF(fnSMV2, smBruker)
 
 smv2 = MPIFile(fnSMV2)
 @test typeof(smv2) == MDFFileV2
@@ -135,8 +137,9 @@ end
 
 # Next test checks if the cached system matrix is the same as the one loaded
 # from the raw data
-S_loadedfromraw = getMeasurements(smBruker,
-      frames=1:measNumFGFrames(smBruker),sortFrames=true,
+smBrukerPretendToBeMeas = MPIFile(fnSMBruker, isCalib=false)
+S_loadedfromraw = getMeasurements(smBrukerPretendToBeMeas,
+      frames=1:measNumFGFrames(smBrukerPretendToBeMeas),sortFrames=true,
       spectralLeakageCorrection=false,fourierTransform=true,transposed=true)
 
 S_loadedfromproc = systemMatrix(smBruker)

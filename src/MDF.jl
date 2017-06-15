@@ -361,7 +361,11 @@ measNumAverages(f::MDFFileV1) = nothing
 measNumAverages(f::MDFFileV2) = f["/measurement/numAverages"]
 measIsBGFrame(f::MDFFileV1) = zeros(Bool, measNumFrames(f))
 measIsBGFrame(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundFrame"])
-
+measFramePermutation(f::MDFFileV1) = nothing
+function measFramePermutation(f::MDFFileV2)
+  warn("Please implement me (measFramePermutation(f::MDFFileV2))")
+  return nothing
+end
 
 #calibrations
 calibSNR(f::MDFFileV1) = addTrailingSingleton(f["/calibration/snrFD"],3)

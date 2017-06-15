@@ -236,12 +236,12 @@ include("Brukerfile.jl")
 
 # This dispatches on the file extension and automatically
 # generates the correct type
-function (::Type{MPIFile})(filename::AbstractString, args...)
+function (::Type{MPIFile})(filename::AbstractString; kargs...)
   filenamebase, ext = splitext(filename)
   if ext == ".mdf" || ext == ".hdf" || ext == ".h5"
-    return MDFFile(filename, args...)
+    return MDFFile(filename; kargs...)
   else
-    return BrukerFile(filename, args...)
+    return BrukerFile(filename; kargs...)
   end
 end
 

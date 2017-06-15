@@ -42,7 +42,7 @@ type BrukerFileCalib <: BrukerFile
   maxEntriesAcqp
 end
 
-function (::Type{BrukerFile})(path::String, isCalib=false, maxEntriesAcqp=2000)
+function (::Type{BrukerFile})(path::String; isCalib=false, maxEntriesAcqp=2000)
   params = JcampdxFile()
   paramsProc = JcampdxFile()
   if isCalib
@@ -61,7 +61,7 @@ function (::Type{BrukerFile})()
              false, false, false, 1)
 end
 
-BrukerFileFast(path) = BrukerFile(path, 400)
+BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400)
 
 function getindex(b::BrukerFile, parameter)
   if !b.acqpRead && ( parameter=="NA" || parameter[1:3] == "ACQ" )
@@ -207,7 +207,8 @@ rxTransferFunction(b::BrukerFile) = nothing
 
 # measurements
 measUnit(b::BrukerFile) = "a.u."
-measDataConversionFactor(b::BrukerFile) = [1.0/rxNumAverages(b), 0.0]
+measDataConversionFactor(b::BrukerFileMeas) = [1.0/rxNumAverages(b), 0.0]
+measDataConversionFactor(b::BrukerFileCalib) = [1.0, 0.0]
 
 measNumFrames(b::BrukerFile) = Int64(b["ACQ_jobs"][1][8])
 function measNumBGFrames(b::BrukerFile)
@@ -219,7 +220,7 @@ function measNumBGFrames(b::BrukerFile)
   end
 end
 
-function measData(b::BrukerFile, frames=1:measNumFrames(b), patches=1:acqNumPatches(b),
+function measData(b::BrukerFileMeas, frames=1:measNumFrames(b), patches=1:acqNumPatches(b),
                   receivers=1:rxNumChannels(b))
 
   dataFilename = joinpath(b.path,"rawdata")
@@ -233,16 +234,14 @@ function measData(b::BrukerFile, frames=1:measNumFrames(b), patches=1:acqNumPatc
   return reshape(data,size(data,1),size(data,2),1,size(data,3))
 end
 
-function systemMatrixWithBG(b::BrukerFile)
-  if !experimentIsCalibration(b)
-    return nothing
-  end
+function measData(b::BrukerFileCalib, frames=1:measNumFrames(b), patches=1:acqNumPatches(b),
+                  receivers=1:rxNumChannels(b))
 
   sfFilename = joinpath(b.path,"pdata", "1", "systemMatrix")
   nFreq = rxNumFrequencies(b)
 
   data = Rawfile(sfFilename, Complex128,
-                 [prod(calibSize(b)),nFreq,rxNumChannels(b)], extRaw="")
+               [prod(calibSize(b)),nFreq,rxNumChannels(b)], extRaw="")
   S = data[]
   scale!(S,1.0/rxNumAverages(b))
   S = reshape(S,size(S,1),size(S,2),size(S,3),1)
@@ -250,17 +249,16 @@ function systemMatrixWithBG(b::BrukerFile)
   bgFilename = joinpath(b.path,"pdata", "1", "background")
 
   bgdata = Rawfile(bgFilename, Complex128,
-                 [measNumBGFrames(b),nFreq,rxNumChannels(b)], extRaw="")[]
+               [measNumBGFrames(b),nFreq,rxNumChannels(b)], extRaw="")[]
   scale!(bgdata,1.0/rxNumAverages(b))
   #bgdata = permutedims(bgdata,[3,1,2])
   bgdata = reshape(bgdata,size(bgdata,1),size(bgdata,2),size(bgdata,3),1)
   return cat(1,S,bgdata)
 end
 
-function systemMatrix(b::BrukerFile, rows, bgCorrection=true)
-  if !experimentIsCalibration(b)
-    return nothing
-  end
+systemMatrixWithBG(b::BrukerFileCalib) = measData(b)
+
+function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
 
   localSFFilename = bgCorrection ? "systemMatrixBG" : "systemMatrix"
   sfFilename = joinpath(b.path,"pdata", "1", localSFFilename)
@@ -273,40 +271,22 @@ function systemMatrix(b::BrukerFile, rows, bgCorrection=true)
   return S
 end
 
-function measIsFourierTransformed(b::BrukerFile)
-  return false
-end
+measIsFourierTransformed(b::BrukerFileMeas) = false
+measIsFourierTransformed(b::BrukerFileCalib) = true
+measIsTFCorrected(b::BrukerFile) = false
+measIsAveraged(b::BrukerFile) = false
+measIsFrameSelection(b::BrukerFile) = false
+measIsBGCorrected(b::BrukerFileMeas) = false
+# We have it, but by default we pretend that it is not applied
+measIsBGCorrected(b::BrukerFileCalib) = false
 
-function measIsTFCorrected(b::BrukerFile)
-  false
-end
+measIsTransposed(b::BrukerFileMeas) = false
+measIsTransposed(b::BrukerFileCalib) = true
 
-function measIsAveraged(b::BrukerFile)
-  return false
-end
+measIsFramePermutation(b::BrukerFileMeas) = false
+measIsFramePermutation(b::BrukerFileCalib) = true
 
-function measIsFrameSelection(b::BrukerFile)
-  return false
-end
-
-function measIsBGCorrected(b::BrukerFile)
-  return false
-end
-
-function measIsTransposed(b::BrukerFile)
-  return false
-end
-
-function measFramePermutation(b::BrukerFile)
-  if !experimentIsCalibration(b)
-    return nothing
-  else
-    return nothing # TODO
-  end
-end
-
-# not true for SF
-function measIsBGFrame(b::BrukerFile)
+function measIsBGFrame(b::BrukerFileMeas)
   if !experimentIsCalibration(b)
     return zeros(Bool, measNumFrames(b))
   else
@@ -315,6 +295,18 @@ function measIsBGFrame(b::BrukerFile)
     isBG[1:increment:end] = true
     return isBG
   end
+end
+
+# We assume here that the BG frames are at the end
+measIsBGFrame(b::BrukerFileCalib) =
+   cat(1,zeros(Bool,measNumFGFrames(b)),ones(Bool,measNumBGFrames(b)))
+
+measFramePermutation(b::BrukerFileMeas) = nothing
+function measFramePermutation(b::BrukerFileCalib)
+  perm1=cat(1,measFGFrameIdx(b),measBGFrameIdx(b))
+  perm2=cat(1,fgFramePermutation(b),(length(perm1)-measNumBGFrames(b)+1):length(perm1))
+  permJoint = perm1[perm2]
+  return permJoint
 end
 
 function fgFramePermutation(b::BrukerFile)
@@ -334,13 +326,7 @@ function fgFramePermutation(b::BrukerFile)
   return vec(idx)
 end
 
-function measIsFramePermutation(b::BrukerFile)
-  if !experimentIsCalibration(b)
-    return false
-  else
-    return true
-  end
-end
+
 measIsSpectralLeakageCorrected(b::BrukerFile) = get(b.params, "ACQ_MPI_spectral_cleaningl", "No") != "No"
 measIsFrequencySelection(b::BrukerFile) = false
 measNumAverages(b::BrukerFile) = nothing

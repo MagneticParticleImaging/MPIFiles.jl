@@ -10,49 +10,26 @@ end
 
 
 # we do not support all conversion possibilities
-function loadDataset(f::MPIFile; frames=1:measNumFrames(f), applyCalibPostprocessing=false)
+function loadDataset(f::MPIFile; frames=1:measNumFrames(f))
+    # TODO applyCalibPostprocessing=false)
   params = loadMetadata(f)
 
   # call API function and store result in a parameter Dict
   if experimentHasMeasurement(f)
-    if !applyCalibPostprocessing
-      for op in [:measUnit, :measDataConversionFactor,
-                 :measIsFourierTransformed, :measIsTFCorrected,
-                 :measIsAveraged, :measIsFrameSelection, :measIsBGCorrected,
-                 :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
-                 :measNumAverages, :measIsSpectralLeakageCorrected]
-          setparam!(params, string(op), eval(op)(f))
-      end
+    for op in [:measUnit, :measDataConversionFactor, :measNumFrames,
+               :measIsFourierTransformed, :measIsTFCorrected,
+               :measIsAveraged, :measIsFrameSelection, :measIsBGCorrected,
+               :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
+               :measNumAverages, :measIsSpectralLeakageCorrected,
+               :measFramePermutation, :measIsBGFrame]
+        setparam!(params, string(op), eval(op)(f))
+    end
+    if frames!=1:measNumFrames(f)
       setparam!(params, "measData", measData(f,frames))
       setparam!(params, "measNumFrames", length(frames))
       setparam!(params, "measIsBGFrame", measIsBGFrame(f)[frames])
     else
-      # Not clear if the following will work for non Brukerfiles
-      # currently the assumption is that all BG frames are shifted
-      # to the last positions. 
-      data = systemMatrixWithBG(f)
-      setparam!(params, "measData", data)
-      setparam!(params, "measNumFrames", size(data,1))
-
-      setparam!(params, "measIsBGFrame",
-           cat(1,zeros(Bool,measNumFGFrames(f)),ones(Bool,measNumBGFrames(f))) )
-      params["measDataConversionFactor"]=[1,0]
-      params["measUnit"]="V"
-      params["measIsFourierTransformed"]=true
-      params["measIsTFCorrected"]=false
-      params["measIsAveraged"]=false
-      params["measIsFrameSelection"]=false
-      params["measIsBGCorrected"]=false
-      params["measIsTransposed"]=true
-      params["measIsFramePermutation"]=true
-
-      perm1=cat(1,measFGFrameIdx(f),measBGFrameIdx(f))
-      perm2=cat(1,fgFramePermutation(f),(length(perm1)-measNumBGFrames(f)+1):length(perm1))
-      permJoint = perm1[perm2]
-      params["measFramePermutation"] = permJoint
-      params["measIsFrequencySelection"]=false
-      params["measNumAverages"]=1
-      params["measIsSpectralLeakageCorrected"]=true
+      setparam!(params, "measData", measData(f))
     end
   end
 
@@ -102,7 +79,11 @@ function loadMetadata(f)
 end
 
 function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
-  saveasMDF(filenameOut, loadDataset(MPIFile(filenameIn);kargs...) )
+  saveasMDF(filenameOut, MPIFile(filenameIn); kargs...)
+end
+
+function saveasMDF(filenameOut::String, f::MPIFile; kargs...)
+  saveasMDF(filenameOut, loadDataset(f;kargs...) )
 end
 
 function saveasMDF(filename::String, params::Dict)
