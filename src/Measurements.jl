@@ -122,20 +122,31 @@ end
 function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:measNumFrames(f),
       loadasreal=false, fourierTransform=measIsFourierTransformed(f),
       transposed=measIsTransposed(f), bgCorrection=false, frequencies=nothing,
-      tfCorrection=measIsTFCorrected(f),  kargs...)
+      tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
 
   if neglectBGFrames
     idx = measFGFrameIdx(f)
-    data = getAveragedMeasurements(f; frames=idx[frames], kargs...)
+
+    if !sortFrames
+      data = getAveragedMeasurements(f; frames=idx[frames], kargs...)
+    else
+      data = getAveragedMeasurements(f; frames=idx[fgFramePermutation(f)][frames], kargs...)
+    end
 
     if bgCorrection
       idxBG = measBGFrameIdx(f)
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
-
       # do something clever now :-)
     end
   else
-    data = getAveragedMeasurements(f; frames=frames, kargs...)
+    if sortFrames
+      perm1=cat(1,measFGFrameIdx(f),measBGFrameIdx(f))
+      perm2=cat(1,fgFramePermutation(f),(length(perm1)-measNumBGFrames(f)+1):length(perm1))
+      permJoint = perm1[perm2]
+      data = getAveragedMeasurements(f; frames=permJoint, kargs...)
+    else
+      data = getAveragedMeasurements(f; frames=frames, kargs...)
+    end
   end
 
   if fourierTransform && !measIsFourierTransformed(f)

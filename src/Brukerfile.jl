@@ -288,7 +288,34 @@ function measFramePermutation(b::BrukerFile)
 end
 
 # not true for SF
-measIsBGFrame(b::BrukerFile) = zeros(Bool, measNumFrames(b))
+function measIsBGFrame(b::BrukerFile)
+  if !experimentIsCalibration(b)
+    return zeros(Bool, measNumFrames(b))
+  else
+    isBG = zeros(Bool, measNumFrames(b))
+    increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
+    isBG[1:increment:end] = true
+    return isBG
+  end
+end
+
+function fgFramePermutation(b::BrukerFile)
+  N = calibSize(b)
+  counter = 1
+  idx = zeros(Int,N...)
+  for z=1:N[3]
+    for y=1:N[2]
+      y_ = mod(z,2)==0 ? N[2]-y+1 : y
+      for x=1:N[1]
+        x_ = mod(y,2)==0 ? N[1]-x+1 : x
+        idx[x_,y_,z] = counter
+        counter += 1
+      end
+    end
+  end
+  return vec(idx)
+end
+
 function measIsFramePermutation(b::BrukerFile)
   if !experimentIsCalibration(b)
     return false

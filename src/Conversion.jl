@@ -27,6 +27,9 @@ function loadDataset(f::MPIFile; frames=1:measNumFrames(f), applyCalibPostproces
       setparam!(params, "measNumFrames", length(frames))
       setparam!(params, "measIsBGFrame", measIsBGFrame(f)[frames])
     else
+      # Not clear if the following will work for non Brukerfiles
+      # currently the assumption is that all BG frames are shifted
+      # to the last positions. 
       data = systemMatrixWithBG(f)
       setparam!(params, "measData", data)
       setparam!(params, "measNumFrames", size(data,1))
@@ -38,10 +41,15 @@ function loadDataset(f::MPIFile; frames=1:measNumFrames(f), applyCalibPostproces
       params["measIsFourierTransformed"]=true
       params["measIsTFCorrected"]=false
       params["measIsAveraged"]=false
-      params["measIsFrameSelection"]=true
+      params["measIsFrameSelection"]=false
       params["measIsBGCorrected"]=false
       params["measIsTransposed"]=true
       params["measIsFramePermutation"]=true
+
+      perm1=cat(1,measFGFrameIdx(f),measBGFrameIdx(f))
+      perm2=cat(1,fgFramePermutation(f),(length(perm1)-measNumBGFrames(f)+1):length(perm1))
+      permJoint = perm1[perm2]
+      params["measFramePermutation"] = permJoint
       params["measIsFrequencySelection"]=false
       params["measNumAverages"]=1
       params["measIsSpectralLeakageCorrected"]=true
@@ -212,6 +220,10 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/measurement/isBackgroundCorrected",  Int8(params["measIsBGCorrected"]))
     write(file, "/measurement/isTransposed",  Int8(params["measIsTransposed"]))
     write(file, "/measurement/isFramePermutation",  Int8(params["measIsFramePermutation"]))
+
+    if hasKeyAndValue(params, "measFramePermutation")
+      write(file, "/measurement/framePermutation", params["measFramePermutation"] )
+    end
     if hasKeyAndValue(params, "measIsBGFrame")
       write(file, "/measurement/isBackgroundFrame", convert(Array{Int8},params["measIsBGFrame"]) )
     end

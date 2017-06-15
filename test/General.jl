@@ -96,7 +96,7 @@ end
 
 
 
-# Calibration File V1
+# Calibration File
 
 smBruker = MPIFile(fnSMBruker)
 @test typeof(smBruker) == BrukerFile
@@ -129,3 +129,13 @@ for sm in (smBruker,smv2)
   @test size(getSystemMatrix(sm,1:10)) == (1936,10)
   @test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (1936,20)
 end
+
+# Next test checks if the cached system matrix is the same as the one loaded
+# from the raw data
+S_loadedfromraw = getMeasurements(smBruker,
+      frames=1:measNumFGFrames(smBruker),sortFrames=true,
+      spectralLeakageCorrection=false,fourierTransform=true,transposed=true)
+
+S_loadedfromproc = systemMatrixWithBG(smBruker)[1:measNumFGFrames(smBruker),:,:,:]
+
+@test norm(vec(S_loadedfromraw-S_loadedfromproc)) / norm(vec(S_loadedfromproc)) < 1e-6
