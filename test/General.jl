@@ -20,7 +20,7 @@ saveasMDF(fnMeasV2, fnMeasBruker)#, frames=1:100) <- TODO test this
 saveasMDF(fnSMV2, fnSMBruker, applyCalibPostprocessing=true)
 
 mdfBruker = MPIFile(fnMeasBruker)
-@test typeof(mdfBruker) == BrukerFile
+@test typeof(mdfBruker) == BrukerFileMeas
 
 mdfv2 = MPIFile(fnMeasV2)
 @test typeof(mdfv2) == MDFFileV2
@@ -98,8 +98,8 @@ end
 
 # Calibration File
 
-smBruker = MPIFile(fnSMBruker)
-@test typeof(smBruker) == BrukerFile
+smBruker = MPIFile(fnSMBruker, true)
+@test typeof(smBruker) == BrukerFileCalib
 
 smv2 = MPIFile(fnSMV2)
 @test typeof(smv2) == MDFFileV2
