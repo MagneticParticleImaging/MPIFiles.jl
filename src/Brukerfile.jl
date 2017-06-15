@@ -1,6 +1,6 @@
 include("Jcampdx.jl")
 
-export BrukerFile, latin1toutf8
+export BrukerFile, BrukerFileMeas, BrukerFileCalib, latin1toutf8
 
 function latin1toutf8(str::AbstractString)
   buff = Char[]
@@ -14,7 +14,9 @@ function latin1toutf8(str::Void)
   println(stacktrace())
 end
 
-type BrukerFile <: MPIFile
+abstract BrukerFile <: MPIFile
+
+type BrukerFileMeas <: BrukerFile
   path::String
   params::JcampdxFile
   paramsProc::JcampdxFile
@@ -25,21 +27,38 @@ type BrukerFile <: MPIFile
   methrecoRead
   visuparsRead
   maxEntriesAcqp
+end
 
-  function BrukerFile(path::String, maxEntriesAcqp=2000)
-    params = JcampdxFile()
-    paramsProc = JcampdxFile()
-    return new(path, params, paramsProc, false, false, false,
+type BrukerFileCalib <: BrukerFile
+  path::String
+  params::JcampdxFile
+  paramsProc::JcampdxFile
+  methodRead
+  acqpRead
+  visupars_globalRead
+  recoRead
+  methrecoRead
+  visuparsRead
+  maxEntriesAcqp
+end
+
+function (::Type{BrukerFile})(path::String, isCalib=false, maxEntriesAcqp=2000)
+  params = JcampdxFile()
+  paramsProc = JcampdxFile()
+  if isCalib
+    return BrukerFileCalib(path, params, paramsProc, false, false, false,
+               false, false, false, maxEntriesAcqp)
+  else
+    return BrukerFileMeas(path, params, paramsProc, false, false, false,
                false, false, false, maxEntriesAcqp)
   end
+end
 
-  function BrukerFile()
-    params = JcampdxFile()
-    paramsProc = JcampdxFile()
-    return new("", params, paramsProc, false, false, false,
-               false, false, false, 1)
-  end
-
+function (::Type{BrukerFile})()
+  params = JcampdxFile()
+  paramsProc = JcampdxFile()
+  return BrukerFileMeas("", params, paramsProc, false, false, false,
+             false, false, false, 1)
 end
 
 BrukerFileFast(path) = BrukerFile(path, 400)
