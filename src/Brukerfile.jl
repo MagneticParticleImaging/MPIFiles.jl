@@ -171,8 +171,20 @@ function acqStartTime(b::BrukerFile)
   acq = b["ACQ_time"] #b["VisuAcqDate"]
   DateTime( replace(acq[2:search(acq,'+')-1],",",".") )
 end
-acqFramePeriod(b::BrukerFile) = dfPeriod(b) * rxNumAverages(b)
+acqNumFrames(b::BrukerFile) = Int64(b["ACQ_jobs"][1][8])
+acqFramePeriod(b::BrukerFile) = dfPeriod(b) * acqNumAverages(b)
 acqNumPatches(b::BrukerFile) = 1
+acqNumPeriods(b::BrukerFile) = 1
+acqNumAverages(b::BrukerFile) = parse(Int,b["NA"])
+
+function acqNumBGFrames(b::BrukerFile)
+  n = b["PVM_MPI_NrBackgroundMeasurementCalibrationAllScans"]
+  if n == nothing
+    return 0
+  else
+    return parse(Int64,n)
+  end
+end
 acqGradient(b::BrukerFile) = addTrailingSingleton([-0.5, -0.5, 1.0].*
       parse(Float64,b["ACQ_MPI_selection_field_gradient"]),2)
 function acqOffsetField(b::BrukerFile) #TODO NOT correct
@@ -203,41 +215,30 @@ dfPeriod(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000
 
 # receiver parameters
 rxNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
-rxNumAverages(b::BrukerFile) = parse(Int,b["NA"])
 rxBandwidth(b::BrukerFile) = parse(Float64,b["PVM_MPI_Bandwidth"])*1e6
 rxNumSamplingPoints(b::BrukerFile) = parse(Int64,b["ACQ_size"][1])
 rxTransferFunction(b::BrukerFile) = nothing
 
 # measurements
 measUnit(b::BrukerFile) = "a.u."
-measDataConversionFactor(b::BrukerFileMeas) = [1.0/rxNumAverages(b), 0.0]
+measDataConversionFactor(b::BrukerFileMeas) = [1.0/acqNumAverages(b), 0.0]
 measDataConversionFactor(b::BrukerFileCalib) = [1.0, 0.0]
 
-measNumFrames(b::BrukerFile) = Int64(b["ACQ_jobs"][1][8])
-function measNumBGFrames(b::BrukerFile)
-  n = b["PVM_MPI_NrBackgroundMeasurementCalibrationAllScans"]
-  if n == nothing
-    return 0
-  else
-    return parse(Int64,n)
-  end
-end
-
-function measData(b::BrukerFileMeas, frames=1:measNumFrames(b), patches=1:acqNumPatches(b),
+function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), patches=1:acqNumPatches(b),
                   receivers=1:rxNumChannels(b))
 
   dataFilename = joinpath(b.path,"rawdata")
-  dType = rxNumAverages(b) == 1 ? Int16 : Int32
+  dType = acqNumAverages(b) == 1 ? Int16 : Int32
 
   raw = Rawfile(dataFilename, dType,
-             [rxNumSamplingPoints(b),rxNumChannels(b),measNumFrames(b)],
+             [rxNumSamplingPoints(b),rxNumChannels(b),acqNumFrames(b)],
              extRaw=".job0") #Int or Uint?
   data = raw[:,receivers,frames]
 
   return reshape(data,size(data,1),size(data,2),1,size(data,3))
 end
 
-function measData(b::BrukerFileCalib, frames=1:measNumFrames(b), patches=1:acqNumPatches(b),
+function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), patches=1:acqNumPatches(b),
                   receivers=1:rxNumChannels(b))
 
   sfFilename = joinpath(b.path,"pdata", "1", "systemMatrix")
@@ -246,14 +247,14 @@ function measData(b::BrukerFileCalib, frames=1:measNumFrames(b), patches=1:acqNu
   data = Rawfile(sfFilename, Complex128,
                [prod(calibSize(b)),nFreq,rxNumChannels(b)], extRaw="")
   S = data[]
-  scale!(S,1.0/rxNumAverages(b))
+  scale!(S,1.0/acqNumAverages(b))
   S = reshape(S,size(S,1),size(S,2),size(S,3),1)
 
   bgFilename = joinpath(b.path,"pdata", "1", "background")
 
   bgdata = Rawfile(bgFilename, Complex128,
-               [measNumBGFrames(b),nFreq,rxNumChannels(b)], extRaw="")[]
-  scale!(bgdata,1.0/rxNumAverages(b))
+               [acqNumBGFrames(b),nFreq,rxNumChannels(b)], extRaw="")[]
+  scale!(bgdata,1.0/acqNumAverages(b))
   #bgdata = permutedims(bgdata,[3,1,2])
   bgdata = reshape(bgdata,size(bgdata,1),size(bgdata,2),size(bgdata,3),1)
   return cat(1,S,bgdata)
@@ -270,15 +271,13 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
   data = Rawfile(sfFilename, Complex128,
                  [prod(calibSize(b)),nFreq*rxNumChannels(b)], extRaw="")
   S = data[:,rows]
-  scale!(S,1.0/rxNumAverages(b))
+  scale!(S,1.0/acqNumAverages(b))
   return S
 end
 
 measIsFourierTransformed(b::BrukerFileMeas) = false
 measIsFourierTransformed(b::BrukerFileCalib) = true
 measIsTFCorrected(b::BrukerFile) = false
-measIsAveraged(b::BrukerFile) = false
-measIsFrameSelection(b::BrukerFile) = false
 measIsBGCorrected(b::BrukerFileMeas) = false
 # We have it, but by default we pretend that it is not applied
 measIsBGCorrected(b::BrukerFileCalib) = false
@@ -291,9 +290,9 @@ measIsFramePermutation(b::BrukerFileCalib) = true
 
 function measIsBGFrame(b::BrukerFileMeas)
   if !experimentIsCalibration(b)
-    return zeros(Bool, measNumFrames(b))
+    return zeros(Bool, acqNumFrames(b))
   else
-    isBG = zeros(Bool, measNumFrames(b))
+    isBG = zeros(Bool, acqNumFrames(b))
     increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
     isBG[1:increment:end] = true
     return isBG
@@ -302,12 +301,12 @@ end
 
 # We assume here that the BG frames are at the end
 measIsBGFrame(b::BrukerFileCalib) =
-   cat(1,zeros(Bool,measNumFGFrames(b)),ones(Bool,measNumBGFrames(b)))
+   cat(1,zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)))
 
 measFramePermutation(b::BrukerFileMeas) = nothing
 function measFramePermutation(b::BrukerFileCalib)
   perm1=cat(1,measFGFrameIdx(b),measBGFrameIdx(b))
-  perm2=cat(1,fgFramePermutation(b),(length(perm1)-measNumBGFrames(b)+1):length(perm1))
+  perm2=cat(1,fgFramePermutation(b),(length(perm1)-acqNumBGFrames(b)+1):length(perm1))
   permJoint = perm1[perm2]
   return permJoint
 end
@@ -332,7 +331,6 @@ end
 
 measIsSpectralLeakageCorrected(b::BrukerFile) = get(b.params, "ACQ_MPI_spectral_cleaningl", "No") != "No"
 measIsFrequencySelection(b::BrukerFile) = false
-measNumAverages(b::BrukerFile) = nothing
 
 # calibrations
 function calibSNR(b::BrukerFile)

@@ -17,7 +17,7 @@ function spectralLeakageCorrection_(f::MPIFile, frames)
   #println("Apply Spectral Cleaning")
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
-  numFrames = measNumFrames(f)
+  numFrames = acqNumFrames(f)
   numPatches = acqNumPatches(f)
 
   data = zeros(Float32, numTimePoints, numReceivers, numPatches, length(frames))
@@ -73,12 +73,12 @@ function returnasreal{T}(u::AbstractArray{Complex{T}})
 end
 returnasreal{T<:Real}(u::AbstractArray{T}) = u
 
-function getAveragedMeasurements(f::MPIFile; frames=1:measNumFrames(f),
+function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
             numAverages=1,  verbose = false,
             spectralLeakageCorrection=true)
 
   verbose && println( rxNumSamplingPoints(f), " ",
-                      rxNumChannels(f), " ", measNumFrames(f), )
+                      rxNumChannels(f), " ", acqNumFrames(f), )
 
   if numAverages == 1
     data = measDataLowLevel(f, frames, spectralLeakageCorrection=spectralLeakageCorrection)
@@ -119,7 +119,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:measNumFrames(f),
   return data
 end
 
-function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:measNumFrames(f),
+function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:acqNumFrames(f),
       loadasreal=false, fourierTransform=measIsFourierTransformed(f),
       transposed=measIsTransposed(f), bgCorrection=false, frequencies=nothing,
       tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
@@ -141,7 +141,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:measNumFrame
   else
     if sortFrames
       perm1=cat(1,measFGFrameIdx(f),measBGFrameIdx(f))
-      perm2=cat(1,fgFramePermutation(f),(length(perm1)-measNumBGFrames(f)+1):length(perm1))
+      perm2=cat(1,fgFramePermutation(f),(length(perm1)-acqNumBGFrames(f)+1):length(perm1))
       permJoint = perm1[perm2]
       data = getAveragedMeasurements(f; frames=permJoint, kargs...)
     else

@@ -59,10 +59,10 @@ for mdf in (mdfv1,mdfv2)
   @test tracerInjectionTime(mdf) == [DateTime("2015-09-15T11:17:23.011")]
 
   @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
-  @test acqGradient(mdf) == [-1.25 -1.25 2.5]
+  @test acqGradient(mdf)[:,1] == [-1.25; -1.25; 2.5]
   @test acqFramePeriod(mdf) == 6.528E-4
   @test acqNumPatches(mdf) == 1
-  @test acqOffsetFieldShift(mdf) == [0.0 0.0 -0.0]
+  @test acqOffsetFieldShift(mdf)[:,1] == [0.0; 0.0; -0.0]
 
   @test dfNumChannels(mdf) == 3
   @test dfWaveform(mdf) == "sine"
@@ -75,10 +75,10 @@ for mdf in (mdfv1,mdfv2)
   @test rxNumChannels(mdf) == 3
   @test rxBandwidth(mdf) == 1250000.0
   @test rxNumSamplingPoints(mdf) == 1632
-  @test rxNumAverages(mdf) == 1
+  @test acqNumAverages(mdf) == 1
 
   @test size( measData(mdf) ) == (1632,3,1,500)
-  @test measNumFrames(mdf) == 500
+  @test acqNumFrames(mdf) == 500
 
   @test size(getMeasurements(mdf, numAverages=1,
               spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
@@ -114,7 +114,6 @@ for sm in (smv1,smv2)
 
   @test size( measData(sm) ) == (1936,817,3,1)
   @test measIsFourierTransformed(sm) == true
-  @test measIsAveraged(sm) == false
   @test measIsTFCorrected(sm) == false
   @test measIsTransposed(sm) == true
   @test measIsBGCorrected(sm) == true

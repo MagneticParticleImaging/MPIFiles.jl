@@ -68,12 +68,12 @@ for mdf in (mdfBruker,mdfv2)
   @test rxNumChannels(mdf) == 3
   @test rxBandwidth(mdf) == 1250000.0
   @test rxNumSamplingPoints(mdf) == 1632
-  @test rxNumAverages(mdf) == 1
+  @test acqNumAverages(mdf) == 1
 
-  @test measNumFrames(mdf) == 500
+  @test acqNumFrames(mdf) == 500
   @test size( measData(mdf) ) == (1632,3,1,500)
 
-  N = measNumFrames(mdf)
+  N = acqNumFrames(mdf)
 
   @test size(getMeasurements(mdf, numAverages=1,
               spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
@@ -112,13 +112,11 @@ for sm in (smBruker,smv2)
   @test size( systemMatrixWithBG(sm) ) == (1959,817,3,1)
   @test size( systemMatrix(sm,1:10) ) == (1936,10)
 
-  # The following tests are commented out for the moment
-  # since it is unclear what a BrukerFile should answer here
-  #@test measIsFourierTransformed(sm) == true
-  #@test measIsAveraged(sm) == false
-  #@test measIsTFCorrected(sm) == false
-  #@test measIsTransposed(sm) == true
-  #@test measIsBGCorrected(sm) == true
+
+  @test measIsFourierTransformed(sm) == true
+  @test measIsTFCorrected(sm) == false
+  @test measIsTransposed(sm) == true
+  @test measIsBGCorrected(sm) == false
 
   @test size( calibSNR(sm) ) == (817,3,1)
   @test calibFov(sm) == [0.044; 0.044; 0.001]
@@ -139,7 +137,7 @@ end
 # from the raw data
 smBrukerPretendToBeMeas = MPIFile(fnSMBruker, isCalib=false)
 S_loadedfromraw = getMeasurements(smBrukerPretendToBeMeas,
-      frames=1:measNumFGFrames(smBrukerPretendToBeMeas),sortFrames=true,
+      frames=1:acqNumFGFrames(smBrukerPretendToBeMeas),sortFrames=true,
       spectralLeakageCorrection=false,fourierTransform=true,transposed=true)
 
 S_loadedfromproc = systemMatrix(smBruker)

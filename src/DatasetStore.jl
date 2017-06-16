@@ -98,9 +98,9 @@ function getExperiment(path::String)
   end
 
   exp = Experiment( path, parse(Int64,last(splitdir(prefix))),
-                      string(experimentDescription(b)), measNumFrames(b),
+                      string(experimentDescription(b)), acqNumFrames(b),
                       round(1000.*vec(acqFov(b)),2), acqGradient(b)[:,1],
-                      rxNumAverages(b), scannerOperator(b))
+                      acqNumAverages(b), scannerOperator(b))
 
   return exp
 end

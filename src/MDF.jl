@@ -136,6 +136,24 @@ acqStartTime(f::MDFFileV1) = DateTime( f["/acquisition/time"] )
 acqStartTime(f::MDFFileV2) = DateTime( f["/acquisition/startTime"] )
 acqFramePeriod(f::MDFFile) = f["/acquisition/framePeriod"]
 acqNumPatches(f::MDFFile) = f["/acquisition/numPatches"]
+acqNumAverages(f::MDFFileV1) = f["/acquisition/drivefield/averages"]
+acqNumAverages(f::MDFFileV2) = f["/acquisition/numAverages"]
+function acqNumFrames(f::MDFFileV1)
+  if experimentIsCalibration(f)
+    if f.mmap_measData == nothing
+      h5open(f.filename,"r") do file
+        f.mmap_measData = readmmap(file["/calibration/dataFD"])
+      end
+    end
+    return size(f.mmap_measData,2)
+  else
+    return f["/acquisition/numFrames"]
+  end
+end
+acqNumFrames(f::MDFFileV2) = f["/acquisition/numFrames"]
+acqNumPeriods(f::MDFFileV1) = 1
+acqNumPeriods(f::MDFFileV2) = f["/acquisition/numPeriods"]
+
 acqGradient(f::MDFFileV1) = addTrailingSingleton(f["/acquisition/gradient"],2)
 acqGradient(f::MDFFileV2) = f["/acquisition/gradient"]
 acqOffsetField(f::MDFFile) = f["/acquisition/offsetField"]
@@ -161,8 +179,6 @@ dfPeriod(f::MDFFile) = f["/acquisition/drivefield/period"]
 
 # receiver parameters
 rxNumChannels(f::MDFFile) = f["/acquisition/receiver/numChannels"]
-rxNumAverages(f::MDFFileV1) = f["/acquisition/drivefield/averages"]
-rxNumAverages(f::MDFFileV2) = f["/acquisition/receiver/numAverages"]
 rxBandwidth(f::MDFFile) = f["/acquisition/receiver/bandwidth"]
 rxNumSamplingPoints(f::MDFFile) = f["/acquisition/receiver/numSamplingPoints"]
 rxTransferFunction(f::MDFFile) = f["/acquisition/receiver/transferFunction"]
@@ -172,21 +188,8 @@ measUnit(f::MDFFileV1) = "a.u."
 measUnit(f::MDFFileV2) = f["/measurement/unit"]
 measDataConversionFactor(f::MDFFileV1) = [1.0, 0.0]
 measDataConversionFactor(f::MDFFileV2) = f["/measurement/dataConversionFactor"]
-function measNumFrames(f::MDFFileV1)
-  if experimentIsCalibration(f)
-    if f.mmap_measData == nothing
-      h5open(f.filename,"r") do file
-        f.mmap_measData = readmmap(file["/calibration/dataFD"])
-      end
-    end
-    return size(f.mmap_measData,2)
-  else
-    return f["/acquisition/numFrames"]
-  end
-end
 
-measNumFrames(f::MDFFileV2) = f["/measurement/numFrames"]
-function measData(f::MDFFileV1, frames=1:measNumFrames(f), patches=1:acqNumPatches(f),
+function measData(f::MDFFileV1, frames=1:acqNumFrames(f), patches=1:acqNumPatches(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     # the V1 file is a calibration
@@ -227,7 +230,7 @@ function measData(f::MDFFileV1, frames=1:measNumFrames(f), patches=1:acqNumPatch
   end
 end
 
-function measData(f::MDFFileV2, frames=1:measNumFrames(f), patches=1:acqNumPatches(f),
+function measData(f::MDFFileV2, frames=1:acqNumFrames(f), patches=1:acqNumPatches(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     return nothing
@@ -322,12 +325,6 @@ measIsTFCorrected(f::MDFFileV2) = Bool(f["/measurement/isTransferFunctionCorrect
 measIsSpectralLeakageCorrected(f::MDFFileV1) = false
 measIsSpectralLeakageCorrected(f::MDFFileV2) = Bool(f["/measurement/isSpectralLeakageCorrected"])
 
-measIsAveraged(f::MDFFileV1) = false
-measIsAveraged(f::MDFFileV2) = Bool(f["/measurement/isAveraged"])
-
-measIsFrameSelection(f::MDFFileV1) = false
-measIsFrameSelection(f::MDFFileV2) = Bool(f["/measurement/isFrameSelection"])
-
 function measIsBGCorrected(f::MDFFileV1)
   if !experimentIsCalibration(f)
     return false
@@ -357,9 +354,7 @@ function measIsFramePermutation(f::MDFFileV1)
   end
 end
 measIsFramePermutation(f::MDFFileV2) = f["/measurement/isFramePermutation"]
-measNumAverages(f::MDFFileV1) = nothing
-measNumAverages(f::MDFFileV2) = f["/measurement/numAverages"]
-measIsBGFrame(f::MDFFileV1) = zeros(Bool, measNumFrames(f))
+measIsBGFrame(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
 measIsBGFrame(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundFrame"])
 measFramePermutation(f::MDFFileV1) = nothing
 function measFramePermutation(f::MDFFileV2)

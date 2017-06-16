@@ -28,23 +28,23 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerModel,
        scannerTopology
 
 # acquisition parameters
-export acqStartTime, acqFramePeriod, acqNumPatches,
-       acqGradient, acqOffsetField, acqOffsetFieldShift
+export acqStartTime, acqFramePeriod, acqNumPatches, acqNumFrames, acqNumAverages,
+       acqGradient, acqOffsetField, acqOffsetFieldShift, acqNumPeriods
 
 # drive-field parameters
 export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
        dfDivider, dfWaveform, dfPeriod
 
 # receiver parameters
-export rxNumChannels, rxNumAverages, rxBandwidth, rxNumSamplingPoints,
+export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
        rxTransferFunction
 
 # measurements
-export measUnit, measDataConversionFactor, measData, measNumFrames,
-       measIsFourierTransformed, measIsTFCorrected, measIsAveraged,
-       measIsFrameSelection, measIsBGCorrected, measIsTransposed,
+export measUnit, measDataConversionFactor, measData,
+       measIsFourierTransformed, measIsTFCorrected,
+       measIsBGCorrected, measIsTransposed,
        measIsFramePermutation, measIsFrequencySelection,
-       measIsBGFrame, measNumAverages, measIsSpectralLeakageCorrected
+       measIsBGFrame, measIsSpectralLeakageCorrected
 
 # calibrations
 export calibSNR, calibFov, calibFovCenter, calibSize,
@@ -103,6 +103,9 @@ abstract MPIFile
 @mustimplement acqStartTime(f::MPIFile)
 @mustimplement acqFramePeriod(f::MPIFile)
 @mustimplement acqNumPatches(f::MPIFile)
+@mustimplement acqNumAverages(f::MPIFile)
+@mustimplement acqNumPeriods(f::MPIFile)
+@mustimplement acqNumFrames(f::MPIFile)
 @mustimplement acqGradient(f::MPIFile)
 @mustimplement acqOffsetField(f::MPIFile)
 @mustimplement acqOffsetFieldShift(f::MPIFile)
@@ -119,7 +122,6 @@ abstract MPIFile
 
 # receiver properties
 @mustimplement rxNumChannels(f::MPIFile)
-@mustimplement rxNumAverages(f::MPIFile)
 @mustimplement rxBandwidth(f::MPIFile)
 @mustimplement rxNumSamplingPoints(f::MPIFile)
 @mustimplement rxTransferFunction(f::MPIFile)
@@ -128,18 +130,14 @@ abstract MPIFile
 @mustimplement measUnit(f::MPIFile)
 @mustimplement measDataConversionFactor(f::MPIFile)
 @mustimplement measData(f::MPIFile)
-@mustimplement measNumFrames(f::MPIFile)
 @mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
 @mustimplement measIsFourierTransformed(f::MPIFile)
 @mustimplement measIsTFCorrected(f::MPIFile)
-@mustimplement measIsAveraged(f::MPIFile)
-@mustimplement measIsFrameSelecton(f::MPIFile)
 @mustimplement measIsFrequencySelecton(f::MPIFile)
 @mustimplement measIsBGCorrected(f::MPIFile)
 @mustimplement measIsTransposed(f::MPIFile)
 @mustimplement measIsFramePermutation(f::MPIFile)
 @mustimplement measIsBGFrame(f::MPIFile)
-@mustimplement measNumAverages(f::MPIFile)
 
 # calibrations
 @mustimplement calibSNR(f::MPIFile)
@@ -188,16 +186,16 @@ function acqFovCenter(f::MPIFile)
  return acqOffsetField(f) ./ abs( acqGradient(f) )
 end
 
-export measNumFGFrames, measNumBGFrames, measFGFrameIdx, measBGFrameIdx
+export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx
 
-measNumFGFrames(f::MPIFile) = measNumFrames(f) - measNumBGFrames(f)
-measNumBGFrames(f::MPIFile) = sum(measIsBGFrame(f))
+acqNumFGFrames(f::MPIFile) = acqNumFrames(f) - acqNumBGFrames(f)
+acqNumBGFrames(f::MPIFile) = sum(measIsBGFrame(f))
 
 function measBGFrameIdx(f::MPIFile)
-  idx = zeros(Int64, measNumBGFrames(f))
+  idx = zeros(Int64, acqNumBGFrames(f))
   j = 1
   mask = measIsBGFrame(f)
-  for i=1:measNumFrames(f)
+  for i=1:acqNumFrames(f)
     if mask[i]
       idx[j] = i
       j += 1
@@ -210,11 +208,11 @@ function measFGFrameIdx(f::MPIFile)
   mask = measIsBGFrame(f)
   if !any(mask)
     #shortcut
-    return 1:measNumFrames(f)
+    return 1:acqNumFrames(f)
   end
-  idx = zeros(Int64, measNumFGFrames(f))
+  idx = zeros(Int64, acqNumFGFrames(f))
   j = 1
-  for i=1:measNumFrames(f)
+  for i=1:acqNumFrames(f)
     if !mask[i]
       idx[j] = i
       j += 1
@@ -225,7 +223,7 @@ end
 
 # We assume that systemMatrixWithBG has already reordered the BG data
 # to the end
-systemMatrix(f::MPIFile) = systemMatrixWithBG(f)[1:measNumFGFrames(f),:,:,:]
+systemMatrix(f::MPIFile) = systemMatrixWithBG(f)[1:acqNumFGFrames(f),:,:,:]
 
 ### Concrete implementations ###
 

@@ -10,23 +10,23 @@ end
 
 
 # we do not support all conversion possibilities
-function loadDataset(f::MPIFile; frames=1:measNumFrames(f))
+function loadDataset(f::MPIFile; frames=1:acqNumFrames(f))
     # TODO applyCalibPostprocessing=false)
   params = loadMetadata(f)
 
   # call API function and store result in a parameter Dict
   if experimentHasMeasurement(f)
-    for op in [:measUnit, :measDataConversionFactor, :measNumFrames,
+    for op in [:measUnit, :measDataConversionFactor, :acqNumFrames,
                :measIsFourierTransformed, :measIsTFCorrected,
-               :measIsAveraged, :measIsFrameSelection, :measIsBGCorrected,
+               :measIsBGCorrected,
                :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
-               :measNumAverages, :measIsSpectralLeakageCorrected,
+               :measIsSpectralLeakageCorrected,
                :measFramePermutation, :measIsBGFrame]
         setparam!(params, string(op), eval(op)(f))
     end
-    if frames!=1:measNumFrames(f)
+    if frames!=1:acqNumFrames(f)
       setparam!(params, "measData", measData(f,frames))
-      setparam!(params, "measNumFrames", length(frames))
+      setparam!(params, "acqNumFrames", length(frames))
       setparam!(params, "measIsBGFrame", measIsBGFrame(f)[frames])
     else
       setparam!(params, "measData", measData(f))
@@ -62,10 +62,10 @@ function loadMetadata(f)
             :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
             :tracerSolute, :tracerInjectionTime,
             :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerModel,
-            :scannerTopology, :acqFramePeriod,
+            :scannerTopology, :acqFramePeriod, :acqNumPeriods, :acqNumAverages,
             :acqNumPatches, :acqStartTime, :acqGradient, :acqOffsetField, :acqOffsetFieldShift,
             :dfNumChannels, :dfStrength, :dfPhase, :dfBaseFrequency, :dfDivider,
-            :dfPeriod, :dfWaveform, :rxNumChannels, :rxNumAverages, :rxBandwidth,
+            :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
             :rxNumSamplingPoints, :rxTransferFunction]
     setparam!(params, string(op), eval(op)(f))
   end
@@ -150,6 +150,9 @@ function saveasMDF(file::HDF5File, params::Dict)
   # acquisition parameters
   write(file, "/acquisition/framePeriod", get(params,"acqFramePeriod",0.0))
   write(file, "/acquisition/numPatches", get(params,"acqNumPatches",1))
+  write(file, "/acquisition/numAverages",  params["acqNumAverages"])
+  write(file, "/acquisition/numFrames", get(params,"acqNumFrames",1))
+  write(file, "/acquisition/numPeriods", get(params,"acqNumPeriods",1))
   write(file, "/acquisition/startTime", "$( get(params,"acqStartTime", Dates.unix2datetime(time())) )")
 
   writeIfAvailable(file, "/acquisition/gradient", params, "acqGradient")
@@ -170,7 +173,6 @@ function saveasMDF(file::HDF5File, params::Dict)
 
   # receiver parameters
   write(file, "/acquisition/receiver/numChannels", params["rxNumChannels"])
-  write(file, "/acquisition/receiver/numAverages",  params["rxNumAverages"])
   write(file, "/acquisition/receiver/bandwidth", params["rxBandwidth"])
   write(file, "/acquisition/receiver/numSamplingPoints", params["rxNumSamplingPoints"])
 
@@ -184,7 +186,6 @@ function saveasMDF(file::HDF5File, params::Dict)
   if hasKeyAndValue(params, "measData")
     write(file, "/measurement/unit",  params["measUnit"])
     write(file, "/measurement/dataConversionFactor",  params["measDataConversionFactor"])
-    write(file, "/measurement/numFrames", get(params,"measNumFrames",1))
     meas = params["measData"]
     if eltype(meas) <: Complex
       meas = reinterpret(typeof((meas[1]).re),meas,(2,size(meas)...))
@@ -195,8 +196,6 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/measurement/isFourierTransformed", Int8(params["measIsFourierTransformed"]))
     write(file, "/measurement/isSpectralLeakageCorrected", Int8(params["measIsSpectralLeakageCorrected"]))
     write(file, "/measurement/isTransferFunctionCorrected", Int8(params["measIsTFCorrected"]))
-    write(file, "/measurement/isAveraged",  Int8(params["measIsAveraged"]))
-    write(file, "/measurement/isFramesSelected", Int8(params["measIsFrameSelection"]))
     write(file, "/measurement/isFrequencySelection", Int8(params["measIsFrequencySelection"]))
     write(file, "/measurement/isBackgroundCorrected",  Int8(params["measIsBGCorrected"]))
     write(file, "/measurement/isTransposed",  Int8(params["measIsTransposed"]))
@@ -208,7 +207,6 @@ function saveasMDF(file::HDF5File, params::Dict)
     if hasKeyAndValue(params, "measIsBGFrame")
       write(file, "/measurement/isBackgroundFrame", convert(Array{Int8},params["measIsBGFrame"]) )
     end
-    writeIfAvailable(file, "/measurement/numAverages",  params, "measNumAverages")
   end
 
   # calibrations
