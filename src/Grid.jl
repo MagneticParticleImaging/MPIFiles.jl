@@ -1,6 +1,7 @@
 using Unitful
 
 export createRandPositions, calcNumberOfFrames
+export createCartesianSF
 
 const timeSpanPerFrame3D = (21.542*10.0^-3)u"s" #seconds
 const overlapFrames = 30
@@ -46,4 +47,28 @@ function calcNumberOfFrames(numPos, waitingTime::typeof(1.0u"s"); framesPerPosit
     warn("Number of frames exceed maximal setting of frames 100000")
   end
   numframes
+end
+
+"""Creates cartesian grid in x,y,z, in mm with `gridsize`, `backGroundInc` and `measureTime`"""
+function createCartesianSF(gridSize, backGroundInc, measureTime)
+  numPoints = prod(gridSize) + prod(gridSize[2:3]) + 1
+  coords = Array{Float64,2}(numPoints,3)
+  i=1
+  coords[i,:] = MPILib.backGroundPos
+  i+=1
+  for k=1:gridSize[3]
+    for l=1:gridSize[2]
+      for m=1:gridSize[1]
+        coords[i,:] = [m l k].-[gridSize[1]/2 gridSize[2]/2 gridSize[3]/2]
+        i+=1
+        if mod(m,backGroundInc)==zero(0)
+          coords[i,:] = MPILib.backGroundPos
+          i+=1
+        end
+      end
+    end
+  end
+  timeSpan = ones(numPoints) * measureTime
+  coords = coords *u"mm"
+  return coords, timeSpan
 end
