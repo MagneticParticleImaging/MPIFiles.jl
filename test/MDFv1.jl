@@ -48,7 +48,7 @@ for mdf in (mdfv1,mdfv2)
   @test scannerFacility(mdf) == "University Medical Center Hamburg-Eppendorf, Germany"
   @test scannerOperator(mdf) == "n.a."
   @test scannerManufacturer(mdf) == "Bruker/Philips"
-  @test scannerModel(mdf) == "n.a."
+  @test scannerName(mdf) == "n.a."
   @test scannerTopology(mdf) == "FFP"
 
   @test tracerName(mdf) == ["Resovist"]

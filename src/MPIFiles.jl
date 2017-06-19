@@ -24,7 +24,7 @@ export tracerName, tracerBatch, tracerVolume, tracerConcentration,
        tracerSolute, tracerInjectionTime, tracerVendor
 
 # scanner parameters
-export scannerFacility, scannerOperator, scannerManufacturer, scannerModel,
+export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
        scannerTopology
 
 # acquisition parameters
@@ -96,7 +96,7 @@ abstract MPIFile
 @mustimplement scannerFacility(f::MPIFile)
 @mustimplement scannerOperator(f::MPIFile)
 @mustimplement scannerManufacturer(f::MPIFile)
-@mustimplement scannerModel(f::MPIFile)
+@mustimplement scannerName(f::MPIFile)
 @mustimplement scannerTopology(f::MPIFile)
 
 # acquisition parameters

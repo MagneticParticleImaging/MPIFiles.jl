@@ -163,7 +163,7 @@ tracerVendor(b::BrukerFile) = ["n.a."]
 scannerFacility(b::BrukerFile) = latin1toutf8(b["ACQ_institution"])
 scannerOperator(b::BrukerFile) = latin1toutf8(b["ACQ_operator"])
 scannerManufacturer(b::BrukerFile) = "Bruker/Philips"
-scannerModel(b::BrukerFile) = b["ACQ_station"]
+scannerName(b::BrukerFile) = b["ACQ_station"]
 scannerTopology(b::BrukerFile) = "FFP"
 
 # acquisition parameters

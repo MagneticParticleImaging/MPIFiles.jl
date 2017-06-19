@@ -128,7 +128,8 @@ tracerVendor(f::MDFFileV2) = f["/tracer/vendor"]
 scannerFacility(f::MDFFile) = f["/scanner/facility"]
 scannerOperator(f::MDFFile) = f["/scanner/operator"]
 scannerManufacturer(f::MDFFile) = f["/scanner/manufacturer"]
-scannerModel(f::MDFFile) = f["/scanner/model"]
+scannerName(f::MDFFileV1) = f["/scanner/model"]
+scannerName(f::MDFFileV2) = f["/scanner/name"]
 scannerTopology(f::MDFFile) = f["/scanner/topology"]
 
 # acquisition parameters

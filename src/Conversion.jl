@@ -61,7 +61,7 @@ function loadMetadata(f)
             :experimentIsSimulation, :experimentIsCalibration,
             :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
             :tracerSolute, :tracerInjectionTime,
-            :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerModel,
+            :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
             :scannerTopology, :acqFramePeriod, :acqNumPeriods, :acqNumAverages,
             :acqNumPatches, :acqStartTime, :acqGradient, :acqOffsetField, :acqOffsetFieldShift,
             :dfNumChannels, :dfStrength, :dfPhase, :dfBaseFrequency, :dfDivider,
@@ -144,7 +144,7 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/scanner/facility", get(params,"scannerFacility","n.a") )
   write(file, "/scanner/operator", get(params,"scannerOperator","n.a") )
   write(file, "/scanner/manufacturer", get(params,"scannerManufacturer","n.a"))
-  write(file, "/scanner/model", get(params,"scannerModel","n.a"))
+  write(file, "/scanner/name", get(params,"scannerName","n.a"))
   write(file, "/scanner/topology", get(params,"scannerTopology","FFP"))
 
   # acquisition parameters
