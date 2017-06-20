@@ -1,6 +1,6 @@
 include("Jcampdx.jl")
 
-export BrukerFile, BrukerFileMeas, BrukerFileCalib, latin1toutf8
+export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8
 
 function latin1toutf8(str::AbstractString)
   buff = Char[]
