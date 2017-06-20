@@ -4,7 +4,7 @@ export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8
 
 function latin1toutf8(str::AbstractString)
   buff = Char[]
-  for c in str.data
+  for c in Vector{UInt8}(str)
     push!(buff,c)
   end
   string(buff...)
