@@ -3,7 +3,8 @@ import FileIO: save
 export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        studydir, BrukerDatasetStore, BrukerStore, getStudy, getStudies, getExperiment,
        getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
-       findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum
+       findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum,
+       exportToMDFStore 
 
 ########################################
 
@@ -121,13 +122,13 @@ function exportToMDFStore(d::BrukerDatasetStore, s::Study, e::Experiment, mdf::M
 
   b = BrukerFile(e.path)
 
-  if isSF(b)
+  if experimentIsCalibration(b)
     calibNum = getNewCalibNum(mdf)
     #saveasMDF( joinpath(calibdir(mdf),string(calibNum)*".mdf"), b, deltaSampleSize=[0.002,0.002,0.001]) #Fixme
     saveasMDF( joinpath(calibdir(mdf),string(calibNum)*".mdf"),
                b, deltaSampleSize=[0.0,0.0,0.0], bgcorrection=true ) #Fixme
   else
-    saveasMDF( joinpath(studydir(mdf),newStudy.name,string(expNum)*".mdf"), b, timeDomain=!freqSpace)
+    saveasMDF( joinpath(studydir(mdf),newStudy.name,string(expNum)*".mdf"), b)
   end
 
 end
