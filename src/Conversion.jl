@@ -1,5 +1,5 @@
 # This file contains routines to generate MDF files
-export saveasMDF, loadDataset, loadMetadata, setparam!
+export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!
 
 function setparam!(params::Dict, parameter, value)
   if value != nothing
@@ -75,6 +75,18 @@ function loadMetadata(f)
     params["dfCustomWaveform"] = dfCustomWaveform(f)
   end
 
+  return params
+end
+
+function loadMetadataOnline(f)
+  params = Dict{String,Any}()
+  # call API function and store result in a parameter Dict
+  for op in [:version, :uuid, :time, :dfStrength, :acqGradient]
+    setparam!(params, string(op), eval(op)(f))
+  end
+  # if params["dfWaveform"] == "custom"
+  #   params["dfCustomWaveform"] = dfCustomWaveform(f)
+  # end
   return params
 end
 

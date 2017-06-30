@@ -374,3 +374,4 @@ end
 ballRadius(b::BrukerFile) = parse(Float64,b["MPI_BallRadius"])
 numLatitude(b::BrukerFile) = parse(Int64,b["MPI_NrLatitude"])
 numMeridian(b::BrukerFile) = parse(Int64,b["MPI_NrMeridian"])
+acqSize(b::BrukerFile) = [parse(Int,s) for s=b["ACQ_size"]]

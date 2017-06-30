@@ -29,7 +29,7 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
 
 # acquisition parameters
 export acqStartTime, acqFramePeriod, acqNumPatches, acqNumFrames, acqNumAverages,
-       acqGradient, acqOffsetField, acqOffsetFieldShift, acqNumPeriods
+       acqGradient, acqOffsetField, acqOffsetFieldShift, acqNumPeriods, acqSize
 
 # drive-field parameters
 export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
