@@ -51,19 +51,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f))
   return params
 end
 
-function loadMetadata(f, params = params)
-  params = Dict{String,Any}()
-  # call API function and store result in a parameter Dict
-  for op in params
-    setparam!(params, string(op), eval(op)(f))
-  end
-  if params["dfWaveform"] == "custom"
-    params["dfCustomWaveform"] = dfCustomWaveform(f)
-  end
-  return params
-end
-
-const params =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyName, :studyNumber, :studyUuid, :studyDescription,
+const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyName, :studyNumber, :studyUuid, :studyDescription,
           :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
           :experimentSubject,
           :experimentIsSimulation, :experimentIsCalibration,
@@ -75,6 +63,20 @@ const params =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyName, :s
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
           :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
           :rxNumSamplingPoints, :rxTransferFunction]
+
+function loadMetadata(f, inputParams = MPIFiles.defaultParams)
+  params = Dict{String,Any}()
+  # call API function and store result in a parameter Dict
+  for op in inputParams
+    setparam!(params, string(op), eval(op)(f))
+  end
+  if haskey(params,"dfWaveform") && params["dfWaveform"] == "custom"
+    params["dfCustomWaveform"] = dfCustomWaveform(f)
+  end
+  return params
+end
+
+
 
 
 function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
