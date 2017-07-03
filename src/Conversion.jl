@@ -1,5 +1,6 @@
 # This file contains routines to generate MDF files
 export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!
+export onlineParams, offlineParams
 
 function setparam!(params::Dict, parameter, value)
   if value != nothing
@@ -51,44 +52,32 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f))
   return params
 end
 
-function loadMetadata(f)
+function loadMetadata(f, params = union(onlineParams, offlineParams))
   params = Dict{String,Any}()
-
   # call API function and store result in a parameter Dict
-  for op in [:version, :uuid, :time, :studyName, :studyNumber, :studyUuid, :studyDescription,
-            :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
-            :experimentSubject,
-            :experimentIsSimulation, :experimentIsCalibration,
-            :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
-            :tracerSolute, :tracerInjectionTime,
-            :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
-            :scannerTopology, :acqFramePeriod, :acqNumPeriods, :acqNumAverages,
-            :acqNumPatches, :acqStartTime, :acqGradient, :acqOffsetField, :acqOffsetFieldShift,
-            :dfNumChannels, :dfStrength, :dfPhase, :dfBaseFrequency, :dfDivider,
-            :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
-            :rxNumSamplingPoints, :rxTransferFunction]
+  for op in params
     setparam!(params, string(op), eval(op)(f))
   end
-
-
   if params["dfWaveform"] == "custom"
     params["dfCustomWaveform"] = dfCustomWaveform(f)
   end
-
   return params
 end
 
-function loadMetadataOnline(f)
-  params = Dict{String,Any}()
-  # call API function and store result in a parameter Dict
-  for op in [:version, :uuid, :time, :dfStrength, :acqGradient]
-    setparam!(params, string(op), eval(op)(f))
-  end
-  # if params["dfWaveform"] == "custom"
-  #   params["dfCustomWaveform"] = dfCustomWaveform(f)
-  # end
-  return params
-end
+const onlineParams = [:version, :uuid, :time, :dfStrength, :acqGradient]
+const offlineParams =[:studyName, :studyNumber, :studyUuid, :studyDescription,
+          :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
+          :experimentSubject,
+          :experimentIsSimulation, :experimentIsCalibration,
+          :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
+          :tracerSolute, :tracerInjectionTime,
+          :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
+          :scannerTopology, :acqFramePeriod, :acqNumPeriods, :acqNumAverages,
+          :acqNumPatches, :acqStartTime, :acqOffsetField, :acqOffsetFieldShift,
+          :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
+          :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
+          :rxNumSamplingPoints, :rxTransferFunction]
+
 
 function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
   saveasMDF(filenameOut, MPIFile(filenameIn); kargs...)
