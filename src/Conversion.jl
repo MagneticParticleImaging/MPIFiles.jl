@@ -1,6 +1,5 @@
 # This file contains routines to generate MDF files
 export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!
-export onlineParams, offlineParams
 
 function setparam!(params::Dict, parameter, value)
   if value != nothing
@@ -52,7 +51,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f))
   return params
 end
 
-function loadMetadata(f, params = union(onlineParams, offlineParams))
+function loadMetadata(f, params = params)
   params = Dict{String,Any}()
   # call API function and store result in a parameter Dict
   for op in params
@@ -64,8 +63,7 @@ function loadMetadata(f, params = union(onlineParams, offlineParams))
   return params
 end
 
-const onlineParams = [:version, :uuid, :time, :dfStrength, :acqGradient]
-const offlineParams =[:studyName, :studyNumber, :studyUuid, :studyDescription,
+const params =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyName, :studyNumber, :studyUuid, :studyDescription,
           :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
           :experimentSubject,
           :experimentIsSimulation, :experimentIsCalibration,
