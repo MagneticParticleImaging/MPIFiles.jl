@@ -57,7 +57,7 @@ export recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions
 # additional functions that should be implemented by an MPIFile
 export filepath, systemMatrixWithBG, systemMatrix
 
-
+export selectedChannels
 ### Interface of an MPIFile ###
 
 abstract MPIFile
