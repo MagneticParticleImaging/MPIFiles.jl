@@ -79,8 +79,10 @@ function getindex(b::BrukerFile, parameter)
   elseif !b.visupars_globalRead && length(parameter) >= 4 &&
          parameter[1:4] == "Visu"
     visupath = joinpath(b.path, "visu_pars")
-    read(b.params, visupath, maxEntries=55)
-    b.visupars_globalRead = true
+    if isfile(visupath)
+      read(b.params, visupath, maxEntries=55)
+      b.visupars_globalRead = true
+    end
   end
 
   if haskey(b.params, parameter)
@@ -101,8 +103,10 @@ function getindex(b::BrukerFile, parameter, procno::Int64)
     b.methrecoRead = true
   elseif !b.visuparsRead && parameter[1:4] == "Visu"
     visuparspath = joinpath(b.path, "pdata", string(procno), "visu_pars")
-    read(b.paramsProc, visuparspath)
-    b.visuparsRead = true
+    if isfile(visuparspath)
+      read(b.paramsProc, visuparspath)
+      b.visuparsRead = true
+    end
   end
 
   return b.paramsProc[parameter]
