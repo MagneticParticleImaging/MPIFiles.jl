@@ -16,7 +16,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f))
 
   # call API function and store result in a parameter Dict
   if experimentHasMeasurement(f)
-    for op in [:measUnit, :measDataConversionFactor, :acqNumFrames,
+    for op in [:measUnit, :measDataConversionFactor,
                :measIsFourierTransformed, :measIsTFCorrected,
                :measIsBGCorrected,
                :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
@@ -59,7 +59,7 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :tracerSolute, :tracerInjectionTime,
           :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
           :scannerTopology, :acqFramePeriod, :acqNumPeriods, :acqNumAverages,
-          :acqNumPatches, :acqStartTime, :acqOffsetField, :acqOffsetFieldShift,
+          :acqNumPatches, :acqStartTime, :acqOffsetField, :acqOffsetFieldShift, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
           :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
           :rxNumSamplingPoints, :rxTransferFunction]
