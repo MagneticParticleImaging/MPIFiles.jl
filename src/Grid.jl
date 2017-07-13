@@ -6,6 +6,8 @@ export createCartesianSF
 const timeSpanPerFrame3D = (21.542*10.0^-3)u"s" #seconds
 const overlapFrames = 30
 
+const backGroundPos = [220 0 0];
+
 @doc "Creates n random positions in x,y,z, in mm waiting time will be calculated from frames,
 optional seed for MersenneTwister generator"->
 function createRandPositions(FOV::Array{typeof(1.0u"mm"),1}, numPos::Unsigned, numFramesToAcquire::Unsigned;
@@ -54,7 +56,7 @@ function createCartesianSF(gridSize, backGroundInc, measureTime)
   numPoints = prod(gridSize) + prod(gridSize[2:3]) + 1
   coords = Array{Float64,2}(numPoints,3)
   i=1
-  coords[i,:] = MPILib.backGroundPos
+  coords[i,:] = backGroundPos
   i+=1
   for k=1:gridSize[3]
     for l=1:gridSize[2]
@@ -62,7 +64,7 @@ function createCartesianSF(gridSize, backGroundInc, measureTime)
         coords[i,:] = [m l k].-[gridSize[1]/2 gridSize[2]/2 gridSize[3]/2]
         i+=1
         if mod(m,backGroundInc)==zero(0)
-          coords[i,:] = MPILib.backGroundPos
+          coords[i,:] = backGroundPos
           i+=1
         end
       end
