@@ -172,11 +172,16 @@ end
 str2uuid(str::Void) = str
 
 #TODO Move to misc
-export rxNumFrequencies, acqFov, acqFovCenter, rxFrequencies
+export rxNumFrequencies, acqFov, acqFovCenter, rxFrequencies, rxTimePoints
 rxNumFrequencies(f::MPIFile) = floor(Int,rxNumSamplingPoints(f) ./ 2 .+ 1)
 function rxFrequencies(f::MPIFile)
   numFreq = rxNumFrequencies(f)
   a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(f)
+  return a
+end
+function rxTimePoints(f::MPIFile)
+  numTP = rxNumSamplingPoints(f)
+  a = collect(0:(numTP-1))./(numTP).*dfPeriod(f)
   return a
 end
 function acqFov(f::MPIFile)
