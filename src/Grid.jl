@@ -1,5 +1,68 @@
 using Unitful
 
+import Base: getindex, length, convert
+
+export AbstractGrid, RegularGrid, MeanderingGrid, ArbitraryGrid
+
+abstract AbstractGrid
+
+type RegularGrid{T} <: AbstractGrid
+  shape::Vector{Int}
+  fov::Vector{T}
+  center::Vector{T}
+  #RegularGrid(shape,fov,center=[0.0,0.0,0.0]) = new(shape,fov,center)
+end
+
+getindex(grid::RegularGrid, i::Integer) =
+  (collect(ind2sub(tuple(grid.shape...), i)).-0.5.-grid.shape./2)./
+              grid.shape.*grid.fov .- grid.center
+
+
+type MeanderingGrid{T} <: AbstractGrid
+  shape::Vector{Int}
+  fov::Vector{T}
+  center::Vector{T}
+end
+
+function getindex(grid::MeanderingGrid, i::Integer)
+  idx = collect(ind2sub(tuple(grid.shape...), i))
+  for d=2:3
+    if iseven(idx[d])
+      idx[d-1] = grid.shape[d-1] - idx[d-1] + 1
+    end
+  end
+
+  return (idx.-0.5.-grid.shape./2)./
+              grid.shape.*grid.fov .- grid.center
+end
+
+length(grid::Union{RegularGrid,MeanderingGrid}) = prod(grid.shape)
+
+type ArbitraryGrid{T} <: AbstractGrid
+  positions::Matrix{T}
+  #RegularGrid(shape,fov,center=[0.0,0.0,0.0]) = new(shape,fov,center)
+end
+
+getindex(grid::ArbitraryGrid, i::Integer) = grid.positions[:,i]
+
+function convert(::Type{ArbitraryGrid}, grid::AbstractGrid)
+  positions = zeros(3,length(grid))
+  for i=1:length(grid)
+    positions[:,i] = grid[i]
+  end
+  return ArbitraryGrid(positions)
+end
+
+
+
+
+
+
+
+
+### Old interface ###
+
+
 export createRandPositions, calcNumberOfFrames
 export createCartesianSF
 
