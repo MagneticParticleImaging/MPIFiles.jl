@@ -263,6 +263,7 @@ function getExperiments(d::MDFDatasetStore, s::Study)
       end
     end
   end
+  sort!(experiments,lt=(a,b)->(a.num < b.num))
   return experiments
 end
 
