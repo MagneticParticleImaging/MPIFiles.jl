@@ -4,7 +4,7 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        studydir, BrukerDatasetStore, BrukerStore, getStudy, getStudies, getExperiment,
        getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
        findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum,
-       exportToMDFStore 
+       exportToMDFStore
 
 ########################################
 
@@ -46,7 +46,7 @@ type Visualization
   params::Dict
 end
 
-abstract DatasetStore
+@compat abstract type DatasetStore end
 
 type BrukerDatasetStore <: DatasetStore
    path::String

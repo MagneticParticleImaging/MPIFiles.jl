@@ -2,7 +2,7 @@ using HDF5
 
 export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton
 
-abstract MDFFile <: MPIFile
+@compat abstract type MDFFile <: MPIFile end
 
 # We use a dedicated type for v1 and v2. If both versions
 # are the same we use the abstract type MDFFile

@@ -1,5 +1,7 @@
+__precompile__()
 module MPIFiles
 
+using Compat
 using Graphics: @mustimplement
 
 import Base: ndims, time, show, getindex
@@ -60,7 +62,7 @@ export filepath, systemMatrixWithBG, systemMatrix
 export selectedChannels
 ### Interface of an MPIFile ###
 
-abstract MPIFile
+@compat abstract type MPIFile end
 
 # general parameters
 @mustimplement version(f::MPIFile)

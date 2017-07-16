@@ -14,7 +14,7 @@ function latin1toutf8(str::Void)
   println(stacktrace())
 end
 
-abstract BrukerFile <: MPIFile
+@compat abstract type BrukerFile <: MPIFile end
 
 type BrukerFileMeas <: BrukerFile
   path::String

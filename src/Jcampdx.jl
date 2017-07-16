@@ -2,8 +2,8 @@ import Base: read, getindex, get, haskey
 
 export JcampdxFile
 
-typealias JCVAL Union{AbstractString,Number,Bool,Array,Tuple,Void}
-typealias HTSS Dict{AbstractString,JCVAL}
+const JCVAL = Union{AbstractString,Number,Bool,Array,Tuple,Void}
+const HTSS = Dict{AbstractString,JCVAL}
 
 type JcampdxFile
   dict::HTSS
