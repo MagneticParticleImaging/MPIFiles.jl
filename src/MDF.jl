@@ -97,16 +97,20 @@ experimentHasReconstruction(f::MDFFile) = h5exists(f.filename, "/reconstruction"
 experimentHasMeasurement(f::MDFFileV1) = h5exists(f.filename, "/measurement") ||
                                          h5exists(f.filename, "/calibration")
 experimentHasMeasurement(f::MDFFileV2) = h5exists(f.filename, "/measurement")
+
+_makeStringArray(s::String) = [s]
+_makeStringArray{T<:AbstractString}(s::Vector{T}) = s
+
 # tracer parameters
 tracerName(f::MDFFileV1) = [f["/tracer/name"]]
-tracerName(f::MDFFileV2) = f["/tracer/name"]
+tracerName(f::MDFFileV2) = _makeStringArray(f["/tracer/name"])
 tracerBatch(f::MDFFileV1) = [f["/tracer/batch"]]
-tracerBatch(f::MDFFileV2) = f["/tracer/batch"]
+tracerBatch(f::MDFFileV2) = _makeStringArray(f["/tracer/batch"])
 tracerVolume(f::MDFFileV1) = [f["/tracer/volume"]]
-tracerVolume(f::MDFFileV2) = f["/tracer/volume"]
+tracerVolume(f::MDFFileV2) = [f["/tracer/volume"]...]
 tracerConcentration(f::MDFFileV1) = [f["/tracer/concentration"]]
-tracerConcentration(f::MDFFileV2) = f["/tracer/concentration"]
-tracerSolute(f::MDFFileV2) = f["/tracer/solute"]
+tracerConcentration(f::MDFFileV2) = [f["/tracer/concentration"]...]
+tracerSolute(f::MDFFileV2) = _makeStringArray(f["/tracer/solute"])
 tracerSolute(f::MDFFileV1) = ["Fe"]
 function tracerInjectionTime(f::MDFFile)
   p = typeof(f) == MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
@@ -120,9 +124,9 @@ function tracerInjectionTime(f::MDFFile)
     return [DateTime(y) for y in f[p]]
   end
 end
-tracerInjectionTime(f::MDFFileV2) = DateTime( f["/tracer/injectionTime"] )
+#tracerInjectionTime(f::MDFFileV2) = DateTime( f["/tracer/injectionTime"] )
 tracerVendor(f::MDFFileV1) = [f["/tracer/vendor"]]
-tracerVendor(f::MDFFileV2) = f["/tracer/vendor"]
+tracerVendor(f::MDFFileV2) = _makeStringArray(f["/tracer/vendor"])
 
 # scanner parameters
 scannerFacility(f::MDFFile) = f["/scanner/facility"]
