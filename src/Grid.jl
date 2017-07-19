@@ -1,10 +1,12 @@
 using Unitful
 
-import Base: getindex, length, convert
+import Base: getindex, length, convert, start, done, next
 
 export AbstractGrid, RegularGrid, MeanderingGrid, ArbitraryGrid, ChebyshevGrid
 
 @compat abstract type AbstractGrid end
+
+
 
 type RegularGrid{T} <: AbstractGrid
   shape::Vector{Int}
@@ -66,8 +68,12 @@ end
 
 
 length(grid::Union{RegularGrid,MeanderingGrid,ChebyshevGrid}) = prod(grid.shape)
+length(grid::ArbitraryGrid) = size(grid.positions,2)
 size(grid::Union{RegularGrid,MeanderingGrid,ChebyshevGrid}) = ntuple(3,d->grid.size[d])
 fov(grid::Union{RegularGrid,MeanderingGrid,ChebyshevGrid}) = ntuple(3,d->grid.fov[d])
+start(grid::AbstractGrid) = 1
+next(grid::AbstractGrid,state) = (grid[state],state+1)
+done(grid::AbstractGrid,state) = state > length(grid)
 
 
 ### Old interface ###
