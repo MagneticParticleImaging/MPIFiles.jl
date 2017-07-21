@@ -186,7 +186,11 @@ dfPeriod(f::MDFFile) = f["/acquisition/drivefield/period"]
 rxNumChannels(f::MDFFile) = f["/acquisition/receiver/numChannels"]
 rxBandwidth(f::MDFFile) = f["/acquisition/receiver/bandwidth"]
 rxNumSamplingPoints(f::MDFFile) = f["/acquisition/receiver/numSamplingPoints"]
-rxTransferFunction(f::MDFFile) = f["/acquisition/receiver/transferFunction"]
+function rxTransferFunction(f::MDFFile)
+  tf = f["/acquisition/receiver/transferFunction"]
+  return reinterpret(Complex{eltype(tf)}, tf, (size(tf,2),size(tf,3)))
+end
+
 
 # measurements
 measUnit(f::MDFFileV1) = "a.u."

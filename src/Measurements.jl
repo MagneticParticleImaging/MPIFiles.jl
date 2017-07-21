@@ -154,7 +154,17 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:acqNumFrames
   end
 
   if tfCorrection && !measIsTFCorrected(f)
-    #do TF correction
+    tf = rxTransferFunction(f)
+    if fourierTransform || measIsFourierTransformed(f) || (frequencies != nothing)
+      data .*= tf
+    else
+      dim = measIsTransposed(f) ? 2 : 1
+      J = size(data,dim)
+      dataF = rfft(data, dim)
+      println(" $(size(dataF))  $(size(tf))  ")
+      dataF .*= tf
+      data = irfft(dataF,J,dim)
+    end
   end
 
   if frequencies != nothing
