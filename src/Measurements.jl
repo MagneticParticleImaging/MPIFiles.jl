@@ -161,7 +161,6 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:acqNumFrames
       dim = measIsTransposed(f) ? 2 : 1
       J = size(data,dim)
       dataF = rfft(data, dim)
-      println(" $(size(dataF))  $(size(tf))  ")
       dataF .*= tf
       data = irfft(dataF,J,dim)
     end
