@@ -156,12 +156,12 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:acqNumFrames
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     if fourierTransform || measIsFourierTransformed(f) || (frequencies != nothing)
-      data .*= tf
+      data ./= tf
     else
       dim = measIsTransposed(f) ? 2 : 1
       J = size(data,dim)
       dataF = rfft(data, dim)
-      dataF .*= tf
+      dataF ./= tf
       data = irfft(dataF,J,dim)
     end
   end
