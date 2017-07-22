@@ -190,7 +190,8 @@ function rxTransferFunction(f::MDFFile)
   tf = f["/acquisition/receiver/transferFunction"]
   return reinterpret(Complex{eltype(tf)}, tf, (size(tf,2),size(tf,3)))
 end
-
+rxInductionFactor(f::MDFFileV1) = nothing
+rxInductionFactor(f::MDFFileV2) = f["/acquisition/receiver/inductionFactor"]
 
 # measurements
 measUnit(f::MDFFileV1) = "a.u."

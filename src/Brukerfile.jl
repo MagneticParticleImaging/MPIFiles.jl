@@ -222,6 +222,7 @@ rxNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
 rxBandwidth(b::BrukerFile) = parse(Float64,b["PVM_MPI_Bandwidth"])*1e6
 rxNumSamplingPoints(b::BrukerFile) = parse(Int64,b["ACQ_size"][1])
 rxTransferFunction(b::BrukerFile) = nothing
+rxInductionFactor(b::BrukerFile) = nothing
 
 # measurements
 measUnit(b::BrukerFile) = "a.u."

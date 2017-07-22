@@ -62,7 +62,7 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :acqNumPatches, :acqStartTime, :acqOffsetField, :acqOffsetFieldShift, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
           :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
-          :rxNumSamplingPoints, :rxTransferFunction]
+          :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor]
 
 function loadMetadata(f, inputParams = MPIFiles.defaultParams)
   params = Dict{String,Any}()
@@ -75,8 +75,6 @@ function loadMetadata(f, inputParams = MPIFiles.defaultParams)
   end
   return params
 end
-
-
 
 
 function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
@@ -182,6 +180,7 @@ function saveasMDF(file::HDF5File, params::Dict)
     tfR = reinterpret(Float64, tf, (2, size(tf)...))
     write(file, "/acquisition/receiver/transferFunction", tfR)
   end
+  writeIfAvailable(file, "/acquisition/receiver/inductionFactor",  params, "rxInductionFactor")
 
   # measurements
   if hasKeyAndValue(params, "measData")
