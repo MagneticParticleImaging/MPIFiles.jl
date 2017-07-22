@@ -188,7 +188,11 @@ rxBandwidth(f::MDFFile) = f["/acquisition/receiver/bandwidth"]
 rxNumSamplingPoints(f::MDFFile) = f["/acquisition/receiver/numSamplingPoints"]
 function rxTransferFunction(f::MDFFile)
   tf = f["/acquisition/receiver/transferFunction"]
-  return reinterpret(Complex{eltype(tf)}, tf, (size(tf,2),size(tf,3)))
+  if tf != nothing
+    return reinterpret(Complex{eltype(tf)}, tf, (size(tf,2),size(tf,3)))
+  else
+    return nothing
+  end
 end
 rxInductionFactor(f::MDFFileV1) = nothing
 rxInductionFactor(f::MDFFileV2) = f["/acquisition/receiver/inductionFactor"]
