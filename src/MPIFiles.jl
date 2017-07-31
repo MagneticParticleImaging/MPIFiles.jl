@@ -187,10 +187,10 @@ function rxTimePoints(f::MPIFile)
   return a
 end
 function acqFov(f::MPIFile)
- return  2*dfStrength(f)[1,:,:] ./ abs( acqGradient(f) )
+ return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradient(f) )
 end
 function acqFovCenter(f::MPIFile)
- return acqOffsetField(f) ./ abs( acqGradient(f) )
+ return acqOffsetField(f) ./ abs.( acqGradient(f) )
 end
 
 export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx

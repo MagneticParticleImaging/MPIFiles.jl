@@ -72,7 +72,7 @@ function read(file::JcampdxFile, stream::IO; maxEntries=-1)
 
            if file.dict[currentKey] == nothing
              #println("Will now allocate memory of size: ", currentSizes)
-             file.dict[currentKey] = Array(Any, currentSizes...)
+             file.dict[currentKey] = Array{Any}(currentSizes...)
            end
 
            totalLine = remainingString == nothing ? line[2:end] : remainingString*line
@@ -142,7 +142,7 @@ function read(file::JcampdxFile, stream::IO; maxEntries=-1)
 
            if file.dict[currentKey] == nothing
              #println("Will now allocate memory of size: ", currentSizes)
-             file.dict[currentKey] = Array(eltype(vals), currentSizes...)
+             file.dict[currentKey] = Array{eltype(vals)}(currentSizes...)
            end
 
            try
