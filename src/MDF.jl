@@ -197,12 +197,12 @@ end
 rxInductionFactor(f::MDFFileV1) = nothing
 rxInductionFactor(f::MDFFileV2) = f["/acquisition/receiver/inductionFactor"]
 
-# measurements
-measUnit(f::MDFFileV1) = "a.u."
-measUnit(f::MDFFileV2) = f["/measurement/unit"]
-measDataConversionFactor(f::MDFFileV1) = [1.0, 0.0]
-measDataConversionFactor(f::MDFFileV2) = f["/measurement/dataConversionFactor"]
+rxUnit(f::MDFFileV1) = "a.u."
+rxUnit(f::MDFFileV2) = f["/acquisition/receiver/unit"]
+rxDataConversionFactor(f::MDFFileV1) = [1.0, 0.0]
+rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFactor"]
 
+# measurements
 function measData(f::MDFFileV1, frames=1:acqNumFrames(f), patches=1:acqNumPatches(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")

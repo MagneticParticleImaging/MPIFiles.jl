@@ -2,7 +2,7 @@ export getMeasurements, getMeasurementsLowLevel, getMeasurementsFT
 
 function measDataConv(f::MPIFile, args...)
   data = measData(f, args...)
-  a = measDataConversionFactor(f)
+  a = rxDataConversionFactor(f)
   if eltype(data) <: Integer
     data = map(Float32, data)
   end

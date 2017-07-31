@@ -223,11 +223,9 @@ rxBandwidth(b::BrukerFile) = parse(Float64,b["PVM_MPI_Bandwidth"])*1e6
 rxNumSamplingPoints(b::BrukerFile) = parse(Int64,b["ACQ_size"][1])
 rxTransferFunction(b::BrukerFile) = nothing
 rxInductionFactor(b::BrukerFile) = nothing
-
-# measurements
-measUnit(b::BrukerFile) = "a.u."
-measDataConversionFactor(b::BrukerFileMeas) = [1.0/acqNumAverages(b), 0.0]
-measDataConversionFactor(b::BrukerFileCalib) = [1.0, 0.0]
+rxUnit(b::BrukerFile) = "a.u."
+rxDataConversionFactor(b::BrukerFileMeas) = [1.0/acqNumAverages(b), 0.0]
+rxDataConversionFactor(b::BrukerFileCalib) = [1.0, 0.0]
 
 function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), patches=1:acqNumPatches(b),
                   receivers=1:rxNumChannels(b))

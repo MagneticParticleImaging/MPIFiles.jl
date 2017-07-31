@@ -39,11 +39,10 @@ export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
 
 # receiver parameters
 export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
-       rxTransferFunction
+       rxTransferFunction, rxUnit, rxDataConversionFactor, rxInductionFactor
 
 # measurements
-export measUnit, measDataConversionFactor, measData,
-       measIsFourierTransformed, measIsTFCorrected,
+export measData, measIsFourierTransformed, measIsTFCorrected,
        measIsBGCorrected, measIsTransposed,
        measIsFramePermutation, measIsFrequencySelection,
        measIsBGFrame, measIsSpectralLeakageCorrected
@@ -127,10 +126,11 @@ export selectedChannels
 @mustimplement rxBandwidth(f::MPIFile)
 @mustimplement rxNumSamplingPoints(f::MPIFile)
 @mustimplement rxTransferFunction(f::MPIFile)
+@mustimplement rxInductionFactor(f::MPIFile)
+@mustimplement rxUnit(f::MPIFile)
+@mustimplement rxDataConversionFactor(f::MPIFile)
 
 # measurements
-@mustimplement measUnit(f::MPIFile)
-@mustimplement measDataConversionFactor(f::MPIFile)
 @mustimplement measData(f::MPIFile)
 @mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
 @mustimplement measIsFourierTransformed(f::MPIFile)

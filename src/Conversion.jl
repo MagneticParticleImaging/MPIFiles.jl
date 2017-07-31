@@ -16,8 +16,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f))
 
   # call API function and store result in a parameter Dict
   if experimentHasMeasurement(f)
-    for op in [:measUnit, :measDataConversionFactor,
-               :measIsFourierTransformed, :measIsTFCorrected,
+    for op in [:measIsFourierTransformed, :measIsTFCorrected,
                :measIsBGCorrected,
                :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
                :measIsSpectralLeakageCorrected,
@@ -62,7 +61,8 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :acqNumPatches, :acqStartTime, :acqOffsetField, :acqOffsetFieldShift, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
           :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
-          :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor]
+          :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor,
+          :rxUnit, :rxDataConversionFactor]
 
 function loadMetadata(f, inputParams = MPIFiles.defaultParams)
   params = Dict{String,Any}()
@@ -174,7 +174,8 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/acquisition/receiver/numChannels", params["rxNumChannels"])
   write(file, "/acquisition/receiver/bandwidth", params["rxBandwidth"])
   write(file, "/acquisition/receiver/numSamplingPoints", params["rxNumSamplingPoints"])
-
+  write(file, "/acquisition/receiver/unit",  params["rxUnit"])
+  write(file, "/acquisition/receiver/dataConversionFactor",  params["rxDataConversionFactor"])
   if hasKeyAndValue(params,"rxTransferFunction")
     tf = params["rxTransferFunction"]
     tfR = reinterpret(Float64, tf, (2, size(tf)...))
@@ -184,8 +185,6 @@ function saveasMDF(file::HDF5File, params::Dict)
 
   # measurements
   if hasKeyAndValue(params, "measData")
-    write(file, "/measurement/unit",  params["measUnit"])
-    write(file, "/measurement/dataConversionFactor",  params["measDataConversionFactor"])
     meas = params["measData"]
     if eltype(meas) <: Complex
       meas = reinterpret(typeof((meas[1]).re),meas,(2,size(meas)...))
