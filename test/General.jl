@@ -17,15 +17,15 @@ if !isdir(fnMeasBruker)
 end
 
 
-mdfBruker = MPIFile(fnMeasBruker)
-@test typeof(mdfBruker) == BrukerFileMeas
+measBruker = MPIFile(fnMeasBruker)
+@test typeof(measBruker) == BrukerFileMeas
 
-saveasMDF(fnMeasV2, mdfBruker)#, frames=1:100) <- TODO test this
+saveasMDF(fnMeasV2, measBruker)#, frames=1:100) <- TODO test this
 
 mdfv2 = MPIFile(fnMeasV2)
 @test typeof(mdfv2) == MDFFileV2
 
-for mdf in (mdfBruker,mdfv2)
+for mdf in (measBruker,mdfv2)
   println("Test $mdf")
   @test studyName(mdf) == "Wuerfelphantom_Wuerfelphantom_1"
   @test studyNumber(mdf) == 1
