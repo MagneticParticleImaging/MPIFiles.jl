@@ -22,11 +22,11 @@ function spectralLeakageCorrection_(f::MPIFile, frames)
 
   data = zeros(Float32, numTimePoints, numReceivers, numPatches, length(frames))
   M = numTimePoints*3
-  window3 = 0.5.*(1.-cos(2*π/(M-1)*(0:(M-1))))
+  window3 = 0.5.*(1.-cos.(2*π/(M-1)*(0:(M-1))))
   window3 = window3 / (sum(window3)/M)
 
   M = numTimePoints*2
-  window2 = 0.5.*(1.-cos(2*π/(M-1)*(0:(M-1))))
+  window2 = 0.5.*(1.-cos.(2*π/(M-1)*(0:(M-1))))
   window2 = window2 / (sum(window2)/M)
 
   for (i,fr) in enumerate(frames)
@@ -34,19 +34,19 @@ function spectralLeakageCorrection_(f::MPIFile, frames)
       for r in 1:numReceivers
         if fr==1
           tmp = measDataConv(f, fr:fr+1, p, r)
-          data[:,r,p,i] = 1/2 * (tmp[:,1] .* window2[1:numTimePoints]
-                            +  tmp[:,2] .* window2[1+numTimePoints:2*numTimePoints]
+          data[:,r,p,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
+                            +  tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
                             );
         elseif fr==numFrames
           tmp = measDataConv(f, fr-1:fr, p, r)
-          data[:,r,p,i] = 1/2 * (tmp[:,1] .* window2[1:numTimePoints]
-                            +    tmp[:,2] .* window2[1+numTimePoints:2*numTimePoints]
+          data[:,r,p,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
+                            +    tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
                             );
         else
           tmp = measDataConv(f, fr-1:fr+1, p, r)
-          data[:,r,p,i] = 1/3 * (tmp[:,1] .* window3[1:numTimePoints]
-                            +  tmp[:,2] .* window3[1+numTimePoints:2*numTimePoints]
-                            +  tmp[:,3] .* window3[1+2*numTimePoints:3*numTimePoints]
+          data[:,r,p,i] = 1/3 * (tmp[:,1,1,1] .* window3[1:numTimePoints]
+                            +  tmp[:,1,1,2] .* window3[1+numTimePoints:2*numTimePoints]
+                            +  tmp[:,1,1,3] .* window3[1+2*numTimePoints:3*numTimePoints]
                             );
         end
       end
