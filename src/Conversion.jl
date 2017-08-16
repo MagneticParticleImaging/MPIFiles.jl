@@ -86,6 +86,8 @@ function saveasMDF(filenameOut::String, f::MPIFile; kargs...)
 end
 
 function saveasMDF(filename::String, params::Dict)
+  # file has to be removed if exists. Otherwise h5create fails.
+  isfile(filename) && rm(filename)
   h5open(filename, "w") do file
     saveasMDF(file, params)
   end

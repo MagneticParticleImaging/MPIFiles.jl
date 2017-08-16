@@ -263,7 +263,6 @@ include("FrequencyFilter.jl")
 include("Conversion.jl")
 include("Image.jl")
 include("DatasetStore.jl")
-include("Grid.jl")
 
 ### Misc functions ###
 #include("Misc.jl")
