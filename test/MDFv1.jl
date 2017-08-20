@@ -1,9 +1,9 @@
 # Download test files
 
 fnMeasV1 = "measurement_V1.mdf"
-fnMeasV2 = "measurement_V2.mdf"
+fnMeasV2 = "measurement_V2c.mdf"
 fnSMV1 = "systemMatrix_V1.mdf"
-fnSMV2 = "systemMatrix_V2.mdf"
+fnSMV2 = "systemMatrix_V2c.mdf"
 
 if !isfile(fnSMV1)
   streamSM = get("http://media.tuhh.de/ibi/mdf/systemMatrix.h5")

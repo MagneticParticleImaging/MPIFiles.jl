@@ -45,7 +45,7 @@ export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
 export measData, measIsFourierTransformed, measIsTFCorrected,
        measIsBGCorrected, measIsTransposed,
        measIsFramePermutation, measIsFrequencySelection,
-       measIsBGFrame, measIsSpectralLeakageCorrected
+       measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation
 
 # calibrations
 export calibSNR, calibFov, calibFovCenter, calibSize,
@@ -140,6 +140,7 @@ export selectedChannels
 @mustimplement measIsTransposed(f::MPIFile)
 @mustimplement measIsFramePermutation(f::MPIFile)
 @mustimplement measIsBGFrame(f::MPIFile)
+@mustimplement measFramePermutation(f::MPIFile)
 
 # calibrations
 @mustimplement calibSNR(f::MPIFile)

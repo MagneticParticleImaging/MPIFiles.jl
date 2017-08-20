@@ -373,10 +373,7 @@ measIsFramePermutation(f::MDFFileV2) = f["/measurement/isFramePermutation"]
 measIsBGFrame(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
 measIsBGFrame(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundFrame"])
 measFramePermutation(f::MDFFileV1) = nothing
-function measFramePermutation(f::MDFFileV2)
-  warn("Please implement me (measFramePermutation(f::MDFFileV2))")
-  return nothing
-end
+measFramePermutation(f::MDFFileV2) = f["/measurement/framePermutation"]
 
 #calibrations
 calibSNR(f::MDFFileV1) = addTrailingSingleton(f["/calibration/snrFD"],3)

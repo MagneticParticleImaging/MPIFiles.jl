@@ -310,12 +310,15 @@ measIsBGFrame(b::BrukerFileCalib) =
 
 measFramePermutation(b::BrukerFileMeas) = nothing
 function measFramePermutation(b::BrukerFileCalib)
-  perm1=cat(1,measFGFrameIdx(b),measBGFrameIdx(b))
-  perm2=cat(1,fgFramePermutation(b),(length(perm1)-acqNumBGFrames(b)+1):length(perm1))
+  bMeas = BrukerFile(b.path, isCalib=false)
+
+  perm1=cat(1,measFGFrameIdx(bMeas),measBGFrameIdx(bMeas))
+  perm2=cat(1,fgFramePermutation(bMeas),(length(perm1)-acqNumBGFrames(bMeas)+1):length(perm1))
   permJoint = perm1[perm2]
   return permJoint
 end
 
+# the following might be better implemented using the actual grids
 function fgFramePermutation(b::BrukerFile)
   N = calibSize(b)
   counter = 1
