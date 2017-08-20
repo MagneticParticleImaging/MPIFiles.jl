@@ -224,8 +224,10 @@ rxNumSamplingPoints(b::BrukerFile) = parse(Int64,b["ACQ_size"][1])
 rxTransferFunction(b::BrukerFile) = nothing
 rxInductionFactor(b::BrukerFile) = nothing
 rxUnit(b::BrukerFile) = "a.u."
-rxDataConversionFactor(b::BrukerFileMeas) = [1.0/acqNumAverages(b), 0.0]
-rxDataConversionFactor(b::BrukerFileCalib) = [1.0, 0.0]
+rxDataConversionFactor(b::BrukerFileMeas) =
+                 repeat([1.0/acqNumAverages(b), 0.0], outer=(1,rxNumChannels(b)))
+rxDataConversionFactor(b::BrukerFileCalib) =
+                 repeat([1.0, 0.0], outer=(1,rxNumChannels(b)))
 
 function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), patches=1:acqNumPatches(b),
                   receivers=1:rxNumChannels(b))

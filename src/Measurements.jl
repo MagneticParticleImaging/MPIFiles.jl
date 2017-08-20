@@ -2,13 +2,25 @@ export getMeasurements, getMeasurementsLowLevel, getMeasurementsFT
 
 function measDataConv(f::MPIFile, args...)
   data = measData(f, args...)
-  a = rxDataConversionFactor(f)
+
   if eltype(data) <: Integer
     data = map(Float32, data)
   end
+  a = rxDataConversionFactor(f)
   if a!=nothing
-    scale!(data, a[1])
-    data[:] .+= a[2]
+    if measIsTransposed(f)
+      for d=1:size(data,4)
+        slice = view(data,:,:,:,d,:)
+        scale!(slice, a[1,d])
+        slice .+= a[2,d]
+      end
+    else
+      for d=1:size(data,3)
+        slice = view(data,:,:,d,:,:)
+        scale!(slice, a[1,d])
+        slice .+= a[2,d]
+      end
+    end
   end
   return data
 end

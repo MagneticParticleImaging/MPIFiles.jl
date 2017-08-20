@@ -68,6 +68,7 @@ for mdf in (measBruker,mdfv2)
   @test rxNumChannels(mdf) == 3
   @test rxBandwidth(mdf) == 1250000.0
   @test rxNumSamplingPoints(mdf) == 1632
+  @test rxDataConversionFactor(mdf) == repeat([1.0, 0.0], outer=(1,rxNumChannels(mdf)))
   @test acqNumAverages(mdf) == 1
 
   @test acqNumFrames(mdf) == 500

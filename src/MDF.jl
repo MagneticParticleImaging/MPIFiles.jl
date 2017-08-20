@@ -199,7 +199,7 @@ rxInductionFactor(f::MDFFileV2) = f["/acquisition/receiver/inductionFactor"]
 
 rxUnit(f::MDFFileV1) = "a.u."
 rxUnit(f::MDFFileV2) = f["/acquisition/receiver/unit"]
-rxDataConversionFactor(f::MDFFileV1) = [1.0, 0.0]
+rxDataConversionFactor(f::MDFFileV1) = repeat([1.0, 0.0], outer=(1,rxNumChannels(f)))
 rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFactor"]
 
 # measurements
