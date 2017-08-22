@@ -286,7 +286,7 @@ function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
     end
   end
 
-  data = f.mmap_measData[:, :, rows]
+  data = reshape(f.mmap_measData,Val{3})[:, :, rows]
   return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
 end
 
@@ -300,7 +300,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
       f.mmap_measData = readmmap(file["/measurement/data"])
     end
   end
-  data = f.mmap_measData[:, :, rows]
+  data = reshape(f.mmap_measData,Val{3})[:, :, rows]
 
   fgdata = data[:,measFGFrameIdx(f),:]
   if bgCorrection
@@ -427,27 +427,3 @@ function addTrailingSingleton(a::Array,dim)
 end
 
 
-
-
-
-
-
-
-
-
-
-
-#= TODO
-type MDFTimeDataHandle
-  filename::String
-end
-
-function getTimeDataHandle(f::MDFFile)
-  return MDFTimeDataHandle(f.filename)
-end
-
-function getindex(raw::MDFTimeDataHandle, x, y, z)
-  data = h5read(raw.filename, "/measurement/dataTD", ( x, y, z) )
-  return data
-end
-=#
