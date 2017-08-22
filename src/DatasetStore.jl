@@ -100,7 +100,7 @@ function getExperiment(path::String)
 
   exp = Experiment( path, parse(Int64,last(splitdir(prefix))),
                       string(experimentDescription(b)), acqNumFrames(b),
-                      round(1000.*vec(acqFov(b)),2), acqGradient(b)[:,1],
+                      round.(1000.*vec(acqFov(b)),2), acqGradient(b)[:,1],
                       acqNumAverages(b), scannerOperator(b))
 
   return exp
