@@ -286,10 +286,7 @@ function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
     end
   end
 
-  dataTmp=f.mmap_measData;
-  dataTmp=reshape(dataTmp, (size(dataTmp,1),size(dataTmp,2),size(dataTmp,3)*size(dataTmp,4)))
-  println(size(dataTmp))
-  data = dataTmp[:, :, rows]
+  data = f.mmap_measData[:, :, rows]
   return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
 end
 
