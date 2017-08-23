@@ -10,16 +10,6 @@ imcenter(img::AxisArray) = map(x->(0.5*(last(x)+first(x))), ImageAxes.filter_spa
 imcenter(img::ImageMeta) = imcenter(data(img))
 
 
-    # # TODO: move the following to Analyze???
-    # dateStr, timeStr = split("$(acqDate(b))","T")
-    # dateStr = prod(split(dateStr,"-"))
-    # timeStr = split(timeStr,".")[1]
-    # timeStr = prod(split(timeStr,":"))
-    #
-    # header["date"] = dateStr
-    # header["time"] = timeStr
-
-
 function saveRecoDataMDF(filename, image::ImageMeta)
 
   C = colordim(image) == 0 ? 1 : size(image,colordim(image)) 
