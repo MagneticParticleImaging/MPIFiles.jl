@@ -180,8 +180,8 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/acquisition/receiver/dataConversionFactor",  params["rxDataConversionFactor"])
   if hasKeyAndValue(params,"rxTransferFunction")
     tf = params["rxTransferFunction"]
-    tfR = reinterpret(Float64, tf, (2, size(tf)...))
-    write(file, "/acquisition/receiver/transferFunction", tfR)
+    group = g_create(file,"/acquisition/receiver")
+    writeComplexArray(group, "transferFunction", tf)
   end
   writeIfAvailable(file, "/acquisition/receiver/inductionFactor",  params, "rxInductionFactor")
 
@@ -189,8 +189,8 @@ function saveasMDF(file::HDF5File, params::Dict)
   if hasKeyAndValue(params, "measData")
     meas = params["measData"]
     if eltype(meas) <: Complex
-      meas = reinterpret(typeof((meas[1]).re),meas,(2,size(meas)...))
-      write(file, "/measurement/data", meas)
+      group = g_create(file,"/measurement")
+      writeComplexArray(group, "/measurement/data", meas)
     else
       write(file, "/measurement/data", meas)
     end
@@ -237,3 +237,4 @@ function saveasMDF(file::HDF5File, params::Dict)
   end
 
 end
+

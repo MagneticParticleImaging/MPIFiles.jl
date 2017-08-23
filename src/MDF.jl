@@ -187,9 +187,9 @@ rxNumChannels(f::MDFFile) = f["/acquisition/receiver/numChannels"]
 rxBandwidth(f::MDFFile) = f["/acquisition/receiver/bandwidth"]
 rxNumSamplingPoints(f::MDFFile) = f["/acquisition/receiver/numSamplingPoints"]
 function rxTransferFunction(f::MDFFile)
-  tf = f["/acquisition/receiver/transferFunction"]
-  if tf != nothing
-    return reinterpret(Complex{eltype(tf)}, tf, (size(tf,2),size(tf,3)))
+  parameter = "/acquisition/receiver/transferFunction"
+  if h5exists(f.filename, parameter)
+    return readComplexArray(f.filename, parameter)
   else
     return nothing
   end
@@ -251,29 +251,23 @@ function measData(f::MDFFileV2, frames=1:acqNumFrames(f), patches=1:acqNumPatche
   end
   if f.mmap_measData == nothing
     h5open(f.filename,"r") do file
-      f.mmap_measData = readmmap(file["/measurement/data"])
+      parameter = "/measurement/data"
+      if !isComplexArray(file, parameter)
+        f.mmap_measData = readmmap(file[parameter])
+      else
+        f.mmap_measData = readmmap(file[parameter], Array{getComplexType(file,parameter)} )
+      end
     end
   end
 
-  if measIsFourierTransformed(f)
-    if measIsTransposed(f)
-      data = f.mmap_measData[:, frames, :, receivers, patches]
-    else
-      data = f.mmap_measData[:, :, receivers, patches, frames]
-    end
-
-    return reinterpret(Complex{eltype(data)}, data,
-               (size(data,2),size(data,3),size(data,4),size(data,5)))
+  if measIsTransposed(f)
+    data = f.mmap_measData[frames, :, receivers, patches]
+    data = reshape(data, length(frames), size(data,2), length(receivers), length(patches))
   else
-    if measIsTransposed(f)
-      data = f.mmap_measData[frames, :, receivers, patches]
-      data = reshape(data, length(frames), size(data,2), length(receivers), length(patches))
-    else
-      data = f.mmap_measData[:, receivers, patches, frames]
-      data = reshape(data, size(data,1), length(receivers), length(patches), length(frames))
-    end
-    return data
+    data = f.mmap_measData[:, receivers, patches, frames]
+    data = reshape(data, size(data,1), length(receivers), length(patches), length(frames))
   end
+  return data
 end
 
 function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
@@ -297,17 +291,22 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
   end
   if f.mmap_measData == nothing
     h5open(f.filename,"r") do file
-      f.mmap_measData = readmmap(file["/measurement/data"])
+      parameter = "/measurement/data"
+      if !isComplexArray(file, parameter)
+        f.mmap_measData = readmmap(file[parameter])
+      else
+        f.mmap_measData = readmmap(file[parameter], Array{getComplexType(file,parameter)} )
+      end
     end
   end
-  data = reshape(f.mmap_measData,Val{3})[:, :, rows]
+  data = reshape(f.mmap_measData,Val{2})[:, rows]
 
-  fgdata = data[:,measFGFrameIdx(f),:]
+  fgdata = data[measFGFrameIdx(f),:]
   if bgCorrection
-    bgdata = data[:,measBGFrameIdx(f),:]
-    fgdata[:,:,:] .-= mean(bgdata,2)
+    bgdata = data[measBGFrameIdx(f),:]
+    fgdata[:,:] .-= mean(bgdata,1)
   end
-  return reinterpret(Complex{eltype(fgdata)}, fgdata, (size(fgdata,2),size(fgdata,3)))
+  return fgdata
 end
 
 function systemMatrixWithBG(f::MDFFileV2)
@@ -317,12 +316,17 @@ function systemMatrixWithBG(f::MDFFileV2)
   end
   if f.mmap_measData == nothing
     h5open(f.filename,"r") do file
-      f.mmap_measData = readmmap(file["/measurement/data"])
+      parameter = "/measurement/data"
+      if !isComplexArray(file, parameter)
+        f.mmap_measData = readmmap(file[parameter])
+      else
+        f.mmap_measData = readmmap(file[parameter], Array{getComplexType(file,parameter)} )
+      end
     end
   end
 
-  data = f.mmap_measData[:, :, :, :, :]
-  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
+  data = f.mmap_measData[:, :, :, :]
+  return data
 end
 
 
