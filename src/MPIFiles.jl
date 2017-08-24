@@ -2,6 +2,7 @@ __precompile__()
 module MPIFiles
 
 using Compat
+using ProgressMeter
 using Graphics: @mustimplement
 
 import Base: ndims, time, show, getindex
@@ -237,7 +238,6 @@ systemMatrix(f::MPIFile) = systemMatrixWithBG(f)[1:acqNumFGFrames(f),:,:,:]
 
 include("Custom.jl")
 include("MDF.jl")
-include("RawFile.jl")
 include("Brukerfile.jl")
 
 # This dispatches on the file extension and automatically
