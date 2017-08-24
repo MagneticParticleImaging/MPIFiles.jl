@@ -7,8 +7,6 @@ function setparam!(params::Dict, parameter, value)
   end
 end
 
-
-
 # we do not support all conversion possibilities
 function loadDataset(f::MPIFile; frames=1:acqNumFrames(f))
     # TODO applyCalibPostprocessing=false)

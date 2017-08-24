@@ -261,10 +261,10 @@ function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
   end
 
   if measIsTransposed(f)
-    data = f.mmap_measData[frames, :, receivers, patches]
+    data = f.mmap_measData[frames, :, receivers, periods]
     data = reshape(data, length(frames), size(data,2), length(receivers), length(periods))
   else
-    data = f.mmap_measData[:, receivers, patches, frames]
+    data = f.mmap_measData[:, receivers, periods, frames]
     data = reshape(data, size(data,1), length(receivers), length(periods), length(frames))
   end
   return data
