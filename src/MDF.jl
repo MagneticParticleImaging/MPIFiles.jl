@@ -203,7 +203,7 @@ rxDataConversionFactor(f::MDFFileV1) = repeat([1.0, 0.0], outer=(1,rxNumChannels
 rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFactor"]
 
 # measurements
-function measData(f::MDFFileV1, frames=1:acqNumFrames(f), patches=1:acqNumPatches(f),
+function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     # the V1 file is a calibration
@@ -244,7 +244,7 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), patches=1:acqNumPatche
   end
 end
 
-function measData(f::MDFFileV2, frames=1:acqNumFrames(f), patches=1:acqNumPatches(f),
+function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     return nothing
@@ -262,10 +262,10 @@ function measData(f::MDFFileV2, frames=1:acqNumFrames(f), patches=1:acqNumPatche
 
   if measIsTransposed(f)
     data = f.mmap_measData[frames, :, receivers, patches]
-    data = reshape(data, length(frames), size(data,2), length(receivers), length(patches))
+    data = reshape(data, length(frames), size(data,2), length(receivers), length(periods))
   else
     data = f.mmap_measData[:, receivers, patches, frames]
-    data = reshape(data, size(data,1), length(receivers), length(patches), length(frames))
+    data = reshape(data, size(data,1), length(receivers), length(periods), length(frames))
   end
   return data
 end
