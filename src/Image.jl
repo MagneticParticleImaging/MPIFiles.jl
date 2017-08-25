@@ -25,7 +25,7 @@ function saveRecoDataMDF(filename, image::ImageMeta)
   params = properties(image)
   params["recoData"] = c
   params["recoFov"] = collect(grid) .* collect(pixelspacing(image))[1:3]
-  params["recoFovCenter"] = collect(imcenter(image))
+  params["recoFovCenter"] = collect(imcenter(image))[1:3]
   params["recoSize"] = collect(grid)
   params["recoOrder"] = "xyz"
   if haskey(params,"recoParams")
