@@ -11,7 +11,6 @@ imcenter(img::ImageMeta) = imcenter(data(img))
 
 
 function saveRecoDataMDF(filename, image::ImageMeta)
-
   C = colordim(image) == 0 ? 1 : size(image,colordim(image)) 
   L = timedim(image) == 0 ? 1 : size(image,timedim(image))
   
@@ -25,7 +24,7 @@ function saveRecoDataMDF(filename, image::ImageMeta)
 
   params = properties(image)
   params["recoData"] = c
-  params["recoFov"] = collect(grid) .* collect(pixelspacing(image))
+  params["recoFov"] = collect(grid) .* collect(pixelspacing(image))[1:3]
   params["recoFovCenter"] = collect(imcenter(image))
   params["recoSize"] = collect(grid)
   params["recoOrder"] = "xyz"
