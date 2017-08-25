@@ -178,7 +178,7 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/acquisition/receiver/dataConversionFactor",  params["rxDataConversionFactor"])
   if hasKeyAndValue(params,"rxTransferFunction")
     tf = params["rxTransferFunction"]
-    group = g_create(file,"/acquisition/receiver")
+    group = file["/acquisition/receiver"]
     writeComplexArray(group, "transferFunction", tf)
   end
   writeIfAvailable(file, "/acquisition/receiver/inductionFactor",  params, "rxInductionFactor")
