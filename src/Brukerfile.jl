@@ -175,20 +175,20 @@ function acqStartTime(b::BrukerFile)
   acq = b["ACQ_time"] #b["VisuAcqDate"]
   DateTime( replace(acq[2:search(acq,'+')-1],",",".") )
 end
-function acqNumFrames(b::BrukerFile) 
+function acqNumFrames(b::BrukerFile)
   M = Int64(b["ACQ_jobs"][1][8])
   return div(M,acqNumPeriods(b))
 end
 acqFramePeriod(b::BrukerFile) = dfPeriod(b) * acqNumAverages(b)
-function acqNumPatches(b::BrukerFile) 
+function acqNumPatches(b::BrukerFile)
   M = b["MPI_NSteps"]
   return (M == nothing) ? 1 : parse(Int64,M)
 end
 function acqNumPeriods(b::BrukerFile)
   M = b["MPI_RepetitionsPerStep"]
   N = acqNumPatches(b)
-  return (M == nothing) ? N : N*parse(Int64,M) 
-end 
+  return (M == nothing) ? N : N*parse(Int64,M)
+end
 
 acqNumAverages(b::BrukerFile) = parse(Int,b["NA"])
 
@@ -264,7 +264,7 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
   return reshape(data, rxNumSamplingPoints(b), length(receivers),length(periods),length(frames))
 end
 
-function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), patches=1:acqNumPatches(b),
+function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNumPeriods(b),
                   receivers=1:rxNumChannels(b))
 
   sfFilename = joinpath(b.path,"pdata", "1", "systemMatrix")

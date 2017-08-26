@@ -6,12 +6,12 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
 
   nFreq = rxNumFrequencies(f)
   nReceivers = rxNumChannels(f)
-  nPatches = acqNumPatches(f)
+  nPeriods = acqNumPeriods(f)
 
   minIdx = round(Int, minFreq / rxBandwidth(f) * nFreq )
   maxIdx = round(Int, maxFreq / rxBandwidth(f) * nFreq )
 
-  freqMask = zeros(Bool,nFreq,nReceivers,nPatches)
+  freqMask = zeros(Bool,nFreq,nReceivers,nPeriods)
 
   freqMask[:,recChannels,:] = true
 

@@ -140,7 +140,6 @@ scannerTopology(f::MDFFile) = f["/scanner/topology"]
 acqStartTime(f::MDFFileV1) = DateTime( f["/acquisition/time"] )
 acqStartTime(f::MDFFileV2) = DateTime( f["/acquisition/startTime"] )
 acqFramePeriod(f::MDFFile) = f["/acquisition/framePeriod"]
-acqNumPatches(f::MDFFile) = f["/acquisition/numPatches"]
 acqNumAverages(f::MDFFileV1) = f["/acquisition/drivefield/averages"]
 acqNumAverages(f::MDFFileV2) = f["/acquisition/numAverages"]
 function acqNumFrames(f::MDFFileV1)
@@ -429,5 +428,3 @@ function addTrailingSingleton(a::Array,dim)
     return reshape(a,size(a)...,1)
   end
 end
-
-

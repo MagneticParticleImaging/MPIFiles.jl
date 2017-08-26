@@ -61,7 +61,7 @@ for mdf in (mdfv1,mdfv2)
   @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
   @test acqGradient(mdf)[:,1] == [-1.25; -1.25; 2.5]
   @test acqFramePeriod(mdf) == 6.528E-4
-  @test acqNumPatches(mdf) == 1
+  @test acqNumPeriods(mdf) == 1
   @test acqOffsetFieldShift(mdf)[:,1] == [0.0; 0.0; -0.0]
 
   @test dfNumChannels(mdf) == 3

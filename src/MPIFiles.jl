@@ -31,7 +31,7 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
        scannerTopology
 
 # acquisition parameters
-export acqStartTime, acqFramePeriod, acqNumPatches, acqNumFrames, acqNumAverages,
+export acqStartTime, acqFramePeriod, acqNumFrames, acqNumAverages,
        acqGradient, acqOffsetField, acqOffsetFieldShift, acqNumPeriods, acqSize
 
 # drive-field parameters
@@ -104,7 +104,6 @@ export selectedChannels
 # acquisition parameters
 @mustimplement acqStartTime(f::MPIFile)
 @mustimplement acqFramePeriod(f::MPIFile)
-@mustimplement acqNumPatches(f::MPIFile)
 @mustimplement acqNumAverages(f::MPIFile)
 @mustimplement acqNumPeriods(f::MPIFile)
 @mustimplement acqNumFrames(f::MPIFile)
@@ -259,7 +258,7 @@ end
 optParam(param, default) = (param == nothing) ? default : param
 
 # Support for handling complex datatypes in HDF5 files
-function writeComplexArray{T,D}(file, dataset, A::Array{Complex{T},D}) 
+function writeComplexArray{T,D}(file, dataset, A::Array{Complex{T},D})
   d_type_compound = HDF5.h5t_create(HDF5.H5T_COMPOUND,2*sizeof(T))
   HDF5.h5t_insert(d_type_compound, "r", 0 , HDF5.hdf5_type_id(T))
   HDF5.h5t_insert(d_type_compound, "i", sizeof(T) , HDF5.hdf5_type_id(T))
@@ -276,7 +275,7 @@ function writeComplexArray{T,D}(file, dataset, A::Array{Complex{T},D})
   HDF5.h5d_close(dset_compound)
   HDF5.h5t_close(d_type_compound)
 end
-  
+
 function isComplexArray(file, dataset)
   if eltype(file[dataset]) <: HDF5.HDF5Compound{2}
     if HDF5.h5t_get_member_name(datatype(file[dataset]).id,0) == "r" &&
@@ -286,7 +285,7 @@ function isComplexArray(file, dataset)
   end
   return false
 end
-  
+
 function getComplexType(file, dataset)
   T = HDF5.hdf5_to_julia_eltype(
             HDF5Datatype(

@@ -56,7 +56,7 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :tracerSolute, :tracerInjectionTime,
           :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
           :scannerTopology, :acqFramePeriod, :acqNumPeriods, :acqNumAverages,
-          :acqNumPatches, :acqStartTime, :acqOffsetField, :acqOffsetFieldShift, :acqNumFrames,
+          :acqStartTime, :acqOffsetField, :acqOffsetFieldShift, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
           :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
           :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor,
@@ -148,7 +148,6 @@ function saveasMDF(file::HDF5File, params::Dict)
 
   # acquisition parameters
   write(file, "/acquisition/framePeriod", get(params,"acqFramePeriod",0.0))
-  write(file, "/acquisition/numPatches", get(params,"acqNumPatches",1))
   write(file, "/acquisition/numAverages",  params["acqNumAverages"])
   write(file, "/acquisition/numFrames", get(params,"acqNumFrames",1))
   write(file, "/acquisition/numPeriods", get(params,"acqNumPeriods",1))
@@ -235,4 +234,3 @@ function saveasMDF(file::HDF5File, params::Dict)
   end
 
 end
-

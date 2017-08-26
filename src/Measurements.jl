@@ -103,7 +103,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
 
     if measIsTransposed(f)
       if measIsFourierTransformed(f)
-        data = zeros(Complex64, nBlocks, rxNumFrequencies(f), rxNumChannels(f), acqNumPatches(f))
+        data = zeros(Complex64, nBlocks, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriods(f))
       else
         data = zeros(Float32, nBlocks, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f))
       end

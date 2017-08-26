@@ -13,9 +13,7 @@ function Base.show(io::IO, f::MultiMPIFile)
   print(io, "Multi MPI File: ", f.files)
 end
 
-acqNumPatches(f::MultiMPIFile) = length(f.files)
 acqNumPeriods(f::MultiMPIFile) = length(f.files) #TODO make frames periods
-
 
 for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyUuid, :studyDescription,
             :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
@@ -35,8 +33,8 @@ end
 for op in [ :dfStrength, :dfPhase ]
   @eval begin function $op(f::MultiMPIFile)
        tmp = $op(f.files[1])
-       newVal = similar(tmp, size(tmp,1), size(tmp,2), acqNumPatches(f))
-       for c=1:acqNumPatches(f)
+       newVal = similar(tmp, size(tmp,1), size(tmp,2), acqNumPeriods(f))
+       for c=1:acqNumPeriods(f)
          tmp = $op(f.files[c])
          for a=1:size(tmp,1)
            for b=1:size(tmp,2)
@@ -52,8 +50,8 @@ end
 for op in [ :acqGradient, :acqOffsetField, :acqOffsetFieldShift ]
   @eval begin function $op(f::MultiMPIFile)
        tmp = $op(f.files[1])
-       newVal = similar(tmp, size(tmp,1), acqNumPatches(f))
-       for c=1:acqNumPatches(f)
+       newVal = similar(tmp, size(tmp,1), acqNumPeriods(f))
+       for c=1:acqNumPeriods(f)
          tmp = $op(f.files[c])
          for a=1:size(tmp,1)
              newVal[a,c] = tmp[a]
