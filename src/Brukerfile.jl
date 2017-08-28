@@ -191,11 +191,21 @@ function acqNumBGFrames(b::BrukerFile)
 end
 acqGradient(b::BrukerFile) = addTrailingSingleton([-0.5, -0.5, 1.0].*
       parse(Float64,b["ACQ_MPI_selection_field_gradient"]),2)
-function acqOffsetField(b::BrukerFile) #TODO NOT correct
+function acqOffsetField(b::BrukerFile) #TODO NOT correct    !!!!!!!!!!!!
+ if b["MPI_NSteps"]==nothing
   voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
-  calibFac = [2.5/49.45, -2.5*0.008/-22.73, 2.5*0.008/-22.73, 1.5*0.0094/13.2963]
+  #calibFac = [2.5/49.45, -2.5*0.008/-22.73, 2.5*0.008/-22.73, 1.5*0.0094/13.2963]
+  calibFac = [2.5/49.45, 0.5*(-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
+ # calibFac = [2.5/49.45, -2.5*0.008/-21.61, 2.5*0.008/-22.28, 2.5*0.008/9.07]
   return addTrailingSingleton( Float64[voltage[d]*calibFac[d] for d=2:4],2)
+ else
+  ffx = [parse(Float64,s) for s=b["MPI_FocusFieldX"]]
+  ffy = [parse(Float64,s) for s=b["MPI_FocusFieldY"]]
+  ffz = [parse(Float64,s) for s=b["MPI_FocusFieldZ"]]
+  return ntuple(i->(Float64[ffx[i],ffy[i],ffz[i]].*1e-3),length(ffx))
+ end
 end
+
 acqOffsetFieldShift(b::BrukerFile) = acqOffsetField(b) ./ acqGradient(b)
 
 
