@@ -7,8 +7,6 @@ function setparam!(params::Dict, parameter, value)
   end
 end
 
-
-
 # we do not support all conversion possibilities
 function loadDataset(f::MPIFile; frames=1:acqNumFrames(f))
     # TODO applyCalibPostprocessing=false)
@@ -58,7 +56,7 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :tracerSolute, :tracerInjectionTime,
           :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
           :scannerTopology, :acqFramePeriod, :acqNumPeriods, :acqNumAverages,
-          :acqNumPatches, :acqStartTime, :acqOffsetField, :acqOffsetFieldShift, :acqNumFrames,
+          :acqStartTime, :acqOffsetField, :acqOffsetFieldShift, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
           :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
           :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor,
@@ -150,7 +148,6 @@ function saveasMDF(file::HDF5File, params::Dict)
 
   # acquisition parameters
   write(file, "/acquisition/framePeriod", get(params,"acqFramePeriod",0.0))
-  write(file, "/acquisition/numPatches", get(params,"acqNumPatches",1))
   write(file, "/acquisition/numAverages",  params["acqNumAverages"])
   write(file, "/acquisition/numFrames", get(params,"acqNumFrames",1))
   write(file, "/acquisition/numPeriods", get(params,"acqNumPeriods",1))
@@ -180,8 +177,8 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/acquisition/receiver/dataConversionFactor",  params["rxDataConversionFactor"])
   if hasKeyAndValue(params,"rxTransferFunction")
     tf = params["rxTransferFunction"]
-    tfR = reinterpret(Float64, tf, (2, size(tf)...))
-    write(file, "/acquisition/receiver/transferFunction", tfR)
+    group = file["/acquisition/receiver"]
+    writeComplexArray(group, "transferFunction", tf)
   end
   writeIfAvailable(file, "/acquisition/receiver/inductionFactor",  params, "rxInductionFactor")
 
@@ -189,8 +186,8 @@ function saveasMDF(file::HDF5File, params::Dict)
   if hasKeyAndValue(params, "measData")
     meas = params["measData"]
     if eltype(meas) <: Complex
-      meas = reinterpret(typeof((meas[1]).re),meas,(2,size(meas)...))
-      write(file, "/measurement/data", meas)
+      group = g_create(file,"/measurement")
+      writeComplexArray(group, "/measurement/data", meas)
     else
       write(file, "/measurement/data", meas)
     end

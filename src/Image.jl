@@ -10,18 +10,7 @@ imcenter(img::AxisArray) = map(x->(0.5*(last(x)+first(x))), ImageAxes.filter_spa
 imcenter(img::ImageMeta) = imcenter(data(img))
 
 
-    # # TODO: move the following to Analyze???
-    # dateStr, timeStr = split("$(acqDate(b))","T")
-    # dateStr = prod(split(dateStr,"-"))
-    # timeStr = split(timeStr,".")[1]
-    # timeStr = prod(split(timeStr,":"))
-    #
-    # header["date"] = dateStr
-    # header["time"] = timeStr
-
-
 function saveRecoDataMDF(filename, image::ImageMeta)
-
   C = colordim(image) == 0 ? 1 : size(image,colordim(image)) 
   L = timedim(image) == 0 ? 1 : size(image,timedim(image))
   
@@ -35,8 +24,8 @@ function saveRecoDataMDF(filename, image::ImageMeta)
 
   params = properties(image)
   params["recoData"] = c
-  params["recoFov"] = collect(grid) .* collect(pixelspacing(image))
-  params["recoFovCenter"] = collect(imcenter(image))
+  params["recoFov"] = collect(grid) .* collect(pixelspacing(image))[1:3]
+  params["recoFovCenter"] = collect(imcenter(image))[1:3]
   params["recoSize"] = collect(grid)
   params["recoOrder"] = "xyz"
   if haskey(params,"recoParams")

@@ -2,6 +2,7 @@ __precompile__()
 module MPIFiles
 
 using Compat
+using ProgressMeter
 using Graphics: @mustimplement
 
 import Base: ndims, time, show, getindex
@@ -30,7 +31,7 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
        scannerTopology
 
 # acquisition parameters
-export acqStartTime, acqFramePeriod, acqNumPatches, acqNumFrames, acqNumAverages,
+export acqStartTime, acqFramePeriod, acqNumFrames, acqNumAverages,
        acqGradient, acqOffsetField, acqOffsetFieldShift, acqNumPeriods, acqSize
 
 # drive-field parameters
@@ -103,7 +104,6 @@ export selectedChannels
 # acquisition parameters
 @mustimplement acqStartTime(f::MPIFile)
 @mustimplement acqFramePeriod(f::MPIFile)
-@mustimplement acqNumPatches(f::MPIFile)
 @mustimplement acqNumAverages(f::MPIFile)
 @mustimplement acqNumPeriods(f::MPIFile)
 @mustimplement acqNumFrames(f::MPIFile)
@@ -237,7 +237,6 @@ systemMatrix(f::MPIFile) = systemMatrixWithBG(f)[1:acqNumFGFrames(f),:,:,:]
 
 include("Custom.jl")
 include("MDF.jl")
-include("RawFile.jl")
 include("Brukerfile.jl")
 
 # This dispatches on the file extension and automatically
@@ -258,15 +257,62 @@ end
 
 optParam(param, default) = (param == nothing) ? default : param
 
+# Support for handling complex datatypes in HDF5 files
+function writeComplexArray{T,D}(file, dataset, A::Array{Complex{T},D})
+  d_type_compound = HDF5.h5t_create(HDF5.H5T_COMPOUND,2*sizeof(T))
+  HDF5.h5t_insert(d_type_compound, "r", 0 , HDF5.hdf5_type_id(T))
+  HDF5.h5t_insert(d_type_compound, "i", sizeof(T) , HDF5.hdf5_type_id(T))
+
+  shape = collect(reverse(size(A)))
+  space = HDF5.h5s_create_simple(D, shape, shape)
+
+  dset_compound = HDF5.h5d_create(file, dataset, d_type_compound, space,
+                                  HDF5.H5P_DEFAULT,HDF5.H5P_DEFAULT,HDF5.H5P_DEFAULT)
+  HDF5.h5s_close(space)
+
+  HDF5.h5d_write(dset_compound, d_type_compound, HDF5.H5S_ALL, HDF5.H5S_ALL, HDF5.H5P_DEFAULT, A)
+
+  HDF5.h5d_close(dset_compound)
+  HDF5.h5t_close(d_type_compound)
+end
+
+function isComplexArray(file, dataset)
+  if eltype(file[dataset]) <: HDF5.HDF5Compound{2}
+    if HDF5.h5t_get_member_name(datatype(file[dataset]).id,0) == "r" &&
+      HDF5.h5t_get_member_name(datatype(file[dataset]).id,1) == "i"
+        return true
+    end
+  end
+  return false
+end
+
+function getComplexType(file, dataset)
+  T = HDF5.hdf5_to_julia_eltype(
+            HDF5Datatype(
+              HDF5.h5t_get_member_type( datatype(file[dataset]).id, 0 )
+          )
+        )
+    return Complex{T}
+end
+
+function readComplexArray(file::HDF5File, dataset)
+  T = getComplexType(file, dataset)
+  A = copy(readmmap(file[dataset],Array{getComplexType(file,dataset)}))
+  return A
+end
+
+function readComplexArray(filename::String, dataset)
+  h5open(filename, "r") do file
+    return readComplexArray(file, dataset)
+  end
+end
+
+include("MultiMPIFile.jl")
 include("Measurements.jl")
 include("SystemMatrix.jl")
 include("FrequencyFilter.jl")
 include("Conversion.jl")
 include("Image.jl")
 include("DatasetStore.jl")
-
-### Misc functions ###
-#include("Misc.jl")
-
 
 end # module

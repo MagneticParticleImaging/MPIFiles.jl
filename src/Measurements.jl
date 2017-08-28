@@ -9,14 +9,14 @@ function measDataConv(f::MPIFile, args...)
   a = rxDataConversionFactor(f)
   if a!=nothing
     if measIsTransposed(f)
-      for d=1:size(data,4)
-        slice = view(data,:,:,:,d,:)
+      for d=1:size(data,3)
+        slice = view(data,:,:,d,:)
         scale!(slice, a[1,d])
         slice .+= a[2,d]
       end
     else
-      for d=1:size(data,3)
-        slice = view(data,:,:,d,:,:)
+      for d=1:size(data,2)
+        slice = view(data,:,d,:,:)
         scale!(slice, a[1,d])
         slice .+= a[2,d]
       end
@@ -25,14 +25,14 @@ function measDataConv(f::MPIFile, args...)
   return data
 end
 
-function spectralLeakageCorrection_(f::MPIFile, frames)
+function spectralLeakageCorrection_(f::MPIFile, frames, periods)
   #println("Apply Spectral Cleaning")
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
   numFrames = acqNumFrames(f)
-  numPatches = acqNumPatches(f)
+  numPeriods = acqNumPeriods(f)
 
-  data = zeros(Float32, numTimePoints, numReceivers, numPatches, length(frames))
+  data = zeros(Float32, numTimePoints, numReceivers, length(periods), length(frames))
   M = numTimePoints*3
   window3 = 0.5.*(1.-cos.(2*π/(M-1)*(0:(M-1))))
   window3 = window3 / (sum(window3)/M)
@@ -42,20 +42,20 @@ function spectralLeakageCorrection_(f::MPIFile, frames)
   window2 = window2 / (sum(window2)/M)
 
   for (i,fr) in enumerate(frames)
-    for p in 1:numPatches
+    for (p,pe) in enumerate(periods)
       for r in 1:numReceivers
         if fr==1
-          tmp = measDataConv(f, fr:fr+1, p, r)
+          tmp = measDataConv(f, fr:fr+1, pe, r)
           data[:,r,p,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
                             +  tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
                             );
         elseif fr==numFrames
-          tmp = measDataConv(f, fr-1:fr, p, r)
+          tmp = measDataConv(f, fr-1:fr, pe, r)
           data[:,r,p,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
                             +    tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
                             );
         else
-          tmp = measDataConv(f, fr-1:fr+1, p, r)
+          tmp = measDataConv(f, fr-1:fr+1, pe, r)
           data[:,r,p,i] = 1/3 * (tmp[:,1,1,1] .* window3[1:numTimePoints]
                             +  tmp[:,1,1,2] .* window3[1+numTimePoints:2*numTimePoints]
                             +  tmp[:,1,1,3] .* window3[1+2*numTimePoints:3*numTimePoints]
@@ -67,14 +67,14 @@ function spectralLeakageCorrection_(f::MPIFile, frames)
   return data
 end
 
-function measDataLowLevel(f::MPIFile, frames; spectralLeakageCorrection=true )
+function measDataLowLevel(f::MPIFile, args...; spectralLeakageCorrection=true )
   if measIsFourierTransformed(f)
-    return measDataConv(f, frames)
+    return measDataConv(f, args...)
   else
     if !spectralLeakageCorrection || measIsSpectralLeakageCorrected(f)
-       tmp = measDataConv(f, frames)
+       tmp = measDataConv(f, args...)
     else
-       tmp = spectralLeakageCorrection_(f, frames)
+       tmp = spectralLeakageCorrection_(f, args...)
     end
   end
 end
@@ -86,14 +86,14 @@ end
 returnasreal{T<:Real}(u::AbstractArray{T}) = u
 
 function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
-            numAverages=1,  verbose = false,
+            numAverages=1,  verbose = false, periods=1:acqNumPeriods(f),
             spectralLeakageCorrection=true)
 
   verbose && println( rxNumSamplingPoints(f), " ",
                       rxNumChannels(f), " ", acqNumFrames(f), )
 
   if numAverages == 1
-    data = measDataLowLevel(f, frames, spectralLeakageCorrection=spectralLeakageCorrection)
+    data = measDataLowLevel(f, frames, periods, spectralLeakageCorrection=spectralLeakageCorrection)
   else
     nFrames = length(frames)
     nBlocks = ceil(Int, nFrames / numAverages)
@@ -103,7 +103,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
 
     if measIsTransposed(f)
       if measIsFourierTransformed(f)
-        data = zeros(Complex64, nBlocks, rxNumFrequencies(f), rxNumChannels(f), acqNumPatches(f))
+        data = zeros(Complex64, nBlocks, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriods(f))
       else
         data = zeros(Float32, nBlocks, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f))
       end
@@ -119,7 +119,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
       index1 = 1 + (i-1)*numAverages
       index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
 
-      tmp = measDataLowLevel(f, frames[index1:index2], spectralLeakageCorrection=spectralLeakageCorrection)
+      tmp = measDataLowLevel(f, frames[index1:index2], periods, spectralLeakageCorrection=spectralLeakageCorrection)
       if measIsTransposed(f)
         data[i,:,:,:] = mean(tmp,1)
       else

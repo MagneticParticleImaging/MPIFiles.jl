@@ -175,10 +175,21 @@ function acqStartTime(b::BrukerFile)
   acq = b["ACQ_time"] #b["VisuAcqDate"]
   DateTime( replace(acq[2:search(acq,'+')-1],",",".") )
 end
-acqNumFrames(b::BrukerFile) = Int64(b["ACQ_jobs"][1][8])
+function acqNumFrames(b::BrukerFile)
+  M = Int64(b["ACQ_jobs"][1][8])
+  return div(M,acqNumPeriods(b))
+end
 acqFramePeriod(b::BrukerFile) = dfPeriod(b) * acqNumAverages(b)
-acqNumPatches(b::BrukerFile) = 1
-acqNumPeriods(b::BrukerFile) = 1
+function acqNumPatches(b::BrukerFile)
+  M = b["MPI_NSteps"]
+  return (M == nothing) ? 1 : parse(Int64,M)
+end
+function acqNumPeriods(b::BrukerFile)
+  M = b["MPI_RepetitionsPerStep"]
+  N = acqNumPatches(b)
+  return (M == nothing) ? N : N*parse(Int64,M)
+end
+
 acqNumAverages(b::BrukerFile) = parse(Int,b["NA"])
 
 function acqNumBGFrames(b::BrukerFile)
@@ -191,22 +202,22 @@ function acqNumBGFrames(b::BrukerFile)
 end
 acqGradient(b::BrukerFile) = addTrailingSingleton([-0.5, -0.5, 1.0].*
       parse(Float64,b["ACQ_MPI_selection_field_gradient"]),2)
-function acqOffsetField(b::BrukerFile) #TODO NOT correct    !!!!!!!!!!!!
- if b["MPI_NSteps"]==nothing
-  voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
-  #calibFac = [2.5/49.45, -2.5*0.008/-22.73, 2.5*0.008/-22.73, 1.5*0.0094/13.2963]
-  calibFac = [2.5/49.45, 0.5*(-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
- # calibFac = [2.5/49.45, -2.5*0.008/-21.61, 2.5*0.008/-22.28, 2.5*0.008/9.07]
-  return addTrailingSingleton( Float64[voltage[d]*calibFac[d] for d=2:4],2)
- else
-  ffx = [parse(Float64,s) for s=b["MPI_FocusFieldX"]]
-  ffy = [parse(Float64,s) for s=b["MPI_FocusFieldY"]]
-  ffz = [parse(Float64,s) for s=b["MPI_FocusFieldZ"]]
-  return ntuple(i->(Float64[ffx[i],ffy[i],ffz[i]].*1e-3),length(ffx))
- end
-end
 
-acqOffsetFieldShift(b::BrukerFile) = acqOffsetField(b) ./ acqGradient(b)
+function acqOffsetField(b::BrukerFile) #TODO NOT correct
+  if b["MPI_FocusFieldX"] == nothing
+    voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
+    voltage = reshape(voltage,4,:)
+    calibFac = [2.5/49.45, 0.5*(-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
+    return Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPatches(b)]
+  else
+    return 1e-3*cat(2,[parse(Float64,a) for a in b["MPI_FocusFieldX"]],
+                 [parse(Float64,a) for a in b["MPI_FocusFieldY"]],
+                 [parse(Float64,a) for a in b["MPI_FocusFieldZ"]])'
+  end
+end
+function acqOffsetFieldShift(b::BrukerFile)
+    return acqOffsetField(b) ./ acqGradient(b)
+end
 
 
 # drive-field parameters
@@ -239,39 +250,40 @@ rxDataConversionFactor(b::BrukerFileMeas) =
 rxDataConversionFactor(b::BrukerFileCalib) =
                  repeat([1.0, 0.0], outer=(1,rxNumChannels(b)))
 
-function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), patches=1:acqNumPatches(b),
+function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumPeriods(b),
                   receivers=1:rxNumChannels(b))
 
-  dataFilename = joinpath(b.path,"rawdata")
+  dataFilename = joinpath(b.path,"rawdata.job0")
   dType = acqNumAverages(b) == 1 ? Int16 : Int32
 
-  raw = Rawfile(dataFilename, dType,
-             [rxNumSamplingPoints(b),rxNumChannels(b),acqNumFrames(b)],
-             extRaw=".job0") #Int or Uint?
-  data = raw[:,receivers,frames]
+  s = open(dataFilename)
+  raw = Mmap.mmap(s, Array{dType,4},
+             (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriods(b),acqNumFrames(b)))
+  data = raw[:,receivers,periods,frames]
+  close(s)
 
-  return reshape(data,size(data,1),size(data,2),1,size(data,3))
+  return reshape(data, rxNumSamplingPoints(b), length(receivers),length(periods),length(frames))
 end
 
-function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), patches=1:acqNumPatches(b),
+function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNumPeriods(b),
                   receivers=1:rxNumChannels(b))
 
   sfFilename = joinpath(b.path,"pdata", "1", "systemMatrix")
   nFreq = rxNumFrequencies(b)
 
-  data = Rawfile(sfFilename, Complex128,
-               [prod(calibSize(b)),nFreq,rxNumChannels(b)], extRaw="")
-  S = data[]
+  s = open(sfFilename)
+  data = Mmap.mmap(s, Array{Complex128,4}, (prod(calibSize(b)),nFreq,rxNumChannels(b),1))
+  S = data[:,:,:,:]
+  close(s)
   scale!(S,1.0/acqNumAverages(b))
-  S = reshape(S,size(S,1),size(S,2),size(S,3),1)
 
   bgFilename = joinpath(b.path,"pdata", "1", "background")
 
-  bgdata = Rawfile(bgFilename, Complex128,
-               [acqNumBGFrames(b),nFreq,rxNumChannels(b)], extRaw="")[]
+  s = open(bgFilename)
+  data = Mmap.mmap(s, Array{Complex128,4}, (acqNumBGFrames(b),nFreq,rxNumChannels(b),1))
+  bgdata = data[:,:,:,:]
+  close(s)
   scale!(bgdata,1.0/acqNumAverages(b))
-  #bgdata = permutedims(bgdata,[3,1,2])
-  bgdata = reshape(bgdata,size(bgdata,1),size(bgdata,2),size(bgdata,3),1)
   return cat(1,S,bgdata)
 end
 
@@ -283,10 +295,12 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
   sfFilename = joinpath(b.path,"pdata", "1", localSFFilename)
   nFreq = rxNumFrequencies(b)
 
-  data = Rawfile(sfFilename, Complex128,
-                 [prod(calibSize(b)),nFreq*rxNumChannels(b)], extRaw="")
+  s = open(sfFilename)
+  data = Mmap.mmap(s, Array{Complex128,2}, (prod(calibSize(b)),nFreq*rxNumChannels(b)))
   S = data[:,rows]
+  close(s)
   scale!(S,1.0/acqNumAverages(b))
+
   return S
 end
 
@@ -353,8 +367,12 @@ measIsFrequencySelection(b::BrukerFile) = false
 # calibrations
 function calibSNR(b::BrukerFile)
   snrFilename = joinpath(b.path,"pdata", "1", "snr")
-  data = Rawfile(snrFilename, Float64, [rxNumFrequencies(b),rxNumChannels(b)], extRaw="")
-  return addTrailingSingleton(data[],3)
+  s = open(snrFilename)
+  data = Mmap.mmap(s, Array{Float64,3}, (rxNumFrequencies(b),rxNumChannels(b),1))
+  snr = data[:,:,:]
+  close(s)
+
+  return snr
 end
 calibFov(b::BrukerFile) = [parse(Float64,s) for s = b["PVM_Fov"] ] * 1e-3
 calibFovCenter(b::BrukerFile) =
