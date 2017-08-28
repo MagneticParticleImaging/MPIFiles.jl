@@ -105,13 +105,13 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
       if measIsFourierTransformed(f)
         data = zeros(Complex64, nBlocks, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriods(f))
       else
-        data = zeros(Float32, nBlocks, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f))
+        data = zeros(Float32, nBlocks, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriods(f))
       end
     else
       if measIsFourierTransformed(f)
-        data = zeros(Complex64, rxNumFrequencies(f), rxNumChannels(f), acqNumPatches(f), nBlocks)
+        data = zeros(Complex64, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriods(f), nBlocks)
       else
-        data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f), nBlocks)
+        data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriods(f), nBlocks)
       end
     end
     p = Progress(nBlocks, 1, "Loading measurement from $(filepath(f)) ...")
