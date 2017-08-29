@@ -224,8 +224,9 @@ end
 # drive-field parameters
 dfNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
    #sum( dfStrength(b)[1,:,1] .> 0) #TODO Not sure about this
-dfStrength(b::BrukerFile) = addTrailingSingleton( addLeadingSingleton(
-  [parse(Float64,s) for s = b["ACQ_MPI_drive_field_strength"] ] *1e-3, 2), 3)
+dfStrength(b::BrukerFile) = repeat(addTrailingSingleton( addLeadingSingleton(
+  [parse(Float64,s) for s = b["ACQ_MPI_drive_field_strength"] ] *1e-3, 2), 3),
+                    inner=(1,1,acqNumPeriods(b)))
 dfPhase(b::BrukerFile) = dfStrength(b) .*0 .+  1.5707963267948966 # Bruker specific!
 dfBaseFrequency(b::BrukerFile) = 2.5e6
 dfCustomWaveform(b::BrukerFile) = nothing
