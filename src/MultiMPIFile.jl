@@ -13,7 +13,8 @@ function Base.show(io::IO, f::MultiMPIFile)
   print(io, "Multi MPI File: ", f.files)
 end
 
-acqNumPeriods(f::MultiMPIFile) = length(f.files) #TODO make frames periods
+acqNumPeriods(f::MultiMPIFile) = length(f.files)*acqNumFrames(f.files[1])
+acqNumFrames(f::MultiMPIFile) = 1
 
 for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyUuid, :studyDescription,
             :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
@@ -22,7 +23,7 @@ for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyUu
             :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
             :tracerSolute, :tracerInjectionTime,
             :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
-            :scannerTopology, :acqNumFrames, :acqNumBGFrames, :acqFramePeriod,
+            :scannerTopology, :acqNumBGFrames, :acqFramePeriod,
             :acqStartTime,
             :dfNumChannels, :dfBaseFrequency, :dfDivider,
             :dfPeriod, :dfWaveform, :rxNumChannels, :acqNumAverages, :rxBandwidth,
@@ -33,16 +34,19 @@ end
 for op in [ :dfStrength, :dfPhase ]
   @eval begin function $op(f::MultiMPIFile)
        tmp = $op(f.files[1])
-       newVal = similar(tmp, size(tmp,1), size(tmp,2), acqNumPeriods(f))
-       for c=1:acqNumPeriods(f)
+       newVal = similar(tmp, size(tmp,1), size(tmp,2), 
+                        acqNumFrames(f.files[1]),length(f.files))
+       for c=1:length(f.files)
          tmp = $op(f.files[c])
-         for a=1:size(tmp,1)
-           for b=1:size(tmp,2)
-             newVal[a,b,c] = tmp[a,b]
+         for y=1:acqNumFrames(f.files[1])
+           for a=1:size(tmp,1)
+             for b=1:size(tmp,2)
+               newVal[a,b,y,c] = tmp[a,b]
+             end
            end
          end
        end
-      return newVal
+      return reshape(newVal,size(newVal,1),size(newVal,2),:)
     end
   end
 end
@@ -50,14 +54,16 @@ end
 for op in [ :acqGradient, :acqOffsetField, :acqOffsetFieldShift ]
   @eval begin function $op(f::MultiMPIFile)
        tmp = $op(f.files[1])
-       newVal = similar(tmp, size(tmp,1), acqNumPeriods(f))
-       for c=1:acqNumPeriods(f)
+       newVal = similar(tmp, size(tmp,1), acqNumFrames(f.files[1]),length(f.files))
+       for c=1:length(f.files)
          tmp = $op(f.files[c])
-         for a=1:size(tmp,1)
-             newVal[a,c] = tmp[a]
+         for b=1:acqNumFrames(f.files[1])
+           for a=1:size(tmp,1)
+               newVal[a,b,c] = tmp[a]
+           end
          end
        end
-      return newVal
+      return reshape(newVal,size(newVal,1),:)
     end
   end
 end
@@ -78,11 +84,11 @@ function measData(f::MultiMPIFile, frames=1:acqNumFrames(f), periods=1:acqNumPer
                   receivers=1:rxNumChannels(f))
 
   data = zeros(Float64, rxNumSamplingPoints(f), length(receivers),
-                        length(periods), length(frames))
+                        length(frames),length(periods),1)
   for (i,p) in enumerate(periods)
-    data[:,:,i,:] = measData(f.files[p], frames, 1, receivers)
+    data[:,:,:,i,:] = measData(f.files[p], frames, 1, receivers)
   end
-  return data
+  return reshape(data,size(data,1),size(data,2),:,1)
 end
 
 
