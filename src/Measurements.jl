@@ -67,11 +67,12 @@ function spectralLeakageCorrection_(f::MPIFile, frames, periods)
   return data
 end
 
-function measDataLowLevel(f::MPIFile, args...; spectralLeakageCorrection=true )
+function measDataLowLevel(f::MPIFile, args...; spectralLeakageCorrection=false )
   if measIsFourierTransformed(f)
     return measDataConv(f, args...)
   else
-    if !spectralLeakageCorrection || measIsSpectralLeakageCorrected(f)
+    if !spectralLeakageCorrection || measIsSpectralLeakageCorrected(f) ||
+        acqNumFrames(f) == 1
        tmp = measDataConv(f, args...)
     else
        tmp = spectralLeakageCorrection_(f, args...)
@@ -87,7 +88,7 @@ returnasreal{T<:Real}(u::AbstractArray{T}) = u
 
 function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
             numAverages=1,  verbose = false, periods=1:acqNumPeriods(f),
-            spectralLeakageCorrection=true)
+            spectralLeakageCorrection=false)
 
   verbose && println( rxNumSamplingPoints(f), " ",
                       rxNumChannels(f), " ", acqNumFrames(f), )
