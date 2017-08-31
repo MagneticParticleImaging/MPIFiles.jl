@@ -211,8 +211,8 @@ function acqOffsetField(b::BrukerFile) #TODO NOT correct
     calibFac = [2.5/49.45, 0.5*(-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
     return Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriods(b)]
   else
-    return repeat(1e-3*cat(2,[parse(Float64,a) for a in b["MPI_FocusFieldX"]],
-                 [parse(Float64,a) for a in b["MPI_FocusFieldY"]],
+    return repeat(1e-3*cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
+                 [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
                  [parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriods(b),_acqNumPatches(b))))
   end
 end
