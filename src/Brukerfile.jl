@@ -344,20 +344,19 @@ function measFramePermutation(b::BrukerFileCalib)
   return permJoint
 end
 
-# the following might be better implemented using the actual grids
+#TODO the following requires a test
 function fgFramePermutation(b::BrukerFile)
   N = calibSize(b)
-  counter = 1
-  idx = zeros(Int,N...)
-  for z=1:N[3]
-    for y=1:N[2]
-      y_ = mod(z,2)==0 ? N[2]-y+1 : y
-      for x=1:N[1]
-        x_ = mod(y,2)==0 ? N[1]-x+1 : x
-        idx[x_,y_,z] = counter
-        counter += 1
+
+  perm = zeros(Int,N...)
+  for i in CartesianRange(N)
+    idx = [i[k] for k=1:length(i)]
+    for d=2:3
+      if isodd(sum(idx[d:3])-length(idx[d:3]))
+        idx[d-1] = N[d-1] + 1 - idx[d-1]
       end
     end
+    perm[i] = sub2ind(N,idx...)
   end
   return vec(idx)
 end
