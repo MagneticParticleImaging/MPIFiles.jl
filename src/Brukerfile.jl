@@ -346,9 +346,9 @@ end
 
 #TODO the following requires a test
 function fgFramePermutation(b::BrukerFile)
-  N = calibSize(b)
+  N = tuple(calibSize(b)...)
 
-  perm = zeros(Int,N...)
+  perm = Array{Int}(N)
   for i in CartesianRange(N)
     idx = [i[k] for k=1:length(i)]
     for d=2:3
@@ -358,7 +358,7 @@ function fgFramePermutation(b::BrukerFile)
     end
     perm[i] = sub2ind(N,idx...)
   end
-  return vec(idx)
+  return vec(perm)
 end
 
 
