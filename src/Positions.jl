@@ -19,7 +19,7 @@ export fieldOfView, fieldOfViewCenter, shape
 
 function Positions(file::HDF5File)
 
-  typ = h5read(file, "/positionsType")
+  typ = read(file, "/positionsType")
   if typ == "CartesianGrid"
     positions = CartesianGridPositions(file)
   else
@@ -27,7 +27,7 @@ function Positions(file::HDF5File)
   end
 
   if exists(file, "/positionsMeandering") &&
-      h5read(file, "/positionsMeandering") == Int8(1)
+    read(file, "/positionsMeandering") == Int8(1)
     positions = MeanderingGridPositions(positions)
   end
   return positions
@@ -41,9 +41,9 @@ type CartesianGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
 end
 
 function CartesianGridPositions(file::HDF5File)
-  shape = h5read(file, "/positionsShape")
-  fov = h5read(file, "/positionsFov")*u"m"
-  center = h5read(file, "/positionsCenter")*u"m"
+  shape = read(file, "/positionsShape")
+  fov = read(file, "/positionsFov")*u"m"
+  center = read(file, "/positionsCenter")*u"m"
   return CartesianGridPositions(shape,fov,center)
 end
 
