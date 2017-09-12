@@ -314,5 +314,6 @@ include("FrequencyFilter.jl")
 include("Conversion.jl")
 include("Image.jl")
 include("DatasetStore.jl")
+include("Positions.jl")
 
 end # module

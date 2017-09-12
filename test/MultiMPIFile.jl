@@ -38,8 +38,7 @@ for mdf in (measBruker,mdfv2)
   @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
   @test acqGradient(mdf)[:,1] == [-1.25; -1.25; 2.5]
   @test acqFramePeriod(mdf) == 6.528E-4
-  @test acqNumPeriods(mdf) == 3
-  @test acqNumPeriods(mdf) == 3
+  @test acqNumPeriods(mdf) == 1500
   @test size(acqOffsetFieldShift(mdf)) == (3,3)
 
   @test dfNumChannels(mdf) == 3
@@ -56,7 +55,7 @@ for mdf in (measBruker,mdfv2)
   @test rxDataConversionFactor(mdf) == repeat([1.0, 0.0], outer=(1,rxNumChannels(mdf)))
   @test acqNumAverages(mdf) == 1
 
-  @test acqNumFrames(mdf) == 500
+  @test acqNumFrames(mdf) == 1
   @test size( measData(mdf) ) == (1632,3,3,500)
 
   N = acqNumFrames(mdf)
@@ -76,4 +75,3 @@ for mdf in (measBruker,mdfv2)
   @test size(getMeasurements(mdf,frequencies=1:10, numAverages=10)) == (10,3,50)
 
 end
-
