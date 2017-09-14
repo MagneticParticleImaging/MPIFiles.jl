@@ -4,7 +4,7 @@ import Base: getindex, length, convert, start, done, next, write
 
 export AbstractPosition, ParkPosition, CenterPosition
 export Positions, CartesianGridPositions, ChebyshevGridPositions,
-       MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, ShpericalTDesign
+       MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SphericalTDesign
 export loadTDesign, getPermutation
 
 export fieldOfView, fieldOfViewCenter, shape
@@ -22,6 +22,8 @@ function Positions(file::HDF5File)
   typ = read(file, "/positionsType")
   if typ == "CartesianGrid"
     positions = CartesianGridPositions(file)
+  elseif typ == "SphericalTDesign"
+    positions = SphericalTDesign(file)
   else
     error("Implement all the other grids!!!")
   end
@@ -30,6 +32,7 @@ function Positions(file::HDF5File)
     read(file, "/positionsMeandering") == Int8(1)
     positions = MeanderingGridPositions(positions)
   end
+
   return positions
 end
 
@@ -167,24 +170,43 @@ fieldOfViewCenter(grid::UniformRandomPositions) = grid.center
 fieldOfViewCenter(mgrid::MeanderingGridPositions) = fieldOfViewCenter(mgrid.grid)
 
 
-type ShpericalTDesign{S} <: Positions where {S<:Unitful.Length}
+type SphericalTDesign{S,V} <: Positions where {S,V<:Unitful.Length}
   T::Unsigned
   radius::S
   positions::Matrix
+  center::Vector{V}
 end
 
-getindex(tdes::ShpericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i]
+function SphericalTDesign(file::HDF5File)
+  T = read(file, "/positionsTDesignT")
+  N = read(file, "/positionsTDesignN")
+  radius = read(file, "/positionsTDesignRadius")*u"m"
+  center = read(file, "/positionsCenter")*u"m"
+  return loadTDesign(T,N,radius,center)
+end
+
+function write(file::HDF5File, positions::SphericalTDesign)
+  write(file,"/positionsType", "SphericalTDesign")
+  write(file, "/positionsTDesignT", positions.T)
+  write(file, "/positionsTDesignN", size(positions.positions,2))
+  write(file, "/positionsTDesignRadius", ustrip(uconvert(u"m", positions.radius)) )
+  write(file, "/positionsCenter", ustrip(uconvert.(u"m", positions.center)) )
+end
+
+
+getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] + tdes.center
+
 
 """
 Returns the t-Design Array for choosen t and N.
 """
-function loadTDesign(t::Int64, N::Int64, radius::S=10u"mm", filename::String=joinpath(Pkg.dir("MPIMeasurements"),"src/Robots/TDesigns.hd5")) where {S<:Unitful.Length}
+function loadTDesign(t::Int64, N::Int64, radius::S=10u"mm", center::Vector{V}=[0.0,0.0,0.0]u"mm", filename::String=joinpath(Pkg.dir("MPIMeasurements"),"src/Robots/TDesigns.hd5")) where {S,V<:Unitful.Length}
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
   if exists(h5file, address)
     positions = read(h5file, address)'
-    return ShpericalTDesign(UInt(t),radius,positions)
+    return SphericalTDesign(UInt(t),radius,positions, center)
   else
     if exists(h5file, "/$t-Design/")
       println("spherical $t-Design with $N Points does not exist!")
@@ -230,7 +252,7 @@ end
 
 
 # fuction related to looping
-length(tdes::ShpericalTDesign) = size(tdes.positions,2)
+length(tdes::SphericalTDesign) = size(tdes.positions,2)
 length(apos::ArbitraryPositions) = size(apos.positions,2)
 length(grid::GridPositions) = prod(grid.shape)
 length(rpos::UniformRandomPositions) = rpos.N
