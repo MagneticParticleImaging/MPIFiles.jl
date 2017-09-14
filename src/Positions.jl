@@ -5,7 +5,7 @@ import Base: getindex, length, convert, start, done, next, write
 export AbstractPosition, ParkPosition, CenterPosition
 export Positions, CartesianGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, ShpericalTDesign
-export loadTDesign
+export loadTDesign, getPermutation
 
 export fieldOfView, fieldOfViewCenter, shape
 
