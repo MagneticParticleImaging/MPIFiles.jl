@@ -200,7 +200,8 @@ getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] 
 """
 Returns the t-Design Array for choosen t and N.
 """
-function loadTDesign(t::Int64, N::Int64, radius::S=10u"mm", center::Vector{V}=[0.0,0.0,0.0]u"mm", filename::String=joinpath(Pkg.dir("MPIMeasurements"),"src/Robots/TDesigns.hd5")) where {S,V<:Unitful.Length}
+function loadTDesign(t::Int64, N::Int64, radius::S=10u"mm", center::Vector{V}=[0.0,0.0,0.0]u"mm",
+                     filename::String=joinpath(Pkg.dir("MPIFiles"),"src/TDesigns.h5")) where {S,V<:Unitful.Length}
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
