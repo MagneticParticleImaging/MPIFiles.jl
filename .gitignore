@@ -7,3 +7,4 @@
 
 test/measurement_Bruker/
 test/systemMatrix_Bruker/
+test/Positions.h5
