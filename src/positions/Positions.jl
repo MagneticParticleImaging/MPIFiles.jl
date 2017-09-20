@@ -32,7 +32,7 @@ function Positions(file::HDF5File)
 end
 
 # Cartesian grid
-type CartesianGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
+type CartesianGridPositions{S,T} <: GridPositions where{S,T<:Unitful.Length}
   shape::Vector{Int}
   fov::Vector{S}
   center::Vector{T}
@@ -62,7 +62,7 @@ function getindex(grid::CartesianGridPositions, i::Integer)
 end
 
 # Chebyshev Grid
-type ChebyshevGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
+type ChebyshevGridPositions{S,T} <: GridPositions where{S,T<:Unitful.Length}
   shape::Vector{Int}
   fov::Vector{S}
   center::Vector{T}
@@ -146,8 +146,8 @@ end
 @compat abstract type SpatialDomain end
 
 struct AxisAlignedBox <: SpatialDomain
-  fov::Vector{S} where {S<:Unitful.Length}
-  center::Vector{T} where {T<:Unitful.Length}
+  fov::Vector{S} where{S<:Unitful.Length}
+  center::Vector{T} where{T<:Unitful.Length}
 end
 
 function write(file::HDF5File, domain::AxisAlignedBox)
@@ -163,8 +163,8 @@ function AxisAlignedBox(file::HDF5File)
 end
 
 struct Ball <: SpatialDomain
-  radius::S where {S<:Unitful.Length}
-  center::Vector{T} where {T<:Unitful.Length}
+  radius::S where{S<:Unitful.Length}
+  center::Vector{T} where{T<:Unitful.Length}
 end
 
 function write(file::HDF5File, domain::Ball)
@@ -180,7 +180,7 @@ function Ball(file::HDF5File)
 end
 
 
-type UniformRandomPositions{T} <: Positions where {T<:SpatialDomain}
+type UniformRandomPositions{T} <: Positions where{T<:SpatialDomain}
   N::UInt
   seed::UInt32
   domain::T
@@ -212,7 +212,7 @@ function getindex(rpos::UniformRandomPositions{Ball}, i::Integer)
   end
 end
 
-function write(file::HDF5File, positions::UniformRandomPositions{T}) where T<:SpatialDomain
+function write(file::HDF5File, positions::UniformRandomPositions{T}) where{T<:SpatialDomain}
   write(file, "/positionsType", "UniformRandomPosition")
   write(file, "/positionsN", positions.N)
   write(file, "/positionsSeed", positions.seed)
@@ -235,7 +235,7 @@ function UniformRandomPositions(file::HDF5File)
 end
 
 # TODO fix conversion methods
-function convert(::Type{UniformRandomPositions}, N::Integer,seed::UInt32,fov::Vector{S},center::Vector{T}) where {S,T<:Unitful.Length}
+function convert(::Type{UniformRandomPositions}, N::Integer,seed::UInt32,fov::Vector{S},center::Vector{T}) where{S,T<:Unitful.Length}
   if N<1
     throw(DomainError)
   else
@@ -260,7 +260,7 @@ fieldOfViewCenter(grid::UniformRandomPositions) = grid.domain.center
 fieldOfViewCenter(mgrid::MeanderingGridPositions) = fieldOfViewCenter(mgrid.grid)
 
 
-type SphericalTDesign{S,V} <: Positions where {S,V<:Unitful.Length}
+type SphericalTDesign{S,V} <: Positions where{S,V<:Unitful.Length}
   T::Unsigned
   radius::S
   positions::Matrix
@@ -325,7 +325,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10u"mm", center::Vector{V}=[0
 end
 
 # Unstructured collection of positions
-type ArbitraryPositions{T} <: Positions where {T<:Unitful.Length}
+type ArbitraryPositions{T} <: Positions where{T<:Unitful.Length}
   positions::Matrix{T}
 end
 
