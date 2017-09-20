@@ -10,7 +10,7 @@ notifications:
 addons:
   apt:
     packages:
-- hdf5-tools
+    - hdf5-tools
 after_success:
   # push coverage results to Coveralls
   - julia -e 'cd(Pkg.dir("MPIFiles")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
