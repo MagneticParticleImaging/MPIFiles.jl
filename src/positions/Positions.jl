@@ -13,18 +13,22 @@ export fieldOfView, fieldOfViewCenter, shape
 @compat abstract type GridPositions<:Positions end
 
 function Positions(file::HDF5File)
-
   typ = read(file, "/positionsType")
-  if typ == "CartesianGrid"
+  if typ == "CartesianGridPositions"
     positions = CartesianGridPositions(file)
+  elseif typ == "ChebyshevGridPositions"
+    positions = ChebyshevGridPositions(file)
   elseif typ == "SphericalTDesign"
     positions = SphericalTDesign(file)
+  elseif typ == "UniformRandomPositions"
+    positions = UniformRandomPositions(file)
+  elseif typ == "ArbitraryPositions"
+    positions = ArbitraryPositions(file)
   else
-    error("Implement all the other grids!!!")
+    throw(ErrorException("No grid found to load from $file"))
   end
 
-  if exists(file, "/positionsMeandering") &&
-    read(file, "/positionsMeandering") == Int8(1)
+  if exists(file, "/positionsMeandering") && typ in ["CartesianGrid","ChebyshevGrid"] && read(file, "/positionsMeandering") == Int8(1)
     positions = MeanderingGridPositions(positions)
   end
 
@@ -46,7 +50,7 @@ function CartesianGridPositions(file::HDF5File)
 end
 
 function write(file::HDF5File, positions::CartesianGridPositions)
-  write(file,"/positionsType", "CartesianGrid")
+  write(file,"/positionsType", "CartesianGridPositions")
   write(file, "/positionsShape", positions.shape)
   write(file, "/positionsFov", Float64.(ustrip.(uconvert.(u"m", positions.fov))) )
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(u"m", positions.center))) )
@@ -54,7 +58,7 @@ end
 
 function getindex(grid::CartesianGridPositions, i::Integer)
   if i>length(grid) || i<1
-    throw(BoundsError)
+    return throw(BoundsError(grid,i))
   else
     idx = collect(ind2sub(tuple(shape(grid)...), i))
     return ((-shape(grid).+(2.*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
@@ -69,7 +73,7 @@ type ChebyshevGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
 end
 
 function write(file::HDF5File, positions::ChebyshevGridPositions)
-  write(file,"/positionsType", "CartesianGrid")
+  write(file,"/positionsType", "ChebyshevGridPositions")
   write(file, "/positionsShape", positions.shape)
   write(file, "/positionsFov", Float64.(ustrip.(uconvert.(u"m", positions.fov))) )
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(u"m", positions.center))) )
@@ -84,7 +88,7 @@ end
 
 function getindex(grid::ChebyshevGridPositions, i::Integer)
   if i>length(grid) || i<1
-    throw(BoundsError)
+    throw(BoundsError(grid,i))
   else
     idx = collect(ind2sub(tuple(shape(grid)...), i))
     return -cos.((idx.-0.5).*pi./shape(grid)).*fieldOfView(grid)./2 .+ fieldOfViewCenter(grid)
@@ -98,10 +102,10 @@ end
 
 function MeanderingGridPositions(file::HDF5File)
   typ = read(file, "/positionsType")
-  if typ == "CartesianGrid"
+  if typ == "CartesianGridPositions"
     grid = CartesianGridPositions(file)
     return MeanderingGridPositions(grid)
-  elseif typ == "ChebyshevGrid"
+  elseif typ == "ChebyshevGridPositions"
     grid = ChebyshevGridPositions(file)
     return MeanderingGridPositions(grid)
   end
@@ -191,7 +195,7 @@ seed(rpos::UniformRandomPositions) = rpos.seed
 
 function getindex(rpos::UniformRandomPositions{AxisAlignedBox}, i::Integer)
   if i>length(rpos) || i<1
-    throw(BoundsError)
+    throw(BoundsError(rpos,i))
   else
     # make sure Positions are randomly generated from given seed
     mersenneTwister = MersenneTwister(seed(rpos))
@@ -202,7 +206,7 @@ end
 
 function getindex(rpos::UniformRandomPositions{Ball}, i::Integer)
   if i>length(rpos) || i<1
-    throw(BoundsError)
+    throw(BoundsError(rpos,i))
   else
     # make sure Positions are randomly generated from given seed
     mersenneTwister = MersenneTwister(seed(rpos))
@@ -213,7 +217,7 @@ function getindex(rpos::UniformRandomPositions{Ball}, i::Integer)
 end
 
 function write(file::HDF5File, positions::UniformRandomPositions{T}) where {T<:SpatialDomain}
-  write(file, "/positionsType", "UniformRandomPosition")
+  write(file, "/positionsType", "UniformRandomPositions")
   write(file, "/positionsN", positions.N)
   write(file, "/positionsSeed", positions.seed)
   write(file, positions.domain)
@@ -230,14 +234,14 @@ function UniformRandomPositions(file::HDF5File)
     domain = AxisAlignedBox(file)
     return UniformRandomPositions(N,seed,domain)
   else
-    error("unknown domain")
+    throw(ErrorException("No method to read domain $domain"))
   end
 end
 
 # TODO fix conversion methods
 function convert(::Type{UniformRandomPositions}, N::Integer,seed::UInt32,fov::Vector{S},center::Vector{T}) where {S,T<:Unitful.Length}
   if N<1
-    throw(DomainError)
+    throw(DomainError())
   else
     uN = convert(UInt,N)
     return UniformRandomPositions(uN,seed,fov,center)
@@ -272,7 +276,7 @@ function SphericalTDesign(file::HDF5File)
   N = read(file, "/positionsTDesignN")
   radius = read(file, "/positionsTDesignRadius")*u"m"
   center = read(file, "/positionsCenter")*u"m"
-  return loadTDesign(T,N,radius,center)
+  return loadTDesign(Int64(T),N,radius,center)
 end
 
 function write(file::HDF5File, positions::SphericalTDesign)
@@ -283,9 +287,7 @@ function write(file::HDF5File, positions::SphericalTDesign)
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(u"m", positions.center))) )
 end
 
-
 getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] + tdes.center
-
 
 """
 Returns the t-Design Array for choosen t and N.
@@ -307,7 +309,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10u"mm", center::Vector{V}=[0
       end
       sort!(Ns)
       println(Ns)
-      throw(DomainError)
+      throw(DomainError())
     else
       println("spherical $t-Design does not exist!")
       ts = Int[]
@@ -319,7 +321,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10u"mm", center::Vector{V}=[0
       end
       sort!(ts)
       println(ts)
-      throw(DomainError)
+      throw(DomainError())
     end
   end
 end
