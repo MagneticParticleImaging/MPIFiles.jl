@@ -146,7 +146,6 @@ end
 # capsulate objects of type GridPositions and return to ParkPosition every so often
 
 # Uniform random distributed positions
-
 @compat abstract type SpatialDomain end
 
 struct AxisAlignedBox <: SpatialDomain
@@ -239,6 +238,7 @@ function UniformRandomPositions(file::HDF5File)
 end
 
 # TODO fix conversion methods
+#=
 function convert(::Type{UniformRandomPositions}, N::Integer,seed::UInt32,fov::Vector{S},center::Vector{T}) where {S,T<:Unitful.Length}
   if N<1
     throw(DomainError())
@@ -251,6 +251,7 @@ end
 function convert(::Type{UniformRandomPositions}, N::Integer,fov::Vector,center::Vector)
   return UniformRandomPositions(N,rand(UInt32),fov,center)
 end
+=#
 
 
 # General functions for handling grids

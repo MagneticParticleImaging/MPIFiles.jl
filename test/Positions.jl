@@ -68,7 +68,7 @@
       write(file, mG)
     end
     h5open("Positions.h5", "r") do file
-      mG1 = MeanderingGridPositions(file)
+      mG1 = Positions(file)
       @test mG1[1] ≈ grid[1]
       @test shape(mG1) == shp
       @test fieldOfView(mG1) == fov
@@ -90,7 +90,7 @@
     write(file, aG2)
   end
   h5open("Positions.h5", "r") do file
-    aG3 = ArbitraryPositions(file)
+    aG3 = Positions(file)
     @test typeof(aG3) <: ArbitraryPositions
     @test aG3.positions == aG2.positions
   end
@@ -111,7 +111,7 @@
     write(file, rP1)
   end
   h5open("Positions.h5", "r") do file
-    rP2 = UniformRandomPositions(file)
+    rP2 = Positions(file)
     @test typeof(rP2) <: UniformRandomPositions{AxisAlignedBox}
     @test rP2.N == N
     @test rP2.seed == seed
@@ -130,7 +130,7 @@
     write(file, rP3)
   end
   h5open("Positions.h5", "r") do file
-    rP4 = UniformRandomPositions(file)
+    rP4 = Positions(file)
     @test typeof(rP4) <: UniformRandomPositions{Ball}
     @test rP4.N == N
     @test rP4.seed == seed
@@ -157,7 +157,7 @@
     write(file, tDesign)
   end
   h5open("Positions.h5", "r") do file
-    tDesign1 = SphericalTDesign(file)
+    tDesign1 = Positions(file)
     @test typeof(tDesign1) <: SphericalTDesign
     @test tDesign1.radius == tDesign.radius
     @test tDesign1.center == tDesign.center
