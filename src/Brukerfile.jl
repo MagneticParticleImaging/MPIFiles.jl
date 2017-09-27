@@ -175,9 +175,14 @@ function acqStartTime(b::BrukerFile)
   acq = b["ACQ_time"] #b["VisuAcqDate"]
   DateTime( replace(acq[2:search(acq,'+')-1],",",".") )
 end
-function acqNumFrames(b::BrukerFile)
+function acqNumFrames(b::BrukerFileMeas)
   M = Int64(b["ACQ_jobs"][1][8])
   return div(M,acqNumPeriods(b))
+end
+function acqNumFrames(b::BrukerFileCalib)
+  M = parse(Int64,b["PVM_MPI_NrCalibrationScans"])
+  A = parse(Int64,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])
+  return div(M-A,acqNumPeriods(b))
 end
 acqFramePeriod(b::BrukerFile) = dfPeriod(b) * acqNumAverages(b)
 function _acqNumPatches(b::BrukerFile)
@@ -194,10 +199,11 @@ acqNumAverages(b::BrukerFile) = parse(Int,b["NA"])
 
 function acqNumBGFrames(b::BrukerFile)
   n = b["PVM_MPI_NrBackgroundMeasurementCalibrationAllScans"]
+  a = b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"]
   if n == nothing
     return 0
   else
-    return parse(Int64,n)
+    return parse(Int64,n)-parse(Int64,a)
   end
 end
 acqGradient(b::BrukerFile) = addTrailingSingleton([-0.5, -0.5, 1.0].*
@@ -213,7 +219,7 @@ function acqOffsetField(b::BrukerFile) #TODO NOT correct
   else
     return repeat(1e-3*cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
                  [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
-                 [parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriods(b),_acqNumPatches(b))))
+                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriods(b),_acqNumPatches(b))))
   end
 end
 function acqOffsetFieldShift(b::BrukerFile)
@@ -320,14 +326,17 @@ measIsFramePermutation(b::BrukerFileMeas) = false
 measIsFramePermutation(b::BrukerFileCalib) = true
 
 function measIsBGFrame(b::BrukerFileMeas)
-  if !experimentIsCalibration(b)
+  #if !experimentIsCalibration(b)
     return zeros(Bool, acqNumFrames(b))
-  else
-    isBG = zeros(Bool, acqNumFrames(b))
-    increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
-    isBG[1:increment:end] = true
-    return isBG
-  end
+  #else
+  #  isBG = zeros(Bool, acqNumFrames(b))
+  #  increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
+  #  isBG[1:increment:end] = true
+  #  
+  #  addScans=parse(Int,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])-1
+  #  isBG[end:-1:end-addScans]=true
+  #  return isBG
+  #end
 end
 
 # We assume here that the BG frames are at the end
@@ -336,8 +345,8 @@ measIsBGFrame(b::BrukerFileCalib) =
 
 measFramePermutation(b::BrukerFileMeas) = nothing
 function measFramePermutation(b::BrukerFileCalib)
-  bMeas = BrukerFile(b.path, isCalib=false)
-
+  bMeas = BrukerFile(b.path)#, #isCalib=false)
+  
   perm1=cat(1,measFGFrameIdx(bMeas),measBGFrameIdx(bMeas))
   perm2=cat(1,fgFramePermutation(bMeas),(length(perm1)-acqNumBGFrames(bMeas)+1):length(perm1))
   permJoint = perm1[perm2]

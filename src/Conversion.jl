@@ -189,7 +189,7 @@ function saveasMDF(file::HDF5File, params::Dict)
       group = g_create(file,"/measurement")
       writeComplexArray(group, "/measurement/data", meas)
     else
-      write(file, "/measurement/data", meas)
+      write(file, "/measurement/data", Array{Float32}(meas))
     end
     write(file, "/measurement/isFourierTransformed", Int8(params["measIsFourierTransformed"]))
     write(file, "/measurement/isSpectralLeakageCorrected", Int8(params["measIsSpectralLeakageCorrected"]))
