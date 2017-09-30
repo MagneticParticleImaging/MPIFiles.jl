@@ -188,7 +188,11 @@ function rxTimePoints(f::MPIFile)
   return a
 end
 function acqFov(f::MPIFile)
- return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradient(f) )
+  if size(dfStrength(f)[1,:,:],1) == 3
+    return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradient(f) )
+  else
+    return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradient(f)[1,:] )
+  end
 end
 function acqFovCenter(f::MPIFile)
  return acqOffsetField(f) ./ abs.( acqGradient(f) )
