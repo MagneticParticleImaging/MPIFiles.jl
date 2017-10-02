@@ -149,7 +149,8 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:acqNumFrames
     if bgCorrection
       idxBG = measBGFrameIdx(f)
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
-      # @TODO do something clever now :-)
+
+      data[:,:,:,:] .-= mean(dataBG,4)
     end
   else
     if sortFrames
@@ -159,6 +160,13 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:acqNumFrames
       data = getAveragedMeasurements(f; frames=permJoint, kargs...)
     else
       data = getAveragedMeasurements(f; frames=frames, kargs...)
+    end
+
+    if bgCorrection
+      idxBG = measBGFrameIdx(f)
+      dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
+
+      data[:,:,:,:] .-= mean(dataBG,4)
     end
   end
 
