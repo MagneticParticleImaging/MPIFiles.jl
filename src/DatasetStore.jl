@@ -108,6 +108,12 @@ end
 
 getExperiment(s::Study, numExp::Integer) = getExperiment(joinpath(s.path,string(numExp)))
 
+function remove(exp::Experiment)
+  if isfile(exp.path)
+    rm(exp.path)
+  end
+end
+
 function exportToMDFStore(d::BrukerDatasetStore, s::Study, e::Experiment, mdf::MDFDatasetStore, freqSpace=false)
 
   name = s.name*"_MDF"
