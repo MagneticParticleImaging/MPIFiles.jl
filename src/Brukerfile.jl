@@ -66,7 +66,7 @@ end
 
 BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400)
 
-function getindex(b::BrukerFile, parameter)
+function getindex(b::BrukerFile, parameter)#::String
   if !b.acqpRead && ( parameter=="NA" || parameter[1:3] == "ACQ" )
     acqppath = joinpath(b.path, "acqp")
     read(b.params, acqppath, maxEntries=b.maxEntriesAcqp)
@@ -88,11 +88,11 @@ function getindex(b::BrukerFile, parameter)
   if haskey(b.params, parameter)
     return b.params[parameter]
   else
-    return nothing
+    return ""
   end
 end
 
-function getindex(b::BrukerFile, parameter, procno::Int64)
+function getindex(b::BrukerFile, parameter, procno::Int64)::String
   if !b.recoRead && lowercase( parameter[1:4] ) == "reco"
     recopath = joinpath(b.path, "pdata", string(procno), "reco")
     read(b.paramsProc, acqppath, maxEntries=13)
@@ -154,7 +154,7 @@ tracerConcentration(b::BrukerFile) = [parse(Float64,b["PVM_MPI_TracerConcentrati
 tracerSolute(b::BrukerFile) = ["Fe"]
 function tracerInjectionTime(b::BrukerFile)
   initialFrames = b["MPI_InitialFrames"]
-  if initialFrames == nothing
+  if initialFrames == ""
     return [acqStartTime(b)]
   else
     return [acqStartTime(b) + Dates.Millisecond(
@@ -187,12 +187,12 @@ end
 acqFramePeriod(b::BrukerFile) = dfPeriod(b) * acqNumAverages(b)
 function _acqNumPatches(b::BrukerFile)
   M = b["MPI_NSteps"]
-  return (M == nothing) ? 1 : parse(Int64,M)
+  return (M == "") ? 1 : parse(Int64,M)
 end
 function acqNumPeriods(b::BrukerFile)
   M = b["MPI_RepetitionsPerStep"]
   N = _acqNumPatches(b)
-  return (M == nothing) ? N : N*parse(Int64,M)
+  return (M == "") ? N : N*parse(Int64,M)
 end
 
 acqNumAverages(b::BrukerFile) = parse(Int,b["NA"])
@@ -200,7 +200,7 @@ acqNumAverages(b::BrukerFile) = parse(Int,b["NA"])
 function acqNumBGFrames(b::BrukerFile)
   n = b["PVM_MPI_NrBackgroundMeasurementCalibrationAllScans"]
   a = b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"]
-  if n == nothing
+  if n == ""
     return 0
   else
     return parse(Int64,n)-parse(Int64,a)
@@ -210,7 +210,7 @@ acqGradient(b::BrukerFile) = addTrailingSingleton([-0.5, -0.5, 1.0].*
       parse(Float64,b["ACQ_MPI_selection_field_gradient"]),2)
 
 function acqOffsetField(b::BrukerFile) #TODO NOT correct
-  if b["MPI_FocusFieldX"] == nothing
+  if b["MPI_FocusFieldX"] == ""
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
     voltage = repeat(voltage,inner=(1,div(acqNumPeriods(b),_acqNumPatches(b))))
@@ -332,7 +332,7 @@ function measIsBGFrame(b::BrukerFileMeas)
   #  isBG = zeros(Bool, acqNumFrames(b))
   #  increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
   #  isBG[1:increment:end] = true
-  #  
+  #
   #  addScans=parse(Int,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])-1
   #  isBG[end:-1:end-addScans]=true
   #  return isBG
@@ -346,7 +346,7 @@ measIsBGFrame(b::BrukerFileCalib) =
 measFramePermutation(b::BrukerFileMeas) = nothing
 function measFramePermutation(b::BrukerFileCalib)
   bMeas = BrukerFile(b.path)#, #isCalib=false)
-  
+
   perm1=cat(1,measFGFrameIdx(bMeas),measBGFrameIdx(bMeas))
   perm2=cat(1,fgFramePermutation(bMeas),(length(perm1)-acqNumBGFrames(bMeas)+1):length(perm1))
   permJoint = perm1[perm2]

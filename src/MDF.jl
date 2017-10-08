@@ -102,17 +102,17 @@ _makeStringArray(s::String) = [s]
 _makeStringArray{T<:AbstractString}(s::Vector{T}) = s
 
 # tracer parameters
-tracerName(f::MDFFileV1) = [f["/tracer/name"]]
-tracerName(f::MDFFileV2) = _makeStringArray(f["/tracer/name"])
-tracerBatch(f::MDFFileV1) = [f["/tracer/batch"]]
-tracerBatch(f::MDFFileV2) = _makeStringArray(f["/tracer/batch"])
-tracerVolume(f::MDFFileV1) = [f["/tracer/volume"]]
-tracerVolume(f::MDFFileV2) = [f["/tracer/volume"]...]
-tracerConcentration(f::MDFFileV1) = [f["/tracer/concentration"]]
-tracerConcentration(f::MDFFileV2) = [f["/tracer/concentration"]...]
-tracerSolute(f::MDFFileV2) = _makeStringArray(f["/tracer/solute"])
-tracerSolute(f::MDFFileV1) = ["Fe"]
-function tracerInjectionTime(f::MDFFile)
+tracerName(f::MDFFileV1)::Vector{String} = [f["/tracer/name"]]
+tracerName(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/name"])
+tracerBatch(f::MDFFileV1)::Vector{String} = [f["/tracer/batch"]]
+tracerBatch(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/batch"])
+tracerVolume(f::MDFFileV1)::Vector{Float64} = [f["/tracer/volume"]]
+tracerVolume(f::MDFFileV2)::Vector{Float64} = [f["/tracer/volume"]...]
+tracerConcentration(f::MDFFileV1)::Vector{Float64} = [f["/tracer/concentration"]]
+tracerConcentration(f::MDFFileV2)::Vector{Float64} = [f["/tracer/concentration"]...]
+tracerSolute(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/solute"])
+tracerSolute(f::MDFFileV1)::Vector{String} = ["Fe"]
+function tracerInjectionTime(f::MDFFile)::Vector{DateTime}
   p = typeof(f) == MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
   if f[p] == nothing
     return nothing
@@ -125,24 +125,24 @@ function tracerInjectionTime(f::MDFFile)
   end
 end
 #tracerInjectionTime(f::MDFFileV2) = DateTime( f["/tracer/injectionTime"] )
-tracerVendor(f::MDFFileV1) = [f["/tracer/vendor"]]
-tracerVendor(f::MDFFileV2) = _makeStringArray(f["/tracer/vendor"])
+tracerVendor(f::MDFFileV1)::Vector{String} = [f["/tracer/vendor"]]
+tracerVendor(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/vendor"])
 
 # scanner parameters
-scannerFacility(f::MDFFile) = f["/scanner/facility"]
-scannerOperator(f::MDFFile) = f["/scanner/operator"]
-scannerManufacturer(f::MDFFile) = f["/scanner/manufacturer"]
-scannerName(f::MDFFileV1) = f["/scanner/model"]
-scannerName(f::MDFFileV2) = f["/scanner/name"]
-scannerTopology(f::MDFFile) = f["/scanner/topology"]
+scannerFacility(f::MDFFile)::String = f["/scanner/facility"]
+scannerOperator(f::MDFFile)::String = f["/scanner/operator"]
+scannerManufacturer(f::MDFFile)::String = f["/scanner/manufacturer"]
+scannerName(f::MDFFileV1)::String = f["/scanner/model"]
+scannerName(f::MDFFileV2)::String = f["/scanner/name"]
+scannerTopology(f::MDFFile)::String = f["/scanner/topology"]
 
 # acquisition parameters
-acqStartTime(f::MDFFileV1) = DateTime( f["/acquisition/time"] )
-acqStartTime(f::MDFFileV2) = DateTime( f["/acquisition/startTime"] )
-acqFramePeriod(f::MDFFile) = f["/acquisition/framePeriod"]
-acqNumAverages(f::MDFFileV1) = f["/acquisition/drivefield/averages"]
-acqNumAverages(f::MDFFileV2) = f["/acquisition/numAverages"]
-function acqNumFrames(f::MDFFileV1)
+acqStartTime(f::MDFFileV1)::DateTime = DateTime( f["/acquisition/time"] )
+acqStartTime(f::MDFFileV2)::DateTime = DateTime( f["/acquisition/startTime"] )
+acqFramePeriod(f::MDFFile)::Float64 = f["/acquisition/framePeriod"]
+acqNumAverages(f::MDFFileV1)::Int = f["/acquisition/drivefield/averages"]
+acqNumAverages(f::MDFFileV2)::Int = f["/acquisition/numAverages"]
+function acqNumFrames(f::MDFFileV1)::Int
   if experimentIsCalibration(f)
     if f.mmap_measData == nothing
       h5open(f.filename,"r") do file
@@ -154,22 +154,22 @@ function acqNumFrames(f::MDFFileV1)
     return f["/acquisition/numFrames"]
   end
 end
-acqNumFrames(f::MDFFileV2) = f["/acquisition/numFrames"]
-acqNumPeriods(f::MDFFileV1) = 1
-acqNumPeriods(f::MDFFileV2) = f["/acquisition/numPeriods"]
+acqNumFrames(f::MDFFileV2)::Int = f["/acquisition/numFrames"]
+acqNumPeriods(f::MDFFileV1)::Int = 1
+acqNumPeriods(f::MDFFileV2)::Int = f["/acquisition/numPeriods"]
 
-acqGradient(f::MDFFileV1) = addTrailingSingleton(f["/acquisition/gradient"],2)
-acqGradient(f::MDFFileV2) = f["/acquisition/gradient"]
+acqGradient(f::MDFFileV1)::Array{Float64,2} = addTrailingSingleton(f["/acquisition/gradient"],2)
+acqGradient(f::MDFFileV2)::Array{Float64,2} = f["/acquisition/gradient"]
 acqOffsetField(f::MDFFile) = f["/acquisition/offsetField"]
 acqOffsetFieldShift(f::MDFFileV1) = addTrailingSingleton(
               f["/acquisition/drivefield/fieldOfViewCenter"],2 )
 acqOffsetFieldShift(f::MDFFileV2) = f["/acquisition/offsetFieldShift"]
 
 # drive-field parameters
-dfNumChannels(f::MDFFile) = f["/acquisition/drivefield/numChannels"]
-dfStrength(f::MDFFileV1) = addTrailingSingleton( addLeadingSingleton(
+dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]
+dfStrength(f::MDFFileV1)::Array{Float64,3} = addTrailingSingleton( addLeadingSingleton(
          f["/acquisition/drivefield/strength"], 2), 3)
-dfStrength(f::MDFFileV2) = f["/acquisition/drivefield/strength"]
+dfStrength(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/drivefield/strength"]
 dfPhase(f::MDFFileV1) = dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
 dfPhase(f::MDFFileV2) = f["/acquisition/drivefield/phase"]
 dfBaseFrequency(f::MDFFile) = f["/acquisition/drivefield/baseFrequency"]
