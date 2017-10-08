@@ -4,7 +4,7 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        studydir, BrukerDatasetStore, BrukerStore, getStudy, getStudies, getExperiment,
        getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
        findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum,
-       exportToMDFStore
+       exportToMDFStore, generateSFDatabase, loadSFDatabase, addVisu
 
 ########################################
 
@@ -86,6 +86,14 @@ function getStudies(d::DatasetStore)
     end
   end
   return s
+end
+
+function remove(study::Study)
+  if isdir(study.path)
+    rm(study.path, recursive=true)
+
+    #TODO remove recos!
+  end
 end
 
 function getExperiment(path::String)
@@ -231,6 +239,147 @@ function findBrukerFiles(path::AbstractString)
   end
   bfiles
 end
+
+function findSFFiles(d::BrukerDatasetStore)
+  studies = readdir(d.path)
+
+  bfiles = String[]
+
+  p = Progress(length(studies), 1, "Crawling Datadir...")
+
+  for study in studies
+    studypath = joinpath(d.path,study)
+    if isdir(studypath) && study[1] != '.'
+      experiments = readdir(studypath)
+      for exp in experiments
+        path = joinpath(d.path,study,exp)
+        if isdir(path) && exp[1] != '.'
+          if isfile(joinpath(path,"pdata","1","systemMatrix"))
+            push!(bfiles, path)
+          end
+        end
+      end
+    end
+    next!(p)
+  end
+  bfiles
+end
+
+function findSFFiles(d::MDFDatasetStore)
+  bfiles = String[]
+
+  path = joinpath(s.path,"calibrations/")
+
+  files = readdir(path)
+
+  for file in files
+    prefix, ext = splitext(file)
+    if !isdir(file) && !isnull(tryparse(Int64,prefix)) &&
+       (ext == ".mdf" || ext == ".hdf" || ext == ".h5")
+      try
+        push!(bfiles, joinpath(path,file))
+      catch e
+        println(e)
+      end
+    end
+  end
+
+  bfiles
+end
+
+
+
+####
+
+function generateSFDatabase(d::DatasetStore, filename::AbstractString)
+
+  sfs = findSFFiles(d)
+
+  A = Array{Any}(length(sfs)+1,16)
+
+  # Headerrow
+  A[1,1] = "Name"
+  A[1,2] = "Gradient"
+  A[1,3] = "DFx"
+  A[1,4] = "DFy"
+  A[1,5] = "DFz"
+  A[1,6] = "Size x"
+  A[1,7] = "Size y"
+  A[1,8] = "Size z"
+  A[1,9] = "Bandwidth"
+  A[1,10] = "Tracer"
+  A[1,11] = "TracerBatch"
+  A[1,12] = "DeltaSampleConcentration"
+  A[1,13] = "DeltaSampleVolume"
+  A[1,14] = "Path"
+  A[1,15] = "StartDate"
+  A[1,16] = "MeasurementTime"
+
+ p = Progress(length(sfs), 1, "Generating SF Database...")
+
+  for (k,sf) in enumerate(sfs)
+    i=k+1
+    _innerGenerateSFDatabase(A,i,sf)
+
+    next!(p)
+  end
+
+  writecsv(filename, A)
+end
+
+function _innerGenerateSFDatabase(A,i,sf)
+  #b = BrukerFileFast(sf)
+  b = MPIFile(sf)
+  A[i,1] = experimentName(b)
+  A[i,2] = squeeze(acqGradient(b))[3]
+  df = vec(dfStrength(b)).*1e3
+  A[i,3] = df[1]
+  A[i,4] = df[2]
+  A[i,5] = df[3]
+  N = calibSize(b)
+  A[i,6] = N[1]
+  A[i,7] = N[2]
+  A[i,8] = N[3]
+  A[i,9] = rxBandwidth(b) / 1e6
+  A[i,10] = tracerName(b)[1]
+  A[i,11] = tracerBatch(b)[1]
+  A[i,12] = 0.0#deltaSampleConcentration(b)
+  A[i,13] = 0.0#deltaSampleVolume(b)
+  A[i,14]= filepath(b)
+  A[i,15]= acqStartTime(b)
+  A[i,16]= 0.0#b["PVM_ScanTimeStr"]
+end
+
+function generateSFDatabase(d::MDFDatasetStore)
+  oldfile = joinpath(d.path,"SF_DatabaseOld.csv")
+  newfile = joinpath(d.path,"SF_Database.csv")
+  generateSFDatabase_(d, oldfile, newfile)
+end
+
+# HAAACKKK
+function generateSFDatabase(d::BrukerDatasetStore)
+  oldfile = "/opt/data/SF_DatabaseOld.csv"
+  newfile = "/opt/data/SF_Database.csv"
+  generateSFDatabase_(d, oldfile, newfile)
+end
+
+function generateSFDatabase_(d::DatasetStore, oldfile, newfile)
+
+  if isfile(newfile)
+    if isfile(oldfile)
+      mv(newfile, oldfile, remove_destination=true)
+    else
+      mv(newfile, oldfile, remove_destination=false)
+    end
+  end
+
+  generateSFDatabase(d, newfile)
+end
+
+loadSFDatabase(d::BrukerDatasetStore) = readcsv("/opt/data/SF_Database.csv")
+loadSFDatabase(d::MDFDatasetStore) = joinpath(d.path,"SF_Database.csv")
+
+####
 
 function getExperiments(d::BrukerDatasetStore, s::Study)
 
