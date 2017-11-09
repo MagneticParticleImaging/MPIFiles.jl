@@ -409,13 +409,13 @@ function getExperiments(d::MDFDatasetStore, s::Study)
     prefix, ext = splitext(file)
     if !isdir(file) && !isnull(tryparse(Int64,prefix)) &&
        (ext == ".mdf" || ext == ".hdf" || ext == ".h5")
-      try
-        exp = getExperiment(joinpath(s.path,file))
+      #try
+        @time exp = getExperiment(joinpath(s.path,file))
 
         push!(experiments, exp)
-      catch e
-        println(e)
-      end
+      #catch e
+      #  println(e)
+      #end
     end
   end
   sort!(experiments,lt=(a,b)->(a.num < b.num))
