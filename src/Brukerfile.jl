@@ -141,7 +141,7 @@ experimentUuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
 experimentIsSimulation(b::BrukerFile) = false
-experimentIsCalibration(b::BrukerFile) = b["PVM_Matrix"] != nothing
+experimentIsCalibration(b::BrukerFile) = haskey(b.params, "PVM_Matrix")
 experimentHasProcessing(b::BrukerFile) = experimentIsCalibration(b)
 experimentHasReconstruction(b::BrukerFile) = false # fixme later
 experimentHasMeasurement(b::BrukerFile) = true
