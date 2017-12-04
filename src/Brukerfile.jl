@@ -281,7 +281,8 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
 
   s = open(sfFilename)
   data = Mmap.mmap(s, Array{Complex128,4}, (prod(calibSize(b)),nFreq,rxNumChannels(b),1))
-  S = data[:,:,:,:]
+  #S = data[:,:,:,:]
+  S = map(Complex64, data)
   close(s)
   scale!(S,1.0/acqNumAverages(b))
 
@@ -289,7 +290,8 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
 
   s = open(bgFilename)
   data = Mmap.mmap(s, Array{Complex128,4}, (acqNumBGFrames(b),nFreq,rxNumChannels(b),1))
-  bgdata = data[:,:,:,:]
+  #bgdata = data[:,:,:,:]
+  bgdata = map(Complex64, data)
   close(s)
   scale!(bgdata,1.0/acqNumAverages(b))
   return cat(1,S,bgdata)
