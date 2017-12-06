@@ -141,7 +141,7 @@ experimentUuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
 experimentIsSimulation(b::BrukerFile) = false
-experimentIsCalibration(b::BrukerFile) = haskey(b.params, "PVM_Matrix")
+experimentIsCalibration(b::BrukerFile) = _iscalib(b.path)
 experimentHasProcessing(b::BrukerFile) = experimentIsCalibration(b)
 experimentHasReconstruction(b::BrukerFile) = false # fixme later
 experimentHasMeasurement(b::BrukerFile) = true
@@ -328,17 +328,15 @@ measIsFramePermutation(b::BrukerFileMeas) = false
 measIsFramePermutation(b::BrukerFileCalib) = true
 
 function measIsBGFrame(b::BrukerFileMeas)
-  #if !experimentIsCalibration(b)
+  if !experimentIsCalibration(b)
     return zeros(Bool, acqNumFrames(b))
-  #else
-  #  isBG = zeros(Bool, acqNumFrames(b))
-  #  increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
-  #  isBG[1:increment:end] = true
-  #
-  #  addScans=parse(Int,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])-1
-  #  isBG[end:-1:end-addScans]=true
-  #  return isBG
-  #end
+  else
+    isBG = zeros(Bool, acqNumFrames(b))
+    increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
+    isBG[1:increment:end] = true
+
+    return isBG
+  end
 end
 
 # We assume here that the BG frames are at the end
@@ -347,7 +345,7 @@ measIsBGFrame(b::BrukerFileCalib) =
 
 measFramePermutation(b::BrukerFileMeas) = nothing
 function measFramePermutation(b::BrukerFileCalib)
-  bMeas = BrukerFile(b.path)#, #isCalib=false)
+  bMeas = BrukerFile(b.path, isCalib=false)
 
   perm1=cat(1,measFGFrameIdx(bMeas),measBGFrameIdx(bMeas))
   perm2=cat(1,fgFramePermutation(bMeas),(length(perm1)-acqNumBGFrames(bMeas)+1):length(perm1))
