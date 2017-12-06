@@ -329,8 +329,12 @@ measIsFramePermutation(b::BrukerFileCalib) = true
 
 function measIsBGFrame(b::BrukerFileMeas)
   if !experimentIsCalibration(b)
+    # If the file is not a calibration file we cannot say if any particular scans
+    # were BG scans
     return zeros(Bool, acqNumFrames(b))
   else
+    # In case of a calibration file we know the particular indices corresponding
+    # to BG measurements
     isBG = zeros(Bool, acqNumFrames(b))
     increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
     isBG[1:increment:end] = true
@@ -339,12 +343,18 @@ function measIsBGFrame(b::BrukerFileMeas)
   end
 end
 
-# We assume here that the BG frames are at the end
+# If the file is considered to be a calibration file, we will load
+# the measurement in a processed form. In that case the BG measurements
+# will be put at the end of the frame dimension.
 measIsBGFrame(b::BrukerFileCalib) =
    cat(1,zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)))
 
+# measurements are not permuted
 measFramePermutation(b::BrukerFileMeas) = nothing
+# calibration scans are permuted
 function measFramePermutation(b::BrukerFileCalib)
+  # The following is a trick to obtain the permutation applied to the measurements
+  # in a calibration measurement.
   bMeas = BrukerFile(b.path, isCalib=false)
 
   perm1=cat(1,measFGFrameIdx(bMeas),measBGFrameIdx(bMeas))
@@ -353,7 +363,7 @@ function measFramePermutation(b::BrukerFileCalib)
   return permJoint
 end
 
-#TODO the following requires a test
+# TODO the following requires a test
 function fgFramePermutation(b::BrukerFile)
   N = tuple(calibSize(b)...)
 
