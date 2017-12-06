@@ -267,7 +267,9 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
   s = open(dataFilename)
   raw = Mmap.mmap(s, Array{dType,4},
              (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriods(b),acqNumFrames(b)))
-  data = raw[:,receivers,periods,frames]
+ 
+  #data = raw[:,receivers,periods,frames]
+ data = raw[:,receivers,frames,periods]
   close(s)
 
   return reshape(data, rxNumSamplingPoints(b), length(receivers),length(periods),length(frames))
