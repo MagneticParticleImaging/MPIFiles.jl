@@ -141,7 +141,7 @@ experimentUuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
 experimentIsSimulation(b::BrukerFile) = false
-experimentIsCalibration(b::BrukerFile) = haskey(b.params, "PVM_Matrix")
+experimentIsCalibration(b::BrukerFile) = _iscalib(b.path)
 experimentHasProcessing(b::BrukerFile) = experimentIsCalibration(b)
 experimentHasReconstruction(b::BrukerFile) = false # fixme later
 experimentHasMeasurement(b::BrukerFile) = true
@@ -283,7 +283,8 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
 
   s = open(sfFilename)
   data = Mmap.mmap(s, Array{Complex128,4}, (prod(calibSize(b)),nFreq,rxNumChannels(b),1))
-  S = data[:,:,:,:]
+  #S = data[:,:,:,:]
+  S = map(Complex64, data)
   close(s)
   scale!(S,1.0/acqNumAverages(b))
 
@@ -291,7 +292,8 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
 
   s = open(bgFilename)
   data = Mmap.mmap(s, Array{Complex128,4}, (acqNumBGFrames(b),nFreq,rxNumChannels(b),1))
-  bgdata = data[:,:,:,:]
+  #bgdata = data[:,:,:,:]
+  bgdata = map(Complex64, data)
   close(s)
   scale!(bgdata,1.0/acqNumAverages(b))
   return cat(1,S,bgdata)
@@ -328,26 +330,34 @@ measIsFramePermutation(b::BrukerFileMeas) = false
 measIsFramePermutation(b::BrukerFileCalib) = true
 
 function measIsBGFrame(b::BrukerFileMeas)
-  #if !experimentIsCalibration(b)
+  if !experimentIsCalibration(b)
+    # If the file is not a calibration file we cannot say if any particular scans
+    # were BG scans
     return zeros(Bool, acqNumFrames(b))
-  #else
-  #  isBG = zeros(Bool, acqNumFrames(b))
-  #  increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
-  #  isBG[1:increment:end] = true
-  #
-  #  addScans=parse(Int,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])-1
-  #  isBG[end:-1:end-addScans]=true
-  #  return isBG
-  #end
+  else
+    # In case of a calibration file we know the particular indices corresponding
+    # to BG measurements
+    isBG = zeros(Bool, acqNumFrames(b))
+    increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
+    isBG[1:increment:end] = true
+
+    return isBG
+  end
 end
 
-# We assume here that the BG frames are at the end
+# If the file is considered to be a calibration file, we will load
+# the measurement in a processed form. In that case the BG measurements
+# will be put at the end of the frame dimension.
 measIsBGFrame(b::BrukerFileCalib) =
    cat(1,zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)))
 
+# measurements are not permuted
 measFramePermutation(b::BrukerFileMeas) = nothing
+# calibration scans are permuted
 function measFramePermutation(b::BrukerFileCalib)
-  bMeas = BrukerFile(b.path)#, #isCalib=false)
+  # The following is a trick to obtain the permutation applied to the measurements
+  # in a calibration measurement.
+  bMeas = BrukerFile(b.path, isCalib=false)
 
   perm1=cat(1,measFGFrameIdx(bMeas),measBGFrameIdx(bMeas))
   perm2=cat(1,fgFramePermutation(bMeas),(length(perm1)-acqNumBGFrames(bMeas)+1):length(perm1))
@@ -355,7 +365,7 @@ function measFramePermutation(b::BrukerFileCalib)
   return permJoint
 end
 
-#TODO the following requires a test
+# TODO the following requires a test
 function fgFramePermutation(b::BrukerFile)
   N = tuple(calibSize(b)...)
 
