@@ -13,7 +13,7 @@ function Base.show(io::IO, f::MultiMPIFile)
   print(io, "Multi MPI File: ", f.files)
 end
 
-acqNumPeriods(f::MultiMPIFile) = length(f.files)*acqNumFrames(f.files[1])
+acqNumPeriodsPerFrame(f::MultiMPIFile) = length(f.files)*acqNumFrames(f.files[1])
 acqNumFrames(f::MultiMPIFile) = 1
 
 for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyUuid, :studyDescription,
@@ -81,7 +81,7 @@ experimentHasReconstruction(f::MultiMPIFile) = false
 
 ##Achtung hack in der Schleife acqNumFrames(fi) statt acqNumFrames(f)
 #notwendig, da hier Sprung zwischen MultiMPIFile und MPIFile
-function measData(f::MultiMPIFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
+function measData(f::MultiMPIFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
   data = zeros(Float64, rxNumSamplingPoints(f), length(receivers),
                         length(frames),length(periods),1)

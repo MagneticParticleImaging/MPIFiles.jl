@@ -177,19 +177,19 @@ function acqStartTime(b::BrukerFile)
 end
 function acqNumFrames(b::BrukerFileMeas)
   M = Int64(b["ACQ_jobs"][1][8])
-  return div(M,acqNumPeriods(b))
+  return div(M,acqNumPeriodsPerFrame(b))
 end
 function acqNumFrames(b::BrukerFileCalib)
   M = parse(Int64,b["PVM_MPI_NrCalibrationScans"])
   A = parse(Int64,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])
-  return div(M-A,acqNumPeriods(b))
+  return div(M-A,acqNumPeriodsPerFrame(b))
 end
 acqFramePeriod(b::BrukerFile) = dfPeriod(b) * acqNumAverages(b)
 function _acqNumPatches(b::BrukerFile)
   M = b["MPI_NSteps"]
   return (M == "") ? 1 : parse(Int64,M)
 end
-function acqNumPeriods(b::BrukerFile)
+function acqNumPeriodsPerFrame(b::BrukerFile)
   M = b["MPI_RepetitionsPerStep"]
   N = _acqNumPatches(b)
   return (M == "") ? N : N*parse(Int64,M)
@@ -213,13 +213,13 @@ function acqOffsetField(b::BrukerFile) #TODO NOT correct
   if b["MPI_FocusFieldX"] == ""
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
-    voltage = repeat(voltage,inner=(1,div(acqNumPeriods(b),_acqNumPatches(b))))
+    voltage = repeat(voltage,inner=(1,div(acqNumPeriodsPerFrame(b),_acqNumPatches(b))))
     calibFac = [2.5/49.45, 0.5*(-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
-    return Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriods(b)]
+    return Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
   else
     return repeat(1e-3*cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
                  [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
-                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriods(b),_acqNumPatches(b))))
+                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriodsPerFrame(b),_acqNumPatches(b))))
   end
 end
 
@@ -229,7 +229,7 @@ dfNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
    #sum( dfStrength(b)[1,:,1] .> 0) #TODO Not sure about this
 dfStrength(b::BrukerFile) = repeat(addTrailingSingleton( addLeadingSingleton(
   [parse(Float64,s) for s = b["ACQ_MPI_drive_field_strength"] ] *1e-3, 2), 3),
-                    inner=(1,1,acqNumPeriods(b)))
+                    inner=(1,1,acqNumPeriodsPerFrame(b)))
 dfPhase(b::BrukerFile) = dfStrength(b) .*0 .+  1.5707963267948966 # Bruker specific!
 dfBaseFrequency(b::BrukerFile) = 2.5e6
 dfCustomWaveform(b::BrukerFile) = nothing
@@ -255,7 +255,7 @@ rxDataConversionFactor(b::BrukerFileMeas) =
 rxDataConversionFactor(b::BrukerFileCalib) =
                  repeat([1.0, 0.0], outer=(1,rxNumChannels(b)))
 
-function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumPeriods(b),
+function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumPeriodsPerFrame(b),
                   receivers=1:rxNumChannels(b))
 
   dataFilename = joinpath(b.path,"rawdata.job0")
@@ -263,14 +263,14 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
 
   s = open(dataFilename)
   raw = Mmap.mmap(s, Array{dType,4},
-             (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriods(b),acqNumFrames(b)))
+             (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
   data = raw[:,receivers,periods,frames]
   close(s)
 
   return reshape(data, rxNumSamplingPoints(b), length(receivers),length(periods),length(frames))
 end
 
-function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNumPeriods(b),
+function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNumPeriodsPerFrame(b),
                   receivers=1:rxNumChannels(b))
 
   sfFilename = joinpath(b.path,"pdata", "1", "systemMatrix")

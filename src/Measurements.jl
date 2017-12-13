@@ -30,7 +30,7 @@ function spectralLeakageCorrection_(f::MPIFile, frames, periods)
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
   numFrames = acqNumFrames(f)
-  numPeriods = acqNumPeriods(f)
+  numPeriods = acqNumPeriodsPerFrame(f)
 
   data = zeros(Float32, numTimePoints, numReceivers, length(periods), length(frames))
   M = numTimePoints*3
@@ -87,7 +87,7 @@ end
 returnasreal{T<:Real}(u::AbstractArray{T}) = u
 
 function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
-            numAverages=1,  verbose = false, periods=1:acqNumPeriods(f),
+            numAverages=1,  verbose = false, periods=1:acqNumPeriodsPerFrame(f),
             spectralLeakageCorrection=false)
 
   verbose && println( rxNumSamplingPoints(f), " ",
@@ -104,15 +104,15 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
 
     if measIsTransposed(f)
       if measIsFourierTransformed(f)
-        data = zeros(Complex64, nBlocks, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriods(f))
+        data = zeros(Complex64, nBlocks, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriodsPerFrame(f))
       else
-        data = zeros(Float32, nBlocks, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriods(f))
+        data = zeros(Float32, nBlocks, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriodsPerFrame(f))
       end
     else
       if measIsFourierTransformed(f)
-        data = zeros(Complex64, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriods(f), nBlocks)
+        data = zeros(Complex64, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
       else
-        data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriods(f), nBlocks)
+        data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
       end
     end
     p = Progress(nBlocks, 1, "Loading measurement from $(filepath(f)) ...")

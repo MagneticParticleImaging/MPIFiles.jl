@@ -32,7 +32,7 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
 
 # acquisition parameters
 export acqStartTime, acqFramePeriod, acqNumFrames, acqNumAverages,
-       acqGradient, acqOffsetField, acqNumPeriods, acqSize
+       acqGradient, acqOffsetField, acqNumPeriodsPerFrame, acqSize
 
 # drive-field parameters
 export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
@@ -105,7 +105,7 @@ export selectedChannels
 @mustimplement acqStartTime(f::MPIFile)
 @mustimplement acqFramePeriod(f::MPIFile)
 @mustimplement acqNumAverages(f::MPIFile)
-@mustimplement acqNumPeriods(f::MPIFile)
+@mustimplement acqNumPeriodsPerFrame(f::MPIFile)
 @mustimplement acqNumFrames(f::MPIFile)
 @mustimplement acqGradient(f::MPIFile)
 @mustimplement acqOffsetField(f::MPIFile)
@@ -173,7 +173,8 @@ function str2uuid(str::String)
 end
 str2uuid(str::Void) = str
 
-#TODO Move to misc
+# TODO Move to misc
+
 export rxNumFrequencies, acqFov, rxFrequencies, rxTimePoints
 rxNumFrequencies(f::MPIFile) = floor(Int,rxNumSamplingPoints(f) ./ 2 .+ 1)
 function rxFrequencies(f::MPIFile)
@@ -198,6 +199,9 @@ end
 #end
 
 export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx, acqOffsetFieldShift
+
+# numPeriods is the total number of DF periods in a measurement.
+acqNumPeriods(f::MPIFile) = acqNumFrames(f)*acqNumPeriodsPerFrame(f)
 
 function acqOffsetFieldShift(f::MPIFile)
     return acqOffsetField(f) ./ acqGradient(f)

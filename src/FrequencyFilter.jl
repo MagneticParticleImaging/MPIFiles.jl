@@ -6,7 +6,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
 
   nFreq = rxNumFrequencies(f)
   nReceivers = rxNumChannels(f)
-  nPeriods = acqNumPeriods(f)
+  nPeriods = acqNumPeriodsPerFrame(f)
 
   minIdx = round(Int, minFreq / rxBandwidth(f) * nFreq )
   maxIdx = round(Int, maxFreq / rxBandwidth(f) * nFreq )

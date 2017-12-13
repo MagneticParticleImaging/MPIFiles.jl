@@ -139,7 +139,6 @@ scannerTopology(f::MDFFile)::String = f["/scanner/topology"]
 # acquisition parameters
 acqStartTime(f::MDFFileV1)::DateTime = DateTime( f["/acquisition/time"] )
 acqStartTime(f::MDFFileV2)::DateTime = DateTime( f["/acquisition/startTime"] )
-acqFramePeriod(f::MDFFile)::Float64 = f["/acquisition/framePeriod"]
 acqNumAverages(f::MDFFileV1)::Int = f["/acquisition/drivefield/averages"]
 acqNumAverages(f::MDFFileV2)::Int = f["/acquisition/numAverages"]
 function acqNumFrames(f::MDFFileV1)::Int
@@ -155,8 +154,8 @@ function acqNumFrames(f::MDFFileV1)::Int
   end
 end
 acqNumFrames(f::MDFFileV2)::Int = f["/acquisition/numFrames"]
-acqNumPeriods(f::MDFFileV1)::Int = 1
-acqNumPeriods(f::MDFFileV2)::Int = f["/acquisition/numPeriods"]
+acqNumPeriodsPerFrame(f::MDFFileV1)::Int = 1
+acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods"]
 
 acqGradient(f::MDFFileV1)::Array{Float64,2} = addTrailingSingleton(f["/acquisition/gradient"],2)
 acqGradient(f::MDFFileV2)::Array{Float64,2} = f["/acquisition/gradient"]
@@ -202,7 +201,7 @@ rxDataConversionFactor(f::MDFFileV1) = repeat([1.0, 0.0], outer=(1,rxNumChannels
 rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFactor"]
 
 # measurements
-function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
+function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     # the V1 file is a calibration
@@ -243,7 +242,7 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
   end
 end
 
-function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
+function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     return nothing
