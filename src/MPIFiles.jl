@@ -32,7 +32,7 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
 
 # acquisition parameters
 export acqStartTime, acqFramePeriod, acqNumFrames, acqNumAverages,
-       acqGradient, acqOffsetField, acqOffsetFieldShift, acqNumPeriods, acqSize
+       acqGradient, acqOffsetField, acqNumPeriods, acqSize
 
 # drive-field parameters
 export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
@@ -109,7 +109,6 @@ export selectedChannels
 @mustimplement acqNumFrames(f::MPIFile)
 @mustimplement acqGradient(f::MPIFile)
 @mustimplement acqOffsetField(f::MPIFile)
-@mustimplement acqOffsetFieldShift(f::MPIFile)
 
 # drive-field parameters
 @mustimplement dfNumChannels(f::MPIFile)
@@ -175,7 +174,7 @@ end
 str2uuid(str::Void) = str
 
 #TODO Move to misc
-export rxNumFrequencies, acqFov, acqFovCenter, rxFrequencies, rxTimePoints
+export rxNumFrequencies, acqFov, rxFrequencies, rxTimePoints
 rxNumFrequencies(f::MPIFile) = floor(Int,rxNumSamplingPoints(f) ./ 2 .+ 1)
 function rxFrequencies(f::MPIFile)
   numFreq = rxNumFrequencies(f)
@@ -194,11 +193,15 @@ function acqFov(f::MPIFile)
     return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradient(f)[1,:] )
   end
 end
-function acqFovCenter(f::MPIFile)
- return acqOffsetField(f) ./ abs.( acqGradient(f) )
-end
+#function acqFovCenter(f::MPIFile)
+# return acqOffsetField(f) ./ abs.( acqGradient(f) ) # why was the absolute value taken here?
+#end
 
-export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx
+export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx, acqOffsetFieldShift
+
+function acqOffsetFieldShift(f::MPIFile)
+    return acqOffsetField(f) ./ acqGradient(f)
+end
 
 acqNumFGFrames(f::MPIFile) = acqNumFrames(f) - acqNumBGFrames(f)
 acqNumBGFrames(f::MPIFile) = sum(measIsBGFrame(f))

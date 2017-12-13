@@ -161,9 +161,9 @@ acqNumPeriods(f::MDFFileV2)::Int = f["/acquisition/numPeriods"]
 acqGradient(f::MDFFileV1)::Array{Float64,2} = addTrailingSingleton(f["/acquisition/gradient"],2)
 acqGradient(f::MDFFileV2)::Array{Float64,2} = f["/acquisition/gradient"]
 acqOffsetField(f::MDFFile) = f["/acquisition/offsetField"]
-acqOffsetFieldShift(f::MDFFileV1) = addTrailingSingleton(
-              f["/acquisition/drivefield/fieldOfViewCenter"],2 )
-acqOffsetFieldShift(f::MDFFileV2) = f["/acquisition/offsetFieldShift"]
+#acqOffsetFieldShift(f::MDFFileV1) = addTrailingSingleton(
+#              f["/acquisition/drivefield/fieldOfViewCenter"],2 )
+#acqOffsetFieldShift(f::MDFFileV2) = f["/acquisition/offsetFieldShift"]
 
 # drive-field parameters
 dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]

@@ -222,9 +222,6 @@ function acqOffsetField(b::BrukerFile) #TODO NOT correct
                  [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriods(b),_acqNumPatches(b))))
   end
 end
-function acqOffsetFieldShift(b::BrukerFile)
-    return acqOffsetField(b) ./ acqGradient(b)
-end
 
 
 # drive-field parameters

@@ -56,7 +56,7 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :tracerSolute, :tracerInjectionTime,
           :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
           :scannerTopology, :acqFramePeriod, :acqNumPeriods, :acqNumAverages,
-          :acqStartTime, :acqOffsetField, :acqOffsetFieldShift, :acqNumFrames,
+          :acqStartTime, :acqOffsetField, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
           :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
           :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor,
@@ -155,7 +155,6 @@ function saveasMDF(file::HDF5File, params::Dict)
 
   writeIfAvailable(file, "/acquisition/gradient", params, "acqGradient")
   writeIfAvailable(file, "/acquisition/offsetField", params, "acqOffsetField")
-  writeIfAvailable(file, "/acquisition/offsetFieldShift", params, "acqOffsetFieldShift")
 
   # drivefield parameters
   write(file, "/acquisition/drivefield/numChannels", size(params["dfStrength"],2) )
