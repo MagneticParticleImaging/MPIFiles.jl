@@ -31,7 +31,7 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
        scannerTopology
 
 # acquisition parameters
-export acqStartTime, acqFramePeriod, acqNumFrames, acqNumAverages,
+export acqStartTime, acqNumFrames, acqNumAverages,
        acqGradient, acqOffsetField, acqNumPeriodsPerFrame, acqSize
 
 # drive-field parameters
@@ -103,7 +103,6 @@ export selectedChannels
 
 # acquisition parameters
 @mustimplement acqStartTime(f::MPIFile)
-@mustimplement acqFramePeriod(f::MPIFile)
 @mustimplement acqNumAverages(f::MPIFile)
 @mustimplement acqNumPeriodsPerFrame(f::MPIFile)
 @mustimplement acqNumFrames(f::MPIFile)
@@ -198,7 +197,10 @@ end
 # return acqOffsetField(f) ./ abs.( acqGradient(f) ) # why was the absolute value taken here?
 #end
 
-export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx, acqOffsetFieldShift
+export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx, acqOffsetFieldShift,
+       acqFramePeriod
+
+acqFramePeriod(b::MPIFile) = dfPeriod(b) * acqNumAverages(b) * acqNumPeriodsPerFrame(b)
 
 # numPeriods is the total number of DF periods in a measurement.
 acqNumPeriods(f::MPIFile) = acqNumFrames(f)*acqNumPeriodsPerFrame(f)

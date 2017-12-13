@@ -1,5 +1,7 @@
 using HDF5
 
+import HDF5: h5read
+
 export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton
 
 @compat abstract type MDFFile <: MPIFile end
@@ -55,9 +57,24 @@ function h5readornull(filename, parameter)
   end
 end
 
+function h5read(filename, parameter, default)
+  if h5exists(filename, parameter)
+    return h5read(filename, parameter)
+  else
+    return default
+  end
+end
+
 function getindex(f::MDFFile, parameter)
   if !haskey(f.param_cache,parameter)
     f.param_cache[parameter] = h5readornull(f.filename, parameter)
+  end
+  return f.param_cache[parameter]
+end
+
+function getindex(f::MDFFile, parameter, default)
+  if !haskey(f.param_cache,parameter)
+    f.param_cache[parameter] = h5read(f.filename, parameter, default)
   end
   return f.param_cache[parameter]
 end
@@ -159,10 +176,7 @@ acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods"]
 
 acqGradient(f::MDFFileV1)::Array{Float64,2} = addTrailingSingleton(f["/acquisition/gradient"],2)
 acqGradient(f::MDFFileV2)::Array{Float64,2} = f["/acquisition/gradient"]
-acqOffsetField(f::MDFFile) = f["/acquisition/offsetField"]
-#acqOffsetFieldShift(f::MDFFileV1) = addTrailingSingleton(
-#              f["/acquisition/drivefield/fieldOfViewCenter"],2 )
-#acqOffsetFieldShift(f::MDFFileV2) = f["/acquisition/offsetFieldShift"]
+acqOffsetField(f::MDFFile) = f["/acquisition/offsetField", [0.0,0.0,0.0]]
 
 # drive-field parameters
 dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]

@@ -55,7 +55,7 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
           :tracerSolute, :tracerInjectionTime,
           :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
-          :scannerTopology, :acqFramePeriod, :acqNumPeriodsPerFrame, :acqNumAverages,
+          :scannerTopology, :acqNumPeriodsPerFrame, :acqNumAverages,
           :acqStartTime, :acqOffsetField, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
           :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,

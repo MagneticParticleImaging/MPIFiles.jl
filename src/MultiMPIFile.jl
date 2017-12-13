@@ -23,7 +23,7 @@ for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyUu
             :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
             :tracerSolute, :tracerInjectionTime,
             :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
-            :scannerTopology, :acqNumBGFrames, :acqFramePeriod,
+            :scannerTopology, :acqNumBGFrames,
             :acqStartTime,
             :dfNumChannels, :dfBaseFrequency, :dfDivider,
             :dfPeriod, :dfWaveform, :rxNumChannels, :acqNumAverages, :rxBandwidth,
@@ -34,7 +34,7 @@ end
 for op in [ :dfStrength, :dfPhase ]
   @eval begin function $op(f::MultiMPIFile)
        tmp = $op(f.files[1])
-       newVal = similar(tmp, size(tmp,1), size(tmp,2), 
+       newVal = similar(tmp, size(tmp,1), size(tmp,2),
                         acqNumFrames(f.files[1]),length(f.files))
        for c=1:length(f.files)
          tmp = $op(f.files[c])

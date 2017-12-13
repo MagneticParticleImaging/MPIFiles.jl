@@ -37,7 +37,7 @@ for mdf in (measBruker,mdfv2)
 
   @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
   @test acqGradient(mdf)[:,1] == [-1.25; -1.25; 2.5]
-  @test acqFramePeriod(mdf) == 6.528E-4
+  @test acqFramePeriod(mdf) == 0.9792000000000001
   @test acqNumPeriodsPerFrame(mdf) == 1500
   @test size(acqOffsetFieldShift(mdf)) == (3, 1500)
 

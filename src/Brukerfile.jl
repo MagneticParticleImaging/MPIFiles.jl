@@ -184,7 +184,7 @@ function acqNumFrames(b::BrukerFileCalib)
   A = parse(Int64,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])
   return div(M-A,acqNumPeriodsPerFrame(b))
 end
-acqFramePeriod(b::BrukerFile) = dfPeriod(b) * acqNumAverages(b)
+
 function _acqNumPatches(b::BrukerFile)
   M = b["MPI_NSteps"]
   return (M == "") ? 1 : parse(Int64,M)
