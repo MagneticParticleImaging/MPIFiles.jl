@@ -1,3 +1,5 @@
+@testset "Testing Reco submodule" begin
+
 fnRecoV1 = "reco_V1.mdf"
 fnRecoV2 = "reco_V2.mdf"
 fnRecoV2b = "reco_V2b.mdf"
@@ -34,3 +36,5 @@ for mdf in (mdfv1,mdfv2,mdfv2b)
 end
 
 @test c1 == c2
+
+end

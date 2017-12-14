@@ -282,6 +282,55 @@ function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
   return data
 end
 
+function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
+                  receivers=1:rxNumChannels(f))
+  tdExists = h5exists(f.filename, "/measurement/dataTD")
+
+  if tdExists
+    if f.mmap_measData == nothing
+      h5open(f.filename,"r") do file
+        f.mmap_measData = readmmap(file["/measurement/dataTD"])
+      end
+    end
+    data = f.mmap_measData[:, receivers, periods]
+    return data
+  else
+    if f.mmap_measData == nothing
+      h5open(f.filename,"r") do file
+        f.mmap_measData = readmmap(file["/measurement/dataFD"])
+      end
+    end
+    data = f.mmap_measData[:, :, receivers, periods]
+
+    dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
+    dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
+    return dataTD
+  end
+end
+
+
+function measDataTDPeriods(f::MDFFileV2, periods=1:acqNumPeriods(f),
+                  receivers=1:rxNumChannels(f))
+  if measIsTransposed(f)
+    error("measDataTDPeriods can currently not handle transposed data!")
+  end
+
+  if f.mmap_measData == nothing
+    h5open(f.filename,"r") do file
+      parameter = "/measurement/data"
+      if !isComplexArray(file, parameter)
+        f.mmap_measData = readmmap(file[parameter])
+      else
+        error("measDataTDPeriods expects time domain data")
+      end
+    end
+  end
+
+  data = reshape(f.mmap_measData,Val{3})[:, receivers, periods]
+
+  return data
+end
+
 function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
   if !experimentIsCalibration(f)
     return nothing

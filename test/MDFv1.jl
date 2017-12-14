@@ -1,3 +1,5 @@
+@testset "Testing MDFv1 submodule" begin
+
 # Download test files
 
 fnMeasV1 = "measurement_V1.mdf"
@@ -77,8 +79,13 @@ for mdf in (mdfv1,mdfv2)
   @test rxNumSamplingPoints(mdf) == 1632
   @test acqNumAverages(mdf) == 1
 
-  @test size( measData(mdf) ) == (1632,3,1,500)
   @test acqNumFrames(mdf) == 500
+  @test acqNumPeriodsPerFrame(mdf) == 1
+  @test acqNumPeriods(mdf) == 500
+
+  @test size( measData(mdf) ) == (1632,3,1,500)
+  @test size( measDataTDPeriods(mdf) ) == (1632,3,500)
+  @test size( measDataTDPeriods(mdf, 101:200) ) == (1632,3,100)
 
   @test size(getMeasurements(mdf, numAverages=1,
               spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
@@ -133,4 +140,6 @@ for sm in (smv1,smv2)
 
   @test size(getSystemMatrix(sm,1:10)) == (1936,10)
   @test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (1936,20)
+end
+
 end

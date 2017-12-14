@@ -294,6 +294,22 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
   return cat(1,S,bgdata)
 end
 
+
+function measDataTDPeriods(b::BrukerFile, periods=1:acqNumPeriods(b),
+                  receivers=1:rxNumChannels(b))
+
+  dataFilename = joinpath(b.path,"rawdata.job0")
+  dType = acqNumAverages(b) == 1 ? Int16 : Int32
+
+  s = open(dataFilename)
+  raw = Mmap.mmap(s, Array{dType,3},
+    (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriods(b)))
+  data = raw[:,receivers,periods]
+  close(s)
+
+  return reshape(data, rxNumSamplingPoints(b), length(receivers),length(periods))
+end
+
 systemMatrixWithBG(b::BrukerFileCalib) = measData(b)
 
 function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)

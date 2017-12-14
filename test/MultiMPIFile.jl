@@ -1,3 +1,5 @@
+@testset "MultiMPIFile submodule" begin
+
 fnMeasBruker = "measurement_Bruker"
 fnMeasMultiV2 = "measurement_multi_V2.mdf"
 
@@ -56,7 +58,12 @@ for mdf in (measBruker,mdfv2)
   @test acqNumAverages(mdf) == 1
 
   @test acqNumFrames(mdf) == 1
+  @test acqNumPeriodsPerFrame(mdf) == 1500
+  @test acqNumPeriods(mdf) == 1500
+
   @test size( measData(mdf) ) == (1632,3,1500,1)
+  @test size( measDataTDPeriods(mdf) ) == (1632,3,1500)
+  @test size( measDataTDPeriods(mdf, 1001:1100) ) == (1632,3,100)
 
   N = acqNumFrames(mdf)
 
@@ -73,5 +80,8 @@ for mdf in (measBruker,mdfv2)
               fourierTransform=true, loadasreal=true)) == (1634,3,3,10)
 
   @test size(getMeasurements(mdf,frequencies=1:10, numAverages=10)) == (10,3,50)=#
+
+end
+
 
 end

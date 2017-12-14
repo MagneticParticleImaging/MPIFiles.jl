@@ -1,3 +1,5 @@
+@testset "Testing General submodule" begin
+
 fnMeasBruker = "measurement_Bruker"
 fnSMBruker = "systemMatrix_Bruker"
 fnMeasV1 = "measurement_V1.mdf"
@@ -72,7 +74,12 @@ for mdf in (measBruker,mdfv2)
   @test acqNumAverages(mdf) == 1
 
   @test acqNumFrames(mdf) == 500
+  @test acqNumPeriodsPerFrame(mdf) == 1
+  @test acqNumPeriods(mdf) == 500
+
   @test size( measData(mdf) ) == (1632,3,1,500)
+  @test size( measDataTDPeriods(mdf) ) == (1632,3,500)
+  @test size( measDataTDPeriods(mdf, 101:200) ) == (1632,3,100)
 
   N = acqNumFrames(mdf)
 
@@ -144,3 +151,6 @@ S_loadedfromraw = getMeasurements(smBrukerPretendToBeMeas,
 S_loadedfromproc = systemMatrix(smBruker)
 
 @test norm(vec(S_loadedfromraw-S_loadedfromproc)) / norm(vec(S_loadedfromproc)) < 1e-6
+
+
+end

@@ -43,7 +43,7 @@ export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
        rxTransferFunction, rxUnit, rxDataConversionFactor, rxInductionFactor
 
 # measurements
-export measData, measIsFourierTransformed, measIsTFCorrected,
+export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
        measIsBGCorrected, measIsTransposed,
        measIsFramePermutation, measIsFrequencySelection,
        measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation
@@ -130,6 +130,7 @@ export selectedChannels
 
 # measurements
 @mustimplement measData(f::MPIFile)
+@mustimplement measDataTDPeriods(f::MPIFile, periods)
 @mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
 @mustimplement measIsFourierTransformed(f::MPIFile)
 @mustimplement measIsTFCorrected(f::MPIFile)
@@ -198,7 +199,7 @@ end
 #end
 
 export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx, acqOffsetFieldShift,
-       acqFramePeriod
+       acqFramePeriod, acqNumPeriods
 
 acqFramePeriod(b::MPIFile) = dfPeriod(b) * acqNumAverages(b) * acqNumPeriodsPerFrame(b)
 
