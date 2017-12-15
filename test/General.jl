@@ -76,6 +76,8 @@ for mdf in (measBruker,mdfv2)
   @test acqNumFrames(mdf) == 500
   @test acqNumPeriodsPerFrame(mdf) == 1
   @test acqNumPeriods(mdf) == 500
+  @test acqNumPatches(mdf) == 1
+  @test acqNumPeriodsPerPatch(mdf) == 1
 
   @test size( measData(mdf) ) == (1632,3,1,500)
   @test size( measDataTDPeriods(mdf) ) == (1632,3,500)

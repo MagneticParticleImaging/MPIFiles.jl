@@ -199,7 +199,7 @@ end
 #end
 
 export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx, acqOffsetFieldShift,
-       acqFramePeriod, acqNumPeriods
+       acqFramePeriod, acqNumPeriods, acqNumPatches, acqNumPeriodsPerPatch
 
 acqFramePeriod(b::MPIFile) = dfPeriod(b) * acqNumAverages(b) * acqNumPeriodsPerFrame(b)
 
@@ -241,6 +241,37 @@ function measFGFrameIdx(f::MPIFile)
     end
   end
   return idx
+end
+
+function acqNumPatches(f::MPIFile)
+  # not valid for varying gradients / multi gradient
+  shifts = acqOffsetFieldShift(f)
+  return size(unique(shifts,2),2)
+end
+
+function acqNumPeriodsPerPatch(f::MPIFile)
+  return div(acqNumPeriodsPerFrame(f), acqNumPatches(f))
+end
+
+export unflattenOffsetFieldShift
+
+unflattenOffsetFieldShift(f::MPIFile) = analyseFFPos(acqOffsetFieldShift(f))
+function unflattenOffsetFieldShift(shifts::Array)
+  # not valid for varying gradients / multi gradient
+  uniqueShifts = unique(shifts,2)
+  numPeriodsPerFrame = size(shifts,2)
+  numPatches = size(uniqueShifts,2)
+  numPeriodsPerPatch = div(numPeriodsPerFrame, numPatches)
+
+  allPeriods = 1:numPeriodsPerFrame
+
+  flatIndices = zeros(Int64,numPatches,numPeriodsPerPatch)
+
+  for i=1:numPatches
+    flatIndices[i,:] = allPeriods[vec(sum(shifts .== uniqueShifts[:,i],1)).==3]
+  end
+
+  return flatIndices
 end
 
 # We assume that systemMatrixWithBG has already reordered the BG data
