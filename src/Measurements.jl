@@ -1,4 +1,4 @@
-export getMeasurements, getMeasurementsLowLevel
+export getMeasurements, getMeasurementsFT, getMeasurementsLowLevel
 
 function measDataConv(f::MPIFile, args...)
   data = measData(f, args...)
@@ -8,24 +8,18 @@ function measDataConv(f::MPIFile, args...)
   end
   a = rxDataConversionFactor(f)
   if a!=nothing
-    if measIsTransposed(f)
-      for d=1:size(data,3)
-        slice = view(data,:,:,d,:)
-        scale!(slice, a[1,d])
-        slice .+= a[2,d]
-      end
-    else
-      for d=1:size(data,2)
-        slice = view(data,:,d,:,:)
-        scale!(slice, a[1,d])
-        slice .+= a[2,d]
-      end
+    for d=1:size(data,2)
+      slice = view(data,:,d,:,:)
+      scale!(slice, a[1,d])
+      slice .+= a[2,d]
     end
   end
   return data
 end
 
-function spectralLeakageCorrection_(f::MPIFile, frames, periods)
+hannWindow(M) = (1.-cos.(2*π/(M-1)*(0:(M-1))))/(M-1)*M
+
+function measDataSpectralLeakageCorrected(f::MPIFile, frames, periods)
   #println("Apply Spectral Cleaning")
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
@@ -33,13 +27,9 @@ function spectralLeakageCorrection_(f::MPIFile, frames, periods)
   numPeriods = acqNumPeriodsPerFrame(f)
 
   data = zeros(Float32, numTimePoints, numReceivers, length(periods), length(frames))
-  M = numTimePoints*3
-  window3 = 0.5.*(1.-cos.(2*π/(M-1)*(0:(M-1))))
-  window3 = window3 / (sum(window3)/M)
 
-  M = numTimePoints*2
-  window2 = 0.5.*(1.-cos.(2*π/(M-1)*(0:(M-1))))
-  window2 = window2 / (sum(window2)/M)
+  window3 = hannWindow(numTimePoints*3)
+  window2 = hannWindow(numTimePoints*2)
 
   for (i,fr) in enumerate(frames)
     for (p,pe) in enumerate(periods)
@@ -68,18 +58,13 @@ function spectralLeakageCorrection_(f::MPIFile, frames, periods)
 end
 
 function measDataLowLevel(f::MPIFile, args...; spectralLeakageCorrection=false )
-  if measIsFourierTransformed(f)
-    return measDataConv(f, args...)
+  if !spectralLeakageCorrection || measIsSpectralLeakageCorrected(f) ||
+      acqNumFrames(f) == 1
+     tmp = measDataConv(f, args...)
   else
-    if !spectralLeakageCorrection || measIsSpectralLeakageCorrected(f) ||
-        acqNumFrames(f) == 1
-       tmp = measDataConv(f, args...)
-    else
-       tmp = spectralLeakageCorrection_(f, args...)
-    end
+     tmp = measDataSpectralLeakageCorrected(f, args...)
   end
 end
-
 
 function returnasreal{T}(u::AbstractArray{Complex{T}})
   return reinterpret(T,u,tuple(size(u,1)*2,size(u)[2:end]...))
@@ -102,30 +87,15 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     rem(nFrames, numAverages) != 0 && (warn("numAverages no integer divisor of nFrames.
               Last Block will be averaged over less than $numAverages Frames."))
 
-    if measIsTransposed(f)
-      if measIsFourierTransformed(f)
-        data = zeros(Complex64, nBlocks, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriodsPerFrame(f))
-      else
-        data = zeros(Float32, nBlocks, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriodsPerFrame(f))
-      end
-    else
-      if measIsFourierTransformed(f)
-        data = zeros(Complex64, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
-      else
-        data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
-      end
-    end
+    data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
+
     p = Progress(nBlocks, 1, "Loading measurement from $(filepath(f)) ...")
     for i = 1:nBlocks
       index1 = 1 + (i-1)*numAverages
       index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
 
       tmp = measDataLowLevel(f, frames[index1:index2], periods, spectralLeakageCorrection=spectralLeakageCorrection)
-      if measIsTransposed(f)
-        data[i,:,:,:] = mean(tmp,1)
-      else
-        data[:,:,:,i] = mean(tmp,4)
-      end
+      data[:,:,:,i] = mean(tmp,4)
       next!(p)
     end
   end
@@ -133,9 +103,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
 end
 
 function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:acqNumFrames(f),
-      loadasreal=false, fourierTransform=measIsFourierTransformed(f),
-      transposed=measIsTransposed(f), bgCorrection=false, frequencies=nothing,
-      tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
+      bgCorrection=false, tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
 
   if neglectBGFrames
     idx = measFGFrameIdx(f)
@@ -170,35 +138,40 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:acqNumFrames
     end
   end
 
-  if (fourierTransform && !measIsFourierTransformed(f) ) || (frequencies != nothing)
-    data = rfft(data, measIsTransposed(f) ? 2 : 1)
+  if tfCorrection && !measIsTFCorrected(f)
+    tf = rxTransferFunction(f)
+
+    J = size(data,1)
+    dataF = rfft(data, 1)
+    dataF ./= tf
+    data = irfft(dataF,J,1)
   end
+
+  return data
+end
+
+
+
+function getMeasurementsFT(f::MPIFile, args...;
+      loadasreal=false, transposed=false, frequencies=nothing,
+      tfCorrection=measIsTFCorrected(f), kargs...)
+
+  data = getMeasurements(f, args..., tfCorrection=false; kargs...)
+
+  data = rfft(data, 1)
 
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
-    if fourierTransform || measIsFourierTransformed(f) || (frequencies != nothing)
-      data ./= tf
-    else
-      dim = measIsTransposed(f) ? 2 : 1
-      J = size(data,dim)
-      dataF = rfft(data, dim)
-      dataF ./= tf
-      data = irfft(dataF,J,dim)
-    end
+    data ./= tf
   end
 
   if frequencies != nothing
     # here we merge frequencies and channels
-    if !measIsTransposed(f)
-      data = reshape(data, size(data,1)*size(data,2), size(data,3), size(data,4))
-      data = data[frequencies, :, :]
-    else
-      data = reshape(data, size(data,1), size(data,2)*size(data,3), size(data,4))
-      data = data[:, frequencies, :]
-    end
+    data = reshape(data, size(data,1)*size(data,2), size(data,3), size(data,4))
+    data = data[frequencies, :, :]
   end
 
-  if transposed && !measIsTransposed(f)
+  if transposed
     if frequencies != nothing
       data = permutedims(data, [3,1,2])
     else

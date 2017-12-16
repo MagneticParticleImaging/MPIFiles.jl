@@ -86,21 +86,19 @@ for mdf in (measBruker,mdfv2)
   N = acqNumFrames(mdf)
 
   @test size(getMeasurements(mdf, numAverages=1,
-              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
+              spectralLeakageCorrection=false)) == (1632,3,1,500)
 
   @test size(getMeasurements(mdf, numAverages=10,
-              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,50)
+              spectralLeakageCorrection=false)) == (1632,3,1,50)
 
   @test size(getMeasurements(mdf, numAverages=10, frames=1:100,
-              spectralLeakageCorrection=true, fourierTransform=false)) == (1632,3,1,10)
+              spectralLeakageCorrection=true)) == (1632,3,1,10)
 
-  @test size(getMeasurements(mdf, numAverages=10, frames=1:100,
-              fourierTransform=true)) == (817,3,1,10)
+  @test size(getMeasurementsFT(mdf, numAverages=10, frames=1:100)) == (817,3,1,10)
 
-  @test size(getMeasurements(mdf, numAverages=10, frames=1:100,
-              fourierTransform=true, loadasreal=true)) == (1634,3,1,10)
+  @test size(getMeasurementsFT(mdf, numAverages=10, frames=1:100, loadasreal=true)) == (1634,3,1,10)
 
-  @test size(getMeasurements(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
+  @test size(getMeasurementsFT(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
 
 end
 
@@ -146,9 +144,9 @@ end
 # Next test checks if the cached system matrix is the same as the one loaded
 # from the raw data
 smBrukerPretendToBeMeas = MPIFile(fnSMBruker, isCalib=false)
-S_loadedfromraw = getMeasurements(smBrukerPretendToBeMeas,
+S_loadedfromraw = getMeasurementsFT(smBrukerPretendToBeMeas,
       frames=1:acqNumFGFrames(smBrukerPretendToBeMeas),sortFrames=true,
-      spectralLeakageCorrection=false,fourierTransform=true,transposed=true)
+      spectralLeakageCorrection=false,transposed=true)
 
 S_loadedfromproc = systemMatrix(smBruker)
 

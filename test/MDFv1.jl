@@ -88,21 +88,19 @@ for mdf in (mdfv1,mdfv2)
   @test size( measDataTDPeriods(mdf, 101:200) ) == (1632,3,100)
 
   @test size(getMeasurements(mdf, numAverages=1,
-              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
+              spectralLeakageCorrection=false)) == (1632,3,1,500)
 
   @test size(getMeasurements(mdf, numAverages=10,
-              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,50)
+              spectralLeakageCorrection=false)) == (1632,3,1,50)
 
   @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
-              spectralLeakageCorrection=true, fourierTransform=false)) == (1632,3,1,50)
+              spectralLeakageCorrection=true)) == (1632,3,1,50)
 
-  @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
-              fourierTransform=true)) == (817,3,1,50)
+  @test size(getMeasurementsFT(mdf, numAverages=10, frames=1:500)) == (817,3,1,50)
 
-  @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
-              fourierTransform=true, loadasreal=true)) == (1634,3,1,50)
+  @test size(getMeasurementsFT(mdf, numAverages=10, frames=1:500, loadasreal=true)) == (1634,3,1,50)
 
-  @test size(getMeasurements(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
+  @test size(getMeasurementsFT(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
 
 end
 
