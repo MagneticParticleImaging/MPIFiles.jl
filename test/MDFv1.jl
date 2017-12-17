@@ -96,11 +96,11 @@ for mdf in (mdfv1,mdfv2)
   @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
               spectralLeakageCorrection=true)) == (1632,3,1,50)
 
-  @test size(getMeasurementsFT(mdf, numAverages=10, frames=1:500)) == (817,3,1,50)
+  @test size(getMeasurementsFD(mdf, numAverages=10, frames=1:500)) == (817,3,1,50)
 
-  @test size(getMeasurementsFT(mdf, numAverages=10, frames=1:500, loadasreal=true)) == (1634,3,1,50)
+  @test size(getMeasurementsFD(mdf, numAverages=10, frames=1:500, loadasreal=true)) == (1634,3,1,50)
 
-  @test size(getMeasurementsFT(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
+  @test size(getMeasurementsFD(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
 
 end
 

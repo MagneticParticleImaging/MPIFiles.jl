@@ -1,4 +1,4 @@
-export getMeasurements, getMeasurementsFT, getMeasurementsLowLevel
+export getMeasurements, getMeasurementsFD, getMeasurementsLowLevel
 
 function measDataConv(f::MPIFile, args...)
   data = measData(f, args...)
@@ -152,9 +152,9 @@ end
 
 
 
-function getMeasurementsFT(f::MPIFile, args...;
+function getMeasurementsFD(f::MPIFile, args...;
       loadasreal=false, transposed=false, frequencies=nothing,
-      tfCorrection=measIsTFCorrected(f), kargs...)
+      tfCorrection=measIsTFCorrected(f),  kargs...)
 
   data = getMeasurements(f, args..., tfCorrection=false; kargs...)
 
