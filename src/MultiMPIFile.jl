@@ -82,15 +82,22 @@ experimentHasReconstruction(f::MultiMPIFile) = false
 ##Achtung hack in der Schleife acqNumFrames(fi) statt acqNumFrames(f)
 #notwendig, da hier Sprung zwischen MultiMPIFile und MPIFile
 function measData(f::MultiMPIFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
-                  receivers=1:rxNumChannels(f))
+                  receivers=1:rxNumChannels(f);averagePeriodsPerPatch=false)
+
   data = zeros(Float64, rxNumSamplingPoints(f), length(receivers),
                         length(frames),length(periods),1)
+
   #for (i,p) in enumerate(periods)
   #  data[:,:,:,i,:] = measData(f.files[p], frames, 1, receivers)
   #end
   for (i,fi) in enumerate(f.files)
-    fr_fi=acqNumFrames(fi)
-    data[:,:,:,fr_fi*(i-1)+1:fr_fi*i,:] = measData(fi, 1:fr_fi, 1, receivers)
+    if averagePeriodsPerPatch == false
+      fr_fi=acqNumFrames(fi)
+      data[:,:,:,fr_fi*(i-1)+1:fr_fi*i] = measData(fi,1:fr_fi,1,receivers;averagePeriodsPerPatch=averagePeriodsPerPatch)
+    else
+      fr_fi=acqNumFrames(f)
+      data[:,:,fr_fi*(i-1)+1:fr_fi*i,1:length(periods),:] = measData(fi, 1:fr_fi,periods, receivers;averagePeriodsPerPatch=averagePeriodsPerPatch)
+    end
   end
   return reshape(data,size(data,1),size(data,2),:,1)
 end

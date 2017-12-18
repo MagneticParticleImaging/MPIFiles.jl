@@ -259,7 +259,7 @@ rxDataConversionFactor(b::BrukerFileCalib) =
                  repeat([1.0, 0.0], outer=(1,rxNumChannels(b)))
 
 function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumPeriods(b),
-                  receivers=1:rxNumChannels(b))
+                  receivers=1:rxNumChannels(b);averagePeriodsPerPatch=false)
 
   dataFilename = joinpath(b.path,"rawdata.job0")
   dType = acqNumAverages(b) == 1 ? Int16 : Int32
@@ -267,7 +267,12 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
   s = open(dataFilename)
   raw = Mmap.mmap(s, Array{dType,4},
              (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriods(b),acqNumFrames(b)))
-  data = raw[:,receivers,periods,frames]
+  println("frames",length(frames)," periods",length(periods))
+  if averagePeriodsPerPatch == false
+    data = raw[:,receivers,periods,frames]
+  else
+    data = raw[:,receivers,frames,periods]
+  end
   close(s)
 
   return reshape(data, rxNumSamplingPoints(b), length(receivers),length(periods),length(frames))

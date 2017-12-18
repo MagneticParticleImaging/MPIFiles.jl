@@ -1,7 +1,7 @@
 export getMeasurements, getMeasurementsLowLevel, getMeasurementsFT
 
-function measDataConv(f::MPIFile, args...)
-  data = measData(f, args...)
+function measDataConv(f::MPIFile, args...;averagePeriodsPerPatch=false)
+  data = measData(f, args...;averagePeriodsPerPatch=averagePeriodsPerPatch)
 
   if eltype(data) <: Integer
     data = map(Float32, data)
@@ -67,13 +67,13 @@ function spectralLeakageCorrection_(f::MPIFile, frames, periods)
   return data
 end
 
-function measDataLowLevel(f::MPIFile, args...; spectralLeakageCorrection=false )
+function measDataLowLevel(f::MPIFile, args...; spectralLeakageCorrection=false,averagePeriodsPerPatch=false )
   if measIsFourierTransformed(f)
-    return measDataConv(f, args...)
+    return measDataConv(f, args...;averagePeriodsPerPatch=averagePeriodsPerPatch)
   else
     if !spectralLeakageCorrection || measIsSpectralLeakageCorrected(f) ||
         acqNumFrames(f) == 1
-       tmp = measDataConv(f, args...)
+       tmp = measDataConv(f, args...;averagePeriodsPerPatch=averagePeriodsPerPatch)
     else
        tmp = spectralLeakageCorrection_(f, args...)
     end
@@ -86,47 +86,69 @@ function returnasreal{T}(u::AbstractArray{Complex{T}})
 end
 returnasreal{T<:Real}(u::AbstractArray{T}) = u
 
-function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
+function createDataArray(f::MPIFile,NumFrames,NumChannels,NumPeriods)
+  if measIsTransposed(f)
+    if measIsFourierTransformed(f)
+      data = zeros(Complex64, NumFrames, rxNumFrequencies(f), NumChannels, NumPeriods)
+    else
+      data = zeros(Float32, NumFrames, rxNumSamplingPoints(f), NumChannels, NumPeriods)
+    end
+  else
+    if measIsFourierTransformed(f)
+      data = zeros(Complex64, rxNumFrequencies(f), NumChannels, NumPeriods, NumFrames)
+    else
+      data = zeros(Float32, rxNumSamplingPoints(f), NumChannels, NumPeriods,NumFrames)
+    end
+  end
+return data
+end
+
+function getAveragedMeasurements(f::MPIFile; averagePeriodsPerPatch=false,periodsSortedbyFFPos=nothing,frames=1:acqNumFrames(f),
             numAverages=1,  verbose = false, periods=1:acqNumPeriods(f),
             spectralLeakageCorrection=false)
 
   verbose && println( rxNumSamplingPoints(f), " ",
                       rxNumChannels(f), " ", acqNumFrames(f), )
+  if averagePeriodsPerPatch == true
+     println("Averaging over periods in a patch")
+      nBlocks = size(periodsSortedbyFFPos)[1]
+     println(nBlocks)
+     data = createDataArray(f,acqNumFrames(f),rxNumChannels(f),nBlocks)
+     p = Progress(nBlocks, 1, "Loading measurement from $(filepath(f)) ...")
+     for i = 1:nBlocks
+       tmp = measDataLowLevel(f, frames, periodsSortedbyFFPos[i,1]:periodsSortedbyFFPos[i,end], spectralLeakageCorrection=spectralLeakageCorrection,averagePeriodsPerPatch=averagePeriodsPerPatch)
 
-  if numAverages == 1
-    data = measDataLowLevel(f, frames, periods, spectralLeakageCorrection=spectralLeakageCorrection)
+       if measIsTransposed(f)
+         data[:,:,:,i] = mean(tmp,4)
+       else
+         data[:,:,i,:] = mean(tmp,3)
+       end
+       next!(p)
+     end
+
   else
-    nFrames = length(frames)
-    nBlocks = ceil(Int, nFrames / numAverages)
-
-    rem(nFrames, numAverages) != 0 && (warn("numAverages no integer divisor of nFrames.
-              Last Block will be averaged over less than $numAverages Frames."))
-
-    if measIsTransposed(f)
-      if measIsFourierTransformed(f)
-        data = zeros(Complex64, nBlocks, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriods(f))
-      else
-        data = zeros(Float32, nBlocks, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriods(f))
-      end
+    if numAverages == 1
+      data = measDataLowLevel(f, frames, periods, spectralLeakageCorrection=spectralLeakageCorrection)
     else
-      if measIsFourierTransformed(f)
-        data = zeros(Complex64, rxNumFrequencies(f), rxNumChannels(f), acqNumPeriods(f), nBlocks)
-      else
-        data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriods(f), nBlocks)
-      end
-    end
-    p = Progress(nBlocks, 1, "Loading measurement from $(filepath(f)) ...")
-    for i = 1:nBlocks
-      index1 = 1 + (i-1)*numAverages
-      index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
+      nFrames = length(frames)
+      nBlocks = ceil(Int, nFrames / numAverages)
 
-      tmp = measDataLowLevel(f, frames[index1:index2], periods, spectralLeakageCorrection=spectralLeakageCorrection)
-      if measIsTransposed(f)
-        data[i,:,:,:] = mean(tmp,1)
-      else
-        data[:,:,:,i] = mean(tmp,4)
+      rem(nFrames, numAverages) != 0 && (warn("numAverages no integer divisor of nFrames.
+              Last Block will be averaged over less than $numAverages Frames."))
+      data = createDataArray(f,nBlocks,rxNumChannels(f),acqNumPeriods(f))
+      p = Progress(nBlocks, 1, "Loading measurement from $(filepath(f)) ...")
+      for i = 1:nBlocks
+        index1 = 1 + (i-1)*numAverages
+        index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
+
+        tmp = measDataLowLevel(f, frames[index1:index2], periods, spectralLeakageCorrection=spectralLeakageCorrection)
+        if measIsTransposed(f)
+          data[i,:,:,:] = mean(tmp,1)
+        else
+          data[:,:,:,i] = mean(tmp,4)
+        end
+        next!(p)
       end
-      next!(p)
     end
   end
   return data
