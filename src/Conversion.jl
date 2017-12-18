@@ -55,8 +55,8 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
           :tracerSolute, :tracerInjectionTime,
           :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
-          :scannerTopology, :acqFramePeriod, :acqNumPeriods, :acqNumAverages,
-          :acqStartTime, :acqOffsetField, :acqOffsetFieldShift, :acqNumFrames,
+          :scannerTopology, :acqNumPeriodsPerFrame, :acqNumAverages,
+          :acqStartTime, :acqOffsetField, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
           :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
           :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor,
@@ -147,15 +147,13 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/scanner/topology", get(params,"scannerTopology","FFP"))
 
   # acquisition parameters
-  write(file, "/acquisition/framePeriod", get(params,"acqFramePeriod",0.0))
   write(file, "/acquisition/numAverages",  params["acqNumAverages"])
   write(file, "/acquisition/numFrames", get(params,"acqNumFrames",1))
-  write(file, "/acquisition/numPeriods", get(params,"acqNumPeriods",1))
+  write(file, "/acquisition/numPeriods", get(params,"acqNumPeriodsPerFrame",1))
   write(file, "/acquisition/startTime", "$( get(params,"acqStartTime", Dates.unix2datetime(time())) )")
 
   writeIfAvailable(file, "/acquisition/gradient", params, "acqGradient")
   writeIfAvailable(file, "/acquisition/offsetField", params, "acqOffsetField")
-  writeIfAvailable(file, "/acquisition/offsetFieldShift", params, "acqOffsetFieldShift")
 
   # drivefield parameters
   write(file, "/acquisition/drivefield/numChannels", size(params["dfStrength"],2) )
