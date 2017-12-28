@@ -68,9 +68,6 @@ function loadMetadata(f, inputParams = MPIFiles.defaultParams)
   for op in inputParams
     setparam!(params, string(op), eval(op)(f))
   end
-  if haskey(params,"dfWaveform") && params["dfWaveform"] == "custom"
-    params["dfCustomWaveform"] = dfCustomWaveform(f)
-  end
   return params
 end
 
@@ -162,15 +159,18 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/acquisition/drivefield/baseFrequency", params["dfBaseFrequency"])
   write(file, "/acquisition/drivefield/divider", params["dfDivider"])
   write(file, "/acquisition/drivefield/period", params["dfPeriod"])
-  write(file, "/acquisition/drivefield/waveform", params["dfWaveform"])
-  if params["dfWaveform"] == "custom"
-    write(file, "/acquisition/drivefield/customWaveform", params["dfCustomWaveform"])
+  if !haskey(params, "dfWaveform")
+    params["dfWaveform"] = "sine"
   end
+  write(file, "/acquisition/drivefield/waveform", params["dfWaveform"])
 
   # receiver parameters
   write(file, "/acquisition/receiver/numChannels", params["rxNumChannels"])
   write(file, "/acquisition/receiver/bandwidth", params["rxBandwidth"])
   write(file, "/acquisition/receiver/numSamplingPoints", params["rxNumSamplingPoints"])
+  if !haskey(params, "rxUnit")
+    params["rxUnit"] = "V"
+  end
   write(file, "/acquisition/receiver/unit",  params["rxUnit"])
   write(file, "/acquisition/receiver/dataConversionFactor",  params["rxDataConversionFactor"])
   if hasKeyAndValue(params,"rxTransferFunction")
@@ -201,7 +201,7 @@ function saveasMDF(file::HDF5File, params::Dict)
       write(file, "/measurement/framePermutation", params["measFramePermutation"] )
     end
     if hasKeyAndValue(params, "measIsBGFrame")
-      write(file, "/measurement/isBackgroundFrame", convert(Array{Int8},params["measIsBGFrame"]) )
+      write(file, "/measurement/isBackgroundFrame", convert(Array{Int8}, params["measIsBGFrame"]) )
     end
   end
 
