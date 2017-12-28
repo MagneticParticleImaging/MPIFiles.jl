@@ -1,9 +1,13 @@
 __precompile__()
 module MPIFiles
 
+using Reexport
+
 using Compat
 using ProgressMeter
 using Graphics: @mustimplement
+@reexport using ImageAxes
+@reexport using ImageMetadata
 
 import Base: ndims, time, show, getindex
 
