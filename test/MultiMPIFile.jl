@@ -71,6 +71,10 @@ for mdf in (measBruker,mdfv2)
   @test size(getMeasurements(mdf, numAverages=1,
              spectralLeakageCorrection=false)) == (1632,3,1500,1)
 
+  @test size(getMeasurements(mdf, numAverages=1, averagePeriodsPerPatch=true,
+             spectralLeakageCorrection=false)) == (1632,3,1,1)
+
+
   #=@test size(getMeasurements(mdf, numAverages=10,
               spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,3,50)
 

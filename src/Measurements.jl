@@ -19,7 +19,42 @@ end
 
 hannWindow(M) = (1.-cos.(2*π/(M-1)*(0:(M-1))))/(M-1)*M
 
-function measDataSpectralLeakageCorrected(f::MPIFile, frames, periods)
+function measDataSpectralLeakageCorrectedSinglePatch(f::MPIFile, frames)
+  #println("Apply Spectral Cleaning")
+  numTimePoints = rxNumSamplingPoints(f)
+  numReceivers = rxNumChannels(f)
+  numFrames = acqNumFrames(f)
+
+  data = zeros(Float32, numTimePoints, numReceivers, 1, length(frames))
+
+  window3 = hannWindow(numTimePoints*3)
+  window2 = hannWindow(numTimePoints*2)
+
+  for (i,fr) in enumerate(frames)
+    for r in 1:numReceivers
+      if fr==1
+        tmp = measDataConv(f, fr:fr+1, 1, r)
+        data[:,r,1,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
+                          +  tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
+                          );
+      elseif fr==numFrames
+        tmp = measDataConv(f, fr-1:fr, 1, r)
+        data[:,r,1,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
+                          +    tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
+                          );
+      else
+        tmp = measDataConv(f, fr-1:fr+1, 1, r)
+        data[:,r,1,i] = 1/3 * (tmp[:,1,1,1] .* window3[1:numTimePoints]
+                          +  tmp[:,1,1,2] .* window3[1+numTimePoints:2*numTimePoints]
+                          +  tmp[:,1,1,3] .* window3[1+2*numTimePoints:3*numTimePoints]
+                          );
+      end
+    end
+  end
+  return data
+end
+
+function measDataSpectralLeakageCorrectedMultiPatch(f::MPIFile, frames, periods)
   #println("Apply Spectral Cleaning")
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
@@ -34,21 +69,21 @@ function measDataSpectralLeakageCorrected(f::MPIFile, frames, periods)
   for (i,fr) in enumerate(frames)
     for (p,pe) in enumerate(periods)
       for r in 1:numReceivers
-        if fr==1
-          tmp = measDataConv(f, fr:fr+1, pe, r)
+        if pe == 1
+          tmp = measDataConv(f, fr, pe:pe+1, r)
           data[:,r,p,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
-                            +  tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
+                            +  tmp[:,1,2,1] .* window2[1+numTimePoints:2*numTimePoints]
                             );
-        elseif fr==numFrames
-          tmp = measDataConv(f, fr-1:fr, pe, r)
+        elseif pe == numPeriods
+          tmp = measDataConv(f, fr, pe-1:pe, r)
           data[:,r,p,i] = 1/2 * (tmp[:,1,1,1] .* window2[1:numTimePoints]
-                            +    tmp[:,1,1,2] .* window2[1+numTimePoints:2*numTimePoints]
+                            +    tmp[:,1,2,1] .* window2[1+numTimePoints:2*numTimePoints]
                             );
         else
-          tmp = measDataConv(f, fr-1:fr+1, pe, r)
+          tmp = measDataConv(f, fr, pe-1:pe+1, r)
           data[:,r,p,i] = 1/3 * (tmp[:,1,1,1] .* window3[1:numTimePoints]
-                            +  tmp[:,1,1,2] .* window3[1+numTimePoints:2*numTimePoints]
-                            +  tmp[:,1,1,3] .* window3[1+2*numTimePoints:3*numTimePoints]
+                            +  tmp[:,1,2,1] .* window3[1+numTimePoints:2*numTimePoints]
+                            +  tmp[:,1,3,1] .* window3[1+2*numTimePoints:3*numTimePoints]
                             );
         end
       end
@@ -57,13 +92,22 @@ function measDataSpectralLeakageCorrected(f::MPIFile, frames, periods)
   return data
 end
 
-function measDataLowLevel(f::MPIFile, args...; spectralLeakageCorrection=false )
+function measDataSpectralLeakageCorrected(f::MPIFile, frames, periods)
+  if acqNumPeriodsPerFrame(f) == 1
+    return measDataSpectralLeakageCorrectedSinglePatch(f, frames)
+  else
+    return measDataSpectralLeakageCorrectedMultiPatch(f, frames, periods)
+  end
+end
+
+function measDataLowLevel(f::MPIFile, args...; spectralLeakageCorrection=false)
   if !spectralLeakageCorrection || measIsSpectralLeakageCorrected(f) ||
       acqNumFrames(f) == 1
      tmp = measDataConv(f, args...)
   else
      tmp = measDataSpectralLeakageCorrected(f, args...)
   end
+  return tmp
 end
 
 function returnasreal{T}(u::AbstractArray{Complex{T}})
@@ -73,13 +117,13 @@ returnasreal{T<:Real}(u::AbstractArray{T}) = u
 
 function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
             numAverages=1,  verbose = false, periods=1:acqNumPeriodsPerFrame(f),
-            spectralLeakageCorrection=false)
+            averagePeriodsPerPatch=false, kargs...)
 
   verbose && println( rxNumSamplingPoints(f), " ",
                       rxNumChannels(f), " ", acqNumFrames(f), )
 
   if numAverages == 1
-    data = measDataLowLevel(f, frames, periods, spectralLeakageCorrection=spectralLeakageCorrection)
+    data = measDataLowLevel(f, frames, periods; kargs...)
   else
     nFrames = length(frames)
     nBlocks = ceil(Int, nFrames / numAverages)
@@ -94,12 +138,25 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
       index1 = 1 + (i-1)*numAverages
       index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
 
-      tmp = measDataLowLevel(f, frames[index1:index2], periods, spectralLeakageCorrection=spectralLeakageCorrection)
+      tmp = measDataLowLevel(f, frames[index1:index2], periods; kargs...)
       data[:,:,:,i] = mean(tmp,4)
       next!(p)
     end
   end
-  return data
+
+  if averagePeriodsPerPatch
+    if periods != 1:acqNumPeriodsPerFrame(f)
+      error("Option averagePeriodsPerPatch can only be used when all periods are selected")
+    end
+    data_ = reshape(data, rxNumSamplingPoints(f), rxNumChannels(f),
+                          acqNumPeriodsPerPatch(f), acqNumPatches(f), size(data,4))
+    dataAv = mean(data,3)
+
+    return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f),
+                           acqNumPatches(f), size(data,4))
+  else
+    return data
+  end
 end
 
 function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:acqNumFrames(f),
