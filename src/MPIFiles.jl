@@ -173,7 +173,14 @@ function str2uuid(str::String)
   else
     str_ = string(str[1:8],"-",str[9:12],"-",str[13:16],"-",str[17:20],"-",str[21:end])
   end
-  return Base.Random.UUID(str_)
+  try
+    u = Base.Random.UUID(str_)
+    return u
+  catch
+    println("could not convert to UUID. str= $(str_)")
+    u = Base.Random.uuid4()
+    return u
+  end
 end
 str2uuid(str::Void) = str
 
