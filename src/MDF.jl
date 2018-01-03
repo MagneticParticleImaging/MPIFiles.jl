@@ -1,5 +1,7 @@
 using HDF5
 
+import HDF5: h5read
+
 export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton
 
 @compat abstract type MDFFile <: MPIFile end
@@ -55,9 +57,24 @@ function h5readornull(filename, parameter)
   end
 end
 
+function h5read(filename, parameter, default)
+  if h5exists(filename, parameter)
+    return h5read(filename, parameter)
+  else
+    return default
+  end
+end
+
 function getindex(f::MDFFile, parameter)
   if !haskey(f.param_cache,parameter)
     f.param_cache[parameter] = h5readornull(f.filename, parameter)
+  end
+  return f.param_cache[parameter]
+end
+
+function getindex(f::MDFFile, parameter, default)
+  if !haskey(f.param_cache,parameter)
+    f.param_cache[parameter] = h5read(f.filename, parameter, default)
   end
   return f.param_cache[parameter]
 end
@@ -102,17 +119,17 @@ _makeStringArray(s::String) = [s]
 _makeStringArray{T<:AbstractString}(s::Vector{T}) = s
 
 # tracer parameters
-tracerName(f::MDFFileV1) = [f["/tracer/name"]]
-tracerName(f::MDFFileV2) = _makeStringArray(f["/tracer/name"])
-tracerBatch(f::MDFFileV1) = [f["/tracer/batch"]]
-tracerBatch(f::MDFFileV2) = _makeStringArray(f["/tracer/batch"])
-tracerVolume(f::MDFFileV1) = [f["/tracer/volume"]]
-tracerVolume(f::MDFFileV2) = [f["/tracer/volume"]...]
-tracerConcentration(f::MDFFileV1) = [f["/tracer/concentration"]]
-tracerConcentration(f::MDFFileV2) = [f["/tracer/concentration"]...]
-tracerSolute(f::MDFFileV2) = _makeStringArray(f["/tracer/solute"])
-tracerSolute(f::MDFFileV1) = ["Fe"]
-function tracerInjectionTime(f::MDFFile)
+tracerName(f::MDFFileV1)::Vector{String} = [f["/tracer/name"]]
+tracerName(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/name"])
+tracerBatch(f::MDFFileV1)::Vector{String} = [f["/tracer/batch"]]
+tracerBatch(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/batch"])
+tracerVolume(f::MDFFileV1)::Vector{Float64} = [f["/tracer/volume"]]
+tracerVolume(f::MDFFileV2)::Vector{Float64} = [f["/tracer/volume"]...]
+tracerConcentration(f::MDFFileV1)::Vector{Float64} = [f["/tracer/concentration"]]
+tracerConcentration(f::MDFFileV2)::Vector{Float64} = [f["/tracer/concentration"]...]
+tracerSolute(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/solute"])
+tracerSolute(f::MDFFileV1)::Vector{String} = ["Fe"]
+function tracerInjectionTime(f::MDFFile)::Vector{DateTime}
   p = typeof(f) == MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
   if f[p] == nothing
     return nothing
@@ -125,24 +142,23 @@ function tracerInjectionTime(f::MDFFile)
   end
 end
 #tracerInjectionTime(f::MDFFileV2) = DateTime( f["/tracer/injectionTime"] )
-tracerVendor(f::MDFFileV1) = [f["/tracer/vendor"]]
-tracerVendor(f::MDFFileV2) = _makeStringArray(f["/tracer/vendor"])
+tracerVendor(f::MDFFileV1)::Vector{String} = [f["/tracer/vendor"]]
+tracerVendor(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/vendor"])
 
 # scanner parameters
-scannerFacility(f::MDFFile) = f["/scanner/facility"]
-scannerOperator(f::MDFFile) = f["/scanner/operator"]
-scannerManufacturer(f::MDFFile) = f["/scanner/manufacturer"]
-scannerName(f::MDFFileV1) = f["/scanner/model"]
-scannerName(f::MDFFileV2) = f["/scanner/name"]
-scannerTopology(f::MDFFile) = f["/scanner/topology"]
+scannerFacility(f::MDFFile)::String = f["/scanner/facility"]
+scannerOperator(f::MDFFile)::String = f["/scanner/operator"]
+scannerManufacturer(f::MDFFile)::String = f["/scanner/manufacturer"]
+scannerName(f::MDFFileV1)::String = f["/scanner/model"]
+scannerName(f::MDFFileV2)::String = f["/scanner/name"]
+scannerTopology(f::MDFFile)::String = f["/scanner/topology"]
 
 # acquisition parameters
-acqStartTime(f::MDFFileV1) = DateTime( f["/acquisition/time"] )
-acqStartTime(f::MDFFileV2) = DateTime( f["/acquisition/startTime"] )
-acqFramePeriod(f::MDFFile) = f["/acquisition/framePeriod"]
-acqNumAverages(f::MDFFileV1) = f["/acquisition/drivefield/averages"]
-acqNumAverages(f::MDFFileV2) = f["/acquisition/numAverages"]
-function acqNumFrames(f::MDFFileV1)
+acqStartTime(f::MDFFileV1)::DateTime = DateTime( f["/acquisition/time"] )
+acqStartTime(f::MDFFileV2)::DateTime = DateTime( f["/acquisition/startTime"] )
+acqNumAverages(f::MDFFileV1)::Int = f["/acquisition/drivefield/averages"]
+acqNumAverages(f::MDFFileV2)::Int = f["/acquisition/numAverages"]
+function acqNumFrames(f::MDFFileV1)::Int
   if experimentIsCalibration(f)
     if f.mmap_measData == nothing
       h5open(f.filename,"r") do file
@@ -154,22 +170,19 @@ function acqNumFrames(f::MDFFileV1)
     return f["/acquisition/numFrames"]
   end
 end
-acqNumFrames(f::MDFFileV2) = f["/acquisition/numFrames"]
-acqNumPeriods(f::MDFFileV1) = 1
-acqNumPeriods(f::MDFFileV2) = f["/acquisition/numPeriods"]
+acqNumFrames(f::MDFFileV2)::Int = f["/acquisition/numFrames"]
+acqNumPeriodsPerFrame(f::MDFFileV1)::Int = 1
+acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods"]
 
-acqGradient(f::MDFFileV1) = addTrailingSingleton(f["/acquisition/gradient"],2)
-acqGradient(f::MDFFileV2) = f["/acquisition/gradient"]
-acqOffsetField(f::MDFFile) = f["/acquisition/offsetField"]
-acqOffsetFieldShift(f::MDFFileV1) = addTrailingSingleton(
-              f["/acquisition/drivefield/fieldOfViewCenter"],2 )
-acqOffsetFieldShift(f::MDFFileV2) = f["/acquisition/offsetFieldShift"]
+acqGradient(f::MDFFileV1)::Array{Float64,2} = addTrailingSingleton(f["/acquisition/gradient"],2)
+acqGradient(f::MDFFileV2)::Array{Float64,2} = f["/acquisition/gradient"]
+acqOffsetField(f::MDFFile) = f["/acquisition/offsetField", [0.0,0.0,0.0]]
 
 # drive-field parameters
-dfNumChannels(f::MDFFile) = f["/acquisition/drivefield/numChannels"]
-dfStrength(f::MDFFileV1) = addTrailingSingleton( addLeadingSingleton(
+dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]
+dfStrength(f::MDFFileV1)::Array{Float64,3} = addTrailingSingleton( addLeadingSingleton(
          f["/acquisition/drivefield/strength"], 2), 3)
-dfStrength(f::MDFFileV2) = f["/acquisition/drivefield/strength"]
+dfStrength(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/drivefield/strength"]
 dfPhase(f::MDFFileV1) = dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
 dfPhase(f::MDFFileV2) = f["/acquisition/drivefield/phase"]
 dfBaseFrequency(f::MDFFile) = f["/acquisition/drivefield/baseFrequency"]
@@ -202,7 +215,7 @@ rxDataConversionFactor(f::MDFFileV1) = repeat([1.0, 0.0], outer=(1,rxNumChannels
 rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFactor"]
 
 # measurements
-function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
+function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     # the V1 file is a calibration
@@ -243,7 +256,7 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
   end
 end
 
-function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
+function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     return nothing
@@ -266,6 +279,55 @@ function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
     data = f.mmap_measData[:, receivers, periods, frames]
     data = reshape(data, size(data,1), length(receivers), length(periods), length(frames))
   end
+  return data
+end
+
+function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
+                  receivers=1:rxNumChannels(f))
+  tdExists = h5exists(f.filename, "/measurement/dataTD")
+
+  if tdExists
+    if f.mmap_measData == nothing
+      h5open(f.filename,"r") do file
+        f.mmap_measData = readmmap(file["/measurement/dataTD"])
+      end
+    end
+    data = f.mmap_measData[:, receivers, periods]
+    return data
+  else
+    if f.mmap_measData == nothing
+      h5open(f.filename,"r") do file
+        f.mmap_measData = readmmap(file["/measurement/dataFD"])
+      end
+    end
+    data = f.mmap_measData[:, :, receivers, periods]
+
+    dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
+    dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
+    return dataTD
+  end
+end
+
+
+function measDataTDPeriods(f::MDFFileV2, periods=1:acqNumPeriods(f),
+                  receivers=1:rxNumChannels(f))
+  if measIsTransposed(f)
+    error("measDataTDPeriods can currently not handle transposed data!")
+  end
+
+  if f.mmap_measData == nothing
+    h5open(f.filename,"r") do file
+      parameter = "/measurement/data"
+      if !isComplexArray(file, parameter)
+        f.mmap_measData = readmmap(file[parameter])
+      else
+        error("measDataTDPeriods expects time domain data")
+      end
+    end
+  end
+
+  data = reshape(f.mmap_measData,Val{3})[:, receivers, periods]
+
   return data
 end
 

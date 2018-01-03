@@ -1,3 +1,5 @@
+@testset "Testing General submodule" begin
+
 fnMeasBruker = "measurement_Bruker"
 fnSMBruker = "systemMatrix_Bruker"
 fnMeasV1 = "measurement_V1.mdf"
@@ -54,7 +56,7 @@ for mdf in (measBruker,mdfv2)
   @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
   @test acqGradient(mdf)[:,1] == [-1.25; -1.25; 2.5]
   @test acqFramePeriod(mdf) == 6.528E-4
-  @test acqNumPeriods(mdf) == 1
+  @test acqNumPeriodsPerFrame(mdf) == 1
   @test acqOffsetFieldShift(mdf)[:,1] == [0.0; 0.0; -0.0]
 
   @test dfNumChannels(mdf) == 3
@@ -72,26 +74,31 @@ for mdf in (measBruker,mdfv2)
   @test acqNumAverages(mdf) == 1
 
   @test acqNumFrames(mdf) == 500
+  @test acqNumPeriodsPerFrame(mdf) == 1
+  @test acqNumPeriods(mdf) == 500
+  @test acqNumPatches(mdf) == 1
+  @test acqNumPeriodsPerPatch(mdf) == 1
+
   @test size( measData(mdf) ) == (1632,3,1,500)
+  @test size( measDataTDPeriods(mdf) ) == (1632,3,500)
+  @test size( measDataTDPeriods(mdf, 101:200) ) == (1632,3,100)
 
   N = acqNumFrames(mdf)
 
   @test size(getMeasurements(mdf, numAverages=1,
-              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
+              spectralLeakageCorrection=false)) == (1632,3,1,500)
 
   @test size(getMeasurements(mdf, numAverages=10,
-              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,50)
+              spectralLeakageCorrection=false)) == (1632,3,1,50)
 
   @test size(getMeasurements(mdf, numAverages=10, frames=1:100,
-              spectralLeakageCorrection=true, fourierTransform=false)) == (1632,3,1,10)
+              spectralLeakageCorrection=true)) == (1632,3,1,10)
 
-  @test size(getMeasurements(mdf, numAverages=10, frames=1:100,
-              fourierTransform=true)) == (817,3,1,10)
+  @test size(getMeasurementsFD(mdf, numAverages=10, frames=1:100)) == (817,3,1,10)
 
-  @test size(getMeasurements(mdf, numAverages=10, frames=1:100,
-              fourierTransform=true, loadasreal=true)) == (1634,3,1,10)
+  @test size(getMeasurementsFD(mdf, numAverages=10, frames=1:100, loadasreal=true)) == (1634,3,1,10)
 
-  @test size(getMeasurements(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
+  @test size(getMeasurementsFD(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
 
 end
 
@@ -137,10 +144,13 @@ end
 # Next test checks if the cached system matrix is the same as the one loaded
 # from the raw data
 smBrukerPretendToBeMeas = MPIFile(fnSMBruker, isCalib=false)
-S_loadedfromraw = getMeasurements(smBrukerPretendToBeMeas,
+S_loadedfromraw = getMeasurementsFD(smBrukerPretendToBeMeas,
       frames=1:acqNumFGFrames(smBrukerPretendToBeMeas),sortFrames=true,
-      spectralLeakageCorrection=false,fourierTransform=true,transposed=true)
+      spectralLeakageCorrection=false,transposed=true)
 
 S_loadedfromproc = systemMatrix(smBruker)
 
 @test norm(vec(S_loadedfromraw-S_loadedfromproc)) / norm(vec(S_loadedfromproc)) < 1e-6
+
+
+end

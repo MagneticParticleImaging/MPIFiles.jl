@@ -13,7 +13,7 @@ function Base.show(io::IO, f::MultiMPIFile)
   print(io, "Multi MPI File: ", f.files)
 end
 
-acqNumPeriods(f::MultiMPIFile) = length(f.files)*acqNumFrames(f.files[1])
+acqNumPeriodsPerFrame(f::MultiMPIFile) = length(f.files)*acqNumFrames(f.files[1])
 acqNumFrames(f::MultiMPIFile) = 1
 
 for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyUuid, :studyDescription,
@@ -23,7 +23,7 @@ for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyUu
             :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
             :tracerSolute, :tracerInjectionTime,
             :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
-            :scannerTopology, :acqNumBGFrames, :acqFramePeriod,
+            :scannerTopology, :acqNumBGFrames,
             :acqStartTime,
             :dfNumChannels, :dfBaseFrequency, :dfDivider,
             :dfPeriod, :dfWaveform, :rxNumChannels, :acqNumAverages, :rxBandwidth,
@@ -34,7 +34,7 @@ end
 for op in [ :dfStrength, :dfPhase ]
   @eval begin function $op(f::MultiMPIFile)
        tmp = $op(f.files[1])
-       newVal = similar(tmp, size(tmp,1), size(tmp,2), 
+       newVal = similar(tmp, size(tmp,1), size(tmp,2),
                         acqNumFrames(f.files[1]),length(f.files))
        for c=1:length(f.files)
          tmp = $op(f.files[c])
@@ -81,20 +81,31 @@ experimentHasReconstruction(f::MultiMPIFile) = false
 
 ##Achtung hack in der Schleife acqNumFrames(fi) statt acqNumFrames(f)
 #notwendig, da hier Sprung zwischen MultiMPIFile und MPIFile
-function measData(f::MultiMPIFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
+function measData(f::MultiMPIFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
-  data = zeros(Float64, rxNumSamplingPoints(f), length(receivers),
-                        length(frames),length(periods),1)
+  data = zeros(Float32, rxNumSamplingPoints(f), length(receivers),
+                        length(frames),length(periods))
   #for (i,p) in enumerate(periods)
   #  data[:,:,:,i,:] = measData(f.files[p], frames, 1, receivers)
   #end
   for (i,fi) in enumerate(f.files)
     fr_fi=acqNumFrames(fi)
-    data[:,:,:,fr_fi*(i-1)+1:fr_fi*i,:] = measData(fi, 1:fr_fi, 1, receivers)
+    data[:,:,:,fr_fi*(i-1)+1:fr_fi*i] = measData(fi, 1:fr_fi, 1, receivers)
   end
   return reshape(data,size(data,1),size(data,2),:,1)
 end
 
+function measDataTDPeriods(f::MultiMPIFile, periods=1:acqNumPeriods(f),
+              receivers=1:rxNumChannels(f))
+
+  data = zeros(Float32, rxNumSamplingPoints(f), length(receivers), length(periods))
+  for (i,p) in enumerate(periods)
+    l = divrem(p-1, acqNumPeriods(f.files[1]) )
+    data[:,:,i] = measDataTDPeriods(f.files[l[1]+1], l[2]+1, receivers)
+  end
+
+  return data
+end
 
 
 # TODO: define functions for multi calibration data

@@ -66,7 +66,7 @@ end
 
 BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400)
 
-function getindex(b::BrukerFile, parameter)
+function getindex(b::BrukerFile, parameter)#::String
   if !b.acqpRead && ( parameter=="NA" || parameter[1:3] == "ACQ" )
     acqppath = joinpath(b.path, "acqp")
     read(b.params, acqppath, maxEntries=b.maxEntriesAcqp)
@@ -88,11 +88,11 @@ function getindex(b::BrukerFile, parameter)
   if haskey(b.params, parameter)
     return b.params[parameter]
   else
-    return nothing
+    return ""
   end
 end
 
-function getindex(b::BrukerFile, parameter, procno::Int64)
+function getindex(b::BrukerFile, parameter, procno::Int64)::String
   if !b.recoRead && lowercase( parameter[1:4] ) == "reco"
     recopath = joinpath(b.path, "pdata", string(procno), "reco")
     read(b.paramsProc, acqppath, maxEntries=13)
@@ -141,7 +141,7 @@ experimentUuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
 experimentIsSimulation(b::BrukerFile) = false
-experimentIsCalibration(b::BrukerFile) = b["PVM_Matrix"] != nothing
+experimentIsCalibration(b::BrukerFile) = _iscalib(b.path)
 experimentHasProcessing(b::BrukerFile) = experimentIsCalibration(b)
 experimentHasReconstruction(b::BrukerFile) = false # fixme later
 experimentHasMeasurement(b::BrukerFile) = true
@@ -154,7 +154,7 @@ tracerConcentration(b::BrukerFile) = [parse(Float64,b["PVM_MPI_TracerConcentrati
 tracerSolute(b::BrukerFile) = ["Fe"]
 function tracerInjectionTime(b::BrukerFile)
   initialFrames = b["MPI_InitialFrames"]
-  if initialFrames == nothing
+  if initialFrames == ""
     return [acqStartTime(b)]
   else
     return [acqStartTime(b) + Dates.Millisecond(
@@ -177,22 +177,22 @@ function acqStartTime(b::BrukerFile)
 end
 function acqNumFrames(b::BrukerFileMeas)
   M = Int64(b["ACQ_jobs"][1][8])
-  return div(M,acqNumPeriods(b))
+  return div(M,acqNumPeriodsPerFrame(b))
 end
 function acqNumFrames(b::BrukerFileCalib)
   M = parse(Int64,b["PVM_MPI_NrCalibrationScans"])
   A = parse(Int64,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])
-  return div(M-A,acqNumPeriods(b))
+  return div(M-A,acqNumPeriodsPerFrame(b))
 end
-acqFramePeriod(b::BrukerFile) = dfPeriod(b) * acqNumAverages(b)
+
 function _acqNumPatches(b::BrukerFile)
   M = b["MPI_NSteps"]
-  return (M == nothing) ? 1 : parse(Int64,M)
+  return (M == "") ? 1 : parse(Int64,M)
 end
-function acqNumPeriods(b::BrukerFile)
+function acqNumPeriodsPerFrame(b::BrukerFile)
   M = b["MPI_RepetitionsPerStep"]
   N = _acqNumPatches(b)
-  return (M == nothing) ? N : N*parse(Int64,M)
+  return (M == "") ? N : N*parse(Int64,M)
 end
 
 acqNumAverages(b::BrukerFile) = parse(Int,b["NA"])
@@ -200,7 +200,7 @@ acqNumAverages(b::BrukerFile) = parse(Int,b["NA"])
 function acqNumBGFrames(b::BrukerFile)
   n = b["PVM_MPI_NrBackgroundMeasurementCalibrationAllScans"]
   a = b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"]
-  if n == nothing
+  if n == ""
     return 0
   else
     return parse(Int64,n)-parse(Int64,a)
@@ -210,20 +210,17 @@ acqGradient(b::BrukerFile) = addTrailingSingleton([-0.5, -0.5, 1.0].*
       parse(Float64,b["ACQ_MPI_selection_field_gradient"]),2)
 
 function acqOffsetField(b::BrukerFile) #TODO NOT correct
-  if b["MPI_FocusFieldX"] == nothing
+  if b["MPI_FocusFieldX"] == ""
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
-    voltage = repeat(voltage,inner=(1,div(acqNumPeriods(b),_acqNumPatches(b))))
+    voltage = repeat(voltage,inner=(1,div(acqNumPeriodsPerFrame(b),_acqNumPatches(b))))
     calibFac = [2.5/49.45, 0.5*(-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
-    return Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriods(b)]
+    return Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
   else
     return repeat(1e-3*cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
                  [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
-                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriods(b),_acqNumPatches(b))))
+                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriodsPerFrame(b),_acqNumPatches(b))))
   end
-end
-function acqOffsetFieldShift(b::BrukerFile)
-    return acqOffsetField(b) ./ acqGradient(b)
 end
 
 
@@ -232,7 +229,7 @@ dfNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
    #sum( dfStrength(b)[1,:,1] .> 0) #TODO Not sure about this
 dfStrength(b::BrukerFile) = repeat(addTrailingSingleton( addLeadingSingleton(
   [parse(Float64,s) for s = b["ACQ_MPI_drive_field_strength"] ] *1e-3, 2), 3),
-                    inner=(1,1,acqNumPeriods(b)))
+                    inner=(1,1,acqNumPeriodsPerFrame(b)))
 dfPhase(b::BrukerFile) = dfStrength(b) .*0 .+  1.5707963267948966 # Bruker specific!
 dfBaseFrequency(b::BrukerFile) = 2.5e6
 dfCustomWaveform(b::BrukerFile) = nothing
@@ -258,7 +255,7 @@ rxDataConversionFactor(b::BrukerFileMeas) =
 rxDataConversionFactor(b::BrukerFileCalib) =
                  repeat([1.0, 0.0], outer=(1,rxNumChannels(b)))
 
-function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumPeriods(b),
+function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumPeriodsPerFrame(b),
                   receivers=1:rxNumChannels(b))
 
   dataFilename = joinpath(b.path,"rawdata.job0")
@@ -266,14 +263,14 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
 
   s = open(dataFilename)
   raw = Mmap.mmap(s, Array{dType,4},
-             (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriods(b),acqNumFrames(b)))
+             (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
   data = raw[:,receivers,periods,frames]
   close(s)
 
   return reshape(data, rxNumSamplingPoints(b), length(receivers),length(periods),length(frames))
 end
 
-function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNumPeriods(b),
+function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNumPeriodsPerFrame(b),
                   receivers=1:rxNumChannels(b))
 
   sfFilename = joinpath(b.path,"pdata", "1", "systemMatrix")
@@ -281,7 +278,8 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
 
   s = open(sfFilename)
   data = Mmap.mmap(s, Array{Complex128,4}, (prod(calibSize(b)),nFreq,rxNumChannels(b),1))
-  S = data[:,:,:,:]
+  #S = data[:,:,:,:]
+  S = map(Complex64, data)
   close(s)
   scale!(S,1.0/acqNumAverages(b))
 
@@ -289,10 +287,27 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
 
   s = open(bgFilename)
   data = Mmap.mmap(s, Array{Complex128,4}, (acqNumBGFrames(b),nFreq,rxNumChannels(b),1))
-  bgdata = data[:,:,:,:]
+  #bgdata = data[:,:,:,:]
+  bgdata = map(Complex64, data)
   close(s)
   scale!(bgdata,1.0/acqNumAverages(b))
   return cat(1,S,bgdata)
+end
+
+
+function measDataTDPeriods(b::BrukerFile, periods=1:acqNumPeriods(b),
+                  receivers=1:rxNumChannels(b))
+
+  dataFilename = joinpath(b.path,"rawdata.job0")
+  dType = acqNumAverages(b) == 1 ? Int16 : Int32
+
+  s = open(dataFilename)
+  raw = Mmap.mmap(s, Array{dType,3},
+    (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriods(b)))
+  data = raw[:,receivers,periods]
+  close(s)
+
+  return reshape(data, rxNumSamplingPoints(b), length(receivers),length(periods))
 end
 
 systemMatrixWithBG(b::BrukerFileCalib) = measData(b)
@@ -326,34 +341,42 @@ measIsFramePermutation(b::BrukerFileMeas) = false
 measIsFramePermutation(b::BrukerFileCalib) = true
 
 function measIsBGFrame(b::BrukerFileMeas)
-  #if !experimentIsCalibration(b)
+  if !experimentIsCalibration(b)
+    # If the file is not a calibration file we cannot say if any particular scans
+    # were BG scans
     return zeros(Bool, acqNumFrames(b))
-  #else
-  #  isBG = zeros(Bool, acqNumFrames(b))
-  #  increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
-  #  isBG[1:increment:end] = true
-  #  
-  #  addScans=parse(Int,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])-1
-  #  isBG[end:-1:end-addScans]=true
-  #  return isBG
-  #end
+  else
+    # In case of a calibration file we know the particular indices corresponding
+    # to BG measurements
+    isBG = zeros(Bool, acqNumFrames(b))
+    increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
+    isBG[1:increment:end] = true
+
+    return isBG
+  end
 end
 
-# We assume here that the BG frames are at the end
+# If the file is considered to be a calibration file, we will load
+# the measurement in a processed form. In that case the BG measurements
+# will be put at the end of the frame dimension.
 measIsBGFrame(b::BrukerFileCalib) =
    cat(1,zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)))
 
+# measurements are not permuted
 measFramePermutation(b::BrukerFileMeas) = nothing
+# calibration scans are permuted
 function measFramePermutation(b::BrukerFileCalib)
-  bMeas = BrukerFile(b.path)#, #isCalib=false)
-  
+  # The following is a trick to obtain the permutation applied to the measurements
+  # in a calibration measurement.
+  bMeas = BrukerFile(b.path, isCalib=false)
+
   perm1=cat(1,measFGFrameIdx(bMeas),measBGFrameIdx(bMeas))
   perm2=cat(1,fgFramePermutation(bMeas),(length(perm1)-acqNumBGFrames(bMeas)+1):length(perm1))
   permJoint = perm1[perm2]
   return permJoint
 end
 
-#TODO the following requires a test
+# TODO the following requires a test
 function fgFramePermutation(b::BrukerFile)
   N = tuple(calibSize(b)...)
 

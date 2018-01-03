@@ -1,3 +1,5 @@
+@testset "MultiMPIFile submodule" begin
+
 fnMeasBruker = "measurement_Bruker"
 fnMeasMultiV2 = "measurement_multi_V2.mdf"
 
@@ -37,8 +39,7 @@ for mdf in (measBruker,mdfv2)
 
   @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
   @test acqGradient(mdf)[:,1] == [-1.25; -1.25; 2.5]
-  @test acqFramePeriod(mdf) == 6.528E-4
-  @test acqNumPeriods(mdf) == 1500
+  @test acqFramePeriod(mdf) == 0.9792000000000001
   @test size(acqOffsetFieldShift(mdf)) == (3, 1500)
 
   @test dfNumChannels(mdf) == 3
@@ -56,12 +57,23 @@ for mdf in (measBruker,mdfv2)
   @test acqNumAverages(mdf) == 1
 
   @test acqNumFrames(mdf) == 1
+  @test acqNumPeriodsPerFrame(mdf) == 1500
+  @test acqNumPeriods(mdf) == 1500
+  @test acqNumPatches(mdf) == 1
+  @test acqNumPeriodsPerPatch(mdf) == 1500
+
   @test size( measData(mdf) ) == (1632,3,1500,1)
+  @test size( measDataTDPeriods(mdf) ) == (1632,3,1500)
+  @test size( measDataTDPeriods(mdf, 1001:1100) ) == (1632,3,100)
 
   N = acqNumFrames(mdf)
 
   @test size(getMeasurements(mdf, numAverages=1,
-              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1500,1)
+             spectralLeakageCorrection=false)) == (1632,3,1500,1)
+
+  @test size(getMeasurements(mdf, numAverages=1, averagePeriodsPerPatch=true,
+             spectralLeakageCorrection=false)) == (1632,3,1,1)
+
 
   #=@test size(getMeasurements(mdf, numAverages=10,
               spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,3,50)
@@ -73,5 +85,8 @@ for mdf in (measBruker,mdfv2)
               fourierTransform=true, loadasreal=true)) == (1634,3,3,10)
 
   @test size(getMeasurements(mdf,frequencies=1:10, numAverages=10)) == (10,3,50)=#
+
+end
+
 
 end
