@@ -59,7 +59,7 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :scannerTopology, :acqNumPeriodsPerFrame, :acqNumAverages,
           :acqStartTime, :acqOffsetField, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
-          :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
+          :dfCycle, :dfWaveform, :rxNumChannels, :rxBandwidth,
           :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor,
           :rxUnit, :rxDataConversionFactor]
 
@@ -172,7 +172,7 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/acquisition/drivefield/phase", params["dfPhase"])
   write(file, "/acquisition/drivefield/baseFrequency", params["dfBaseFrequency"])
   write(file, "/acquisition/drivefield/divider", params["dfDivider"])
-  write(file, "/acquisition/drivefield/period", params["dfPeriod"])
+  write(file, "/acquisition/drivefield/cycle", params["dfCycle"])
   if !haskey(params, "dfWaveform")
     params["dfWaveform"] = "sine"
   end

@@ -40,7 +40,7 @@ export acqStartTime, acqNumFrames, acqNumAverages,
 
 # drive-field parameters
 export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
-       dfDivider, dfWaveform, dfPeriod
+       dfDivider, dfWaveform, dfCycle
 
 # receiver parameters
 export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
@@ -121,7 +121,7 @@ export selectedChannels
 @mustimplement dfCustomWaveform(f::MPIFile)
 @mustimplement dfDivider(f::MPIFile)
 @mustimplement dfWaveform(f::MPIFile)
-@mustimplement dfPeriod(f::MPIFile)
+@mustimplement dfCycle(f::MPIFile)
 
 # receiver properties
 @mustimplement rxNumChannels(f::MPIFile)
@@ -195,7 +195,7 @@ function rxFrequencies(f::MPIFile)
 end
 function rxTimePoints(f::MPIFile)
   numTP = rxNumSamplingPoints(f)
-  a = collect(0:(numTP-1))./(numTP).*dfPeriod(f)
+  a = collect(0:(numTP-1))./(numTP).*dfCycle(f)
   return a
 end
 function acqFov(f::MPIFile)
@@ -212,13 +212,13 @@ end
 export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx, acqOffsetFieldShift,
        acqFramePeriod, acqNumPeriods, acqNumPatches, acqNumPeriodsPerPatch
 
-acqFramePeriod(b::MPIFile) = dfPeriod(b) * acqNumAverages(b) * acqNumPeriodsPerFrame(b)
+acqFramePeriod(b::MPIFile) = dfCycle(b) * acqNumAverages(b) * acqNumPeriodsPerFrame(b)
 
 # numPeriods is the total number of DF periods in a measurement.
 acqNumPeriods(f::MPIFile) = acqNumFrames(f)*acqNumPeriodsPerFrame(f)
 
 function acqOffsetFieldShift(f::MPIFile)
-    return acqOffsetField(f) ./ abs.( acqGradient(f) )
+    return acqOffsetField(f) ./ abs.( reshape( acqGradient(f),9,1,:)[[1,5,9],:,:] )
 end
 
 acqNumFGFrames(f::MPIFile) = acqNumFrames(f) - acqNumBGFrames(f)

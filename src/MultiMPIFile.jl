@@ -26,7 +26,7 @@ for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyUu
             :scannerTopology, :acqNumBGFrames,
             :acqStartTime,
             :dfNumChannels, :dfBaseFrequency, :dfDivider,
-            :dfPeriod, :dfWaveform, :rxNumChannels, :acqNumAverages, :rxBandwidth,
+            :dfCycle, :dfWaveform, :rxNumChannels, :acqNumAverages, :rxBandwidth,
             :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor, :rxUnit, :rxDataConversionFactor]
   @eval $op(f::MultiMPIFile) = $op(f.files[1])
 end
@@ -51,21 +51,34 @@ for op in [ :dfStrength, :dfPhase ]
   end
 end
 
-for op in [ :acqGradient, :acqOffsetField, :acqOffsetFieldShift ]
-  @eval begin function $op(f::MultiMPIFile)
-       tmp = $op(f.files[1])
-       newVal = similar(tmp, size(tmp,1), acqNumFrames(f.files[1]),length(f.files))
-       for c=1:length(f.files)
-         tmp = $op(f.files[c])
-         for b=1:acqNumFrames(f.files[1])
-           for a=1:size(tmp,1)
-               newVal[a,b,c] = tmp[a]
-           end
+function acqOffsetField(f::MultiMPIFile)
+   tmp = acqOffsetField(f.files[1])
+   newVal = similar(tmp, 3, acqNumFrames(f.files[1]),length(f.files))
+   for c=1:length(f.files)
+     tmp = acqOffsetField(f.files[c])
+     for b=1:acqNumFrames(f.files[1])
+       for a=1:3
+           newVal[a,b,c] = tmp[a,1,1,1]
+       end
+     end
+   end
+  return reshape(newVal,3,1,:)
+end
+
+function acqGradient(f::MultiMPIFile)
+   tmp = acqGradient(f.files[1])
+   newVal = similar(tmp, 3, 3, acqNumFrames(f.files[1]),length(f.files))
+   for c=1:length(f.files)
+     tmp = acqGradient(f.files[c])
+     for b=1:acqNumFrames(f.files[1])
+       for a=1:3
+         for d=1:3
+             newVal[a,d,b,c] = tmp[a,d,1,1]
          end
        end
-      return reshape(newVal,size(newVal,1),:)
-    end
-  end
+     end
+   end
+  return reshape(newVal,3,3,1,:)
 end
 
 for op in [:measIsFourierTransformed, :measIsTFCorrected,

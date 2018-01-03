@@ -158,7 +158,7 @@ function tracerInjectionTime(b::BrukerFile)
     return [acqStartTime(b)]
   else
     return [acqStartTime(b) + Dates.Millisecond(
-       round(Int64,parse(Int64, initialFrames)*dfPeriod(b)*1000 ) )]
+       round(Int64,parse(Int64, initialFrames)*dfCycle(b)*1000 ) )]
   end
 end
 tracerVendor(b::BrukerFile) = ["n.a."]
@@ -206,8 +206,8 @@ function acqNumBGFrames(b::BrukerFile)
     return parse(Int64,n)-parse(Int64,a)
   end
 end
-acqGradient(b::BrukerFile) = addTrailingSingleton([-0.5, -0.5, 1.0].*
-      parse(Float64,b["ACQ_MPI_selection_field_gradient"]),2)
+acqGradient(b::BrukerFile) = repeat( diagm([-0.5;-0.5;1.0]).*
+      parse(Float64,b["ACQ_MPI_selection_field_gradient"]), inner=(1,1,1,acqNumPeriodsPerFrame(b)))
 
 function acqOffsetField(b::BrukerFile) #TODO NOT correct
   if b["MPI_FocusFieldX"] == ""
@@ -215,12 +215,13 @@ function acqOffsetField(b::BrukerFile) #TODO NOT correct
     voltage = reshape(voltage,4,:)
     voltage = repeat(voltage,inner=(1,div(acqNumPeriodsPerFrame(b),_acqNumPatches(b))))
     calibFac = [2.5/49.45, 0.5*(-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
-    return Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
+    off = Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
   else
-    return repeat(1e-3*cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
+    off = repeat(1e-3*cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
                  [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
-                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriodsPerFrame(b),_acqNumPatches(b))))
+                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriodsPerPatch(b),_acqNumPatches(b))))
   end
+  return reshape(off, 3, 1, :)
 end
 
 
@@ -235,9 +236,9 @@ dfBaseFrequency(b::BrukerFile) = 2.5e6
 dfCustomWaveform(b::BrukerFile) = nothing
 dfDivider(b::BrukerFile) = addTrailingSingleton([102; 96; 99],2)
 dfWaveform(b::BrukerFile) = "sine"
-dfPeriod(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000
+dfCycle(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000
 # The following takes faked 1D/2D measurements into account
-#function dfPeriod(b::BrukerFile)
+#function dfCycle(b::BrukerFile)
 #  df = dfStrength(b)
 #  return lcm(  dfDivider(b)[ (df .>= 0.0000001) .* selectedChannels(b) ] ) / 2.5e6  # in ms!
 #end
