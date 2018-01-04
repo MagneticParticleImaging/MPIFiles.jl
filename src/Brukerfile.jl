@@ -185,15 +185,16 @@ function acqNumFrames(b::BrukerFileCalib)
   return div(M-A,acqNumPeriodsPerFrame(b))
 end
 
-function _acqNumPatches(b::BrukerFile)
+function acqNumPatches(b::BrukerFile)
   M = b["MPI_NSteps"]
   return (M == "") ? 1 : parse(Int64,M)
 end
 function acqNumPeriodsPerFrame(b::BrukerFile)
   M = b["MPI_RepetitionsPerStep"]
-  N = _acqNumPatches(b)
+  N = acqNumPatches(b)
   return (M == "") ? N : N*parse(Int64,M)
 end
+acqNumPeriodsPerPatch(b::BrukerFile) = div(acqNumPeriodsPerFrame(b),acqNumPatches(b))
 
 acqNumAverages(b::BrukerFile) = parse(Int,b["NA"])
 
@@ -213,13 +214,13 @@ function acqOffsetField(b::BrukerFile) #TODO NOT correct
   if b["MPI_FocusFieldX"] == ""
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
-    voltage = repeat(voltage,inner=(1,div(acqNumPeriodsPerFrame(b),_acqNumPatches(b))))
+    voltage = repeat(voltage,inner=(1,acqNumPeriodsPerPatch(b)))
     calibFac = [2.5/49.45, 0.5*(-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
     off = Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
   else
     off = repeat(1e-3*cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
                  [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
-                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,div(acqNumPeriodsPerPatch(b),_acqNumPatches(b))))
+                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,acqNumPeriodsPerPatch(b)))
   end
   return reshape(off, 3, 1, :)
 end

@@ -186,25 +186,37 @@ str2uuid(str::Void) = str
 
 # TODO Move to misc
 
-export rxNumFrequencies, acqFov, rxFrequencies, rxTimePoints
+export rxNumFrequencies, acqFov, rxFrequencies, rxTimePoints, acqGradientDiag
+
 rxNumFrequencies(f::MPIFile) = floor(Int,rxNumSamplingPoints(f) ./ 2 .+ 1)
+
 function rxFrequencies(f::MPIFile)
   numFreq = rxNumFrequencies(f)
   a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(f)
   return a
 end
+
 function rxTimePoints(f::MPIFile)
   numTP = rxNumSamplingPoints(f)
   a = collect(0:(numTP-1))./(numTP).*dfCycle(f)
   return a
 end
+
+function acqGradientDiag(f::MPIFile)
+  g = acqGradient(f)
+  g_ = reshape(g,9,size(g,3),size(g,4))
+  return g_[[1,5,9],:,:]
+end
+
 function acqFov(f::MPIFile)
   if size(dfStrength(f)[1,:,:],1) == 3
-    return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradient(f) )
+    return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradientDiag(f)[:,1,:] )
   else
+    warn("Not sure what is supposed to be done here")
     return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradient(f)[1,:] )
   end
 end
+
 #function acqFovCenter(f::MPIFile)
 # return acqOffsetField(f) ./ abs.( acqGradient(f) ) # why was the absolute value taken here?
 #end
