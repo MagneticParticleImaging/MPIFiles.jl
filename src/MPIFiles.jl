@@ -212,8 +212,7 @@ function acqFov(f::MPIFile)
   if size(dfStrength(f)[1,:,:],1) == 3
     return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradientDiag(f)[:,1,:] )
   else
-    warn("Not sure what is supposed to be done here")
-    return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradient(f)[1,:] )
+    return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradientDiag(f)[1,1,1] )
   end
 end
 
@@ -390,5 +389,11 @@ export Positions, CartesianGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SphericalTDesign
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
+
+
+
+function __init__()
+    Unitful.register(MPIFiles)
+end
 
 end # module

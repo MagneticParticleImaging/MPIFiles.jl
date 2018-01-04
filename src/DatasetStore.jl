@@ -4,7 +4,7 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        studydir, BrukerDatasetStore, BrukerStore, getStudy, getStudies, getExperiment,
        getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
        findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum,
-       exportToMDFStore, generateSFDatabase, loadSFDatabase, addVisu
+       exportToMDFStore, generateSFDatabase, loadSFDatabase, addVisu, readonly
 
 ########################################
 
@@ -148,6 +148,9 @@ function exportToMDFStore(d::BrukerDatasetStore, s::Study, e::Experiment, mdf::M
 end
 
 ###  Implementations of abstract interfaces ###
+
+readonly(::BrukerDatasetStore) = true
+readonly(::MDFDatasetStore) = false
 
 studydir(d::BrukerDatasetStore) = d.path
 studydir(d::MDFDatasetStore) = joinpath(d.path,"measurements")
@@ -377,7 +380,7 @@ function generateSFDatabase_(d::DatasetStore, oldfile, newfile)
 end
 
 loadSFDatabase(d::BrukerDatasetStore) = readcsv("/opt/data/SF_Database.csv")
-loadSFDatabase(d::MDFDatasetStore) = joinpath(d.path,"SF_Database.csv")
+loadSFDatabase(d::MDFDatasetStore) = nothing #TODO #joinpath(d.path,"SF_Database.csv")
 
 ####
 
