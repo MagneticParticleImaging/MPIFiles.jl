@@ -1,9 +1,13 @@
 __precompile__()
 module MPIFiles
 
+using Reexport
+
 using Compat
 using ProgressMeter
 using Graphics: @mustimplement
+@reexport using ImageAxes
+@reexport using ImageMetadata
 
 import Base: ndims, time, show, getindex
 
@@ -31,19 +35,19 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
        scannerTopology
 
 # acquisition parameters
-export acqStartTime, acqFramePeriod, acqNumFrames, acqNumAverages,
-       acqGradient, acqOffsetField, acqOffsetFieldShift, acqNumPeriods, acqSize
+export acqStartTime, acqNumFrames, acqNumAverages,
+       acqGradient, acqOffsetField, acqNumPeriodsPerFrame, acqSize
 
 # drive-field parameters
 export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
-       dfDivider, dfWaveform, dfPeriod
+       dfDivider, dfWaveform, dfCycle
 
 # receiver parameters
 export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
        rxTransferFunction, rxUnit, rxDataConversionFactor, rxInductionFactor
 
 # measurements
-export measData, measIsFourierTransformed, measIsTFCorrected,
+export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
        measIsBGCorrected, measIsTransposed,
        measIsFramePermutation, measIsFrequencySelection,
        measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation
@@ -103,13 +107,11 @@ export selectedChannels
 
 # acquisition parameters
 @mustimplement acqStartTime(f::MPIFile)
-@mustimplement acqFramePeriod(f::MPIFile)
 @mustimplement acqNumAverages(f::MPIFile)
-@mustimplement acqNumPeriods(f::MPIFile)
+@mustimplement acqNumPeriodsPerFrame(f::MPIFile)
 @mustimplement acqNumFrames(f::MPIFile)
 @mustimplement acqGradient(f::MPIFile)
 @mustimplement acqOffsetField(f::MPIFile)
-@mustimplement acqOffsetFieldShift(f::MPIFile)
 
 # drive-field parameters
 @mustimplement dfNumChannels(f::MPIFile)
@@ -119,7 +121,7 @@ export selectedChannels
 @mustimplement dfCustomWaveform(f::MPIFile)
 @mustimplement dfDivider(f::MPIFile)
 @mustimplement dfWaveform(f::MPIFile)
-@mustimplement dfPeriod(f::MPIFile)
+@mustimplement dfCycle(f::MPIFile)
 
 # receiver properties
 @mustimplement rxNumChannels(f::MPIFile)
@@ -132,6 +134,7 @@ export selectedChannels
 
 # measurements
 @mustimplement measData(f::MPIFile)
+@mustimplement measDataTDPeriods(f::MPIFile, periods)
 @mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
 @mustimplement measIsFourierTransformed(f::MPIFile)
 @mustimplement measIsTFCorrected(f::MPIFile)
@@ -170,35 +173,64 @@ function str2uuid(str::String)
   else
     str_ = string(str[1:8],"-",str[9:12],"-",str[13:16],"-",str[17:20],"-",str[21:end])
   end
-  return Base.Random.UUID(str_)
+  try
+    u = Base.Random.UUID(str_)
+    return u
+  catch
+    println("could not convert to UUID. str= $(str_)")
+    u = Base.Random.uuid4()
+    return u
+  end
 end
 str2uuid(str::Void) = str
 
-#TODO Move to misc
-export rxNumFrequencies, acqFov, acqFovCenter, rxFrequencies, rxTimePoints
+# TODO Move to misc
+
+export rxNumFrequencies, acqFov, rxFrequencies, rxTimePoints, acqGradientDiag
+
 rxNumFrequencies(f::MPIFile) = floor(Int,rxNumSamplingPoints(f) ./ 2 .+ 1)
+
 function rxFrequencies(f::MPIFile)
   numFreq = rxNumFrequencies(f)
   a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(f)
   return a
 end
+
 function rxTimePoints(f::MPIFile)
   numTP = rxNumSamplingPoints(f)
-  a = collect(0:(numTP-1))./(numTP).*dfPeriod(f)
+  a = collect(0:(numTP-1))./(numTP).*dfCycle(f)
   return a
 end
-function acqFov(f::MPIFile)
-  if size(dfStrength(f)[1,:,:],1) == 3
-    return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradient(f) )
-  else
-    return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradient(f)[1,:] )
-  end
-end
-function acqFovCenter(f::MPIFile)
- return acqOffsetField(f) ./ abs.( acqGradient(f) )
+
+function acqGradientDiag(f::MPIFile)
+  g = acqGradient(f)
+  g_ = reshape(g,9,size(g,3),size(g,4))
+  return g_[[1,5,9],:,:]
 end
 
-export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx
+function acqFov(f::MPIFile)
+  if size(dfStrength(f)[1,:,:],1) == 3
+    return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradientDiag(f)[:,1,:] )
+  else
+    return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradientDiag(f)[1,1,1] )
+  end
+end
+
+#function acqFovCenter(f::MPIFile)
+# return acqOffsetField(f) ./ abs.( acqGradient(f) ) # why was the absolute value taken here?
+#end
+
+export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx, acqOffsetFieldShift,
+       acqFramePeriod, acqNumPeriods, acqNumPatches, acqNumPeriodsPerPatch
+
+acqFramePeriod(b::MPIFile) = dfCycle(b) * acqNumAverages(b) * acqNumPeriodsPerFrame(b)
+
+# numPeriods is the total number of DF periods in a measurement.
+acqNumPeriods(f::MPIFile) = acqNumFrames(f)*acqNumPeriodsPerFrame(f)
+
+function acqOffsetFieldShift(f::MPIFile)
+    return acqOffsetField(f) ./ abs.( reshape( acqGradient(f),9,1,:)[[1,5,9],:,:] )
+end
 
 acqNumFGFrames(f::MPIFile) = acqNumFrames(f) - acqNumBGFrames(f)
 acqNumBGFrames(f::MPIFile) = sum(measIsBGFrame(f))
@@ -231,6 +263,37 @@ function measFGFrameIdx(f::MPIFile)
     end
   end
   return idx
+end
+
+function acqNumPatches(f::MPIFile)
+  # not valid for varying gradients / multi gradient
+  shifts = acqOffsetFieldShift(f)
+  return size(unique(shifts,2),2)
+end
+
+function acqNumPeriodsPerPatch(f::MPIFile)
+  return div(acqNumPeriodsPerFrame(f), acqNumPatches(f))
+end
+
+export unflattenOffsetFieldShift
+
+unflattenOffsetFieldShift(f::MPIFile) = analyseFFPos(acqOffsetFieldShift(f))
+function unflattenOffsetFieldShift(shifts::Array)
+  # not valid for varying gradients / multi gradient
+  uniqueShifts = unique(shifts,2)
+  numPeriodsPerFrame = size(shifts,2)
+  numPatches = size(uniqueShifts,2)
+  numPeriodsPerPatch = div(numPeriodsPerFrame, numPatches)
+
+  allPeriods = 1:numPeriodsPerFrame
+
+  flatIndices = zeros(Int64,numPatches,numPeriodsPerPatch)
+
+  for i=1:numPatches
+    flatIndices[i,:] = allPeriods[vec(sum(shifts .== uniqueShifts[:,i],1)).==3]
+  end
+
+  return flatIndices
 end
 
 # We assume that systemMatrixWithBG has already reordered the BG data
@@ -326,5 +389,11 @@ export Positions, CartesianGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SphericalTDesign
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
+
+
+
+function __init__()
+    Unitful.register(MPIFiles)
+end
 
 end # module

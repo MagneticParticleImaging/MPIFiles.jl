@@ -1,12 +1,9 @@
 # MDF reconstruction data is loaded/stored using ImageMeta objects from
 # the ImageMetadata.jl package.
 
-using Images
-
-
 export imcenter, loadRecoDataMDF, saveRecoDataMDF
 
-imcenter(img::AxisArray) = map(x->(0.5*(last(x)+first(x))), ImageAxes.filter_space_axes(Images.axes(img), axisvalues(img)))
+imcenter(img::AxisArray) = map(x->(0.5*(last(x)+first(x))), ImageAxes.filter_space_axes(ImageAxes.axes(img), axisvalues(img)))
 imcenter(img::ImageMeta) = imcenter(data(img))
 
 

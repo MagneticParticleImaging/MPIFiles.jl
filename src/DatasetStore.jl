@@ -4,7 +4,7 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        studydir, BrukerDatasetStore, BrukerStore, getStudy, getStudies, getExperiment,
        getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
        findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum,
-       exportToMDFStore, generateSFDatabase, loadSFDatabase, addVisu
+       exportToMDFStore, generateSFDatabase, loadSFDatabase, addVisu, readonly
 
 ########################################
 
@@ -25,7 +25,7 @@ id(s::Study) = s.name
 type Experiment
   path::String
   num::Int64
-  description::String
+  name::String
   numFrames::Int64
   dfFov::Vector
   sfGradient::Vector
@@ -56,6 +56,15 @@ const BrukerStore = BrukerDatasetStore("/opt/mpidata")
 
 type MDFDatasetStore <: DatasetStore
   path::String
+
+  function MDFDatasetStore(path::String)
+    if !ispath(path)
+      mkpath(joinpath(path,"measurements"))
+      mkpath(joinpath(path,"reconstructions"))
+      mkpath(joinpath(path,"calibration"))
+    end
+    return new(path)
+  end
 end
 
 const MDFStore = MDFDatasetStore("/opt/data")
@@ -107,7 +116,7 @@ function getExperiment(path::String)
   end
 
   exp = Experiment( path, parse(Int64,last(splitdir(prefix))),
-                      string(experimentDescription(b)), acqNumFrames(b),
+                      string(experimentName(b)), acqNumFrames(b),
                       round.(1000.*vec(acqFov(b)),2), acqGradient(b)[:,1],
                       acqNumAverages(b), scannerOperator(b))
 
@@ -148,6 +157,9 @@ function exportToMDFStore(d::BrukerDatasetStore, s::Study, e::Experiment, mdf::M
 end
 
 ###  Implementations of abstract interfaces ###
+
+readonly(::BrukerDatasetStore) = true
+readonly(::MDFDatasetStore) = false
 
 studydir(d::BrukerDatasetStore) = d.path
 studydir(d::MDFDatasetStore) = joinpath(d.path,"measurements")
@@ -377,7 +389,7 @@ function generateSFDatabase_(d::DatasetStore, oldfile, newfile)
 end
 
 loadSFDatabase(d::BrukerDatasetStore) = readcsv("/opt/data/SF_Database.csv")
-loadSFDatabase(d::MDFDatasetStore) = joinpath(d.path,"SF_Database.csv")
+loadSFDatabase(d::MDFDatasetStore) = nothing #TODO #joinpath(d.path,"SF_Database.csv")
 
 ####
 

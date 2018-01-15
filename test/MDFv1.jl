@@ -1,3 +1,5 @@
+@testset "Testing MDFv1 submodule" begin
+
 # Download test files
 
 fnMeasV1 = "measurement_V1.mdf"
@@ -59,10 +61,10 @@ for mdf in (mdfv1,mdfv2)
   @test tracerInjectionTime(mdf) == [DateTime("2015-09-15T11:17:23.011")]
 
   @test acqStartTime(mdf) == DateTime("2015-09-15T11:17:23.011")
-  @test acqGradient(mdf)[:,1] == [-1.25; -1.25; 2.5]
+  @test acqGradient(mdf)[:,:,1,1] == [-1.25 0 0; 0 -1.25 0;0 0 2.5]
   @test acqFramePeriod(mdf) == 6.528E-4
-  @test acqNumPeriods(mdf) == 1
-  @test acqOffsetFieldShift(mdf)[:,1] == [0.0; 0.0; -0.0]
+  @test acqNumPeriodsPerFrame(mdf) == 1
+  @test acqOffsetFieldShift(mdf)[:,1,1] == [0.0; 0.0; -0.0]
 
   @test dfNumChannels(mdf) == 3
   @test dfWaveform(mdf) == "sine"
@@ -70,32 +72,35 @@ for mdf in (mdfv1,mdfv2)
   @test dfPhase(mdf)[:,:,1] == [1.5707963267948966 1.5707963267948966 1.5707963267948966]
   @test dfBaseFrequency(mdf) == 2500000.0
   @test dfDivider(mdf)[:,1] == [102; 96; 99]
-  @test dfPeriod(mdf) == 6.528E-4
+  @test dfCycle(mdf) == 6.528E-4
 
   @test rxNumChannels(mdf) == 3
   @test rxBandwidth(mdf) == 1250000.0
   @test rxNumSamplingPoints(mdf) == 1632
   @test acqNumAverages(mdf) == 1
 
-  @test size( measData(mdf) ) == (1632,3,1,500)
   @test acqNumFrames(mdf) == 500
+  @test acqNumPeriodsPerFrame(mdf) == 1
+  @test acqNumPeriods(mdf) == 500
+
+  @test size( measData(mdf) ) == (1632,3,1,500)
+  @test size( measDataTDPeriods(mdf) ) == (1632,3,500)
+  @test size( measDataTDPeriods(mdf, 101:200) ) == (1632,3,100)
 
   @test size(getMeasurements(mdf, numAverages=1,
-              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,500)
+              spectralLeakageCorrection=false)) == (1632,3,1,500)
 
   @test size(getMeasurements(mdf, numAverages=10,
-              spectralLeakageCorrection=false, fourierTransform=false)) == (1632,3,1,50)
+              spectralLeakageCorrection=false)) == (1632,3,1,50)
 
   @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
-              spectralLeakageCorrection=true, fourierTransform=false)) == (1632,3,1,50)
+              spectralLeakageCorrection=true)) == (1632,3,1,50)
 
-  @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
-              fourierTransform=true)) == (817,3,1,50)
+  @test size(getMeasurementsFD(mdf, numAverages=10, frames=1:500)) == (817,3,1,50)
 
-  @test size(getMeasurements(mdf, numAverages=10, frames=1:500,
-              fourierTransform=true, loadasreal=true)) == (1634,3,1,50)
+  @test size(getMeasurementsFD(mdf, numAverages=10, frames=1:500, loadasreal=true)) == (1634,3,1,50)
 
-  @test size(getMeasurements(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
+  @test size(getMeasurementsFD(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
 
 end
 
@@ -133,4 +138,6 @@ for sm in (smv1,smv2)
 
   @test size(getSystemMatrix(sm,1:10)) == (1936,10)
   @test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (1936,20)
+end
+
 end

@@ -1,5 +1,6 @@
 # This file contains routines to generate MDF files
 export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!
+export saveasMDFHacking # temporary Hack
 
 function setparam!(params::Dict, parameter, value)
   if value != nothing
@@ -55,10 +56,10 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :tracerName, :tracerBatch, :tracerVendor, :tracerVolume, :tracerConcentration,
           :tracerSolute, :tracerInjectionTime,
           :scannerFacility, :scannerOperator, :scannerManufacturer, :scannerName,
-          :scannerTopology, :acqFramePeriod, :acqNumPeriods, :acqNumAverages,
-          :acqStartTime, :acqOffsetField, :acqOffsetFieldShift, :acqNumFrames,
+          :scannerTopology, :acqNumPeriodsPerFrame, :acqNumAverages,
+          :acqStartTime, :acqOffsetField, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
-          :dfPeriod, :dfWaveform, :rxNumChannels, :rxBandwidth,
+          :dfCycle, :dfWaveform, :rxNumChannels, :rxBandwidth,
           :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor,
           :rxUnit, :rxDataConversionFactor]
 
@@ -67,9 +68,6 @@ function loadMetadata(f, inputParams = MPIFiles.defaultParams)
   # call API function and store result in a parameter Dict
   for op in inputParams
     setparam!(params, string(op), eval(op)(f))
-  end
-  if haskey(params,"dfWaveform") && params["dfWaveform"] == "custom"
-    params["dfCustomWaveform"] = dfCustomWaveform(f)
   end
   return params
 end
@@ -81,6 +79,19 @@ end
 
 function saveasMDF(filenameOut::String, f::MPIFile; kargs...)
   saveasMDF(filenameOut, loadDataset(f;kargs...) )
+end
+
+function saveasMDFHacking(filenameOut::String, f::MPIFile)
+    dataSet=loadDataset(f)
+    dataSet["acqNumFrames"]=dataSet["acqNumPeriods"]*dataSet["acqNumFrames"]
+    dataSet["acqNumPeriods"]=1
+    dataSet["measData"]=reshape(dataSet["measData"],size(dataSet["measData"],1),size(dataSet["measData"],2),1,size(dataSet["measData"],3)*size(dataSet["measData"],4))
+    dataSet["dfStrength"]=dataSet["dfStrength"][:,:,1:1]
+    dataSet["acqOffsetField"]=dataSet["acqOffsetField"][:,1:1]
+    dataSet["acqOffsetFieldShift"]=dataSet["acqOffsetFieldShift"][:,1:1]
+    dataSet["dfPhase"]=dataSet["dfPhase"][:,:,1:1]
+    saveasMDF(filenameOut, dataSet)
+    return dataSet
 end
 
 function saveasMDF(filename::String, params::Dict)
@@ -147,15 +158,13 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/scanner/topology", get(params,"scannerTopology","FFP"))
 
   # acquisition parameters
-  write(file, "/acquisition/framePeriod", get(params,"acqFramePeriod",0.0))
   write(file, "/acquisition/numAverages",  params["acqNumAverages"])
   write(file, "/acquisition/numFrames", get(params,"acqNumFrames",1))
-  write(file, "/acquisition/numPeriods", get(params,"acqNumPeriods",1))
+  write(file, "/acquisition/numPeriods", get(params,"acqNumPeriodsPerFrame",1))
   write(file, "/acquisition/startTime", "$( get(params,"acqStartTime", Dates.unix2datetime(time())) )")
 
   writeIfAvailable(file, "/acquisition/gradient", params, "acqGradient")
   writeIfAvailable(file, "/acquisition/offsetField", params, "acqOffsetField")
-  writeIfAvailable(file, "/acquisition/offsetFieldShift", params, "acqOffsetFieldShift")
 
   # drivefield parameters
   write(file, "/acquisition/drivefield/numChannels", size(params["dfStrength"],2) )
@@ -163,16 +172,19 @@ function saveasMDF(file::HDF5File, params::Dict)
   write(file, "/acquisition/drivefield/phase", params["dfPhase"])
   write(file, "/acquisition/drivefield/baseFrequency", params["dfBaseFrequency"])
   write(file, "/acquisition/drivefield/divider", params["dfDivider"])
-  write(file, "/acquisition/drivefield/period", params["dfPeriod"])
-  write(file, "/acquisition/drivefield/waveform", params["dfWaveform"])
-  if params["dfWaveform"] == "custom"
-    write(file, "/acquisition/drivefield/customWaveform", params["dfCustomWaveform"])
+  write(file, "/acquisition/drivefield/cycle", params["dfCycle"])
+  if !haskey(params, "dfWaveform")
+    params["dfWaveform"] = "sine"
   end
+  write(file, "/acquisition/drivefield/waveform", params["dfWaveform"])
 
   # receiver parameters
   write(file, "/acquisition/receiver/numChannels", params["rxNumChannels"])
   write(file, "/acquisition/receiver/bandwidth", params["rxBandwidth"])
   write(file, "/acquisition/receiver/numSamplingPoints", params["rxNumSamplingPoints"])
+  if !haskey(params, "rxUnit")
+    params["rxUnit"] = "V"
+  end
   write(file, "/acquisition/receiver/unit",  params["rxUnit"])
   write(file, "/acquisition/receiver/dataConversionFactor",  params["rxDataConversionFactor"])
   if hasKeyAndValue(params,"rxTransferFunction")
@@ -189,7 +201,7 @@ function saveasMDF(file::HDF5File, params::Dict)
       group = g_create(file,"/measurement")
       writeComplexArray(group, "/measurement/data", meas)
     else
-      write(file, "/measurement/data", Array{Float32}(meas))
+      write(file, "/measurement/data", meas)
     end
     write(file, "/measurement/isFourierTransformed", Int8(params["measIsFourierTransformed"]))
     write(file, "/measurement/isSpectralLeakageCorrected", Int8(params["measIsSpectralLeakageCorrected"]))
@@ -203,7 +215,7 @@ function saveasMDF(file::HDF5File, params::Dict)
       write(file, "/measurement/framePermutation", params["measFramePermutation"] )
     end
     if hasKeyAndValue(params, "measIsBGFrame")
-      write(file, "/measurement/isBackgroundFrame", convert(Array{Int8},params["measIsBGFrame"]) )
+      write(file, "/measurement/isBackgroundFrame", convert(Array{Int8}, params["measIsBGFrame"]) )
     end
   end
 

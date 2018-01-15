@@ -1,5 +1,7 @@
 using HDF5
 
+import HDF5: h5read
+
 export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton
 
 @compat abstract type MDFFile <: MPIFile end
@@ -55,9 +57,24 @@ function h5readornull(filename, parameter)
   end
 end
 
+function h5read(filename, parameter, default)
+  if h5exists(filename, parameter)
+    return h5read(filename, parameter)
+  else
+    return default
+  end
+end
+
 function getindex(f::MDFFile, parameter)
   if !haskey(f.param_cache,parameter)
     f.param_cache[parameter] = h5readornull(f.filename, parameter)
+  end
+  return f.param_cache[parameter]
+end
+
+function getindex(f::MDFFile, parameter, default)
+  if !haskey(f.param_cache,parameter)
+    f.param_cache[parameter] = h5read(f.filename, parameter, default)
   end
   return f.param_cache[parameter]
 end
@@ -139,7 +156,6 @@ scannerTopology(f::MDFFile)::String = f["/scanner/topology"]
 # acquisition parameters
 acqStartTime(f::MDFFileV1)::DateTime = DateTime( f["/acquisition/time"] )
 acqStartTime(f::MDFFileV2)::DateTime = DateTime( f["/acquisition/startTime"] )
-acqFramePeriod(f::MDFFile)::Float64 = f["/acquisition/framePeriod"]
 acqNumAverages(f::MDFFileV1)::Int = f["/acquisition/drivefield/averages"]
 acqNumAverages(f::MDFFileV2)::Int = f["/acquisition/numAverages"]
 function acqNumFrames(f::MDFFileV1)::Int
@@ -155,15 +171,31 @@ function acqNumFrames(f::MDFFileV1)::Int
   end
 end
 acqNumFrames(f::MDFFileV2)::Int = f["/acquisition/numFrames"]
-acqNumPeriods(f::MDFFileV1)::Int = 1
-acqNumPeriods(f::MDFFileV2)::Int = f["/acquisition/numPeriods"]
+acqNumPeriodsPerFrame(f::MDFFileV1)::Int = 1
+acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods"]
 
-acqGradient(f::MDFFileV1)::Array{Float64,2} = addTrailingSingleton(f["/acquisition/gradient"],2)
-acqGradient(f::MDFFileV2)::Array{Float64,2} = f["/acquisition/gradient"]
-acqOffsetField(f::MDFFile) = f["/acquisition/offsetField"]
-acqOffsetFieldShift(f::MDFFileV1) = addTrailingSingleton(
-              f["/acquisition/drivefield/fieldOfViewCenter"],2 )
-acqOffsetFieldShift(f::MDFFileV2) = f["/acquisition/offsetFieldShift"]
+acqGradient(f::MDFFileV1)::Array{Float64,4} = reshape(diagm(f["/acquisition/gradient"]), 3,3,1,1)
+function acqGradient(f::MDFFileV2)::Array{Float64,4}
+  g = f["/acquisition/gradient"]
+  if ndims(g) == 2 # compatibility with V2 pre versions
+    g_ = zeros(3,3,1,size(g,2))
+    g_[1,1,1,:] .= g[1,:]
+    g_[2,2,1,:] .= g[2,:]
+    g_[3,3,1,:] .= g[3,:]
+    return g_
+  else
+    return g
+  end
+end
+acqOffsetField(f::MDFFileV1)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
+function acqOffsetField(f::MDFFileV2)::Array{Float64,3}
+  off = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
+  if ndims(off) == 2 # compatibility with V2 pre versions
+    return reshape(off,3,1,:)
+  else
+    return off
+  end
+end
 
 # drive-field parameters
 dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]
@@ -179,7 +211,13 @@ dfDivider(f::MDFFileV1) = addTrailingSingleton(
 dfDivider(f::MDFFileV2) = f["/acquisition/drivefield/divider"]
 dfWaveform(f::MDFFileV1) = "sine"
 dfWaveform(f::MDFFileV2) = f["/acquisition/drivefield/waveform"]
-dfPeriod(f::MDFFile) = f["/acquisition/drivefield/period"]
+function dfCycle(f::MDFFile)
+  if h5exists(f.filename, "/acquisition/drivefield/cycle")
+    return f["/acquisition/drivefield/cycle"]
+  else  # pre V2 version
+    return f["/acquisition/drivefield/period"]
+  end
+end
 
 # receiver parameters
 rxNumChannels(f::MDFFile) = f["/acquisition/receiver/numChannels"]
@@ -202,7 +240,7 @@ rxDataConversionFactor(f::MDFFileV1) = repeat([1.0, 0.0], outer=(1,rxNumChannels
 rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFactor"]
 
 # measurements
-function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
+function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     # the V1 file is a calibration
@@ -243,7 +281,7 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
   end
 end
 
-function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriods(f),
+function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
   if !h5exists(f.filename, "/measurement")
     return nothing
@@ -266,6 +304,55 @@ function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
     data = f.mmap_measData[:, receivers, periods, frames]
     data = reshape(data, size(data,1), length(receivers), length(periods), length(frames))
   end
+  return data
+end
+
+function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
+                  receivers=1:rxNumChannels(f))
+  tdExists = h5exists(f.filename, "/measurement/dataTD")
+
+  if tdExists
+    if f.mmap_measData == nothing
+      h5open(f.filename,"r") do file
+        f.mmap_measData = readmmap(file["/measurement/dataTD"])
+      end
+    end
+    data = f.mmap_measData[:, receivers, periods]
+    return data
+  else
+    if f.mmap_measData == nothing
+      h5open(f.filename,"r") do file
+        f.mmap_measData = readmmap(file["/measurement/dataFD"])
+      end
+    end
+    data = f.mmap_measData[:, :, receivers, periods]
+
+    dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
+    dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
+    return dataTD
+  end
+end
+
+
+function measDataTDPeriods(f::MDFFileV2, periods=1:acqNumPeriods(f),
+                  receivers=1:rxNumChannels(f))
+  if measIsTransposed(f)
+    error("measDataTDPeriods can currently not handle transposed data!")
+  end
+
+  if f.mmap_measData == nothing
+    h5open(f.filename,"r") do file
+      parameter = "/measurement/data"
+      if !isComplexArray(file, parameter)
+        f.mmap_measData = readmmap(file[parameter])
+      else
+        error("measDataTDPeriods expects time domain data")
+      end
+    end
+  end
+
+  data = reshape(f.mmap_measData,Val{3})[:, receivers, periods]
+
   return data
 end
 
