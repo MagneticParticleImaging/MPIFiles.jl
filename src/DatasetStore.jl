@@ -388,7 +388,14 @@ function generateSFDatabase_(d::DatasetStore, oldfile, newfile)
   generateSFDatabase(d, newfile)
 end
 
-loadSFDatabase(d::BrukerDatasetStore) = readcsv("/opt/data/SF_Database.csv")
+function loadSFDatabase(d::BrukerDatasetStore) 
+  if isfile("/opt/data/SF_Database.csv")
+    return readcsv("/opt/data/SF_Database.csv")
+  else
+    return nothing
+  end
+end
+
 loadSFDatabase(d::MDFDatasetStore) = nothing #TODO #joinpath(d.path,"SF_Database.csv")
 
 ####
