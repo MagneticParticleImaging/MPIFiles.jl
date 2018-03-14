@@ -375,6 +375,7 @@ function readComplexArray(filename::String, dataset)
 end
 
 include("MultiMPIFile.jl")
+include("MultiPatchMPIFile.jl")
 include("Measurements.jl")
 include("SystemMatrix.jl")
 include("FrequencyFilter.jl")
