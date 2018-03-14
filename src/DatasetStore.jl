@@ -58,7 +58,7 @@ type MDFDatasetStore <: DatasetStore
   path::String
 
   function MDFDatasetStore(path::String)
-    if !ispath(path)
+    if ispath(path)
       mkpath(joinpath(path,"measurements"))
       mkpath(joinpath(path,"reconstructions"))
       mkpath(joinpath(path,"calibration"))
