@@ -159,7 +159,8 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
   end
 end
 
-function getMeasurements(f::MPIFile, neglectBGFrames=true; frames=1:acqNumFrames(f),
+function getMeasurements(f::MPIFile, neglectBGFrames=true; 
+      frames=neglectBGFrames?(1:acqNumFGFrames(f)):(1:acqNumFrames(f)),
       bgCorrection=false, tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
 
   if neglectBGFrames

@@ -73,12 +73,33 @@ function loadMetadata(f, inputParams = MPIFiles.defaultParams)
 end
 
 
+function appendBGDataset(params::Dict, filenameBG::String; kargs...)
+  fBG = MPIFile(filenameBG)
+  return appendBGDataset(params, fBG; kargs...)
+end
+
+function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
+  paramsBG = loadDataset(fBG, frames=frames)
+  paramsBG["measIsBGFrame"][:] = true
+
+  params["measData"] = cat(4, params["measData"], paramsBG["measData"])
+  params["measIsBGFrame"] = cat(1, params["measIsBGFrame"], paramsBG["measIsBGFrame"])
+  params["acqNumFrames"] += paramsBG["acqNumFrames"] 
+
+  return params
+end
+
+
 function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
   saveasMDF(filenameOut, MPIFile(filenameIn); kargs...)
 end
 
-function saveasMDF(filenameOut::String, f::MPIFile; kargs...)
-  saveasMDF(filenameOut, loadDataset(f;kargs...) )
+function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, kargs...)
+  params = loadDataset(f;kargs...)
+  if filenameBG != nothing
+    appendBGDataset(params, filenameBG)
+  end
+  saveasMDF(filenameOut, params)
 end
 
 function saveasMDFHacking(filenameOut::String, f::MPIFile)
