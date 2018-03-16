@@ -16,16 +16,17 @@ type MultiPatchMPIFile <: MPIFile
   frames::Vector{Int64}
   offsets::Matrix{Float64}
 
-  function MultiPatchMPIFile(filename::String, frames, offsets)
+  function MultiPatchMPIFile(filename::String, frames::Vector, offsets::Matrix)
     return new(MPIFile(filename), frames, offsets)
   end
 
+
+
+#  function MultiPatchMPIFile(filename::String, roblog::String) #TODO
+#    return new(MPIFile(filename), frames, offsets)
+#  end
 end
 
-
-#function MultiPatchMPIFile(filename::String, roblog) #TODO
-#
-#end
 
 function Base.show(io::IO, f::MultiPatchMPIFile)
   print(io, "Multi Patch MPI File: ", f.file)
@@ -46,7 +47,7 @@ for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyUu
             :dfNumChannels, :dfBaseFrequency, :dfDivider,
             :dfCycle, :dfWaveform, :rxNumChannels, :acqNumAverages, :rxBandwidth,
             :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor, :rxUnit, :rxDataConversionFactor]
-  @eval $op(f::MultiPatchMPIFile) = $op(f.files[1])
+  @eval $op(f::MultiPatchMPIFile) = $op(f.file)
 end
 
 for op in [ :dfStrength, :dfPhase ]
@@ -67,14 +68,16 @@ for op in [ :dfStrength, :dfPhase ]
 end
 
 function acqOffsetField(f::MultiPatchMPIFile)
-   tmp = acqOffsetField(f.file)
+   x=div(length(f.frames),size(f.offsets,2))
+   tmp=kron(f.offsets,ones(1,x))#acqOffsetField(f.file)
+   
    newVal = similar(tmp, 3, 1, acqNumPeriodsPerFrame(f))
-
    for b=1:acqNumPeriodsPerFrame(f)
-     for a=1:3
-         newVal[a,1,b] = tmp[a,1,1]
-     end
+    for a=1:3
+        newVal[a,1,b] = tmp[a,b]
+    end
    end
+   
 
   return newVal
 end
@@ -99,25 +102,19 @@ for op in [:measIsFourierTransformed, :measIsTFCorrected,
            :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
            :measIsSpectralLeakageCorrected,
            :measFramePermutation, :measIsBGFrame]
-  @eval $op(f::MultiPatchMPIFile) = $op(f.files[1])
+  @eval $op(f::MultiPatchMPIFile) = $op(f.file)
 end
 
 
 experimentHasReconstruction(f::MultiPatchMPIFile) = false
 
-##Achtung hack in der Schleife acqNumFrames(fi) statt acqNumFrames(f)
-#notwendig, da hier Sprung zwischen MultiMPIFile und MPIFile
 
-function measData(f::MultiPatchMPIFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
+function measData(f::MultiPatchMPIFile, frames=1:acqNumFrames(f), periods=f.frames,
                   receivers=1:rxNumChannels(f))
   data = zeros(Float32, rxNumSamplingPoints(f), length(receivers),
                         length(frames),length(periods))
-  #for (i,p) in enumerate(periods)
-  #  data[:,:,:,i,:] = measData(f.files[p], frames, 1, receivers)
-  #end
-  for (i,fi) in enumerate(f.files)
-    fr_fi=acqNumFrames(fi)
-    data[:,:,:,fr_fi*(i-1)+1:fr_fi*i] = measData(fi, 1:fr_fi, 1, receivers)
-  end
+  
+  data = measData(f.file, periods, 1, receivers)
+ 
   return reshape(data,size(data,1),size(data,2),:,1)
 end
