@@ -150,14 +150,14 @@ scannerFacility(f::MDFFile)::String = f["/scanner/facility"]
 scannerOperator(f::MDFFile)::String = f["/scanner/operator"]
 scannerManufacturer(f::MDFFile)::String = f["/scanner/manufacturer"]
 scannerName(f::MDFFileV1)::String = f["/scanner/model"]
-scannerName(f::MDFFileV2)::String = f["/scanner/name"]
+scannerName(f::MDFFileV2)::String = f["/scanner/name", ""]
 scannerTopology(f::MDFFile)::String = f["/scanner/topology"]
 
 # acquisition parameters
 acqStartTime(f::MDFFileV1)::DateTime = DateTime( f["/acquisition/time"] )
 acqStartTime(f::MDFFileV2)::DateTime = DateTime( f["/acquisition/startTime"] )
 acqNumAverages(f::MDFFileV1)::Int = f["/acquisition/drivefield/averages"]
-acqNumAverages(f::MDFFileV2)::Int = f["/acquisition/numAverages"]
+acqNumAverages(f::MDFFileV2)::Int = f["/acquisition/numAverages",1]
 function acqNumFrames(f::MDFFileV1)::Int
   if experimentIsCalibration(f)
     if f.mmap_measData == nothing
@@ -172,7 +172,7 @@ function acqNumFrames(f::MDFFileV1)::Int
 end
 acqNumFrames(f::MDFFileV2)::Int = f["/acquisition/numFrames"]
 acqNumPeriodsPerFrame(f::MDFFileV1)::Int = 1
-acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods"]
+acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods",1]
 
 acqGradient(f::MDFFileV1)::Array{Float64,4} = reshape(diagm(f["/acquisition/gradient"]), 3,3,1,1)
 function acqGradient(f::MDFFileV2)::Array{Float64,4}
@@ -180,8 +180,6 @@ function acqGradient(f::MDFFileV2)::Array{Float64,4}
   if ndims(g) == 2 # compatibility with V2 pre versions
     g_ = zeros(3,3,1,size(g,2))
     g_[1,1,1,:] .= g[1,:]
-    g_[2,2,1,:] .= g[2,:]
-    g_[3,3,1,:] .= g[3,:]
     return g_
   else
     return g
