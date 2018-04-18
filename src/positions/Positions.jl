@@ -3,7 +3,8 @@ using Unitful, HDF5
 import Base: getindex, length, convert, start, done, next, write
 
 export Positions, CartesianGridPositions, ChebyshevGridPositions,
-       MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SphericalTDesign
+       MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions,
+       SphericalTDesign, BreakpointGridPositions
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
@@ -144,6 +145,11 @@ end
 
 #TODO Meander + BG
 # capsulate objects of type GridPositions and return to ParkPosition every so often
+type BreakpointGridPositions{T} <: Positions
+  grid::Positions
+  breakpointIndices::Vector{Int64}
+  breakpointPosition::Vector{T}
+end
 
 # Uniform random distributed positions
 @compat abstract type SpatialDomain end
