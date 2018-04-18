@@ -2,7 +2,7 @@ using Unitful, HDF5
 
 import Base: getindex, length, convert, start, done, next, write
 
-export Positions, CartesianGridPositions, ChebyshevGridPositions,
+export Positions, GridPositions, CartesianGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions,
        SphericalTDesign, BreakpointGridPositions
 export SpatialDomain, AxisAlignedBox, Ball
