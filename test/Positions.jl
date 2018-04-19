@@ -75,6 +75,124 @@
       @test fieldOfViewCenter(mG1) == ctr
     end
   end
+#BG Test
+    bgInd = collect(1:4:37)
+    bgPos = [10.0,10.0,10.0]u"mm"
+  for grid in [caG,chG]
+    bG = BreakpointGridPositions(grid,bgInd,bgPos)
+    @test length(bG) == prod(shp)+length(bgInd)
+    @test shape(bG) == shp
+    @test fieldOfView(bG) == fov
+    @test fieldOfViewCenter(bG) == ctr
+    @test bG[1] == bgPos
+    @test bG[2] == grid[1]
+    @test bG[3] == grid[2]
+    @test bG[4] == grid[3]
+    @test bG[5] == bgPos
+    @test bG[6] == grid[4]
+    @test bG[7] == grid[5]
+    @test bG[8] == grid[6]
+    @test bG[9] == bgPos
+    @test bG[10] == grid[7]
+    @test bG[11] == grid[8]
+    @test bG[12] == grid[9]
+    @test bG[13] == bgPos
+    @test bG[14] == grid[10]
+    @test bG[15] == grid[11]
+    @test bG[16] == grid[12]
+    @test bG[17] == bgPos
+    @test bG[18] == grid[13]
+    @test bG[19] == grid[14]
+    @test bG[20] == grid[15]
+    @test bG[21] == bgPos
+    @test bG[22] == grid[16]
+    @test bG[23] == grid[17]
+    @test bG[24] == grid[18]
+    @test bG[25] == bgPos
+    @test bG[26] == grid[19]
+    @test bG[27] == grid[20]
+    @test bG[28] == grid[21]
+    @test bG[29] == bgPos
+    @test bG[30] == grid[22]
+    @test bG[31] == grid[23]
+    @test bG[32] == grid[24]
+    @test bG[33] == bgPos
+    @test bG[34] == grid[25]
+    @test bG[35] == grid[26]
+    @test bG[36] == grid[27]
+    @test bG[37] == bgPos
+
+    h5open("Positions.h5", "w") do file
+      write(file, bG)
+    end
+    h5open("Positions.h5", "r") do file
+      bG1 = Positions(file)
+      @test bG1[1] ≈ grid[1]
+      @test shape(bG1) == shp
+      @test fieldOfView(bG1) == fov
+      @test fieldOfViewCenter(bG1) == ctr
+    end
+  end
+
+#BG+Meander Test
+    bgInd = collect(1:4:37)
+    bgPos = [10.0,10.0,10.0]u"mm"
+  for grid in [caG,chG]
+    mG = MeanderingGridPositions(grid)
+    bG = BreakpointGridPositions(mG,bgInd,bgPos)
+    @test length(bG) == prod(shp)+length(bgInd)
+    @test shape(bG) == shp
+    @test fieldOfView(bG) == fov
+    @test fieldOfViewCenter(bG) == ctr
+    @test bG[1] == bgPos
+    @test bG[2] == grid[1]
+    @test bG[3] == grid[2]
+    @test bG[4] == grid[3]
+    @test bG[5] == bgPos
+    @test bG[6] == grid[6]
+    @test bG[7] == grid[5]
+    @test bG[8] == grid[4]
+    @test bG[9] == bgPos
+    @test bG[10] == grid[7]
+    @test bG[11] == grid[8]
+    @test bG[12] == grid[9]
+    @test bG[13] == bgPos
+    @test bG[14] == grid[18]
+    @test bG[15] == grid[17]
+    @test bG[16] == grid[16]
+    @test bG[17] == bgPos
+    @test bG[18] == grid[13]
+    @test bG[19] == grid[14]
+    @test bG[20] == grid[15]
+    @test bG[21] == bgPos
+    @test bG[22] == grid[12]
+    @test bG[23] == grid[11]
+    @test bG[24] == grid[10]
+    @test bG[25] == bgPos
+    @test bG[26] == grid[19]
+    @test bG[27] == grid[20]
+    @test bG[28] == grid[21]
+    @test bG[29] == bgPos
+    @test bG[30] == grid[24]
+    @test bG[31] == grid[23]
+    @test bG[32] == grid[22]
+    @test bG[33] == bgPos
+    @test bG[34] == grid[25]
+    @test bG[35] == grid[26]
+    @test bG[36] == grid[27]
+    @test bG[37] == bgPos
+
+    h5open("Positions.h5", "w") do file
+      write(file, bG)
+    end
+    h5open("Positions.h5", "r") do file
+      bG1 = Positions(file)
+      @test bG1[1] ≈ grid[1]
+      @test shape(bG1) == shp
+      @test fieldOfView(bG1) == fov
+      @test fieldOfViewCenter(bG1) == ctr
+    end
+  end
 
   positions = [1 2 3 4; 0 1 2 3;-4 -3 -2 -1]u"mm"
   aG1 = ArbitraryPositions(positions)

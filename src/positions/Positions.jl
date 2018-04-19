@@ -145,10 +145,60 @@ end
 
 #TODO Meander + BG
 # capsulate objects of type GridPositions and return to ParkPosition every so often
-type BreakpointGridPositions{T} <: Positions
-  grid::Positions
+#type BreakpointGridPositions{T} <: Positions
+#  grid::Positions
+#  breakpointIndices::Vector{Int64}
+#  breakpointPosition::Vector{T}
+#end
+type BreakpointGridPositions{T} <: GridPositions
+  grid::GridPositions
   breakpointIndices::Vector{Int64}
   breakpointPosition::Vector{T}
+end
+
+function BreakpointGridPositions(file::HDF5File)
+  typ = read(file, "/positionsType")
+  breakpointIndices = read(file, "/positionsBreakpoint")
+  breakpointPosition = read(file, "/indicesBreakpoint")
+  
+  if typ == "MeanderingGridPositions"
+    grid = MeanderingGridPositions(file)
+    return BreakpoitGridPositions(grid,breakpointIndices, breakpointPosition)
+  elseif typ == "CartesianGridPositions"
+    grid = CartesianGridPositions(file)
+    return BreakpoitGridPositions(grid,breakpointIndices, breakpointPosition)
+  elseif typ == "ChebyshevGridPositions"
+    grid = ChebyshevGridPositions(file)
+    return BreakpoitGridPositions(grid,breakpointIndices, breakpointPosition)
+  end 
+end
+
+function write(file::HDF5File, positions::BreakpointGridPositions)
+  write(file,"/positionsBreakpoint",Float64.(ustrip.(uconvert.(u"m", positions.breakpointPosition))))
+  write(file,"/indicesBreakpoint", positions.breakpointIndices)
+  write(file, positions.grid)
+end
+
+
+function getmask(grid::BreakpointGridPositions)
+  bgind=grid.breakpointIndices
+  mask = zeros(Bool, length(grid.grid)+length(bgind))
+  mask[bgind] = true
+  return mask
+end
+
+function getindex(grid::BreakpointGridPositions, i::Integer)
+
+  bgind=grid.breakpointIndices
+  
+  if i>(length(grid.grid)+length(bgind)) || i<1 
+    return throw(BoundsError(grid,i))
+  elseif any(i.==bgind)
+    return grid.breakpointPosition
+  else
+    pastBgind=sum(i.>bgind)
+    return grid.grid[i-pastBgind]
+  end 
 end
 
 # Uniform random distributed positions
@@ -264,11 +314,14 @@ end
 fieldOfView(grid::GridPositions) = grid.fov
 fieldOfView(grid::UniformRandomPositions{AxisAlignedBox}) = grid.domain.fov
 fieldOfView(mgrid::MeanderingGridPositions) = fieldOfView(mgrid.grid)
+fieldOfView(bgrid::BreakpointGridPositions) = fieldOfView(bgrid.grid)
 shape(grid::GridPositions) = grid.shape
 shape(mgrid::MeanderingGridPositions) = shape(mgrid.grid)
+shape(bgrid::BreakpointGridPositions) = shape(bgrid.grid)
 fieldOfViewCenter(grid::GridPositions) = grid.center
 fieldOfViewCenter(grid::UniformRandomPositions) = grid.domain.center
 fieldOfViewCenter(mgrid::MeanderingGridPositions) = fieldOfViewCenter(mgrid.grid)
+fieldOfViewCenter(bgrid::BreakpointGridPositions) = fieldOfViewCenter(bgrid.grid)
 
 
 type SphericalTDesign{S,V} <: Positions where {S,V<:Unitful.Length}
@@ -366,6 +419,7 @@ length(apos::ArbitraryPositions) = size(apos.positions,2)
 length(grid::GridPositions) = prod(grid.shape)
 length(rpos::UniformRandomPositions) = rpos.N
 length(mgrid::MeanderingGridPositions) = length(mgrid.grid)
+length(bgrid::BreakpointGridPositions) = length(bgrid.grid)+length(bgrid.breakpointIndices)
 start(grid::Positions) = 1
 next(grid::Positions,state) = (grid[state],state+1)
 done(grid::Positions,state) = state > length(grid)
