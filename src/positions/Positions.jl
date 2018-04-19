@@ -163,13 +163,13 @@ function BreakpointGridPositions(file::HDF5File)
   
   if typ == "MeanderingGridPositions"
     grid = MeanderingGridPositions(file)
-    return BreakpoitGridPositions(grid,breakpointIndices, breakpointPosition)
+    return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
   elseif typ == "CartesianGridPositions"
     grid = CartesianGridPositions(file)
-    return BreakpoitGridPositions(grid,breakpointIndices, breakpointPosition)
+    return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
   elseif typ == "ChebyshevGridPositions"
     grid = ChebyshevGridPositions(file)
-    return BreakpoitGridPositions(grid,breakpointIndices, breakpointPosition)
+    return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
   end 
 end
 
