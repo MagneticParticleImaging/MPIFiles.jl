@@ -84,7 +84,7 @@ function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
 
   params["measData"] = cat(4, params["measData"], paramsBG["measData"])
   params["measIsBGFrame"] = cat(1, params["measIsBGFrame"], paramsBG["measIsBGFrame"])
-  params["acqNumFrames"] += paramsBG["acqNumFrames"] 
+  params["acqNumFrames"] += paramsBG["acqNumFrames"]
 
   return params
 end
@@ -250,6 +250,7 @@ function saveasMDF(file::HDF5File, params::Dict)
   writeIfAvailable(file, "/calibration/offsetField",  params, "calibOffsetField")
   writeIfAvailable(file, "/calibration/deltaSampleSize",  params, "calibDeltaSampleSize")
   writeIfAvailable(file, "/calibration/method",  params, "calibMethod")
+  writeIfAvailable(file, "/calibration/isMeanderingGrid",  params, "calibIsMeanderingGrid")
 
   # reconstruction
   if hasKeyAndValue(params, "recoData")

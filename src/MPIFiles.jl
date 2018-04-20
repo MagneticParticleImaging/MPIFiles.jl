@@ -55,7 +55,7 @@ export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
 # calibrations
 export calibSNR, calibFov, calibFovCenter, calibSize,
        calibOrder, calibPositions, calibOffsetField, calibDeltaSampleSize,
-       calibMethod
+       calibMethod, calibIsMeanderingGrid
 
 # reconstruction results
 export recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions
@@ -155,6 +155,7 @@ export selectedChannels
 @mustimplement calibOffsetField(f::MPIFile)
 @mustimplement calibDeltaSampleSize(f::MPIFile)
 @mustimplement calibMethod(f::MPIFile)
+@mustimplement calibIsMeanderingGrid(f::MPIFile)
 
 # reconstruction results
 @mustimplement recoData(f::MPIFile)

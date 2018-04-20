@@ -418,6 +418,7 @@ calibPositions(b::BrukerFile) = nothing
 calibOffsetField(b::BrukerFile) = nothing
 calibDeltaSampleSize(b::BrukerFile) = nothing #TODO
 calibMethod(b::BrukerFile) = "robot"
+calibIsMeanderingGrid(b::BrukerFile) = true
 
 
 # additional functions that should be implemented by an MPIFile

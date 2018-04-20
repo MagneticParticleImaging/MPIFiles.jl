@@ -474,6 +474,7 @@ calibPositions(f::MDFFile) = f["/calibration/positions"]
 calibOffsetField(f::MDFFile) = f["/calibration/offsetField"]
 calibDeltaSampleSize(f::MDFFile) = f["/calibration/deltaSampleSize"]
 calibMethod(f::MDFFile) = f["/calibration/method"]
+calibIsMeanderingGrid(b::MDFFile) = f["/calibration/isMeanderingGrid", false]
 
 # reconstruction results
 recoData(f::MDFFileV1) = addLeadingSingleton(
