@@ -250,8 +250,9 @@ function saveasMDF(file::HDF5File, params::Dict)
   writeIfAvailable(file, "/calibration/offsetField",  params, "calibOffsetField")
   writeIfAvailable(file, "/calibration/deltaSampleSize",  params, "calibDeltaSampleSize")
   writeIfAvailable(file, "/calibration/method",  params, "calibMethod")
-  writeIfAvailable(file, "/calibration/isMeanderingGrid",  params, "calibIsMeanderingGrid")
-
+  if hasKeyAndValue(params, "calibIsMeanderingGrid")
+    write(file, "/calibration/isMeanderingGrid", Int8(params["calibIsMeanderingGrid"]))
+  end
   # reconstruction
   if hasKeyAndValue(params, "recoData")
     write(file, "/reconstruction/data", params["recoData"])
