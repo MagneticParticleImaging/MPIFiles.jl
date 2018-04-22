@@ -159,7 +159,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
   end
 end
 
-function getMeasurements(f::MPIFile, neglectBGFrames=true; 
+function getMeasurements(f::MPIFile, neglectBGFrames=true;
       frames=neglectBGFrames?(1:acqNumFGFrames(f)):(1:acqNumFrames(f)),
       bgCorrection=false, tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
 
@@ -169,7 +169,8 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
     if !sortFrames
       data = getAveragedMeasurements(f; frames=idx[frames], kargs...)
     else
-      data = getAveragedMeasurements(f; frames=idx[fgFramePermutation(f)][frames], kargs...)
+      data = getAveragedMeasurements(f;
+              frames=idx[meanderingFramePermutation(f)][frames], kargs...)
     end
 
     if bgCorrection
@@ -180,9 +181,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
     end
   else
     if sortFrames
-      perm1=cat(1,measFGFrameIdx(f),measBGFrameIdx(f))
-      perm2=cat(1,fgFramePermutation(f),(length(perm1)-acqNumBGFrames(f)+1):length(perm1))
-      permJoint = perm1[perm2]
+      permJoint = fullFramePermutation(f)
       data = getAveragedMeasurements(f; frames=permJoint, kargs...)
     else
       data = getAveragedMeasurements(f; frames=frames, kargs...)

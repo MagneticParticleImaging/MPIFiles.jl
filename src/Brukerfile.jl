@@ -372,29 +372,10 @@ function measFramePermutation(b::BrukerFileCalib)
   # in a calibration measurement.
   bMeas = BrukerFile(b.path, isCalib=false)
 
-  perm1=cat(1,measFGFrameIdx(bMeas),measBGFrameIdx(bMeas))
-  perm2=cat(1,fgFramePermutation(bMeas),(length(perm1)-acqNumBGFrames(bMeas)+1):length(perm1))
-  permJoint = perm1[perm2]
-  return permJoint
+  return fullFramePermutation(bMeas)
 end
 
-# TODO the following requires a test
-function fgFramePermutation(b::BrukerFile)
-  N = tuple(calibSize(b)...)
-
-  perm = Array{Int}(N)
-  for i in CartesianRange(N)
-    idx = [i[k] for k=1:length(i)]
-    for d=2:3
-      if isodd(sum(idx[d:3])-length(idx[d:3]))
-        idx[d-1] = N[d-1] + 1 - idx[d-1]
-      end
-    end
-    perm[i] = sub2ind(N,idx...)
-  end
-  return vec(perm)
-end
-
+fullFramePermutation(f::BrukerFile) = fullFramePermutation(f, true) 
 
 measIsSpectralLeakageCorrected(b::BrukerFile) = get(b.params, "ACQ_MPI_spectral_cleaningl", "No") != "No"
 measIsFrequencySelection(b::BrukerFile) = false

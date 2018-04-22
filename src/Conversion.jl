@@ -9,8 +9,7 @@ function setparam!(params::Dict, parameter, value)
 end
 
 # we do not support all conversion possibilities
-function loadDataset(f::MPIFile; frames=1:acqNumFrames(f))
-    # TODO applyCalibPostprocessing=false)
+function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocessing=false)
   params = loadMetadata(f)
 
   # call API function and store result in a parameter Dict
@@ -22,12 +21,25 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f))
                :measFramePermutation, :measIsBGFrame]
         setparam!(params, string(op), eval(op)(f))
     end
-    if frames!=1:acqNumFrames(f)
-      setparam!(params, "measData", measData(f,frames))
-      setparam!(params, "acqNumFrames", length(frames))
-      setparam!(params, "measIsBGFrame", measIsBGFrame(f)[frames])
+    if !applyCalibPostprocessing
+      if frames!=1:acqNumFrames(f)
+        setparam!(params, "measData", measData(f,frames))
+        setparam!(params, "acqNumFrames", length(frames))
+        setparam!(params, "measIsBGFrame", measIsBGFrame(f)[frames])
+      else
+        setparam!(params, "measData", measData(f))
+      end
     else
-      setparam!(params, "measData", measData(f))
+        data = getMeasurementsFD(f, false, frames=1:acqNumFrames(f),sortFrames=true,
+              spectralLeakageCorrection=false,transposed=true)
+        setparam!(params, "measData", data)
+        setparam!(params, "measIsFourierTransformed", true)
+        setparam!(params, "measIsTransposed", true)
+        setparam!(params, "measIsFramePermutation", true)
+        setparam!(params, "measFramePermutation", fullFramePermutation(f))
+
+        setparam!(params, "measIsBGFrame",
+          cat(1,zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f))) )
     end
   end
 

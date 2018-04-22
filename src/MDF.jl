@@ -386,9 +386,20 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
   data = reshape(f.mmap_measData,Val{2})[:, rows]
 
   fgdata = data[measFGFrameIdx(f),:]
-  if bgCorrection
+  if bgCorrection # this assumes equidistent bg frames
+    println("Applying bg correction on system matrix (MDF)")
     bgdata = data[measBGFrameIdx(f),:]
-    fgdata[:,:] .-= mean(bgdata,1)
+    bgdataInterp = interpolate(bgdata, BSpline(Linear()), OnGrid())
+    #Cubic does not work for complex numbers
+    origIndex = measFramePermutation(f)
+    M = size(fgdata,1)
+    N = M + size(bgdata,1)
+    for m=1:M
+      alpha = (origIndex[m]-1)/(N-1)*(M-1)+1
+      for k=1:size(fgdata,2)
+        fgdata[m,k] -= bgdataInterp[alpha,k]
+      end
+    end
   end
   return fgdata
 end
@@ -462,6 +473,7 @@ measIsBGFrame(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
 measIsBGFrame(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundFrame"])
 measFramePermutation(f::MDFFileV1) = nothing
 measFramePermutation(f::MDFFileV2) = f["/measurement/framePermutation"]
+fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
 
 #calibrations
 calibSNR(f::MDFFileV1) = addTrailingSingleton(f["/calibration/snrFD"],3)

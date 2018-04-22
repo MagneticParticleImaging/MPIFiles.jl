@@ -6,6 +6,7 @@ fnMeasV1 = "measurement_V1.mdf"
 fnMeasV2 = "measurement_V2.mdf"
 fnSMV1 = "systemMatrix_V1.mdf"
 fnSMV2 = "systemMatrix_V2.mdf"
+fnSMV3 = "systemMatrix_V3.mdf"
 
 if !isdir(fnSMBruker)
   streamSM = get("http://media.tuhh.de/ibi/"*fnSMBruker*".zip")
@@ -114,7 +115,15 @@ saveasMDF(fnSMV2, smBruker)
 smv2 = MPIFile(fnSMV2)
 @test typeof(smv2) == MDFFileV2
 
-for sm in (smBruker,smv2)
+smBrukerPretendToBeMeas = MPIFile(fnSMBruker, isCalib=false)
+saveasMDF(fnSMV3, smBrukerPretendToBeMeas, applyCalibPostprocessing=true)
+
+smv3 = MPIFile(fnSMV3)
+@test typeof(smv3) == MDFFileV2
+
+
+
+for sm in (smBruker,smv2,smv3)
   println("Test $sm")
 
   @test size( systemMatrixWithBG(sm) ) == (1959,817,3,1)
@@ -139,11 +148,11 @@ for sm in (smBruker,smv2)
 
   @test size(getSystemMatrix(sm,1:10)) == (1936,10)
   @test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (1936,20)
+  @test size(getSystemMatrix(sm,1:10,bgCorrection=true)) == (1936,10)
 end
 
 # Next test checks if the cached system matrix is the same as the one loaded
 # from the raw data
-smBrukerPretendToBeMeas = MPIFile(fnSMBruker, isCalib=false)
 S_loadedfromraw = getMeasurementsFD(smBrukerPretendToBeMeas,
       frames=1:acqNumFGFrames(smBrukerPretendToBeMeas),sortFrames=true,
       spectralLeakageCorrection=false,transposed=true)

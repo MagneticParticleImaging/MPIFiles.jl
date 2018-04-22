@@ -8,6 +8,7 @@ using ProgressMeter
 using Graphics: @mustimplement
 @reexport using ImageAxes
 @reexport using ImageMetadata
+using Interpolations
 
 import Base: ndims, time, show, getindex
 
@@ -304,6 +305,7 @@ systemMatrix(f::MPIFile) = systemMatrixWithBG(f)[1:acqNumFGFrames(f),:,:,:]
 ### Concrete implementations ###
 
 include("Custom.jl")
+include("FramePermutation.jl")
 include("MDF.jl")
 include("Brukerfile.jl")
 

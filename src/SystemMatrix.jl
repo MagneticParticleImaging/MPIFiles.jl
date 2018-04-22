@@ -17,7 +17,7 @@ end
 function getSystemMatrix(f::MPIFile, frequencies; bgCorrection=false, loadasreal=false,
                          kargs...)
   #if measIsTransposed(f) && measIsFourierTransformed(f)
-    data = systemMatrix(f, frequencies, bgCorrection)
+  data = systemMatrix(f, frequencies, bgCorrection)
   #else
   #  error("TODO: implement making a SF using getMeasurement")
   #end
