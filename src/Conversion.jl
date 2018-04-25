@@ -40,6 +40,8 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
 
         setparam!(params, "measIsBGFrame",
           cat(1,zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f))) )
+
+        setparam!(params, "calibSNR", calculateSystemMatrixSNR(f, data))
     end
   end
 

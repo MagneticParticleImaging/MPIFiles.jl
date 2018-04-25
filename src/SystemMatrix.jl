@@ -1,4 +1,4 @@
-export getSystemMatrix, getSystemMatrixReshaped
+export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR
 
 function converttoreal{T}(S::AbstractArray{Complex{T},2})
   N = size(S,1)
@@ -34,4 +34,23 @@ end
 
 function getSystemMatrixReshaped(f::MPIFile; kargs...)
   return reshape(getSystemMatrix(f),:,rxNumFrequencies(f),rxNumChannels(f),acqNumPeriodsPerFrame(f))
+end
+
+#function calculateSystemMatrixSNR(f::MPIFile)
+#
+#end
+
+function calculateSystemMatrixSNR(f::MPIFile, S::Array)
+  SNR = zeros(rxNumFrequencies(f),rxNumChannels(f),acqNumPeriodsPerFrame(f))
+  for j=1:acqNumPeriodsPerFrame(f)
+    for r=1:rxNumChannels(f)
+      for k=1:rxNumFrequencies(f)
+        meanBG = mean(S[(acqNumFGFrames(f)+1):end,k,r,j])
+        signal = mean(abs.(S[1:acqNumFGFrames(f),k,r,j].-meanBG))
+        noise = mean(abs.(S[(acqNumFGFrames(f)+1):end,k,r,j].-meanBG))
+        SNR[k,r,j] = signal / noise
+      end
+    end
+  end
+  return SNR
 end
