@@ -161,7 +161,7 @@ end
 
 function getMeasurements(f::MPIFile, neglectBGFrames=true;
       frames=neglectBGFrames?(1:acqNumFGFrames(f)):(1:acqNumFrames(f)),
-      bgCorrection=false, tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
+      bgCorrection=false, interpolateBG=false, tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
 
   if neglectBGFrames
     idx = measFGFrameIdx(f)
@@ -172,27 +172,31 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
       println("Applying bg correction ...")
       idxBG = measBGFrameIdx(f)
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
-      dataBGInterp = interpolate(dataBG,
-        (NoInterp(),NoInterp(),NoInterp(),BSpline(Linear())), OnGrid()) #OnCell?
+      if interpolateBG
+        dataBGInterp = interpolate(dataBG,
+          (NoInterp(),NoInterp(),NoInterp(),BSpline(Linear())), OnGrid()) #OnCell?
 
-      origIndex = idx[frames]
-      M = size(data,4)
-      N = M + size(dataBG,4)
-      for m=1:M
-        alpha = (origIndex[m]-1)/(N-1)*(M-1)+1
-        for k1=1:size(data,1)
-          for k2=1:size(data,2)
-            for k3=1:size(data,3)
-              data[k1,k2,k3,m] -= dataBGInterp[k1,k2,k3,alpha]
+        origIndex = idx[frames]
+        M = size(data,4)
+        N = M + size(dataBG,4)
+        for m=1:M
+          alpha = (origIndex[m]-1)/(N-1)*(M-1)+1
+          for k1=1:size(data,1)
+            for k2=1:size(data,2)
+              for k3=1:size(data,3)
+                data[k1,k2,k3,m] -= dataBGInterp[k1,k2,k3,alpha]
+              end
             end
           end
         end
+      else
+        data[:,:,:,:] .-= mean(dataBG,4)
       end
+    end
 
-      if !sortFrames
-        if calibIsMeanderingGrid(f)
-          data[:,:,:,:] = data[:,:,:,meanderingFramePermutation(f)]
-        end
+    if !sortFrames
+      if calibIsMeanderingGrid(f)
+        data[:,:,:,:] = data[:,:,:,meanderingFramePermutation(f)]
       end
     end
   else
