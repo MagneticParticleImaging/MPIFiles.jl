@@ -47,7 +47,7 @@ function calculateSystemMatrixSNR(f::MPIFile, S::Array)
     for r=1:rxNumChannels(f)
       for k=1:rxNumFrequencies(f)
         meanBG = mean(S[(acqNumFGFrames(f)+1):end,k,r,j])
-        signal = mean(abs.(S[1:acqNumFGFrames(f),k,r,j].-meanBG))
+        signal = maximum(abs.(S[1:acqNumFGFrames(f),k,r,j].-meanBG))
         noise = mean(abs.(S[(acqNumFGFrames(f)+1):end,k,r,j].-meanBG))
         SNR[k,r,j] = signal / noise
       end
