@@ -389,7 +389,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
   if bgCorrection # this assumes equidistent bg frames
     println("Applying bg correction on system matrix (MDF)")
     bgdata = data[measBGFrameIdx(f),:]
-    bgdataInterp = interpolate(bgdata, BSpline(Linear()), OnGrid())
+    bgdataInterp = interpolate(bgdata, (BSpline(Linear()),NoInterp()), OnGrid())
     #Cubic does not work for complex numbers
     origIndex = measFramePermutation(f)
     M = size(fgdata,1)

@@ -33,7 +33,8 @@ function getSystemMatrix(f::MPIFile,
 end
 
 function getSystemMatrixReshaped(f::MPIFile; kargs...)
-  return reshape(getSystemMatrix(f),:,rxNumFrequencies(f),rxNumChannels(f),acqNumPeriodsPerFrame(f))
+  return reshape(getSystemMatrix(f;kargs...),:,rxNumFrequencies(f),
+                            rxNumChannels(f),acqNumPeriodsPerFrame(f))
 end
 
 #function calculateSystemMatrixSNR(f::MPIFile)
