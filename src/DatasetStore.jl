@@ -486,7 +486,7 @@ function getNewCalibNum(d::MDFDatasetStore)
     for i=1:length(files)
       pref, ext = splitext(files[i])
       num_ = tryparse(Int64, pref)
-      if !isnull(num_) && get(num_) > calibNum
+      if !isnull(num_) && get(num_)+1 > calibNum
         calibNum = get(num_) + 1
       end
     end
