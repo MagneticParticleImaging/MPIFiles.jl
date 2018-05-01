@@ -4,7 +4,8 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        studydir, BrukerDatasetStore, BrukerStore, getStudy, getStudies, getExperiment,
        getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
        findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum,
-       exportToMDFStore, generateSFDatabase, loadSFDatabase, addVisu, readonly
+       exportToMDFStore, generateSFDatabase, loadSFDatabase, addVisu, readonly, getNewCalibNum,
+       calibdir
 
 ########################################
 
@@ -304,10 +305,14 @@ end
 ####
 
 function generateSFDatabase(d::DatasetStore, filename::AbstractString)
+  fileList = findSFFiles(d)
+  A = generateSFDatabase(fileList)
+  writecsv(filename, A)
+end
 
-  sfs = findSFFiles(d)
+function generateSFDatabase(fileList::Vector)
 
-  A = Array{Any}(length(sfs)+1,16)
+  A = Array{Any}(length(fileList)+1,16)
 
   # Headerrow
   A[1,1] = "Name"
@@ -327,16 +332,15 @@ function generateSFDatabase(d::DatasetStore, filename::AbstractString)
   A[1,15] = "StartDate"
   A[1,16] = "MeasurementTime"
 
- p = Progress(length(sfs), 1, "Generating SF Database...")
+ p = Progress(length(fileList), 1, "Generating SF Database...")
 
-  for (k,sf) in enumerate(sfs)
+  for (k,sf) in enumerate(fileList)
     i=k+1
     _innerGenerateSFDatabase(A,i,sf)
 
     next!(p)
   end
-
-  writecsv(filename, A)
+  return A
 end
 
 function _innerGenerateSFDatabase(A,i,sf)
@@ -345,9 +349,10 @@ function _innerGenerateSFDatabase(A,i,sf)
   A[i,1] = experimentName(b)
   A[i,2] = squeeze(acqGradient(b))[3]
   df = vec(dfStrength(b)).*1e3
-  A[i,3] = df[1]
-  A[i,4] = df[2]
-  A[i,5] = df[3]
+  A[i,3:5] = 0.0
+  for l=1:length(df)
+    A[i,l+2] = df[l]
+  end
   N = calibSize(b)
   A[i,6] = N[1]
   A[i,7] = N[2]
@@ -358,7 +363,7 @@ function _innerGenerateSFDatabase(A,i,sf)
   A[i,12] = 0.0#deltaSampleConcentration(b)
   A[i,13] = 0.0#deltaSampleVolume(b)
   A[i,14]= filepath(b)
-  A[i,15]= acqStartTime(b)
+  A[i,15]= string(acqStartTime(b))
   A[i,16]= 0.0#b["PVM_ScanTimeStr"]
 end
 
@@ -388,7 +393,7 @@ function generateSFDatabase_(d::DatasetStore, oldfile, newfile)
   generateSFDatabase(d, newfile)
 end
 
-function loadSFDatabase(d::BrukerDatasetStore) 
+function loadSFDatabase(d::BrukerDatasetStore)
   if isfile("/opt/data/SF_Database.csv")
     return readcsv("/opt/data/SF_Database.csv")
   else
@@ -396,7 +401,14 @@ function loadSFDatabase(d::BrukerDatasetStore)
   end
 end
 
-loadSFDatabase(d::MDFDatasetStore) = nothing #TODO #joinpath(d.path,"SF_Database.csv")
+function loadSFDatabase(d::MDFDatasetStore)
+  files = readdir(calibdir(d))
+  println(files)
+  mdffiles = files[endswith.(files,".mdf")]
+  fileList = calibdir(d).*"/".*mdffiles
+  A = generateSFDatabase(fileList)
+  return A
+end
 
 ####
 
@@ -473,9 +485,9 @@ function getNewCalibNum(d::MDFDatasetStore)
   if length(files) > 0
     for i=1:length(files)
       pref, ext = splitext(files[i])
-      num = parse(Int64, pref) + 1
-      if num>calibNum
-        calibNum = num
+      num_ = tryparse(Int64, pref)
+      if !isnull(num_) && get(num_) > calibNum
+        calibNum = get(num_) + 1
       end
     end
   end
