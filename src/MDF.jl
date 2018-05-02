@@ -393,9 +393,10 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
     #Cubic does not work for complex numbers
     origIndex = measFramePermutation(f)
     M = size(fgdata,1)
-    N = M + size(bgdata,1)
+    K = size(bgdata,1)
+    N = M + K
     for m=1:M
-      alpha = (origIndex[m]-1)/(N-1)*(M-1)+1
+      alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
       for k=1:size(fgdata,2)
         fgdata[m,k] -= bgdataInterp[alpha,k]
       end

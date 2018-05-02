@@ -178,9 +178,10 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
         origIndex = idx[frames]
         M = size(data,4)
-        N = M + size(dataBG,4)
+        K = size(dataBG,4)
+        N = M + K
         for m=1:M
-          alpha = (origIndex[m]-1)/(N-1)*(M-1)+1
+          alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
           for k1=1:size(data,1)
             for k2=1:size(data,2)
               for k3=1:size(data,3)
