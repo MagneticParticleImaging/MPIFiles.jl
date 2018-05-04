@@ -195,7 +195,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
       end
     end
 
-    if !sortFrames
+    if sortFrames
       if calibIsMeanderingGrid(f)
         data[:,:,:,:] = data[:,:,:,meanderingFramePermutation(f)]
       end
