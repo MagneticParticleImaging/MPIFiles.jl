@@ -350,7 +350,7 @@ function _innerGenerateSFDatabase(A,i,sf)
   A[i,2] = squeeze(acqGradient(b))[3]
   df = vec(dfStrength(b)).*1e3
   A[i,3:5] = 0.0
-  for l=1:length(df)
+  for l=1:min(length(df),3)
     A[i,l+2] = df[l]
   end
   N = calibSize(b)
