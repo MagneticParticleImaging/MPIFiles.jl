@@ -12,24 +12,24 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
 # The following are base types describing
 # the dataset store at a certain level
 
-type Study
+struct Study
   path::String
   name::String
   subject::String
-  date
+  date::String
 end
 
 id(s::Study) = s.name
 
 # might not be so clever to use explicity type fields here
 # maybe better a dict
-type Experiment
+struct Experiment
   path::String
   num::Int64
   name::String
   numFrames::Int64
-  dfFov::Vector
-  sfGradient::Vector
+  dfFov::Vector{Float64}
+  sfGradient::Vector{Float64}
   numAverages::Int64
   operator::String
   # more ...
@@ -217,7 +217,7 @@ function getStudy(d::MDFDatasetStore, studyfolder::String)
   studypath = joinpath( studydir(d), studyfolder)
   name = studyfolder
   subject = ""
-  date = split(string(Dates.unix2datetime(stat(studypath).mtime)),"T")[1]
+  date = string(split(string(Dates.unix2datetime(stat(studypath).mtime)),"T")[1])
   study = Study(studypath, name, subject, date )
   return study
 end
@@ -332,13 +332,13 @@ function generateSFDatabase(fileList::Vector)
   A[1,15] = "StartDate"
   A[1,16] = "MeasurementTime"
 
- p = Progress(length(fileList), 1, "Generating SF Database...")
+ #p = Progress(length(fileList), 1, "Generating SF Database...")
 
   for (k,sf) in enumerate(fileList)
     i=k+1
     _innerGenerateSFDatabase(A,i,sf)
 
-    next!(p)
+    #next!(p)
   end
   return A
 end
