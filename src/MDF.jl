@@ -57,7 +57,7 @@ function h5readornull(filename, parameter)
   end
 end
 
-function h5read(filename, parameter, default)
+function h5read_(filename, parameter, default)
   if h5exists(filename, parameter)
     return h5read(filename, parameter)
   else
@@ -74,7 +74,7 @@ end
 
 function getindex(f::MDFFile, parameter, default)
   if !haskey(f.param_cache,parameter)
-    f.param_cache[parameter] = h5read(f.filename, parameter, default)
+    f.param_cache[parameter] = h5read_(f.filename, parameter, default)
   end
   return f.param_cache[parameter]
 end
