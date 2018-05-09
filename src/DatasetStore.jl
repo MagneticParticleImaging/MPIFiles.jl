@@ -347,7 +347,7 @@ function _innerGenerateSFDatabase(A,i,sf)
   #b = BrukerFileFast(sf)
   b = MPIFile(sf)
   A[i,1] = experimentName(b)
-  A[i,2] = squeeze(acqGradient(b))[3]
+  A[i,2] = maximum(acqGradient(b))
   df = vec(dfStrength(b)).*1e3
   A[i,3:5] = 0.0
   for l=1:min(length(df),3)
