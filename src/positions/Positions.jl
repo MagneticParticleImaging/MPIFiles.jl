@@ -124,8 +124,8 @@ function getindex(grid::ChebyshevGridPositions, i::Integer)
 end
 
 # Meander regular grid positions
-type MeanderingGridPositions <: GridPositions
-  grid::GridPositions
+type MeanderingGridPositions{T} <: GridPositions where {T<:GridPositions}
+  grid::T
 end
 
 function MeanderingGridPositions(file::HDF5File)
@@ -170,17 +170,10 @@ function getPermutation(grid::MeanderingGridPositions)
   return vec(perm)
 end
 
-#TODO Meander + BG
-# capsulate objects of type GridPositions and return to ParkPosition every so often
-#type BreakpointGridPositions{T} <: Positions
-#  grid::Positions
-#  breakpointIndices::Vector{Int64}
-#  breakpointPosition::Vector{T}
-#end
-type BreakpointGridPositions{T} <: GridPositions
-  grid::GridPositions
+type BreakpointGridPositions{T,S} <: GridPositions where {T<:GridPositions}
+  grid::T
   breakpointIndices::Vector{Int64}
-  breakpointPosition::Vector{T}
+  breakpointPosition::Vector{S}
 end
 
 function BreakpointGridPositions(file::HDF5File)
