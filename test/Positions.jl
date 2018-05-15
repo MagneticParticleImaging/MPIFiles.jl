@@ -24,7 +24,7 @@
     @test fieldOfViewCenter(caG1) == ctr
   end
   for (i,pos) in caG
-    @test posToLinIdx(c,pos) == i
+    @test posToLinIdx(caG,pos) == i
   end
 
   chG = ChebyshevGridPositions(shp,fov,ctr)
