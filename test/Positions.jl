@@ -23,7 +23,7 @@
     @test fieldOfView(caG1) == fov
     @test fieldOfViewCenter(caG1) == ctr
   end
-  for (i,pos) in caG
+  for (i,pos) in enumerate(caG)
     @test posToLinIdx(caG,pos) == i
   end
 

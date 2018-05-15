@@ -8,6 +8,7 @@ using ProgressMeter
 using Graphics: @mustimplement
 @reexport using ImageAxes
 @reexport using ImageMetadata
+@reexport using Unitful
 using Interpolations
 
 import Base: ndims, time, show, getindex
