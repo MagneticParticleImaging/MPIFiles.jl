@@ -8,7 +8,7 @@ export Positions, GridPositions, CartesianGridPositions, ChebyshevGridPositions,
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
-
+export idxToPos, posToIdx, posToLinIdx, spacing
 
 @compat abstract type Positions end
 @compat abstract type GridPositions<:Positions end
@@ -50,6 +50,21 @@ function CartesianGridPositions(file::HDF5File)
   return CartesianGridPositions(shape,fov,center)
 end
 
+function CartesianGridPositions(positions::Vector{T}) where T<:CartesianGridPositions
+  posMin = positions[1].center .- 0.5*positions[1].fov
+  posMax = positions[1].center .+ 0.5*positions[1].fov
+  for d=1:length(posMin)
+    for position in positions
+      posMin[d] = min(posMin[d], position.center[d] - 0.5*position.fov[d])
+      posMax[d] = max(posMax[d], position.center[d] + 0.5*position.fov[d])
+    end
+  end
+  center = posMin .+ posMax
+  fov = posMax .- posMin
+  shape = round.(Int64,fov./spacing(positions[1]))
+  return CartesianGridPositions(shape, fov, center)
+end
+
 function write(file::HDF5File, positions::CartesianGridPositions)
   write(file,"/positionsType", "CartesianGridPositions")
   write(file, "/positionsShape", positions.shape)
@@ -64,6 +79,18 @@ function getindex(grid::CartesianGridPositions, i::Integer)
     idx = collect(ind2sub(tuple(shape(grid)...), i))
     return ((-shape(grid).+(2.*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
   end
+end
+
+function getindex(grid::CartesianGridPositions, idx::Vector{T}) where T<:AbstractFloat
+  return 0.5.*fieldOfView(grid).*(-1 + (2.*idx .- 1) ./ shape(grid)) .+ fieldOfViewCenter(grid)
+end
+
+function posToIdx(grid::CartesianGridPositions,pos::Vector)
+  return round.(Int64, 0.5*(shape(grid).* ((pos .- fieldOfViewCenter(grid)) ./ ( 0.5.*fieldOfView(grid) ) + 1) + 1))
+end
+
+function posToLinIdx(grid::CartesianGridPositions,pos::Vector)
+  return sub2ind(tuple(shape(grid)...), posToIdx(grid,pos)...)
 end
 
 # Chebyshev Grid
@@ -160,7 +187,7 @@ function BreakpointGridPositions(file::HDF5File)
   typ = read(file, "/positionsType")
   breakpointIndices = read(file, "/positionsBreakpoint")
   breakpointPosition = read(file, "/indicesBreakpoint")
-  
+
   if typ == "MeanderingGridPositions"
     grid = MeanderingGridPositions(file)
     return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
@@ -170,7 +197,7 @@ function BreakpointGridPositions(file::HDF5File)
   elseif typ == "ChebyshevGridPositions"
     grid = ChebyshevGridPositions(file)
     return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
-  end 
+  end
 end
 
 function write(file::HDF5File, positions::BreakpointGridPositions)
@@ -190,15 +217,15 @@ end
 function getindex(grid::BreakpointGridPositions, i::Integer)
 
   bgind=grid.breakpointIndices
-  
-  if i>(length(grid.grid)+length(bgind)) || i<1 
+
+  if i>(length(grid.grid)+length(bgind)) || i<1
     return throw(BoundsError(grid,i))
   elseif any(i.==bgind)
     return grid.breakpointPosition
   else
     pastBgind=sum(i.>bgind)
     return grid.grid[i-pastBgind]
-  end 
+  end
 end
 
 # Uniform random distributed positions
@@ -323,6 +350,7 @@ fieldOfViewCenter(grid::UniformRandomPositions) = grid.domain.center
 fieldOfViewCenter(mgrid::MeanderingGridPositions) = fieldOfViewCenter(mgrid.grid)
 fieldOfViewCenter(bgrid::BreakpointGridPositions) = fieldOfViewCenter(bgrid.grid)
 
+spacing(grid::GridPositions) = grid.fov ./ grid.shape
 
 type SphericalTDesign{S,V} <: Positions where {S,V<:Unitful.Length}
   T::Unsigned

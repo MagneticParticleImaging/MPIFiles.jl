@@ -23,7 +23,9 @@
     @test fieldOfView(caG1) == fov
     @test fieldOfViewCenter(caG1) == ctr
   end
-
+  for (i,pos) in caG
+    @test posToLinIdx(c,pos) == i
+  end
 
   chG = ChebyshevGridPositions(shp,fov,ctr)
   @test shape(chG) == shp
@@ -212,7 +214,7 @@
     @test typeof(aG3) <: ArbitraryPositions
     @test aG3.positions == aG2.positions
   end
-    
+
   # the same seed yields the same sequence of points
   seed = UInt32(42)
   N = UInt(3)
