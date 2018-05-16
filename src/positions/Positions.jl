@@ -41,7 +41,10 @@ type CartesianGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
   shape::Vector{Int}
   fov::Vector{S}
   center::Vector{T}
+  sign::Vector{Int}
 end
+
+CartesianGridPositions(shape, fov, center) = CartesianGridPositions(shape, fov, center, ones(Int,length(shape)))
 
 function CartesianGridPositions(file::HDF5File)
   shape = read(file, "/positionsShape")
@@ -77,16 +80,32 @@ function getindex(grid::CartesianGridPositions, i::Integer)
     return throw(BoundsError(grid,i))
   else
     idx = collect(ind2sub(tuple(shape(grid)...), i))
+    for d=1:length(idx)
+      if grid.sign[d] == -1
+        idx[d] = grid.shape[d]-idx[d]+1
+      end
+    end
     return ((-shape(grid).+(2.*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
   end
 end
 
 function getindex(grid::CartesianGridPositions, idx::Vector{T}) where T<:AbstractFloat
+  for d=1:length(idx)
+    if grid.sign[d] == -1
+      idx[d] = grid.shape[d]-idx[d]+1
+    end
+  end
   return 0.5.*fieldOfView(grid).*(-1 + (2.*idx .- 1) ./ shape(grid)) .+ fieldOfViewCenter(grid)
 end
 
 function posToIdx(grid::CartesianGridPositions,pos::Vector)
-  return round.(Int64, 0.5*(shape(grid).* ((pos .- fieldOfViewCenter(grid)) ./ ( 0.5.*fieldOfView(grid) ) + 1) + 1))
+  idx = round.(Int64, 0.5*(shape(grid).* ((pos .- fieldOfViewCenter(grid)) ./ ( 0.5.*fieldOfView(grid) ) + 1) + 1))
+  for d=1:length(idx)
+    if grid.sign[d] == -1
+      idx[d] = grid.shape[d]-idx[d]+1
+    end
+  end
+  return idx
 end
 
 function posToLinIdx(grid::CartesianGridPositions,pos::Vector)

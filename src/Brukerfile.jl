@@ -26,6 +26,7 @@ type BrukerFileMeas <: BrukerFile
   recoRead
   methrecoRead
   visuparsRead
+  mpiParRead
   maxEntriesAcqp
 end
 
@@ -39,6 +40,7 @@ type BrukerFileCalib <: BrukerFile
   recoRead
   methrecoRead
   visuparsRead
+  mpiParRead
   maxEntriesAcqp
 end
 
@@ -50,10 +52,10 @@ function (::Type{BrukerFile})(path::String; isCalib=_iscalib(path), maxEntriesAc
 
   if isCalib
     return BrukerFileCalib(path, params, paramsProc, false, false, false,
-               false, false, false, maxEntriesAcqp)
+               false, false, false, false, maxEntriesAcqp)
   else
     return BrukerFileMeas(path, params, paramsProc, false, false, false,
-               false, false, false, maxEntriesAcqp)
+               false, false, false, false, maxEntriesAcqp)
   end
 end
 
@@ -61,7 +63,7 @@ function (::Type{BrukerFile})()
   params = JcampdxFile()
   paramsProc = JcampdxFile()
   return BrukerFileMeas("", params, paramsProc, false, false, false,
-             false, false, false, 1)
+             false, false, false, false, 1)
 end
 
 BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400)
@@ -82,6 +84,13 @@ function getindex(b::BrukerFile, parameter)#::String
     if isfile(visupath)
       read(b.params, visupath, maxEntries=55)
       b.visupars_globalRead = true
+    end
+  elseif !b.mpiParRead && length(parameter) >= 6 &&
+         parameter[1:6] == "CONFIG"
+    mpiParPath = joinpath(b.path, "mpi.par")
+    if isfile(mpiParPath)
+      read(b.params, mpiParPath)
+      b.mpiParRead = true
     end
   end
 
@@ -211,16 +220,22 @@ acqGradient(b::BrukerFile) = repeat( diagm([-0.5;-0.5;1.0]).*
       parse(Float64,b["ACQ_MPI_selection_field_gradient"]), inner=(1,1,1,acqNumPeriodsPerFrame(b)))
 
 function acqOffsetField(b::BrukerFile) #TODO NOT correct
-  if b["MPI_FocusFieldX"] == ""
+  if b["MPI_FocusFieldX"] != ""
+    off = repeat(1e-3*cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
+                 [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
+                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,acqNumPeriodsPerPatch(b)))
+  elseif b["CONFIG_MPI_FF_calibration"] != ""
+    voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
+    voltage = reshape(voltage,4,:)
+    voltage = repeat(voltage,inner=(1,acqNumPeriodsPerPatch(b)))
+    calibFac = -1.0/100000./parse.(Float64,b["CONFIG_MPI_FF_calibration"])
+    off = Float64[voltage[d,j]*calibFac[d-1] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
+  else # legacy
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
     voltage = repeat(voltage,inner=(1,acqNumPeriodsPerPatch(b)))
     calibFac = [2.5/49.45, 0.5*(-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
     off = Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
-  else
-    off = repeat(1e-3*cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
-                 [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
-                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,acqNumPeriodsPerPatch(b)))
   end
   return reshape(off, 3, 1, :)
 end
