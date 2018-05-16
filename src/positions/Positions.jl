@@ -59,7 +59,7 @@ function CartesianGridPositions(positions::Vector{T}) where T<:CartesianGridPosi
       posMax[d] = max(posMax[d], position.center[d] + 0.5*position.fov[d])
     end
   end
-  center = posMin .+ posMax
+  center = (posMin .+ posMax)/2
   fov = posMax .- posMin
   shape = round.(Int64,fov./spacing(positions[1]))
   return CartesianGridPositions(shape, fov, center)
