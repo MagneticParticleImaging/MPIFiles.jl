@@ -8,7 +8,7 @@ export Positions, GridPositions, CartesianGridPositions, ChebyshevGridPositions,
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
-export idxToPos, posToIdx, posToLinIdx, spacing
+export idxToPos, posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid
 
 @compat abstract type Positions end
 @compat abstract type GridPositions<:Positions end
@@ -56,16 +56,40 @@ end
 function CartesianGridPositions(positions::Vector{T}) where T<:CartesianGridPositions
   posMin = positions[1].center .- 0.5*positions[1].fov
   posMax = positions[1].center .+ 0.5*positions[1].fov
-  for d=1:length(posMin)
-    for position in positions
+  minSpacing = spacing(positions[1])
+  for position in positions
+    sp = spacing(position)
+    for d=1:length(posMin)
       posMin[d] = min(posMin[d], position.center[d] - 0.5*position.fov[d])
       posMax[d] = max(posMax[d], position.center[d] + 0.5*position.fov[d])
+      minSpacing[d] = min(minSpacing[d],sp[d])
     end
   end
   center = (posMin .+ posMax)/2
   fov = posMax .- posMin
-  shape = round.(Int64,fov./spacing(positions[1]))
+  shape = round.(Int64,fov./minSpacing)
   return CartesianGridPositions(shape, fov, center)
+end
+
+function isSubgrid(grid::CartesianGridPositions, subgrid::CartesianGridPositions)
+  if any(fieldOfView(grid) .- fieldOfView(subgrid) .< 0) ||
+     any(spacing(grid) .!= spacing(subgrid))
+    return false
+  else
+    centerPosIdx = posToIdxFloat(grid,subgrid[ones(Int,length(subgrid.shape))])
+    return all(isapprox.(centerPosIdx, round.(Int,centerPosIdx) ,rtol=1e-5))
+  end
+end
+
+function deriveSubgrid(grid::CartesianGridPositions, subgrid::CartesianGridPositions)
+  minPos = subgrid[ ones(Int,length(subgrid.shape)) ]
+  maxPos = subgrid[ subgrid.shape ]
+  minIdx = posToIdx(grid,minPos)
+  maxIdx = posToIdx(grid,maxPos)
+  shp = maxIdx-minIdx+ones(Int,length(subgrid.shape))
+  center = (grid[minIdx].+grid[maxIdx])/2
+  fov = shp.*spacing(grid)
+  return CartesianGridPositions(shp,fov,center)
 end
 
 function write(file::HDF5File, positions::CartesianGridPositions)
@@ -89,7 +113,7 @@ function getindex(grid::CartesianGridPositions, i::Integer)
   end
 end
 
-function getindex(grid::CartesianGridPositions, idx::Vector{T}) where T<:AbstractFloat
+function getindex(grid::CartesianGridPositions, idx::Vector{T}) where T<:Number
   for d=1:length(idx)
     if grid.sign[d] == -1
       idx[d] = grid.shape[d]-idx[d]+1
@@ -98,8 +122,13 @@ function getindex(grid::CartesianGridPositions, idx::Vector{T}) where T<:Abstrac
   return 0.5.*fieldOfView(grid).*(-1 + (2.*idx .- 1) ./ shape(grid)) .+ fieldOfViewCenter(grid)
 end
 
+function posToIdxFloat(grid::CartesianGridPositions,pos::Vector)
+  idx = 0.5*(shape(grid).* ((pos .- fieldOfViewCenter(grid)) ./ ( 0.5.*fieldOfView(grid) ) + 1) + 1)
+  return idx
+end
+
 function posToIdx(grid::CartesianGridPositions,pos::Vector)
-  idx = round.(Int64, 0.5*(shape(grid).* ((pos .- fieldOfViewCenter(grid)) ./ ( 0.5.*fieldOfView(grid) ) + 1) + 1))
+  idx = round.(Int64, posToIdxFloat(grid,pos))
   for d=1:length(idx)
     if grid.sign[d] == -1
       idx[d] = grid.shape[d]-idx[d]+1
