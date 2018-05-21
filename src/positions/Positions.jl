@@ -68,6 +68,7 @@ function CartesianGridPositions(positions::Vector{T}) where T<:CartesianGridPosi
   center = (posMin .+ posMax)/2
   fov = posMax .- posMin
   shape = round.(Int64,fov./minSpacing)
+  fov = shape .* minSpacing
   return CartesianGridPositions(shape, fov, center)
 end
 
@@ -87,6 +88,7 @@ function deriveSubgrid(grid::CartesianGridPositions, subgrid::CartesianGridPosit
   minIdx = posToIdx(grid,minPos)
   maxIdx = posToIdx(grid,maxPos)
   shp = maxIdx-minIdx+ones(Int,length(subgrid.shape))
+  #shp = shape(subgrid)
   center = (grid[minIdx].+grid[maxIdx])/2
   fov = shp.*spacing(grid)
   return CartesianGridPositions(shp,fov,center)
