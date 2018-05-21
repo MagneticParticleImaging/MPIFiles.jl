@@ -1,4 +1,5 @@
 export MultiMPIFile
+import Base: getindex, start, next, done, length
 
 type MultiMPIFile <: MPIFile
   files::Vector{MPIFile}
@@ -7,7 +8,17 @@ type MultiMPIFile <: MPIFile
     return new([MPIFile(f) for f in filenames])
   end
 
+  function MultiMPIFile(f::Vector{T}) where T<:MPIFile
+    return new(f)
+  end
+
 end
+
+getindex(f::MultiMPIFile, index::Integer) = f.files[index]
+start(f::MultiMPIFile) = 1
+length(f::MultiMPIFile) = length(f.files)
+next(f::MultiMPIFile,state) = (f[state],state+1)
+done(f::MultiMPIFile,state) = state > length(f.files)
 
 function Base.show(io::IO, f::MultiMPIFile)
   print(io, "Multi MPI File: ", f.files)
