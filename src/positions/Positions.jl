@@ -87,9 +87,11 @@ function deriveSubgrid(grid::CartesianGridPositions, subgrid::CartesianGridPosit
   maxPos = subgrid[ subgrid.shape ]
   minIdx = posToIdx(grid,minPos)
   maxIdx = posToIdx(grid,maxPos)
-  shp = maxIdx-minIdx+ones(Int,length(subgrid.shape))
-  #shp = shape(subgrid)
-  center = (grid[minIdx].+grid[maxIdx])/2
+  #shp = maxIdx-minIdx+ones(Int,length(subgrid.shape))
+  shp = shape(subgrid)
+  #center = (grid[minIdx].+grid[maxIdx])/2
+  # TODO round properly
+  center = (grid[minIdx].+grid[minIdx.+shp.-1])/2
   fov = shp.*spacing(grid)
   return CartesianGridPositions(shp,fov,center)
 end
