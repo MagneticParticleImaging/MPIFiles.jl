@@ -2,7 +2,7 @@ using Unitful, HDF5
 
 import Base: getindex, length, convert, start, done, next, write
 
-export Positions, GridPositions, CartesianGridPositions, ChebyshevGridPositions,
+export Positions, GridPositions, RegularGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions,
        SphericalTDesign, BreakpointGridPositions
 export SpatialDomain, AxisAlignedBox, Ball
@@ -15,8 +15,8 @@ export idxToPos, posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid
 
 function Positions(file::HDF5File)
   typ = read(file, "/positionsType")
-  if typ == "CartesianGridPositions"
-    positions = CartesianGridPositions(file)
+  if typ == "RegularGridPositions"
+    positions = RegularGridPositions(file)
   elseif typ == "ChebyshevGridPositions"
     positions = ChebyshevGridPositions(file)
   elseif typ == "SphericalTDesign"
@@ -37,23 +37,23 @@ function Positions(file::HDF5File)
 end
 
 # Cartesian grid
-type CartesianGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
+type RegularGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
   shape::Vector{Int}
   fov::Vector{S}
   center::Vector{T}
   sign::Vector{Int}
 end
 
-CartesianGridPositions(shape, fov, center) = CartesianGridPositions(shape, fov, center, ones(Int,length(shape)))
+RegularGridPositions(shape, fov, center) = RegularGridPositions(shape, fov, center, ones(Int,length(shape)))
 
-function CartesianGridPositions(file::HDF5File)
+function RegularGridPositions(file::HDF5File)
   shape = read(file, "/positionsShape")
   fov = read(file, "/positionsFov")*u"m"
   center = read(file, "/positionsCenter")*u"m"
-  return CartesianGridPositions(shape,fov,center)
+  return RegularGridPositions(shape,fov,center)
 end
 
-function CartesianGridPositions(positions::Vector{T}) where T<:CartesianGridPositions
+function RegularGridPositions(positions::Vector{T}) where T<:RegularGridPositions
   posMin = positions[1].center .- 0.5*positions[1].fov
   posMax = positions[1].center .+ 0.5*positions[1].fov
   minSpacing = spacing(positions[1])
@@ -69,10 +69,10 @@ function CartesianGridPositions(positions::Vector{T}) where T<:CartesianGridPosi
   fov = posMax .- posMin
   shape = round.(Int64,fov./minSpacing)
   fov = shape .* minSpacing
-  return CartesianGridPositions(shape, fov, center)
+  return RegularGridPositions(shape, fov, center)
 end
 
-function isSubgrid(grid::CartesianGridPositions, subgrid::CartesianGridPositions)
+function isSubgrid(grid::RegularGridPositions, subgrid::RegularGridPositions)
   if any(fieldOfView(grid) .- fieldOfView(subgrid) .< 0) ||
      any(spacing(grid) .!= spacing(subgrid))
     return false
@@ -82,7 +82,7 @@ function isSubgrid(grid::CartesianGridPositions, subgrid::CartesianGridPositions
   end
 end
 
-function deriveSubgrid(grid::CartesianGridPositions, subgrid::CartesianGridPositions)
+function deriveSubgrid(grid::RegularGridPositions, subgrid::RegularGridPositions)
   minPos = subgrid[ ones(Int,length(subgrid.shape)) ]
   maxPos = subgrid[ subgrid.shape ]
   minIdx = posToIdx(grid,minPos)
@@ -93,17 +93,17 @@ function deriveSubgrid(grid::CartesianGridPositions, subgrid::CartesianGridPosit
   # TODO round properly
   center = (grid[minIdx].+grid[minIdx.+shp.-1])/2
   fov = shp.*spacing(grid)
-  return CartesianGridPositions(shp,fov,center)
+  return RegularGridPositions(shp,fov,center)
 end
 
-function write(file::HDF5File, positions::CartesianGridPositions)
-  write(file,"/positionsType", "CartesianGridPositions")
+function write(file::HDF5File, positions::RegularGridPositions)
+  write(file,"/positionsType", "RegularGridPositions")
   write(file, "/positionsShape", positions.shape)
   write(file, "/positionsFov", Float64.(ustrip.(uconvert.(u"m", positions.fov))) )
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(u"m", positions.center))) )
 end
 
-function getindex(grid::CartesianGridPositions, i::Integer)
+function getindex(grid::RegularGridPositions, i::Integer)
   if i>length(grid) || i<1
     return throw(BoundsError(grid,i))
   else
@@ -117,7 +117,7 @@ function getindex(grid::CartesianGridPositions, i::Integer)
   end
 end
 
-function getindex(grid::CartesianGridPositions, idx::Vector{T}) where T<:Number
+function getindex(grid::RegularGridPositions, idx::Vector{T}) where T<:Number
   for d=1:length(idx)
     if grid.sign[d] == -1
       idx[d] = grid.shape[d]-idx[d]+1
@@ -126,12 +126,12 @@ function getindex(grid::CartesianGridPositions, idx::Vector{T}) where T<:Number
   return 0.5.*fieldOfView(grid).*(-1 + (2.*idx .- 1) ./ shape(grid)) .+ fieldOfViewCenter(grid)
 end
 
-function posToIdxFloat(grid::CartesianGridPositions,pos::Vector)
+function posToIdxFloat(grid::RegularGridPositions,pos::Vector)
   idx = 0.5*(shape(grid).* ((pos .- fieldOfViewCenter(grid)) ./ ( 0.5.*fieldOfView(grid) ) + 1) + 1)
   return idx
 end
 
-function posToIdx(grid::CartesianGridPositions,pos::Vector)
+function posToIdx(grid::RegularGridPositions,pos::Vector)
   idx = round.(Int64, posToIdxFloat(grid,pos))
   for d=1:length(idx)
     if grid.sign[d] == -1
@@ -141,7 +141,7 @@ function posToIdx(grid::CartesianGridPositions,pos::Vector)
   return idx
 end
 
-function posToLinIdx(grid::CartesianGridPositions,pos::Vector)
+function posToLinIdx(grid::RegularGridPositions,pos::Vector)
   return sub2ind(tuple(shape(grid)...), posToIdx(grid,pos)...)
 end
 
@@ -182,8 +182,8 @@ end
 
 function MeanderingGridPositions(file::HDF5File)
   typ = read(file, "/positionsType")
-  if typ == "CartesianGridPositions"
-    grid = CartesianGridPositions(file)
+  if typ == "RegularGridPositions"
+    grid = RegularGridPositions(file)
     return MeanderingGridPositions(grid)
   elseif typ == "ChebyshevGridPositions"
     grid = ChebyshevGridPositions(file)
@@ -236,8 +236,8 @@ function BreakpointGridPositions(file::HDF5File)
   if typ == "MeanderingGridPositions"
     grid = MeanderingGridPositions(file)
     return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
-  elseif typ == "CartesianGridPositions"
-    grid = CartesianGridPositions(file)
+  elseif typ == "RegularGridPositions"
+    grid = RegularGridPositions(file)
     return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
   elseif typ == "ChebyshevGridPositions"
     grid = ChebyshevGridPositions(file)

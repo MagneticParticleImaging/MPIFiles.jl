@@ -2,7 +2,7 @@
   shp = [3,3,3]
   fov = [3.0,3.0,3.0]u"mm"
   ctr = [0,0,0]u"mm"
-  caG = CartesianGridPositions(shp,fov,ctr)
+  caG = RegularGridPositions(shp,fov,ctr)
   @test shape(caG) == shp
   @test fieldOfView(caG) == fov
   @test fieldOfViewCenter(caG) == ctr
@@ -18,7 +18,7 @@
   end
   h5open("Positions.h5", "r") do file
     caG1 = Positions(file)
-    @test typeof(caG1) <: CartesianGridPositions
+    @test typeof(caG1) <: RegularGridPositions
     @test shape(caG1) == shp
     @test fieldOfView(caG1) == fov
     @test fieldOfViewCenter(caG1) == ctr

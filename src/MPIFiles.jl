@@ -390,7 +390,7 @@ include("DatasetStore.jl")
 
 include("positions/Positions.jl")
 ## interface of Positions submodule
-export Positions, CartesianGridPositions, ChebyshevGridPositions,
+export Positions, RegularGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SphericalTDesign
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
