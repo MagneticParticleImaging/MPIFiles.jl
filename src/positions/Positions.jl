@@ -83,8 +83,16 @@ function isSubgrid(grid::RegularGridPositions, subgrid::RegularGridPositions)
 end
 
 function deriveSubgrid(grid::RegularGridPositions, subgrid::RegularGridPositions)
-  minPos = subgrid[ ones(Int,length(subgrid.shape)) ]
-  maxPos = subgrid[ subgrid.shape ]
+  minI = ones(Int,length(subgrid.shape))
+  maxI = copy(subgrid.shape)
+  for d=1:length(minI)
+    if grid.sign[d] == -1
+      minI[d] = grid.shape[d]-minI[d]+1
+      maxI[d] = grid.shape[d]-maxI[d]+1
+    end
+  end  
+  minPos = subgrid[ minI ]
+  maxPos = subgrid[ maxI ]
   minIdx = posToIdx(grid,minPos)
   maxIdx = posToIdx(grid,maxPos)
   #shp = maxIdx-minIdx+ones(Int,length(subgrid.shape))
