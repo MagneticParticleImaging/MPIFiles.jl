@@ -93,7 +93,7 @@ function deriveSubgrid(grid::RegularGridPositions, subgrid::RegularGridPositions
   # TODO round properly
   center = (grid[minIdx].+grid[minIdx.+shp.-1])/2
   fov = shp.*spacing(grid)
-  return RegularGridPositions(shp,fov,center)
+  return RegularGridPositions(shp,fov,center,subgrid.sign)
 end
 
 function write(file::HDF5File, positions::RegularGridPositions)
