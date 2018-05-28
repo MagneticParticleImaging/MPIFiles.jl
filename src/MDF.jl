@@ -281,9 +281,9 @@ end
 
 function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
-  if !h5exists(f.filename, "/measurement")
-    return nothing
-  end
+  #if !h5exists(f.filename, "/measurement")
+  #  return nothing
+  #end
   if f.mmap_measData == nothing
     h5open(f.filename,"r") do file
       parameter = "/measurement/data"
