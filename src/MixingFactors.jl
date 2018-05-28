@@ -10,7 +10,7 @@ which k*F = mx*fx + my*fy* + mz*fz, where F is the measurement cycle frequency
 and fx, fy, and fz are the excitation frequencies for the x,y, and z channel.
 """
 function mixFactorToFreq(b::MPIFile,mx,my,mz=0)
-  freq = rxBandwidth(b)/dfDivider(b)
+  freq = rxBandwidth(b)./dfDivider(b)
   T = dfCycle(b)
   #mask= collect( (MPILib.dfStrength(b) .>= 0.0000001) .* MPILib.selectedChannels(b) )
   mask = collect((dfStrength(b) .>= 0.0000001))
