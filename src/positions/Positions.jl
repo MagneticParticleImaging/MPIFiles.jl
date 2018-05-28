@@ -1,6 +1,6 @@
 using Unitful, HDF5
 
-import Base: getindex, length, convert, start, done, next, write
+import Base: getindex, length, convert, start, done, next, write, range
 
 export Positions, GridPositions, RegularGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions,
@@ -9,6 +9,7 @@ export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
 export idxToPos, posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid
+
 
 @compat abstract type Positions end
 @compat abstract type GridPositions<:Positions end
@@ -44,6 +45,15 @@ type RegularGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
   sign::Vector{Int}
 end
 
+function range(grid::RegularGridPositions, dim::Int)
+  if grid.shape[dim] > 1
+    sp = spacing(grid)
+    return range(grid.center[dim] - grid.fov[dim]/2 + sp[dim]/2, sp[dim], grid.shape[dim])
+  else
+    return 1:1
+  end
+end
+
 RegularGridPositions(shape, fov, center) = RegularGridPositions(shape, fov, center, ones(Int,length(shape)))
 
 function RegularGridPositions(file::HDF5File)
@@ -53,6 +63,7 @@ function RegularGridPositions(file::HDF5File)
   return RegularGridPositions(shape,fov,center)
 end
 
+# Find a joint grid
 function RegularGridPositions(positions::Vector{T}) where T<:RegularGridPositions
   posMin = positions[1].center .- 0.5*positions[1].fov
   posMax = positions[1].center .+ 0.5*positions[1].fov
@@ -90,10 +101,10 @@ function deriveSubgrid(grid::RegularGridPositions, subgrid::RegularGridPositions
       minI[d] = subgrid.shape[d]-minI[d]+1
       maxI[d] = subgrid.shape[d]-maxI[d]+1
     end
-  end  
+  end
   minPos = subgrid[ minI ]
   maxPos = subgrid[ maxI ]
-  
+
   minIdx = posToIdx(grid,minPos)
   maxIdx = posToIdx(grid,maxPos)
   #shp = maxIdx-minIdx+ones(Int,length(subgrid.shape))
@@ -505,3 +516,7 @@ length(bgrid::BreakpointGridPositions) = length(bgrid.grid)+length(bgrid.breakpo
 start(grid::Positions) = 1
 next(grid::Positions,state) = (grid[state],state+1)
 done(grid::Positions,state) = state > length(grid)
+
+
+
+include("Interpolation.jl")
