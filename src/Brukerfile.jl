@@ -1,6 +1,6 @@
 include("Jcampdx.jl")
 
-export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8
+export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8, sfPath
 
 function latin1toutf8(str::AbstractString)
   buff = Char[]
@@ -390,7 +390,7 @@ function measFramePermutation(b::BrukerFileCalib)
   return fullFramePermutation(bMeas)
 end
 
-fullFramePermutation(f::BrukerFile) = fullFramePermutation(f, true) 
+fullFramePermutation(f::BrukerFile) = fullFramePermutation(f, true)
 
 measIsSpectralLeakageCorrected(b::BrukerFile) = get(b.params, "ACQ_MPI_spectral_cleaningl", "No") != "No"
 measIsFrequencySelection(b::BrukerFile) = false
