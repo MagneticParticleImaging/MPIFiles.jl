@@ -2,7 +2,7 @@ export filterFrequencies
 
 function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
                maxFreq=rxBandwidth(f), recChannels=1:rxNumChannels(f),
-               sortBySNR=false, numUsedFreqs=-1, stepsize=1) #, maxMixingOrder=-1)
+               sortBySNR=false, numUsedFreqs=-1, stepsize=1, maxMixingOrder=-1)
 
   nFreq = rxNumFrequencies(f)
   nReceivers = rxNumChannels(f)
@@ -22,14 +22,14 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
     freqMask[(maxIdx+1):end,:,:] = false
   end
 
-  # if maxMixingOrder > 0
-  #    MoList = MixingOrder(f)
-  #    for l=1:length(MoList[:,1])
-  #      if MoList[l,5] > maxMixingOrder
-  #        freqMask[(l-1)*stepsize(f)+1,recChannels] = false
-  #      end
-  #    end
-  # end
+  if maxMixingOrder > 0
+      mf = mixingFactors(f)
+      for l=1:size(mf,1)
+        if mf[l,4] > maxMixingOrder || mf[l,4] > maxMixingOrder
+          freqMask[(l-1)*stepsize(f)+1,recChannels] = false
+        end
+      end
+  end
 
   if SNRThresh > 0 || numUsedFreqs >0 || sortBySNR
     SNR = calibSNR(f)
@@ -72,7 +72,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   if sortBySNR
     SNR = vec(SNR[1:stepsize:nFreq,:,:])
 
-    freq = freq[flipud(sortperm(SNR[freq]))]
+    freq = freq[flipdim(sortperm(SNR[freq]),1)]
   end
 
   freq
