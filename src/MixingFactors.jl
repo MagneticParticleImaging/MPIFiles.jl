@@ -43,22 +43,32 @@ mixing coefficients `mx`, `my`, and `mz` are listed.
 """
 function mixingFactors(b::MPIFile)
   freqNumber = rxNumFrequencies(b)
-  freq = rxBandwidth(b)./dfDivider(b)
-  T = dfCycle(b)
-  mask = collect((dfStrength(b) .>= 0.0000001))
-  mxyz = freq.*T #number of osscilations of the x,y,z df during one cycle
-  mxyz = round.(Int64,mxyz.*mask)
-  n0 = 51
+  #freq = rxBandwidth(b)./dfDivider(b)
+  #T = dfCycle(b)
+  mask = collect((dfStrength(b)[1,:,1] .>= 0.0000001))
+  #mxyz = freq.*T #number of osscilations of the x,y,z df during one cycle
+  #mxyz = round.(Int64,mxyz.*mask)
+  divider = vec(dfDivider(b))
+  mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
+
+  println(size(mask)," ", size(divider), " ", size(mxyz))
+
+  #n0 = 17
   MoList = zeros(Int64,freqNumber,4)
   MoList[:,4] .= -1 # set all mixing orders to -1 initially to change them later
-
-  return _mixingFactors(MoList, mxyz, n0, freqNumber)
+  Nx,Ny,Nz = mxyz.*mask.*2  
+  println(divider)
+  println(Nx," ",Ny," ",Nz)
+  println(mxyz)
+  println(mask)
+  return _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
 end
 
-function _mixingFactors(MoList, mxyz, n0, freqNumber)
-  for mx = -n0:n0
-    for my = abs(mx)-n0:n0-abs(mx)
-      for mz = abs(my)-n0:n0-abs(my)
+function _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
+  for mx = -Nx:Nx
+    #for my = abs(mx)-n0:n0-abs(mx)
+    for my = -Ny:Ny
+      for mz = -Nz:Nz
         k = (mx*mxyz[1]+my*mxyz[2]+mz*mxyz[3])+1
 
           if k>=1 &&
