@@ -2,7 +2,8 @@ export filterFrequencies
 
 function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
                maxFreq=rxBandwidth(f), recChannels=1:rxNumChannels(f),
-               sortBySNR=false, numUsedFreqs=-1, stepsize=1, maxMixingOrder=-1)
+               sortBySNR=false, numUsedFreqs=-1, stepsize=1, maxMixingOrder=-1,
+               sortByMixFactors=false)
 
   nFreq = rxNumFrequencies(f)
   nReceivers = rxNumChannels(f)
@@ -26,7 +27,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
       mf = mixingFactors(f)
       for l=1:size(mf,1)
         if mf[l,4] > maxMixingOrder || mf[l,4] > maxMixingOrder
-          freqMask[(l-1)*stepsize(f)+1,recChannels] = false
+          freqMask[(l-1)+1,recChannels] = false
         end
       end
   end
@@ -69,10 +70,20 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
 
   freq = find( vec(freqMask) )
 
-  if sortBySNR
+  if sortBySNR && !sortByMixFactors
     SNR = vec(SNR[1:stepsize:nFreq,:,:])
 
     freq = freq[flipdim(sortperm(SNR[freq]),1)]
+  end
+
+  if !sortBySNR && sortByMixFactors
+    mfNorm = zeros(nFreq,nReceivers,nPeriods)
+    mf = mixingFactors(f)
+    for k=1:nFreq
+      mfNorm[k,:,:] = norm(mf[k,1:3])
+    end
+
+    freq = freq[sortperm(mfNorm[freq])]
   end
 
   freq

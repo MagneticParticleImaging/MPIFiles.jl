@@ -56,7 +56,7 @@ function mixingFactors(b::MPIFile)
   #n0 = 17
   MoList = zeros(Int64,freqNumber,4)
   MoList[:,4] .= -1 # set all mixing orders to -1 initially to change them later
-  Nx,Ny,Nz = mxyz.*mask.*2  
+  Nx,Ny,Nz = mxyz.*mask.*2
   println(divider)
   println(Nx," ",Ny," ",Nz)
   println(mxyz)
