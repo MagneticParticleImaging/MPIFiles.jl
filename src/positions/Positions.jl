@@ -38,9 +38,9 @@ function Positions(file::HDF5File)
 end
 
 # Cartesian grid
-type RegularGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
+type RegularGridPositions{T} <: GridPositions where {T<:Unitful.Length}
   shape::Vector{Int}
-  fov::Vector{S}
+  fov::Vector{T}
   center::Vector{T}
   sign::Vector{Int}
 end
@@ -125,16 +125,24 @@ end
 
 function getindex(grid::RegularGridPositions, i::Integer)
   if i>length(grid) || i<1
-    return throw(BoundsError(grid,i))
-  else
-    idx = collect(ind2sub(tuple(shape(grid)...), i))
-    for d=1:length(idx)
-      if grid.sign[d] == -1
-        idx[d] = grid.shape[d]-idx[d]+1
-      end
-    end
-    return ((-shape(grid).+(2.*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
+     throw(BoundsError(grid,i))
   end
+
+  #idx = collect(ind2sub(tuple(shape(grid)...), i))
+  if length(grid.shape) == 1 #Very ugly but improves compile time
+    idx = [i]
+  elseif length(grid.shape) == 2
+    idx = collect(ind2sub(tuple(grid.shape[1],grid.shape[2]), i))
+  else
+    idx = collect(ind2sub(tuple(grid.shape[1],grid.shape[2],grid.shape[3]), i))
+  end
+
+  for d=1:length(idx)
+    if grid.sign[d] == -1
+      idx[d] = grid.shape[d]-idx[d]+1
+    end
+  end
+  return ((-shape(grid).+(2.*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
 end
 
 function getindex(grid::RegularGridPositions, idx::Vector{T}) where T<:Number
