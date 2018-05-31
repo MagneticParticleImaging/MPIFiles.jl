@@ -1,7 +1,7 @@
 @testset "Testing Positions submodule" begin
   shp = [3,3,3]
   fov = [3.0,3.0,3.0]u"mm"
-  ctr = [0,0,0]u"mm"
+  ctr = [0.0,0.0,0.0]u"mm"
   caG = RegularGridPositions(shp,fov,ctr)
   @test shape(caG) == shp
   @test fieldOfView(caG) == fov
