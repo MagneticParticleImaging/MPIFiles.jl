@@ -216,8 +216,14 @@ function acqNumBGFrames(b::BrukerFile)
     return parse(Int64,n)-parse(Int64,a)
   end
 end
-acqGradient(b::BrukerFile) = repeat( diagm([-0.5;-0.5;1.0]).*
-      parse(Float64,b["ACQ_MPI_selection_field_gradient"]), inner=(1,1,1,acqNumPeriodsPerFrame(b)))
+function acqGradient(b::BrukerFile)
+  G1::Float64 = parse(Float64,b["ACQ_MPI_selection_field_gradient"])
+  G2 = diagm([-0.5;-0.5;1.0]).*G1
+
+  G = zeros(3,3,1,acqNumPeriodsPerFrame(b))
+  G[:,:,1,:] .= G2
+  return G
+end
 
 function acqOffsetField(b::BrukerFile) #TODO NOT correct
   if b["MPI_FocusFieldX"] != ""
@@ -244,13 +250,17 @@ end
 # drive-field parameters
 dfNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
    #sum( dfStrength(b)[1,:,1] .> 0) #TODO Not sure about this
-dfStrength(b::BrukerFile) = repeat(addTrailingSingleton( addLeadingSingleton(
-  [parse(Float64,s) for s = b["ACQ_MPI_drive_field_strength"] ] *1e-3, 2), 3),
-                    inner=(1,1,acqNumPeriodsPerFrame(b)))
+function dfStrength(b::BrukerFile)
+  str::Vector{String} = b["ACQ_MPI_drive_field_strength"]
+  df = parse.(Float64,str) * 1e-3
+  dfr = zeros(1,length(df),acqNumPeriodsPerFrame(b))
+  dfr[1,:,:] .= df
+  return dfr
+end
 dfPhase(b::BrukerFile) = dfStrength(b) .*0 .+  1.5707963267948966 # Bruker specific!
 dfBaseFrequency(b::BrukerFile) = 2.5e6
 dfCustomWaveform(b::BrukerFile) = nothing
-dfDivider(b::BrukerFile) = addTrailingSingleton([102; 96; 99],2)
+dfDivider(b::BrukerFile) = reshape([102; 96; 99],:,1)
 dfWaveform(b::BrukerFile) = "sine"
 dfCycle(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000
 # The following takes faked 1D/2D measurements into account
