@@ -2,11 +2,14 @@
 
 fnMeasBruker = "measurement_Bruker"
 fnSMBruker = "systemMatrix_Bruker"
+fnSM1DBruker = "systemMatrix1D_Bruker"
 fnMeasV1 = "measurement_V1.mdf"
 fnMeasV2 = "measurement_V2.mdf"
 fnSMV1 = "systemMatrix_V1.mdf"
 fnSMV2 = "systemMatrix_V2.mdf"
 fnSMV3 = "systemMatrix_V3.mdf"
+fnSM1DV1 = "systemMatrix1D_V1.mdf"
+fnSM1DV2 = "systemMatrix1D_V2.mdf"
 
 if !isdir(fnSMBruker)
   streamSM = get("http://media.tuhh.de/ibi/"*fnSMBruker*".zip")
@@ -17,6 +20,11 @@ if !isdir(fnMeasBruker)
   streamMeas = get("http://media.tuhh.de/ibi/"*fnMeasBruker*".zip")
   save(streamMeas, fnMeasBruker*".zip")
   run(`unzip $(fnMeasBruker).zip`)
+end
+if !isdir(fnSM1DBruker)
+  streamMeas = get("http://media.tuhh.de/ibi/"*fnSM1DBruker*".zip")
+  save(streamMeas, fnSM1DBruker*".zip")
+  run(`unzip $(fnSM1DBruker).zip`)
 end
 
 
@@ -160,6 +168,51 @@ S_loadedfromraw = getMeasurementsFD(smBrukerPretendToBeMeas,
 S_loadedfromproc = systemMatrix(smBruker)
 
 @test norm(vec(S_loadedfromraw-S_loadedfromproc)) / norm(vec(S_loadedfromproc)) < 1e-6
+
+
+# Calibration file 1D
+
+# Calibration File
+
+sm1DBruker = MPIFile(fnSM1DBruker)
+@test typeof(sm1DBruker) == BrukerFileCalib
+
+saveasMDF(fnSM1DV1, sm1DBruker)
+
+sm1D = MPIFile(fnSM1DV1)
+@test typeof(sm1D) == MDFFileV2
+
+
+for sm in (sm1DBruker,sm1D)
+  println("Test $sm")
+
+  @test size( systemMatrixWithBG(sm) ) == (67,52,3,1)
+  @test size( systemMatrix(sm,1:10) ) == (60,10)
+  @test size( systemMatrix(sm) ) == (60,52,3,1)
+  
+  @test size(calibSNR(sm)) == (52, 3, 1)
+
+  @test rxNumSamplingPoints(sm) == 102
+  @test rxNumFrequencies(sm) == 52
+end
+
+
+sm1DBrukerMeas = MPIFile(fnSM1DBruker, isCalib=false)
+saveasMDF(fnSM1DV2, sm1DBrukerMeas)
+
+sm1DMeas = MPIFile(fnSM1DV2)
+@test typeof(sm1DMeas) == MDFFileV2
+
+for sm in (sm1DBrukerMeas,sm1DMeas)
+  println("Test $sm")
+
+  @test size(measData(sm)) == (102, 3, 1, 67)
+
+  @test rxNumSamplingPoints(sm) == 102
+  @test rxNumFrequencies(sm) == 52
+end
+
+
 
 
 end

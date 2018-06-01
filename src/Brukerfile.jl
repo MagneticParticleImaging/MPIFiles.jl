@@ -205,7 +205,9 @@ function acqNumPeriodsPerFrame(b::BrukerFile)
 end
 acqNumPeriodsPerPatch(b::BrukerFile) = div(acqNumPeriodsPerFrame(b),acqNumPatches(b))
 
-acqNumAverages(b::BrukerFile) = parse(Int,b["NA"])
+acqNumAverages(b::BrukerFileMeas) = parse(Int,b["NA"])
+acqNumAverages(b::BrukerFileCalib) = parse(Int,b["NA"])*numSubPeriods(b)
+
 
 function acqNumBGFrames(b::BrukerFile)
   n = b["PVM_MPI_NrBackgroundMeasurementCalibrationAllScans"]
@@ -262,18 +264,12 @@ dfBaseFrequency(b::BrukerFile) = 2.5e6
 dfCustomWaveform(b::BrukerFile) = nothing
 dfDivider(b::BrukerFile) = reshape([102; 96; 99],:,1)
 dfWaveform(b::BrukerFile) = "sine"
-dfCycle(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000
-# The following takes faked 1D/2D measurements into account
-#function dfCycle(b::BrukerFile)
-#  df = dfStrength(b)
-#  return lcm(  dfDivider(b)[ (df .>= 0.0000001) .* selectedChannels(b) ] ) / 2.5e6  # in ms!
-#end
-
+dfCycle(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000 / numSubPeriods(b)
 
 # receiver parameters
 rxNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
 rxBandwidth(b::BrukerFile) = parse(Float64,b["PVM_MPI_Bandwidth"])*1e6
-rxNumSamplingPoints(b::BrukerFile) = parse(Int64,b["ACQ_size"][1])
+rxNumSamplingPoints(b::BrukerFile) = div(parse(Int64,b["ACQ_size"][1]),numSubPeriods(b))
 rxTransferFunction(b::BrukerFile) = nothing
 rxInductionFactor(b::BrukerFile) = nothing
 rxUnit(b::BrukerFile) = "a.u."
@@ -289,8 +285,15 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
   dType = acqNumAverages(b) == 1 ? Int16 : Int32
 
   s = open(dataFilename)
-  raw = Mmap.mmap(s, Array{dType,4},
+
+  if numSubPeriods(b) == 1
+    raw = Mmap.mmap(s, Array{dType,4},
              (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+  else
+    raw = Mmap.mmap(s, Array{dType,5},
+             (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b))) 
+    raw = squeeze(sum(raw,2),2)
+  end
   data = raw[:,receivers,periods,frames]
   close(s)
 
@@ -301,7 +304,7 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
                   receivers=1:rxNumChannels(b))
 
   sfFilename = joinpath(b.path,"pdata", "1", "systemMatrix")
-  nFreq = rxNumFrequencies(b)
+  nFreq = div(rxNumSamplingPoints(b)*numSubPeriods(b),2)+1
 
   s = open(sfFilename)
   data = Mmap.mmap(s, Array{Complex128,4}, (prod(calibSize(b)),nFreq,rxNumChannels(b),1))
@@ -318,7 +321,12 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
   bgdata = map(Complex64, data)
   close(s)
   scale!(bgdata,1.0/acqNumAverages(b))
-  return cat(1,S,bgdata)
+  S_ = cat(1,S,bgdata)
+  if numSubPeriods(b) == 1
+    return S_
+  else
+    return S_[:,1:numSubPeriods(b):end,:,:]
+  end
 end
 
 
@@ -329,8 +337,14 @@ function measDataTDPeriods(b::BrukerFile, periods=1:acqNumPeriods(b),
   dType = acqNumAverages(b) == 1 ? Int16 : Int32
 
   s = open(dataFilename)
-  raw = Mmap.mmap(s, Array{dType,3},
+  if numSubPeriods(b) == 1
+    raw = Mmap.mmap(s, Array{dType,3},
     (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriods(b)))
+  else
+    raw = Mmap.mmap(s, Array{dType,4},
+    (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriods(b)))
+    raw = squeeze(sum(raw,2),2)
+  end
   data = raw[:,receivers,periods]
   close(s)
 
@@ -343,14 +357,27 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
 
   localSFFilename = bgCorrection ? "systemMatrixBG" : "systemMatrix"
   sfFilename = joinpath(b.path,"pdata", "1", localSFFilename)
-  nFreq = rxNumFrequencies(b)
+  nFreq = div(rxNumSamplingPoints(b)*numSubPeriods(b),2)+1
 
+  if numSubPeriods(b) > 1
+    rows_ = collect(rows)
+    NFreq = rxNumFrequencies(b)
+    NRx = rxNumChannels(b)
+    stepsize = numSubPeriods(b)
+    for k=1:length(rows)
+      freq = mod1(rows[k],NFreq)
+      rec = div(rows[k],NFreq)
+      rows_[k] = (freq-1)*stepsize+1 + rec*nFreq
+    end
+  else
+    rows_ = rows
+  end
+  
   s = open(sfFilename)
   data = Mmap.mmap(s, Array{Complex128,2}, (prod(calibSize(b)),nFreq*rxNumChannels(b)))
   S = data[:,rows]
   close(s)
   scale!(S,1.0/acqNumAverages(b))
-
   return S
 end
 
@@ -408,12 +435,17 @@ measIsFrequencySelection(b::BrukerFile) = false
 # calibrations
 function calibSNR(b::BrukerFile)
   snrFilename = joinpath(b.path,"pdata", "1", "snr")
+  nFreq = div(rxNumSamplingPoints(b)*numSubPeriods(b),2)+1
   s = open(snrFilename)
-  data = Mmap.mmap(s, Array{Float64,3}, (rxNumFrequencies(b),rxNumChannels(b),1))
+  data = Mmap.mmap(s, Array{Float64,3}, (nFreq,rxNumChannels(b),1))
   snr = data[:,:,:]
   close(s)
 
-  return snr
+  if numSubPeriods(b) == 1
+    return snr
+  else
+    return snr[1:numSubPeriods(b):end,:,:]
+  end  
 end
 calibFov(b::BrukerFile) = [parse(Float64,s) for s = b["PVM_Fov"] ] * 1e-3
 calibFovCenter(b::BrukerFile) =
@@ -452,3 +484,31 @@ end
 ballRadius(b::BrukerFile) = parse(Float64,b["MPI_BallRadius"])
 numLatitude(b::BrukerFile) = parse(Int64,b["MPI_NrLatitude"])
 numMeridian(b::BrukerFile) = parse(Int64,b["MPI_NrMeridian"])
+
+"""
+This function is used as a workaround that no 1D and 2D sequences
+were functional. Therefore we acquired 3D data and set the corresponding
+drive-field amplitude to zero. Stepsize is then the number of period that
+fit into the full 3D sequence.
+"""
+function numSubPeriods(f::BrukerFile)
+  df = dfStrength(f)
+  active_divider = copy(dfDivider(f))
+  selected_channels = selectedChannels(f)
+
+  for d=1:3
+    active_divider[d] = (df[d] >= 0.0000001 && selected_channels[d]) ?
+                         active_divider[d] : 1
+  end
+  floor(Int,(lcm(dfDivider(f)[selected_channels]) / lcm(active_divider)))
+end
+
+
+
+
+
+
+
+
+
+
