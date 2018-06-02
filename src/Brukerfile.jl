@@ -82,7 +82,8 @@ function getindex(b::BrukerFile, parameter)#::String
          parameter[1:4] == "Visu"
     visupath = joinpath(b.path, "visu_pars")
     if isfile(visupath)
-      read(b.params, visupath, maxEntries=55)
+      keylist = ["VisuStudyId","VisuStudyNumber","VisuExperimentNumber","VisuSubjectName"]
+      read(b.params, visupath,keylist)
       b.visupars_globalRead = true
     end
   elseif !b.mpiParRead && length(parameter) >= 6 &&
@@ -291,7 +292,7 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
              (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
   else
     raw = Mmap.mmap(s, Array{dType,5},
-             (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b))) 
+             (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
     raw = squeeze(sum(raw,2),2)
   end
   data = raw[:,receivers,periods,frames]
@@ -372,7 +373,7 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
   else
     rows_ = rows
   end
-  
+
   s = open(sfFilename)
   data = Mmap.mmap(s, Array{Complex128,2}, (prod(calibSize(b)),nFreq*rxNumChannels(b)))
   S = data[:,rows]
@@ -445,7 +446,7 @@ function calibSNR(b::BrukerFile)
     return snr
   else
     return snr[1:numSubPeriods(b):end,:,:]
-  end  
+  end
 end
 calibFov(b::BrukerFile) = [parse(Float64,s) for s = b["PVM_Fov"] ] * 1e-3
 calibFovCenter(b::BrukerFile) =
@@ -502,13 +503,3 @@ function numSubPeriods(f::BrukerFile)
   end
   floor(Int,(lcm(dfDivider(f)[selected_channels]) / lcm(active_divider)))
 end
-
-
-
-
-
-
-
-
-
-

@@ -15,7 +15,7 @@ getindex(file::JcampdxFile, key::AbstractString) = file.dict[key]
 haskey(file::JcampdxFile, key::AbstractString) = haskey(file.dict, key)
 get(file::JcampdxFile, key::AbstractString, default) = get(file.dict, key, default)
 
-function read(file::JcampdxFile, stream::IO; maxEntries=-1)
+function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntries=-1)
     finishedReading = true
     currentKey = nothing
     currentIdx = 1
@@ -41,6 +41,10 @@ function read(file::JcampdxFile, stream::IO; maxEntries=-1)
           # Small HACK
           if in(key, skipKeys)
             return file
+          end
+
+          if !isempty(keylist) && findfirst(keylist,key) == 0
+            continue
           end
 
           val = strip(s[i+1:end])
@@ -94,7 +98,7 @@ function read(file::JcampdxFile, stream::IO; maxEntries=-1)
                      try
                        push!(vals, parse(Float64,valStr) )
                      catch
-                        push!(vals, valStr)
+                       push!(vals, valStr)
                      end
                    #end
                  end
@@ -165,9 +169,10 @@ function read(file::JcampdxFile, stream::IO; maxEntries=-1)
    file
 end
 
-function read(file::JcampdxFile, filename::AbstractString; maxEntries=-1)
+function read(file::JcampdxFile, filename::AbstractString,
+              keylist::Vector=String[]; maxEntries=-1)
     open(filename) do f
-        read(file, f, maxEntries=maxEntries)
+        read(file, f, keylist, maxEntries=maxEntries)
     end
     file
 end

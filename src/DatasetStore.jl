@@ -194,8 +194,7 @@ function getStudy(d::BrukerDatasetStore, studyfolder::String)
         for file in r
 
           if !isnull(tryparse(Int64,file))
-
-            b = BrukerFile(joinpath(studypath, file ))
+            b = BrukerFileFast(joinpath(studypath, file ))
             name = studyName(b)
             subject = experimentSubject(b)
             found = true

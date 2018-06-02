@@ -10,12 +10,7 @@ which k*F = mx*fx + my*fy* + mz*fz, where F is the measurement cycle frequency
 and fx, fy, and fz are the excitation frequencies for the x,y, and z channel.
 """
 function mixFactorToFreq(b::MPIFile,mx,my,mz=0)
-  freq = rxBandwidth(b)./dfDivider(b)
-  T = dfCycle(b)
-  #mask= collect( (MPILib.dfStrength(b) .>= 0.0000001) .* MPILib.selectedChannels(b) )
-  mask = collect((dfStrength(b) .>= 0.0000001))
-  mxyz = freq.*T #number of osscilations of the x,y,z df during one cycle
-  mxyz = round.(Int64,mxyz.*mask)
+  mxyz = calcPrefactors(b)
   k = (mx*mxyz[1]+my*mxyz[2]+mz*mxyz[3])
   return k
 end
@@ -23,16 +18,20 @@ end
 """
 This function returns the index `freqidx` of the frequency given by the mixing
 factors `mx`, `my`, and `mz` with respect to the frequency list
-`freq = frequencies(bSF)`. The function also performs a bounds check on `freqidx`
-and throws an error if the frequency is not within the bandwidth.
+`freq = frequencies(bSF)`.
 """
 function mixFactorToFreqIdx(b::MPIFile,mx,my,mz=0)
   freqidx = mixFactorToFreq(b,mx,my,mz)
-
-  if freqidx<0 || freqidx>=numFreq(b)
-    throw(DomainError())
-  end
   return freqidx + 1
+end
+
+function calcPrefactors(b::MPIFile)
+  freqNumber = rxNumFrequencies(b)
+  mask = collect((dfStrength(b)[1,:,1] .>= 0.0000001))
+  divider = vec(dfDivider(b))
+  mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
+
+  return mxyz
 end
 
 """
@@ -42,25 +41,12 @@ for all frequencies in `freq = frequencies(bSF)`, where only the lowest order
 mixing coefficients `mx`, `my`, and `mz` are listed.
 """
 function mixingFactors(b::MPIFile)
-  freqNumber = rxNumFrequencies(b)
-  #freq = rxBandwidth(b)./dfDivider(b)
-  #T = dfCycle(b)
-  mask = collect((dfStrength(b)[1,:,1] .>= 0.0000001))
-  #mxyz = freq.*T #number of osscilations of the x,y,z df during one cycle
-  #mxyz = round.(Int64,mxyz.*mask)
-  divider = vec(dfDivider(b))
-  mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
+  mxyz = calcPrefactors(b)
 
-  println(size(mask)," ", size(divider), " ", size(mxyz))
-
-  #n0 = 17
   MoList = zeros(Int64,freqNumber,4)
   MoList[:,4] .= -1 # set all mixing orders to -1 initially to change them later
   Nx,Ny,Nz = mxyz.*mask.*2
-  println(divider)
-  println(Nx," ",Ny," ",Nz)
-  println(mxyz)
-  println(mask)
+
   return _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
 end
 
