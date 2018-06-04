@@ -503,3 +503,27 @@ function numSubPeriods(f::BrukerFile)
   end
   floor(Int,(lcm(dfDivider(f)[selected_channels]) / lcm(active_divider)))
 end
+
+
+
+###############################
+# delta sample functions
+###############################
+
+export deltaSampleConcentration, deltaSampleVolume
+
+function deltaSampleConcentration(b::BrukerFile)
+ tmp = b["PVM_MPI_TracerConcentration"]
+ if tmp != nothing
+   return parse(Float64, tmp)
+ else
+   return 1.0
+ end
+end
+
+deltaSampleConcentration{T<:BrukerFile}(b::Array{T,1}) = map(deltaSampleConcentration, b)
+
+function deltaSampleVolume(b::BrukerFile)
+ V = parse(Float64, b["PVM_MPI_TracerVolume"] )*1e-6 # mu l
+ return V
+end
