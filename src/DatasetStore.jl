@@ -5,7 +5,7 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
        findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum,
        exportToMDFStore, generateSFDatabase, loadSFDatabase, addVisu, readonly, getNewCalibNum,
-       calibdir
+       calibdir, try_chmod
 
 ########################################
 
@@ -55,17 +55,25 @@ end
 
 const BrukerStore = BrukerDatasetStore("/opt/mpidata")
 
+function try_chmod(path, mode; recursive=true)
+  try
+    chmod(path,mode,recursive=recursive)
+  catch
+  end
+  return
+end
+
 type MDFDatasetStore <: DatasetStore
   path::String
 
   function MDFDatasetStore(path::String)
     if ispath(path)
       mkpath(joinpath(path,"measurements"))
-      chmod(joinpath(path,"measurements"), 0o777, recursive=true)
+      try_chmod(joinpath(path,"measurements"), 0o777, recursive=true)
       mkpath(joinpath(path,"reconstructions"))
-      chmod(joinpath(path,"reconstructions"), 0o777, recursive=true)
+      try_chmod(joinpath(path,"reconstructions"), 0o777, recursive=true)
       mkpath(joinpath(path,"calibrations"))
-      chmod(joinpath(path,"calibrations"), 0o777, recursive=true)
+      try_chmod(joinpath(path,"calibrations"), 0o777, recursive=true)
     end
     return new(path)
   end
@@ -227,7 +235,7 @@ end
 function addStudy(d::MDFDatasetStore, study::Study)
   studypath = joinpath( studydir(d), study.name)
   mkpath(studypath)
-  chmod(studypath, 0o777, recursive=true)
+  try_chmod(studypath, 0o777, recursive=true)
 
   nothing
 end
@@ -459,7 +467,7 @@ end
 function getNewNumInFolder(d::MDFDatasetStore, path)
   if !isdir(path)
     mkpath(path)
-    chmod(path, 0o777, recursive=true)
+    try_chmod(path, 0o777, recursive=true)
     return 1
   end
 
@@ -547,7 +555,7 @@ function addReco(d::MDFDatasetStore, study::Study, exp::Experiment, image)
   outputpath = joinpath(d.path, "reconstructions", id(study), string(exp.num))
   # create data directory
   mkpath(outputpath)
-  chmod(outputpath, 0o777, recursive=true)
+  try_chmod(outputpath, 0o777, recursive=true)
 
   recoNum = getNewNumInFolder(d, outputpath)
 
