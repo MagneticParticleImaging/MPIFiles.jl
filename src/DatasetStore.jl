@@ -61,8 +61,11 @@ type MDFDatasetStore <: DatasetStore
   function MDFDatasetStore(path::String)
     if ispath(path)
       mkpath(joinpath(path,"measurements"))
+      chmod(joinpath(path,"measurements"), 0o777, recursive=true)
       mkpath(joinpath(path,"reconstructions"))
-      mkpath(joinpath(path,"calibration"))
+      chmod(joinpath(path,"reconstructions"), 0o777, recursive=true)
+      mkpath(joinpath(path,"calibrations"))
+      chmod(joinpath(path,"calibrations"), 0o777, recursive=true)
     end
     return new(path)
   end
@@ -224,6 +227,7 @@ end
 function addStudy(d::MDFDatasetStore, study::Study)
   studypath = joinpath( studydir(d), study.name)
   mkpath(studypath)
+  chmod(studypath, 0o777, recursive=true)
 
   nothing
 end
@@ -455,6 +459,7 @@ end
 function getNewNumInFolder(d::MDFDatasetStore, path)
   if !isdir(path)
     mkpath(path)
+    chmod(path, 0o777, recursive=true)
     return 1
   end
 
@@ -542,6 +547,7 @@ function addReco(d::MDFDatasetStore, study::Study, exp::Experiment, image)
   outputpath = joinpath(d.path, "reconstructions", id(study), string(exp.num))
   # create data directory
   mkpath(outputpath)
+  chmod(outputpath, 0o777, recursive=true)
 
   recoNum = getNewNumInFolder(d, outputpath)
 
