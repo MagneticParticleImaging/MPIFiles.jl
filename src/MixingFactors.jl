@@ -10,7 +10,7 @@ which k*F = mx*fx + my*fy* + mz*fz, where F is the measurement cycle frequency
 and fx, fy, and fz are the excitation frequencies for the x,y, and z channel.
 """
 function mixFactorToFreq(b::MPIFile,mx,my,mz=0)
-  mxyz = calcPrefactors(b)
+  mxyz, mask, freqNumber = calcPrefactors(b)
   k = (mx*mxyz[1]+my*mxyz[2]+mz*mxyz[3])
   return k
 end
@@ -29,9 +29,11 @@ function calcPrefactors(b::MPIFile)
   freqNumber = rxNumFrequencies(b)
   mask = collect((dfStrength(b)[1,:,1] .>= 0.0000001))
   divider = vec(dfDivider(b))
-  mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
+  #mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
+  mxyz_ = 2.*rxBandwidth(b)*dfCycle(b)./divider
+  mxyz = round.(Int64,mxyz_.*mask)
 
-  return mxyz
+  return mxyz, mask, freqNumber
 end
 
 """
@@ -41,11 +43,10 @@ for all frequencies in `freq = frequencies(bSF)`, where only the lowest order
 mixing coefficients `mx`, `my`, and `mz` are listed.
 """
 function mixingFactors(b::MPIFile)
-  mxyz = calcPrefactors(b)
-
+  mxyz, mask, freqNumber = calcPrefactors(b)
   MoList = zeros(Int64,freqNumber,4)
   MoList[:,4] .= -1 # set all mixing orders to -1 initially to change them later
-  Nx,Ny,Nz = mxyz.*mask.*2
+  Nx,Ny,Nz = round.(Int64,freqNumber./mxyz.*mask)
 
   return _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
 end
