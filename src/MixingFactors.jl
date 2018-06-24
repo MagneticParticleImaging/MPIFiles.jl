@@ -31,7 +31,7 @@ function calcPrefactors(b::MPIFile)
   divider = vec(dfDivider(b))
   #mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
   mxyz_ = 2.*rxBandwidth(b)*dfCycle(b)./divider
-  mxyz = round.(Int64,mxyz_.*mask)
+  mxyz = max.(1,round.(Int64,mxyz_.*mask))
 
   return mxyz, mask, freqNumber
 end
@@ -46,9 +46,14 @@ function mixingFactors(b::MPIFile)
   mxyz, mask, freqNumber = calcPrefactors(b)
   MoList = zeros(Int64,freqNumber,4)
   MoList[:,4] .= -1 # set all mixing orders to -1 initially to change them later
-  Nx,Ny,Nz = round.(Int64,freqNumber./mxyz.*mask)
+  if length(mxyz) == 3
+    Nx,Ny,Nz = round.(Int64,freqNumber./mxyz.*mask)
 
-  return _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
+    return _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
+  else
+    MoList[:,1] = MoList[:,4] = 0:(freqNumber-1)
+    return MoList
+  end
 end
 
 function _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
