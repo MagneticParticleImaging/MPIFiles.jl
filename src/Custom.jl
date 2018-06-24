@@ -50,6 +50,8 @@ function saveParams(file, path, params::Dict)
       attrs(dset)["iscoloringarray"] = "true"
     elseif typeof(value) <: Array{Any}
       write(file, ppath, [v for v in value])
+    elseif typeof(value) <: MPIFile
+      println("Do nothing")
     else
       write(file, ppath, value)
     end
