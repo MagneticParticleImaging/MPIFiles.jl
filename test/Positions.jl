@@ -1,18 +1,18 @@
 @testset "Testing Positions submodule" begin
   shp = [3,3,3]
-  fov = [3.0,3.0,3.0]u"mm"
-  ctr = [0.0,0.0,0.0]u"mm"
+  fov = [3.0,3.0,3.0]Unitful.mm
+  ctr = [0.0,0.0,0.0]Unitful.mm
   caG = RegularGridPositions(shp,fov,ctr)
   @test shape(caG) == shp
   @test fieldOfView(caG) == fov
   @test fieldOfViewCenter(caG) == ctr
   @test_throws BoundsError caG[0]
   @test_throws BoundsError caG[28]
-  @test caG[1] == [-1,-1,-1]u"mm"
-  @test caG[2] == [0,-1,-1]u"mm"
-  @test caG[3] == [1,-1,-1]u"mm"
-  @test caG[4] == [-1,0,-1]u"mm"
-  @test caG[27] == [1,1,1]u"mm"
+  @test caG[1] == [-1,-1,-1]Unitful.mm
+  @test caG[2] == [0,-1,-1]Unitful.mm
+  @test caG[3] == [1,-1,-1]Unitful.mm
+  @test caG[4] == [-1,0,-1]Unitful.mm
+  @test caG[27] == [1,1,1]Unitful.mm
   h5open("Positions.h5", "w") do file
     write(file, caG)
   end
@@ -79,7 +79,7 @@
   end
 #BG Test
     bgInd = collect(1:4:37)
-    bgPos = [10.0,10.0,10.0]u"mm"
+    bgPos = [10.0,10.0,10.0]Unitful.mm
   for grid in [caG,chG]
     bG = BreakpointGridPositions(grid,bgInd,bgPos)
     @test length(bG) == prod(shp)+length(bgInd)
@@ -138,7 +138,7 @@
 
 #BG+Meander Test
     bgInd = collect(1:4:37)
-    bgPos = [10.0,10.0,10.0]u"mm"
+    bgPos = [10.0,10.0,10.0]Unitful.mm
   for grid in [caG,chG]
     mG = MeanderingGridPositions(grid)
     bG = BreakpointGridPositions(mG,bgInd,bgPos)
@@ -196,12 +196,12 @@
     end
   end
 
-  positions = [1 2 3 4; 0 1 2 3;-4 -3 -2 -1]u"mm"
+  positions = [1 2 3 4; 0 1 2 3;-4 -3 -2 -1]Unitful.mm
   aG1 = ArbitraryPositions(positions)
-  @test aG1[1] == [1,0,-4]*u"mm"
-  @test aG1[2] == [2,1,-3]u"mm"
-  @test aG1[3] == [3,2,-2]u"mm"
-  @test aG1[4] == [4,3,-1]u"mm"
+  @test aG1[1] == [1,0,-4]*Unitful.mm
+  @test aG1[2] == [2,1,-3]Unitful.mm
+  @test aG1[3] == [3,2,-2]Unitful.mm
+  @test aG1[4] == [4,3,-1]Unitful.mm
   aG2 = ArbitraryPositions(caG)
   @test aG2[1] == caG[1]
   @test aG2[2] == caG[2]
@@ -222,9 +222,9 @@
   @test domain.fov == fov
   @test domain.center == ctr
   rP1 = UniformRandomPositions(N,seed,domain)
-  @test rP1[1] == [0.09954904813158394,-0.13791259323857274,-1.446939519855107]u"mm"
-  @test rP1[2] == [-0.9812009131891462,1.3767776289892044,1.4206979394110573]u"mm"
-  @test rP1[3] == [-0.5883911667396526,-0.9692742011014337,1.3707474722677764]u"mm"
+  @test rP1[1] == [0.09954904813158394,-0.13791259323857274,-1.446939519855107]Unitful.mm
+  @test rP1[2] == [-0.9812009131891462,1.3767776289892044,1.4206979394110573]Unitful.mm
+  @test rP1[3] == [-0.5883911667396526,-0.9692742011014337,1.3707474722677764]Unitful.mm
   @test_throws BoundsError rP1[0]
   @test_throws BoundsError rP1[4]
   h5open("Positions.h5", "w") do file
@@ -238,12 +238,12 @@
     @test rP2.domain.fov == fov
     @test rP2.domain.center == ctr
   end
-  radius = 10u"mm"
+  radius = 10Unitful.mm
   domain = Ball(radius,ctr)
   @test domain.radius == radius
   @test domain.center == ctr
   rP3 = UniformRandomPositions(N,seed,domain)
-  @test rP3[1] == [-6.715713750009747,0.4103832286623821,-4.525933276650638]u"mm"
+  @test rP3[1] == [-6.715713750009747,0.4103832286623821,-4.525933276650638]Unitful.mm
   @test_throws BoundsError rP3[0]
   @test_throws BoundsError rP3[4]
   h5open("Positions.h5", "w") do file
@@ -265,14 +265,14 @@
   @test_throws DomainError loadTDesign(10,1)
   t = 1
   N = 2
-  radius = 5u"mm"
+  radius = 5Unitful.mm
   tDesign = loadTDesign(t,N, radius)
   @test length(tDesign) == N
   @test tDesign.T == t
   @test tDesign.radius == radius
   @test any(tDesign.positions .== [1 -1; 0 0; 0 0])
-  @test tDesign[1] == [5,0,0]u"mm"
-  @test tDesign[2] == [-5,0,0]u"mm"
+  @test tDesign[1] == [5,0,0]Unitful.mm
+  @test tDesign[2] == [-5,0,0]Unitful.mm
   h5open("Positions.h5", "w") do file
     write(file, tDesign)
   end

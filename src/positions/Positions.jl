@@ -58,8 +58,8 @@ RegularGridPositions(shape, fov, center) = RegularGridPositions(shape, fov, cent
 
 function RegularGridPositions(file::HDF5File)
   shape = read(file, "/positionsShape")
-  fov = read(file, "/positionsFov")*u"m"
-  center = read(file, "/positionsCenter")*u"m"
+  fov = read(file, "/positionsFov")*Unitful.m
+  center = read(file, "/positionsCenter")*Unitful.m
   return RegularGridPositions(shape,fov,center)
 end
 
@@ -119,8 +119,8 @@ end
 function write(file::HDF5File, positions::RegularGridPositions)
   write(file,"/positionsType", "RegularGridPositions")
   write(file, "/positionsShape", positions.shape)
-  write(file, "/positionsFov", Float64.(ustrip.(uconvert.(u"m", positions.fov))) )
-  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(u"m", positions.center))) )
+  write(file, "/positionsFov", Float64.(ustrip.(uconvert.(Unitful.m, positions.fov))) )
+  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
 end
 
 function getindex(grid::RegularGridPositions, i::Integer)
@@ -183,14 +183,14 @@ end
 function write(file::HDF5File, positions::ChebyshevGridPositions)
   write(file,"/positionsType", "ChebyshevGridPositions")
   write(file, "/positionsShape", positions.shape)
-  write(file, "/positionsFov", Float64.(ustrip.(uconvert.(u"m", positions.fov))) )
-  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(u"m", positions.center))) )
+  write(file, "/positionsFov", Float64.(ustrip.(uconvert.(Unitful.m, positions.fov))) )
+  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
 end
 
 function ChebyshevGridPositions(file::HDF5File)
   shape = read(file, "/positionsShape")
-  fov = read(file, "/positionsFov")*u"m"
-  center = read(file, "/positionsCenter")*u"m"
+  fov = read(file, "/positionsFov")*Unitful.m
+  center = read(file, "/positionsCenter")*Unitful.m
   return ChebyshevGridPositions(shape,fov,center)
 end
 
@@ -274,7 +274,7 @@ function BreakpointGridPositions(file::HDF5File)
 end
 
 function write(file::HDF5File, positions::BreakpointGridPositions)
-  write(file,"/positionsBreakpoint",Float64.(ustrip.(uconvert.(u"m", positions.breakpointPosition))))
+  write(file,"/positionsBreakpoint",Float64.(ustrip.(uconvert.(Unitful.m, positions.breakpointPosition))))
   write(file,"/indicesBreakpoint", positions.breakpointIndices)
   write(file, positions.grid)
 end
@@ -311,13 +311,13 @@ end
 
 function write(file::HDF5File, domain::AxisAlignedBox)
   write(file, "/positionsDomain", "AxisAlignedBox")
-  write(file, "/positionsDomainFieldOfView", Float64.(ustrip.(uconvert.(u"m", domain.fov))) )
-  write(file, "/positionsDomainCenter", Float64.(ustrip.(uconvert.(u"m", domain.center))) )
+  write(file, "/positionsDomainFieldOfView", Float64.(ustrip.(uconvert.(Unitful.m, domain.fov))) )
+  write(file, "/positionsDomainCenter", Float64.(ustrip.(uconvert.(Unitful.m, domain.center))) )
 end
 
 function AxisAlignedBox(file::HDF5File)
-  fov = read(file, "/positionsDomainFieldOfView")*u"m"
-  center = read(file, "/positionsDomainCenter")*u"m"
+  fov = read(file, "/positionsDomainFieldOfView")*Unitful.m
+  center = read(file, "/positionsDomainCenter")*Unitful.m
   return AxisAlignedBox(fov,center)
 end
 
@@ -328,13 +328,13 @@ end
 
 function write(file::HDF5File, domain::Ball)
   write(file, "/positionsDomain", "Ball")
-  write(file, "/positionsDomainRadius", Float64.(ustrip.(uconvert.(u"m", domain.radius))) )
-  write(file, "/positionsDomainCenter", Float64.(ustrip.(uconvert.(u"m", domain.center))) )
+  write(file, "/positionsDomainRadius", Float64.(ustrip.(uconvert.(Unitful.m, domain.radius))) )
+  write(file, "/positionsDomainCenter", Float64.(ustrip.(uconvert.(Unitful.m, domain.center))) )
 end
 
 function Ball(file::HDF5File)
-  radius = read(file, "/positionsDomainRadius")*u"m"
-  center = read(file, "/positionsDomainCenter")*u"m"
+  radius = read(file, "/positionsDomainRadius")*Unitful.m
+  center = read(file, "/positionsDomainCenter")*Unitful.m
   return Ball(radius,center)
 end
 
@@ -435,8 +435,8 @@ end
 function SphericalTDesign(file::HDF5File)
   T = read(file, "/positionsTDesignT")
   N = read(file, "/positionsTDesignN")
-  radius = read(file, "/positionsTDesignRadius")*u"m"
-  center = read(file, "/positionsCenter")*u"m"
+  radius = read(file, "/positionsTDesignRadius")*Unitful.m
+  center = read(file, "/positionsCenter")*Unitful.m
   return loadTDesign(Int64(T),N,radius,center)
 end
 
@@ -444,8 +444,8 @@ function write(file::HDF5File, positions::SphericalTDesign)
   write(file,"/positionsType", "SphericalTDesign")
   write(file, "/positionsTDesignT", positions.T)
   write(file, "/positionsTDesignN", size(positions.positions,2))
-  write(file, "/positionsTDesignRadius", Float64.(ustrip.(uconvert.(u"m", positions.radius))) )
-  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(u"m", positions.center))) )
+  write(file, "/positionsTDesignRadius", Float64.(ustrip.(uconvert.(Unitful.m, positions.radius))) )
+  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
 end
 
 getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] + tdes.center
@@ -453,7 +453,7 @@ getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] 
 """
 Returns the t-Design Array for choosen t and N.
 """
-function loadTDesign(t::Int64, N::Int64, radius::S=10u"mm", center::Vector{V}=[0.0,0.0,0.0]u"mm", filename::String=joinpath(Pkg.dir("MPIFiles"),"src/positions/TDesigns.hd5")) where {S,V<:Unitful.Length}
+function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{V}=[0.0,0.0,0.0]Unitful.mm, filename::String=joinpath(Pkg.dir("MPIFiles"),"src/positions/TDesigns.hd5")) where {S,V<:Unitful.Length}
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
@@ -505,11 +505,11 @@ end
 
 function write(file::HDF5File, apos::ArbitraryPositions,)
   write(file,"/positionsType", "ArbitraryPositions")
-  write(file, "/positionsPositions", Float64.(ustrip.(uconvert.(u"m", apos.positions))) )
+  write(file, "/positionsPositions", Float64.(ustrip.(uconvert.(Unitful.m, apos.positions))) )
 end
 
 function ArbitraryPositions(file::HDF5File)
-  pos = read(file, "/positionsPositions")*u"m"
+  pos = read(file, "/positionsPositions")*Unitful.m
   return ArbitraryPositions(pos)
 end
 
