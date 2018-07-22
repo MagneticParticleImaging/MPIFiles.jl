@@ -383,7 +383,10 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
       end
     end
   end
-  data = reshape(f.mmap_measData,Val{2})[:, rows]
+  data_ = reshape(f.mmap_measData,size(f.mmap_measData,1),
+                                  size(f.mmap_measData,2)*size(f.mmap_measData,3),
+                                  size(f.mmap_measData,4))[:, rows, :]
+  data = reshape(data_, Val{2})
 
   fgdata = data[measFGFrameIdx(f),:]
   if bgCorrection # this assumes equidistent bg frames

@@ -7,7 +7,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
 
   nFreq = rxNumFrequencies(f)
   nReceivers = rxNumChannels(f)
-  nPeriods = acqNumPeriodsPerFrame(f)
+  nPeriods = 1 #acqNumPeriodsPerFrame(f)
 
   minIdx = round(Int, minFreq / rxBandwidth(f) * nFreq )
   maxIdx = round(Int, maxFreq / rxBandwidth(f) * nFreq )
@@ -32,8 +32,8 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
       end
   end
 
-  if SNRThresh > 0 || numUsedFreqs >0 || sortBySNR
-    SNR = calibSNR(f)
+  if SNRThresh > 0 || numUsedFreqs > 0 || sortBySNR
+    SNR = calibSNR(f)[:,:,1]
   end
 
   if SNRThresh > 0 && numUsedFreqs > 0
