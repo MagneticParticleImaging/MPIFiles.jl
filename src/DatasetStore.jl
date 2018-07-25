@@ -28,10 +28,11 @@ struct Experiment
   num::Int64
   name::String
   numFrames::Int64
-  dfFov::Vector{Float64}
-  sfGradient::Vector{Float64}
+  df::Vector{Float64}
+  sfGradient::Float64
   numAverages::Int64
   operator::String
+  time::String
   # more ...
 end
 
@@ -129,8 +130,8 @@ function getExperiment(path::String)
 
   exp = Experiment( path, parse(Int64,last(splitdir(prefix))),
                       string(experimentName(b)), acqNumFrames(b),
-                      round.(1000.*vec(acqFov(b)),2), acqGradient(b)[:,1],
-                      acqNumAverages(b), scannerOperator(b))
+                      round.(1000.*vec(dfStrength(b)[1,:,1]),2), maximum(abs.(acqGradient(b))),
+                      acqNumAverages(b), scannerOperator(b), string(acqStartTime(b)))
 
   return exp
 end
