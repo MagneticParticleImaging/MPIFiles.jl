@@ -148,7 +148,7 @@ end
 function saveasMDF(file::HDF5File, params::Dict)
   # general parameters
   write(file, "/version", "2.0")
-  write(file, "/uuid", string(get(params,"uuid",Base.Random.uuid4() )))
+  write(file, "/uuid", string(get(params,"uuid",uuid4() )))
   write(file, "/time", "$( get(params,"time", Dates.unix2datetime(time())) )")
 
   # study parameters
@@ -157,7 +157,7 @@ function saveasMDF(file::HDF5File, params::Dict)
   if hasKeyAndValue(params,"studyUuid")
     studyUuid = params["studyUuid"]
   else
-    studyUuid = Base.Random.uuid4()
+    studyUuid = uuid4()
   end
   write(file, "/study/uuid", string(studyUuid))
   write(file, "/study/description", get(params,"studyDescription","n.a."))
@@ -168,7 +168,7 @@ function saveasMDF(file::HDF5File, params::Dict)
   if hasKeyAndValue(params,"experimentUuid")
     expUuid = params["experimentUuid"]
   else
-    expUuid = Base.Random.uuid4()
+    expUuid = uuid4()
   end
   write(file, "/experiment/uuid", string(expUuid))
   write(file, "/experiment/description", get(params,"experimentDescription","n.a."))

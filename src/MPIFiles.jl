@@ -1,12 +1,15 @@
-__precompile__()
+VERSION < v"0.7.0-beta2.199" && __precompile__()
 module MPIFiles
 
 using Reexport
 
 using Compat
-using Compat.LinearAlgebra
-using Compat.Statistics
+if VERSION >= v"0.7.0-"
+  using Compat.LinearAlgebra
+  using Compat.Statistics
+end
 using Compat.Random
+using Compat.UUIDs
 using ProgressMeter
 using Graphics: @mustimplement
 @reexport using ImageAxes
