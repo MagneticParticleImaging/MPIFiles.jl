@@ -1,5 +1,6 @@
 using MPIFiles
-using Test
+using Compat
+using Compat.Test
 using HTTP
 using Unitful
 using HDF5
