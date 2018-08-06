@@ -8,12 +8,18 @@ fnSMV1 = "systemMatrix_V1.mdf"
 fnSMV2 = "systemMatrix_V2c.mdf"
 
 if !isfile(fnSMV1)
-  streamSM = get("http://media.tuhh.de/ibi/mdf/systemMatrix.h5")
-  save(streamSM, fnSMV1)
+  HTTP.open("GET", "http://media.tuhh.de/ibi/mdf/systemMatrix.h5") do http
+    open(fnSMV1, "w") do file
+        write(file, http)
+    end
+  end
 end
 if !isfile(fnMeasV1)
-  streamMeas = get("http://media.tuhh.de/ibi/mdf/measurement_5.h5")
-  save(streamMeas, fnMeasV1)
+  HTTP.open("GET", "http://media.tuhh.de/ibi/mdf/measurement_5.h5") do http
+    open(fnMeasV1, "w") do file
+        write(file, http)
+    end
+  end
 end
 
 saveasMDF(fnMeasV2, fnMeasV1)

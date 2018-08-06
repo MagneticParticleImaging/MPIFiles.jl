@@ -2,7 +2,7 @@ julia 0.6
 Compat
 Reexport
 Graphics
-Requests
+HTTP
 HDF5
 ProgressMeter
 Images

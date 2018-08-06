@@ -1,6 +1,6 @@
 using MPIFiles
-using Base.Test
-using Requests
+using Test
+using HTTP
 using Unitful
 using HDF5
 

@@ -6,6 +6,7 @@ using Reexport
 using Compat
 using Compat.LinearAlgebra
 using Compat.Statistics
+using Compat.Random
 using ProgressMeter
 using Graphics: @mustimplement
 @reexport using ImageAxes

@@ -458,7 +458,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
   address = "/$t-Design/$N"
 
   if exists(h5file, address)
-    positions = read(h5file, address)'
+    positions = copy(transpose(read(h5file, address)))
     return SphericalTDesign(UInt(t),radius,positions, center)
   else
     if exists(h5file, "/$t-Design/")
