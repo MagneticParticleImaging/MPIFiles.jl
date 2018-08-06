@@ -26,7 +26,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
 
     skipKeys = ["VisuAcqFrameTime"]
 
-    for line in EachLine(stream)
+    for line in eachline(stream)
       if finishedReading
         s = strip(line)
         if s[1] == '#' && s[2] == '#' && s[3] == '$'
