@@ -7,6 +7,7 @@ using Compat
 if VERSION >= v"0.7.0-"
   using Compat.LinearAlgebra
   using Compat.Statistics
+  using FFTW
 end
 using Compat.Random
 using Compat.UUIDs

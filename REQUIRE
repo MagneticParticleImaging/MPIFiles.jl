@@ -11,3 +11,4 @@ Interpolations
 ImageAxes
 ImageMetadata
 FileIO
+FFTW
