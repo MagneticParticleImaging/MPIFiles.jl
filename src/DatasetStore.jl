@@ -36,21 +36,21 @@ struct Experiment
   # more ...
 end
 
-type Reconstruction
+mutable struct Reconstruction
   path::String
   num::Int64
   params::Dict
 end
 
-type Visualization
+mutable struct Visualization
   path::String
   num::Int64
   params::Dict
 end
 
-@compat abstract type DatasetStore end
+abstract type DatasetStore end
 
-type BrukerDatasetStore <: DatasetStore
+struct BrukerDatasetStore <: DatasetStore
    path::String
 end
 
@@ -64,7 +64,7 @@ function try_chmod(path, mode; recursive=true)
   return
 end
 
-type MDFDatasetStore <: DatasetStore
+struct MDFDatasetStore <: DatasetStore
   path::String
 
   function MDFDatasetStore(path::String)

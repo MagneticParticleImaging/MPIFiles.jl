@@ -1,4 +1,4 @@
-# loading and storing custom parameters 
+# loading and storing custom parameters
 
 export ColoringParams, loadParams, saveParams
 
@@ -8,7 +8,7 @@ function saveParams(filename::AbstractString, path, params::Dict)
   end
 end
 
-type ColoringParams
+mutable struct ColoringParams
   cmin
   cmax
   cmap

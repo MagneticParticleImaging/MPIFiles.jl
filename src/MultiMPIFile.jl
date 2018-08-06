@@ -1,7 +1,7 @@
 export MultiMPIFile
 import Base: getindex, start, next, done, length
 
-type MultiMPIFile <: MPIFile
+mutable struct MultiMPIFile <: MPIFile
   files::Vector{MPIFile}
 
   function MultiMPIFile(filenames::Vector{String})

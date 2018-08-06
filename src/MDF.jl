@@ -4,11 +4,11 @@ import HDF5: h5read
 
 export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton
 
-@compat abstract type MDFFile <: MPIFile end
+abstract type MDFFile <: MPIFile end
 
 # We use a dedicated type for v1 and v2. If both versions
 # are the same we use the abstract type MDFFile
-type MDFFileV1 <: MDFFile
+mutable struct MDFFileV1 <: MDFFile
   filename::String
   file::HDF5File
   mmap_measData
@@ -17,7 +17,7 @@ end
 MDFFileV1(filename::String, file=h5open(filename,"r+")) =
    MDFFileV1(filename, file, nothing)
 
-type MDFFileV2 <: MDFFile
+mutable struct MDFFileV2 <: MDFFile
   filename::String
   file::HDF5File
   mmap_measData

@@ -11,7 +11,7 @@ export MultiPatchMPIFile
 =#
 
 
-type MultiPatchMPIFile <: MPIFile
+mutable struct MultiPatchMPIFile <: MPIFile
   file::MPIFile
   frames::Vector{Int64}
   offsets::Matrix{Float64}
@@ -70,14 +70,14 @@ end
 function acqOffsetField(f::MultiPatchMPIFile)
    x=div(length(f.frames),size(f.offsets,2))
    tmp=kron(f.offsets,ones(1,x))#acqOffsetField(f.file)
-   
+
    newVal = similar(tmp, 3, 1, acqNumPeriodsPerFrame(f))
    for b=1:acqNumPeriodsPerFrame(f)
     for a=1:3
         newVal[a,1,b] = tmp[a,b]
     end
    end
-   
+
 
   return newVal
 end
@@ -113,8 +113,8 @@ function measData(f::MultiPatchMPIFile, frames=1:acqNumFrames(f), periods=f.fram
                   receivers=1:rxNumChannels(f))
   data = zeros(Float32, rxNumSamplingPoints(f), length(receivers),
                         length(frames),length(periods))
-  
+
   data = measData(f.file, periods, 1, receivers)
- 
+
   return reshape(data,size(data,1),size(data,2),:,1)
 end

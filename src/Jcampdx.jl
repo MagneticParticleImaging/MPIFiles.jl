@@ -5,7 +5,7 @@ export JcampdxFile
 const JCVAL = Union{AbstractString,Number,Bool,Array,Tuple,Void}
 const HTSS = Dict{AbstractString,JCVAL}
 
-type JcampdxFile
+mutable struct JcampdxFile
   dict::HTSS
 end
 

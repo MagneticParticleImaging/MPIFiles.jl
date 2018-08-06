@@ -70,7 +70,7 @@ export filepath, systemMatrixWithBG, systemMatrix
 export selectedChannels
 ### Interface of an MPIFile ###
 
-@compat abstract type MPIFile end
+abstract type MPIFile end
 
 # general parameters
 @mustimplement version(f::MPIFile)
