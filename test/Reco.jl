@@ -5,8 +5,11 @@ fnRecoV2 = "reco_V2.mdf"
 fnRecoV2b = "reco_V2b.mdf"
 
 if !isfile(fnRecoV1)
-  streamReco = get("http://media.tuhh.de/ibi/mdf/reco_V1.mdf")
-  save(streamReco, fnRecoV1)
+  HTTP.open("GET", "http://media.tuhh.de/ibi/mdf/reco_V1.mdf") do http
+    open(fnRecoV1, "w") do file
+        write(file, http)
+    end
+  end
 end
 
 mdfv1 = MPIFile(fnRecoV1)
