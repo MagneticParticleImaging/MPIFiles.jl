@@ -455,7 +455,7 @@ calibSize(b::BrukerFile) = [parse(Int64,s) for s in b["PVM_Matrix"]]
 calibOrder(b::BrukerFile) = "xyz"
 calibPositions(b::BrukerFile) = nothing
 calibOffsetField(b::BrukerFile) = nothing
-calibDeltaSampleSize(b::BrukerFile) = nothing #TODO
+calibDeltaSampleSize(b::BrukerFile) = [0.0, 0.0, 0.0] #TODO
 calibMethod(b::BrukerFile) = "robot"
 calibIsMeanderingGrid(b::BrukerFile) = true
 

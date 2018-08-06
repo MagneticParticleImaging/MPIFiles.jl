@@ -10,28 +10,42 @@ export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton
 # are the same we use the abstract type MDFFile
 type MDFFileV1 <: MDFFile
   filename::String
-  param_cache
+  file::HDF5File
   mmap_measData
 end
 
-MDFFileV1(filename::String) = MDFFileV1(filename,Dict{String,Any}(),nothing)
+MDFFileV1(filename::String, file=h5open(filename,"r+")) =
+   MDFFileV1(filename, file, nothing)
 
 type MDFFileV2 <: MDFFile
   filename::String
-  param_cache
+  file::HDF5File
   mmap_measData
 end
 
-MDFFileV2(filename::String) = MDFFileV2(filename,Dict{String,Any}(),nothing)
+function MDFFileV2(filename::String, file=h5open(filename,"r+"))
+  f = MDFFileV2(filename, file, nothing)
+
+  parameter = "/measurement/data"
+  if exists(f.file, "/measurement/data")
+    if !isComplexArray(f.file, parameter)
+      f.mmap_measData = readmmap(f.file[parameter])
+    else
+      f.mmap_measData = readmmap(f.file[parameter], Array{getComplexType(f.file,parameter)} )
+    end
+  end
+  return f
+end
 
 # This dispatches on the file extension and automatically
 # generates the correct type
 function (::Type{MDFFile})(filename::String)
-  vers = VersionNumber( h5read(filename, "/version") )
+  file = h5open(filename,"r+")
+  vers = VersionNumber( read(file, "/version") )
   if vers < v"2.0"
-    return MDFFileV1(filename)
+    return MDFFileV1(filename, file)
   else
-    return MDFFileV2(filename)
+    return MDFFileV2(filename, file)
   end
 end
 
@@ -49,34 +63,45 @@ function h5exists(filename, parameter)
   end
 end
 
-function h5readornull(filename, parameter)
-  if h5exists(filename, parameter)
-    return h5read(filename, parameter)
+#function h5readornull(filename, parameter)
+#  if h5exists(filename, parameter)
+#    return h5read(filename, parameter)
+#  else
+#    return nothing
+#  end
+#end
+
+#function h5read_(filename, parameter, default)
+#  if h5exists(filename, parameter)
+#    return h5read(filename, parameter)
+#  else
+#    return default
+#  end
+#end
+
+function getindex(f::MDFFile, parameter)
+  #if !haskey(f.param_cache,parameter)
+  #  f.param_cache[parameter] = h5readornull(f.filename, parameter)
+  #end
+  #return f.param_cache[parameter]
+  #return read(f.file[parameter])
+  if exists(f.file, parameter)
+    return read(f.file, parameter)
   else
     return nothing
   end
 end
 
-function h5read_(filename, parameter, default)
-  if h5exists(filename, parameter)
-    return h5read(filename, parameter)
+function getindex(f::MDFFile, parameter, default)
+  #if !haskey(f.param_cache,parameter)
+  #  f.param_cache[parameter] = h5read_(f.filename, parameter, default)
+  #end
+  #return f.param_cache[parameter]
+  if exists(f.file, parameter)
+    return read(f.file, parameter)
   else
     return default
   end
-end
-
-function getindex(f::MDFFile, parameter)
-  if !haskey(f.param_cache,parameter)
-    f.param_cache[parameter] = h5readornull(f.filename, parameter)
-  end
-  return f.param_cache[parameter]
-end
-
-function getindex(f::MDFFile, parameter, default)
-  if !haskey(f.param_cache,parameter)
-    f.param_cache[parameter] = h5read_(f.filename, parameter, default)
-  end
-  return f.param_cache[parameter]
 end
 
 
@@ -109,11 +134,11 @@ experimentSubject(f::MDFFileV1) = f["/study/subject"]
 experimentSubject(f::MDFFileV2) = f["/experiment/subject"]
 experimentIsSimulation(f::MDFFileV2) = Bool( f["/experiment/isSimulation"] )
 experimentIsSimulation(f::MDFFileV1) = Bool( f["/study/simulation"] )
-experimentIsCalibration(f::MDFFile) = h5exists(f.filename, "/calibration")
-experimentHasReconstruction(f::MDFFile) = h5exists(f.filename, "/reconstruction")
-experimentHasMeasurement(f::MDFFileV1) = h5exists(f.filename, "/measurement") ||
-                                         h5exists(f.filename, "/calibration")
-experimentHasMeasurement(f::MDFFileV2) = h5exists(f.filename, "/measurement")
+experimentIsCalibration(f::MDFFile) = exists(f.file, "/calibration")
+experimentHasReconstruction(f::MDFFile) = exists(f.file, "/reconstruction")
+experimentHasMeasurement(f::MDFFileV1) = exists(f.file, "/measurement") ||
+                                         exists(f.file, "/calibration")
+experimentHasMeasurement(f::MDFFileV2) = exists(f.file, "/measurement")
 
 _makeStringArray(s::String) = [s]
 _makeStringArray{T<:AbstractString}(s::Vector{T}) = s
@@ -210,7 +235,7 @@ dfDivider(f::MDFFileV2) = f["/acquisition/drivefield/divider"]
 dfWaveform(f::MDFFileV1) = "sine"
 dfWaveform(f::MDFFileV2) = f["/acquisition/drivefield/waveform"]
 function dfCycle(f::MDFFile)
-  if h5exists(f.filename, "/acquisition/drivefield/cycle")
+  if exists(f.file, "/acquisition/drivefield/cycle")
     return f["/acquisition/drivefield/cycle"]
   else  # pre V2 version
     return f["/acquisition/drivefield/period"]
@@ -223,7 +248,7 @@ rxBandwidth(f::MDFFile) = f["/acquisition/receiver/bandwidth"]
 rxNumSamplingPoints(f::MDFFile) = f["/acquisition/receiver/numSamplingPoints"]
 function rxTransferFunction(f::MDFFile)
   parameter = "/acquisition/receiver/transferFunction"
-  if h5exists(f.filename, parameter)
+  if exists(f.file, parameter)
     return readComplexArray(f.filename, parameter)
   else
     return nothing
@@ -240,7 +265,7 @@ rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFa
 # measurements
 function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
-  if !h5exists(f.filename, "/measurement")
+  if !exists(f.file, "/measurement")
     # the V1 file is a calibration
     data = f["/calibration/dataFD"]
     if ndims(data) == 4
@@ -249,13 +274,11 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
       return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
     end
   end
-  tdExists = h5exists(f.filename, "/measurement/dataTD")
+  tdExists = exists(f.file, "/measurement/dataTD")
 
   if tdExists
     if f.mmap_measData == nothing
-      h5open(f.filename,"r") do file
-        f.mmap_measData = readmmap(file["/measurement/dataTD"])
-      end
+      f.mmap_measData = readmmap(f.file["/measurement/dataTD"])
     end
     data = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
@@ -264,9 +287,7 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
     return reshape(data,size(data,1),size(data,2),1,size(data,3))
   else
     if f.mmap_measData == nothing
-      h5open(f.filename,"r") do file
-        f.mmap_measData = readmmap(file["/measurement/dataFD"])
-      end
+      f.mmap_measData = readmmap(f.file["/measurement/dataFD"])
     end
     data = zeros(Float64, 2, rxNumFrequencies(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
@@ -281,19 +302,6 @@ end
 
 function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
-  #if !h5exists(f.filename, "/measurement")
-  #  return nothing
-  #end
-  if f.mmap_measData == nothing
-    h5open(f.filename,"r") do file
-      parameter = "/measurement/data"
-      if !isComplexArray(file, parameter)
-        f.mmap_measData = readmmap(file[parameter])
-      else
-        f.mmap_measData = readmmap(file[parameter], Array{getComplexType(file,parameter)} )
-      end
-    end
-  end
 
   if measIsTransposed(f)
     data = f.mmap_measData[frames, :, receivers, periods]
@@ -305,23 +313,20 @@ function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
   return data
 end
 
+
 function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
                   receivers=1:rxNumChannels(f))
-  tdExists = h5exists(f.filename, "/measurement/dataTD")
+  tdExists = exists(f.file, "/measurement/dataTD")
 
   if tdExists
     if f.mmap_measData == nothing
-      h5open(f.filename,"r") do file
-        f.mmap_measData = readmmap(file["/measurement/dataTD"])
-      end
+      f.mmap_measData = readmmap(f.file["/measurement/dataTD"])
     end
     data = f.mmap_measData[:, receivers, periods]
     return data
   else
     if f.mmap_measData == nothing
-      h5open(f.filename,"r") do file
-        f.mmap_measData = readmmap(file["/measurement/dataFD"])
-      end
+      f.mmap_measData = readmmap(f.file["/measurement/dataFD"])
     end
     data = f.mmap_measData[:, :, receivers, periods]
 
@@ -338,17 +343,6 @@ function measDataTDPeriods(f::MDFFileV2, periods=1:acqNumPeriods(f),
     error("measDataTDPeriods can currently not handle transposed data!")
   end
 
-  if f.mmap_measData == nothing
-    h5open(f.filename,"r") do file
-      parameter = "/measurement/data"
-      if !isComplexArray(file, parameter)
-        f.mmap_measData = readmmap(file[parameter])
-      else
-        error("measDataTDPeriods expects time domain data")
-      end
-    end
-  end
-
   data = reshape(f.mmap_measData,Val{3})[:, receivers, periods]
 
   return data
@@ -359,9 +353,7 @@ function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
     return nothing
   end
   if f.mmap_measData == nothing
-    h5open(f.filename,"r") do file
-      f.mmap_measData = readmmap(file["/calibration/dataFD"])
-    end
+    f.mmap_measData = readmmap(f.file["/calibration/dataFD"])
   end
 
   data = reshape(f.mmap_measData,Val{3})[:, :, rows]
@@ -369,20 +361,11 @@ function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
 end
 
 function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
-  if !h5exists(f.filename, "/measurement") || !measIsTransposed(f) ||
+  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
     !measIsFourierTransformed(f)
     return nothing
   end
-  if f.mmap_measData == nothing
-    h5open(f.filename,"r") do file
-      parameter = "/measurement/data"
-      if !isComplexArray(file, parameter)
-        f.mmap_measData = readmmap(file[parameter])
-      else
-        f.mmap_measData = readmmap(file[parameter], Array{getComplexType(file,parameter)} )
-      end
-    end
-  end
+
   data_ = reshape(f.mmap_measData,size(f.mmap_measData,1),
                                   size(f.mmap_measData,2)*size(f.mmap_measData,3),
                                   size(f.mmap_measData,4))[:, rows, :]
@@ -409,19 +392,9 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
 end
 
 function systemMatrixWithBG(f::MDFFileV2)
-  if !h5exists(f.filename, "/measurement") || !measIsTransposed(f) ||
+  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
       !measIsFourierTransformed(f)
       return nothing
-  end
-  if f.mmap_measData == nothing
-    h5open(f.filename,"r") do file
-      parameter = "/measurement/data"
-      if !isComplexArray(file, parameter)
-        f.mmap_measData = readmmap(file[parameter])
-      else
-        f.mmap_measData = readmmap(file[parameter], Array{getComplexType(file,parameter)} )
-      end
-    end
   end
 
   data = f.mmap_measData[:, :, :, :]
@@ -486,11 +459,11 @@ calibFov(f::MDFFile) = f["/calibration/fieldOfView"]
 calibFovCenter(f::MDFFile) = f["/calibration/fieldOfViewCenter"]
 calibSize(f::MDFFile) = f["/calibration/size"]
 calibOrder(f::MDFFile) = f["/calibration/order"]
-calibPositions(f::MDFFile) = f["/calibration/positions"]
 calibOffsetField(f::MDFFile) = f["/calibration/offsetField"]
-calibDeltaSampleSize(f::MDFFile) = f["/calibration/deltaSampleSize"]
+calibDeltaSampleSize(f::MDFFile) = f["/calibration/deltaSampleSize",[0.0,0.0,0.0]]
 calibMethod(f::MDFFile) = f["/calibration/method"]
 calibIsMeanderingGrid(f::MDFFile) = Bool(f["/calibration/isMeanderingGrid", 0])
+calibPositions(f::MDFFile) = f["/calibration/positions"]
 
 # reconstruction results
 recoData(f::MDFFileV1) = addLeadingSingleton(
@@ -504,10 +477,10 @@ recoPositions(f::MDFFile) = f["/reconstruction/positions"]
 
 # this is non-standard
 function recoParameters(f::MDFFile)
-  if !h5exists(f.filename, "/reconstruction/parameters")
+  if !exists(f.file, "/reconstruction/parameters")
     return nothing
   end
-  return loadParams(f.filename, "/reconstruction/parameters")
+  return loadParams(f.file, "/reconstruction/parameters")
 end
 
 # additional functions that should be implemented by an MPIFile

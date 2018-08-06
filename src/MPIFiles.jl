@@ -136,6 +136,7 @@ export selectedChannels
 
 # measurements
 @mustimplement measData(f::MPIFile)
+@mustimplement measDataTD(f::MPIFile)
 @mustimplement measDataTDPeriods(f::MPIFile, periods)
 @mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
 @mustimplement measIsFourierTransformed(f::MPIFile)
@@ -303,6 +304,26 @@ end
 # to the end
 systemMatrix(f::MPIFile) = systemMatrixWithBG(f)[1:acqNumFGFrames(f),:,:,:]
 
+function measDataTD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
+                  receivers=1:rxNumChannels(f))
+
+  data1 = measData(f,frames,periods,receivers)
+
+  if measIsTransposed(f)
+    data2 = permutedims(data1, invperm([4,1,2,3]))
+  else
+    data2 = data1
+  end
+
+  if measIsFourierTransformed(f)
+    dataTD = irfft(data2,2*size(data2,1)-1, 1)
+  else
+    dataTD = data2
+  end
+  return dataTD
+end
+
+
 ### Concrete implementations ###
 
 include("Custom.jl")
@@ -395,11 +416,5 @@ export Positions, RegularGridPositions, ChebyshevGridPositions,
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
 
-
-
-
-function __init__()
-    Unitful.register(MPIFiles)
-end
 
 end # module

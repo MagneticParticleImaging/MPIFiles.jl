@@ -1,7 +1,7 @@
 export getMeasurements, getMeasurementsFD, getMeasurementsLowLevel
 
 function measDataConv(f::MPIFile, args...)
-  data = measData(f, args...)
+  data = measDataTD(f, args...)
 
   if eltype(data) <: Integer
     data = map(Float32, data)

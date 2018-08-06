@@ -148,7 +148,7 @@ for sm in (smBruker,smv2,smv3)
   @test calibFovCenter(sm) == [0.0; -0.0; 0.0]
   @test calibSize(sm) == [44; 44; 1]
   @test calibOrder(sm) == "xyz"
-  @test calibDeltaSampleSize(sm) == nothing #[0.001; 0.001; 0.001]
+  @test calibDeltaSampleSize(sm) == [0.0, 0.0, 0.0] #[0.001; 0.001; 0.001]
   @test calibMethod(sm) == "robot"
 
   @test size(filterFrequencies(sm, SNRThresh = 5)) == (147,)
@@ -189,7 +189,7 @@ for sm in (sm1DBruker,sm1D)
   @test size( systemMatrixWithBG(sm) ) == (67,52,3,1)
   @test size( systemMatrix(sm,1:10) ) == (60,10)
   @test size( systemMatrix(sm) ) == (60,52,3,1)
-  
+
   @test size(calibSNR(sm)) == (52, 3, 1)
 
   @test rxNumSamplingPoints(sm) == 102

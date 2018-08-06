@@ -123,12 +123,14 @@ function getExperiment(path::String)
   prefix, ext = splitext(path)
 
   if isdir(path) #Ugly
+    p = path
     b = MPIFiles.BrukerFileFast(path) #use fast path for BrukerFiles
   else
-    b = MDFFile(string(prefix,".mdf"))
+    p = string(prefix,".mdf")
+    b = MDFFile(p)
   end
 
-  exp = Experiment( path, parse(Int64,last(splitdir(prefix))),
+  exp = Experiment(p, parse(Int64,last(splitdir(prefix))),
                       string(experimentName(b)), acqNumFrames(b),
                       round.(1000.*vec(dfStrength(b)[1,:,1]),2), maximum(abs.(acqGradient(b))),
                       acqNumAverages(b), scannerOperator(b), string(acqStartTime(b)))
@@ -415,7 +417,7 @@ end
 
 function loadSFDatabase(d::MDFDatasetStore)
   files = readdir(calibdir(d))
-  println(files)
+  #println(files)
   mdffiles = files[endswith.(files,".mdf")]
   fileList = calibdir(d).*"/".*mdffiles
   A = generateSFDatabase(fileList)
@@ -431,13 +433,13 @@ function getExperiments(d::BrukerDatasetStore, s::Study)
   experiments = Experiment[]
 
   for file in files
-    try
+    #try
       exp = getExperiment(file)
 
       push!(experiments, exp)
-    catch e
-      println(e)
-    end
+    #catch e
+    #  println(e)
+    #end
   end
   return experiments
 end
@@ -448,17 +450,16 @@ function getExperiments(d::MDFDatasetStore, s::Study)
 
   experiments = Experiment[]
 
-  for file in files
+  println("Time for get Experiments")
+  @time for file in files
     prefix, ext = splitext(file)
     if !isdir(file) && !isnull(tryparse(Int64,prefix)) &&
-       (ext == ".mdf" || ext == ".hdf" || ext == ".h5")
-      #try
-        @time exp = getExperiment(joinpath(s.path,file))
+       (ext == ".mdf" || ext == ".hdf" || ext == ".h5") &&
+       isfile(joinpath(s.path,file))
+
+        exp = getExperiment(joinpath(s.path,file))
 
         push!(experiments, exp)
-      #catch e
-      #  println(e)
-      #end
     end
   end
   sort!(experiments,lt=(a,b)->(a.num < b.num))
@@ -492,8 +493,9 @@ function getNewExperimentNum(d::MDFDatasetStore, s::Study)
 end
 
 function getNewCalibNum(d::MDFDatasetStore)
+  return getNewNumInFolder(d, calibdir(d))
 
-  files = readdir(calibdir(d))
+  #=files = readdir(calibdir(d))
   calibNum = 1
   if length(files) > 0
     for i=1:length(files)
@@ -505,7 +507,7 @@ function getNewCalibNum(d::MDFDatasetStore)
     end
   end
 
-  return calibNum
+  return calibNum=#
 end
 
 ####### Reconstruction Store MDF ###################
