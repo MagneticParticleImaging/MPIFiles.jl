@@ -11,8 +11,8 @@ export fieldOfView, fieldOfViewCenter, shape
 export idxToPos, posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid
 
 
-@compat abstract type Positions end
-@compat abstract type GridPositions<:Positions end
+abstract type Positions end
+abstract type GridPositions<:Positions end
 
 function Positions(file::HDF5File)
   typ = read(file, "/positionsType")
@@ -38,7 +38,7 @@ function Positions(file::HDF5File)
 end
 
 # Cartesian grid
-type RegularGridPositions{T} <: GridPositions where {T<:Unitful.Length}
+mutable struct RegularGridPositions{T} <: GridPositions where {T<:Unitful.Length}
   shape::Vector{Int}
   fov::Vector{T}
   center::Vector{T}
@@ -174,7 +174,7 @@ function posToLinIdx(grid::RegularGridPositions,pos::Vector)
 end
 
 # Chebyshev Grid
-type ChebyshevGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
+mutable struct ChebyshevGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
   shape::Vector{Int}
   fov::Vector{S}
   center::Vector{T}
@@ -204,7 +204,7 @@ function getindex(grid::ChebyshevGridPositions, i::Integer)
 end
 
 # Meander regular grid positions
-type MeanderingGridPositions{T} <: GridPositions where {T<:GridPositions}
+mutable struct MeanderingGridPositions{T} <: GridPositions where {T<:GridPositions}
   grid::T
 end
 
@@ -250,7 +250,7 @@ function getPermutation(grid::MeanderingGridPositions)
   return vec(perm)
 end
 
-type BreakpointGridPositions{T,S} <: GridPositions where {T<:GridPositions}
+mutable struct BreakpointGridPositions{T,S} <: GridPositions where {T<:GridPositions}
   grid::T
   breakpointIndices::Vector{Int64}
   breakpointPosition::Vector{S}
@@ -302,7 +302,7 @@ function getindex(grid::BreakpointGridPositions, i::Integer)
 end
 
 # Uniform random distributed positions
-@compat abstract type SpatialDomain end
+abstract type SpatialDomain end
 
 struct AxisAlignedBox <: SpatialDomain
   fov::Vector{S} where {S<:Unitful.Length}
@@ -339,7 +339,7 @@ function Ball(file::HDF5File)
 end
 
 
-type UniformRandomPositions{T} <: Positions where {T<:SpatialDomain}
+mutable struct UniformRandomPositions{T} <: Positions where {T<:SpatialDomain}
   N::UInt
   seed::UInt32
   domain::T
@@ -425,7 +425,7 @@ fieldOfViewCenter(bgrid::BreakpointGridPositions) = fieldOfViewCenter(bgrid.grid
 
 spacing(grid::GridPositions) = grid.fov ./ grid.shape
 
-type SphericalTDesign{S,V} <: Positions where {S,V<:Unitful.Length}
+mutable struct SphericalTDesign{S,V} <: Positions where {S,V<:Unitful.Length}
   T::Unsigned
   radius::S
   positions::Matrix
@@ -488,7 +488,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
 end
 
 # Unstructured collection of positions
-type ArbitraryPositions{T} <: Positions where {T<:Unitful.Length}
+mutable struct ArbitraryPositions{T} <: Positions where {T<:Unitful.Length}
   positions::Matrix{T}
 end
 

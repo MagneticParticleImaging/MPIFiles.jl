@@ -14,9 +14,9 @@ function latin1toutf8(str::Void)
   println(stacktrace())
 end
 
-@compat abstract type BrukerFile <: MPIFile end
+abstract type BrukerFile <: MPIFile end
 
-type BrukerFileMeas <: BrukerFile
+mutable struct BrukerFileMeas <: BrukerFile
   path::String
   params::JcampdxFile
   paramsProc::JcampdxFile
@@ -30,7 +30,7 @@ type BrukerFileMeas <: BrukerFile
   maxEntriesAcqp
 end
 
-type BrukerFileCalib <: BrukerFile
+mutable struct BrukerFileCalib <: BrukerFile
   path::String
   params::JcampdxFile
   paramsProc::JcampdxFile
