@@ -141,7 +141,7 @@ experimentHasMeasurement(f::MDFFileV1) = exists(f.file, "/measurement") ||
 experimentHasMeasurement(f::MDFFileV2) = exists(f.file, "/measurement")
 
 _makeStringArray(s::String) = [s]
-_makeStringArray{T<:AbstractString}(s::Vector{T}) = s
+_makeStringArray(s::Vector{T}) where {T<:AbstractString} = s
 
 # tracer parameters
 tracerName(f::MDFFileV1)::Vector{String} = [f["/tracer/name"]]
@@ -199,7 +199,7 @@ acqNumFrames(f::MDFFileV2)::Int = f["/acquisition/numFrames"]
 acqNumPeriodsPerFrame(f::MDFFileV1)::Int = 1
 acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods",1]
 
-acqGradient(f::MDFFileV1)::Array{Float64,4} = reshape(diagm(f["/acquisition/gradient"]), 3,3,1,1)
+acqGradient(f::MDFFileV1)::Array{Float64,4} = reshape(Matrix(Diagonal(f["/acquisition/gradient"])), 3,3,1,1)
 function acqGradient(f::MDFFileV2)::Array{Float64,4}
   g = f["/acquisition/gradient"]
   if ndims(g) == 2 # compatibility with V2 pre versions
@@ -269,9 +269,9 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
     # the V1 file is a calibration
     data = f["/calibration/dataFD"]
     if ndims(data) == 4
-      return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),1))
+      return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4),1))
     else
-      return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
+      return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4),size(data,5)))
     end
   end
   tdExists = exists(f.file, "/measurement/dataTD")
@@ -294,7 +294,7 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
       data[:,:,:,i] = f.mmap_measData[:,:,receivers, fr]
     end
 
-    dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
+    dataFD = reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4)))
     dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
     return reshape(dataTD,size(dataTD,1),size(dataTD,2),1,size(dataTD,3))
   end
@@ -330,7 +330,7 @@ function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
     end
     data = f.mmap_measData[:, :, receivers, periods]
 
-    dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
+    dataFD = reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4)))
     dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
     return dataTD
   end
@@ -343,7 +343,7 @@ function measDataTDPeriods(f::MDFFileV2, periods=1:acqNumPeriods(f),
     error("measDataTDPeriods can currently not handle transposed data!")
   end
 
-  data = reshape(f.mmap_measData,Val{3})[:, receivers, periods]
+  data = reshape(f.mmap_measData,Val(3))[:, receivers, periods]
 
   return data
 end
@@ -356,8 +356,8 @@ function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
     f.mmap_measData = readmmap(f.file["/calibration/dataFD"])
   end
 
-  data = reshape(f.mmap_measData,Val{3})[:, :, rows]
-  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
+  data = reshape(f.mmap_measData,Val(3))[:, :, rows]
+  return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3)))
 end
 
 function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
@@ -369,7 +369,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
   data_ = reshape(f.mmap_measData,size(f.mmap_measData,1),
                                   size(f.mmap_measData,2)*size(f.mmap_measData,3),
                                   size(f.mmap_measData,4))[:, rows, :]
-  data = reshape(data_, Val{2})
+  data = reshape(data_, Val(2))
 
   fgdata = data[measFGFrameIdx(f),:]
   if bgCorrection # this assumes equidistent bg frames

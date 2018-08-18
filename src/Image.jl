@@ -3,7 +3,7 @@
 
 export imcenter, loadRecoDataMDF, saveRecoDataMDF
 
-imcenter(img::AxisArray) = map(x->(0.5*(last(x)+first(x))), ImageAxes.filter_space_axes(ImageAxes.axes(img), axisvalues(img)))
+imcenter(img::AxisArray) = map(x->(0.5*(last(x)+first(x))), ImageAxes.filter_space_axes(AxisArrays.axes(img), axisvalues(img)))
 imcenter(img::ImageMeta) = imcenter(data(img))
 
 
@@ -70,11 +70,11 @@ function loadRecoDataMDF_(f::MDFFile)
   end
   periodTime = Float64(acqFramePeriod(f))
 
-  ax1 = Axis{:color}(range(0.0, 1.0, size(c,1)))
-  ax2 = Axis{:x}(range(offset[1], pixspacing[1], size(c,2)))
-  ax3 = Axis{:y}(range(offset[2], pixspacing[2], size(c,3)))
-  ax4 = Axis{:z}(range(offset[3], pixspacing[3], size(c,4)))
-  ax5 = Axis{:time}(range(0.0, periodTime, size(c,5)))
+  ax1 = Axis{:color}(range(0.0, step=1.0, length=size(c,1)))
+  ax2 = Axis{:x}(range(offset[1], step=pixspacing[1], length=size(c,2)))
+  ax3 = Axis{:y}(range(offset[2], step=pixspacing[2], length=size(c,3)))
+  ax4 = Axis{:z}(range(offset[3], step=pixspacing[3], length=size(c,4)))
+  ax5 = Axis{:time}(range(0.0, step=periodTime, length=size(c,5)))
   im = AxisArray(c,ax1,ax2,ax3,ax4,ax5)
 
   return im

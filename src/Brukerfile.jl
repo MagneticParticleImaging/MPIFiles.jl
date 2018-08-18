@@ -1,3 +1,5 @@
+search_(s,c) = something(findfirst(isequal(c), s), 0)
+
 include("Jcampdx.jl")
 
 export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8, sfPath
@@ -10,7 +12,7 @@ function latin1toutf8(str::AbstractString)
   string(buff...)
 end
 
-function latin1toutf8(str::Void)
+function latin1toutf8(str::Nothing)
   println(stacktrace())
 end
 
@@ -183,7 +185,7 @@ scannerTopology(b::BrukerFile) = "FFP"
 # acquisition parameters
 function acqStartTime(b::BrukerFile)
   acq = b["ACQ_time"] #b["VisuAcqDate"]
-  DateTime( replace(acq[2:search(acq,'+')-1],",",".") )
+  DateTime( replace(acq[2:search_(acq,'+')-1],"," => ".") )
 end
 function acqNumFrames(b::BrukerFileMeas)
   M = Int64(b["ACQ_jobs"][1][8])
@@ -221,7 +223,7 @@ function acqNumBGFrames(b::BrukerFile)
 end
 function acqGradient(b::BrukerFile)
   G1::Float64 = parse(Float64,b["ACQ_MPI_selection_field_gradient"])
-  G2 = diagm([-0.5;-0.5;1.0]).*G1
+  G2 = Matrix(Diagonal([-0.5;-0.5;1.0])) .* G1
 
   G = zeros(3,3,1,acqNumPeriodsPerFrame(b))
   G[:,:,1,:] .= G2
@@ -230,20 +232,20 @@ end
 
 function acqOffsetField(b::BrukerFile) #TODO NOT correct
   if b["MPI_FocusFieldX"] != ""
-    off = repeat(1e-3*cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
+    off = repeat(1e-3 * cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
                  [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
                  [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,acqNumPeriodsPerPatch(b)))
   elseif b["CONFIG_MPI_FF_calibration"] != ""
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
     voltage = repeat(voltage,inner=(1,acqNumPeriodsPerPatch(b)))
-    calibFac = -1.0/100000./parse.(Float64,b["CONFIG_MPI_FF_calibration"])
+    calibFac = -1.0 / 100000 ./ parse.(Float64,b["CONFIG_MPI_FF_calibration"])
     off = Float64[voltage[d,j]*calibFac[d-1] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
   else # legacy
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
     voltage = repeat(voltage,inner=(1,acqNumPeriodsPerPatch(b)))
-    calibFac = [2.5/49.45, 0.5*(-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
+    calibFac = [2.5 / 49.45, 0.5 * (-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
     off = Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
   end
   return reshape(off, 3, 1, :)
@@ -293,7 +295,7 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
   else
     raw = Mmap.mmap(s, Array{dType,5},
              (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
-    raw = squeeze(sum(raw,2),2)
+    raw = dropdims(sum(raw,dims=2),dims=2)
   end
   data = raw[:,receivers,periods,frames]
   close(s)
@@ -308,21 +310,21 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
   nFreq = div(rxNumSamplingPoints(b)*numSubPeriods(b),2)+1
 
   s = open(sfFilename)
-  data = Mmap.mmap(s, Array{Complex128,4}, (prod(calibSize(b)),nFreq,rxNumChannels(b),1))
+  data = Mmap.mmap(s, Array{ComplexF64,4}, (prod(calibSize(b)),nFreq,rxNumChannels(b),1))
   #S = data[:,:,:,:]
-  S = map(Complex64, data)
+  S = map(ComplexF32, data)
   close(s)
-  scale!(S,1.0/acqNumAverages(b))
+  rmul!(S,1.0/acqNumAverages(b))
 
   bgFilename = joinpath(b.path,"pdata", "1", "background")
 
   s = open(bgFilename)
-  data = Mmap.mmap(s, Array{Complex128,4}, (acqNumBGFrames(b),nFreq,rxNumChannels(b),1))
+  data = Mmap.mmap(s, Array{ComplexF64,4}, (acqNumBGFrames(b),nFreq,rxNumChannels(b),1))
   #bgdata = data[:,:,:,:]
-  bgdata = map(Complex64, data)
+  bgdata = map(ComplexF32, data)
   close(s)
-  scale!(bgdata,1.0/acqNumAverages(b))
-  S_ = cat(1,S,bgdata)
+  rmul!(bgdata,1.0/acqNumAverages(b))
+  S_ = cat(S,bgdata,dims=1)
   if numSubPeriods(b) == 1
     return S_
   else
@@ -375,10 +377,10 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
   end
 
   s = open(sfFilename)
-  data = Mmap.mmap(s, Array{Complex128,2}, (prod(calibSize(b)),nFreq*rxNumChannels(b)))
+  data = Mmap.mmap(s, Array{ComplexF64,2}, (prod(calibSize(b)),nFreq*rxNumChannels(b)))
   S = data[:,rows]
   close(s)
-  scale!(S,1.0/acqNumAverages(b))
+  rmul!(S, 1.0/acqNumAverages(b))
   return S
 end
 
@@ -405,7 +407,7 @@ function measIsBGFrame(b::BrukerFileMeas)
     # to BG measurements
     isBG = zeros(Bool, acqNumFrames(b))
     increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
-    isBG[1:increment:end] = true
+    isBG[1:increment:end] .= true
 
     return isBG
   end
@@ -415,7 +417,7 @@ end
 # the measurement in a processed form. In that case the BG measurements
 # will be put at the end of the frame dimension.
 measIsBGFrame(b::BrukerFileCalib) =
-   cat(1,zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)))
+   cat(zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)),dims=1)
 
 # measurements are not permuted
 measFramePermutation(b::BrukerFileMeas) = nothing
@@ -470,7 +472,7 @@ filepath(b::BrukerFile) = b.path
 
 function sfPath(b::BrukerFile)
   tmp = b["PVM_MPI_FilenameSystemMatrix",1]
-  tmp[1:search(tmp,"/pdata")[1]]
+  tmp[1:search_(tmp,"/pdata")[1]]
 end
 
 ### The following is for field measurements from Alex Webers method
@@ -521,7 +523,8 @@ function deltaSampleConcentration(b::BrukerFile)
  end
 end
 
-deltaSampleConcentration{T<:BrukerFile}(b::Array{T,1}) = map(deltaSampleConcentration, b)
+deltaSampleConcentration(b::Array{T,1}) where {T<:BrukerFile} =
+    map(deltaSampleConcentration, b)
 
 function deltaSampleVolume(b::BrukerFile)
  V = parse(Float64, b["PVM_MPI_TracerVolume"] )*1e-6 # mu l

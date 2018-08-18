@@ -10,14 +10,14 @@ function measDataConv(f::MPIFile, args...)
   if a!=nothing
     for d=1:size(data,2)
       slice = view(data,:,d,:,:)
-      scale!(slice, a[1,d])
+      rmul!(slice, a[1,d])
       slice .+= a[2,d]
     end
   end
   return data
 end
 
-hannWindow(M) = (1.-cos.(2*π/(M-1)*(0:(M-1))))/(M-1)*M
+hannWindow(M) = (1.0 .- cos.(2*π/(M-1)*(0:(M-1))))/(M-1)*M
 
 function measDataSpectralLeakageCorrectedSinglePatch(f::MPIFile, frames)
   #println("Apply Spectral Cleaning")
@@ -110,10 +110,10 @@ function measDataLowLevel(f::MPIFile, args...; spectralLeakageCorrection=false)
   return tmp
 end
 
-function returnasreal{T}(u::AbstractArray{Complex{T}})
-  return reinterpret(T,u,tuple(size(u,1)*2,size(u)[2:end]...))
+function returnasreal(u::AbstractArray{Complex{T}}) where {T}
+  return copy(reshape(reinterpret(T,vec(u)),tuple(size(u,1)*2,size(u)[2:end]...)))
 end
-returnasreal{T<:Real}(u::AbstractArray{T}) = u
+returnasreal(u::AbstractArray{T}) where {T<:Real} = u
 
 function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
             numAverages=1,  verbose = false, periods=1:acqNumPeriodsPerFrame(f),
@@ -139,7 +139,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
       index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
 
       tmp = measDataLowLevel(f, frames[index1:index2], periods; kargs...)
-      data[:,:,:,i] = mean(tmp,4)
+      data[:,:,:,i] = mean(tmp,dims=4)
       next!(p)
     end
   end
@@ -150,7 +150,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     end
     data_ = reshape(data, rxNumSamplingPoints(f), rxNumChannels(f),
                           acqNumPeriodsPerPatch(f), acqNumPatches(f), size(data,4))
-    dataAv = mean(data,3)
+    dataAv = mean(data,dims=3)
 
     return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f),
                            acqNumPatches(f), size(data,4))
@@ -160,7 +160,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
 end
 
 function getMeasurements(f::MPIFile, neglectBGFrames=true;
-      frames=neglectBGFrames?(1:acqNumFGFrames(f)):(1:acqNumFrames(f)),
+      frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
       bgCorrection=false, interpolateBG=false, tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
 
   if neglectBGFrames

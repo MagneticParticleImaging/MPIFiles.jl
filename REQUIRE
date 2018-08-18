@@ -1,4 +1,4 @@
-julia 0.6
+julia 0.7
 Compat
 Reexport
 Graphics
@@ -12,3 +12,4 @@ ImageAxes
 ImageMetadata
 FileIO
 FFTW
+AxisArrays

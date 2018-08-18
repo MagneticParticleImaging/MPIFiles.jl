@@ -14,13 +14,13 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
 
   freqMask = zeros(Bool,nFreq,nReceivers,nPeriods)
 
-  freqMask[:,recChannels,:] = true
+  freqMask[:,recChannels,:] .= true
 
   if minIdx > 0
-    freqMask[1:(minIdx-1),:,:] = false
+    freqMask[1:(minIdx-1),:,:] .= false
   end
   if maxIdx < nFreq
-    freqMask[(maxIdx+1):end,:,:] = false
+    freqMask[(maxIdx+1):end,:,:] .= false
   end
 
   if maxMixingOrder > 0
@@ -41,7 +41,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   end
 
   if SNRThresh > 0
-    freqMask[ find(vec(SNR) .< SNRThresh) ] =  false
+    freqMask[ findall(vec(SNR) .< SNRThresh) ] .= false
   end
 
   if numUsedFreqs > 0
@@ -68,7 +68,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
     freqMask = freqStepsizeMask
   end
 
-  freq = find( vec(freqMask) )
+  freq = findall( vec(freqMask) )
 
   if sortBySNR && !sortByMixFactors
     SNR = vec(SNR[1:stepsize:nFreq,:,:])

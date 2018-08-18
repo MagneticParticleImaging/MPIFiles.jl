@@ -85,7 +85,7 @@ const MDFStore = MDFDatasetStore("/opt/data")
 ### generic functions ###
 
 function ishidden(filename::AbstractString)
-  @static if is_unix()
+  @static if Sys.isunix()
     s = basename(filename)
     return (!isempty(s) && s[1] == '.')
   else
@@ -132,7 +132,7 @@ function getExperiment(path::String)
 
   exp = Experiment(p, parse(Int64,last(splitdir(prefix))),
                       string(experimentName(b)), acqNumFrames(b),
-                      round.(1000.*vec(dfStrength(b)[1,:,1]),2), maximum(abs.(acqGradient(b))),
+                      round.(1000 .* vec(dfStrength(b)[1,:,1]),2), maximum(abs.(acqGradient(b))),
                       acqNumAverages(b), scannerOperator(b), string(acqStartTime(b)))
 
   return exp
@@ -326,7 +326,7 @@ end
 
 function generateSFDatabase(fileList::Vector)
 
-  A = Array{Any}(length(fileList)+1,16)
+  A = Array{Any}(undef,length(fileList)+1,16)
 
   # Headerrow
   A[1,1] = "Name"

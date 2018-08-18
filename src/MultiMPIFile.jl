@@ -1,5 +1,5 @@
 export MultiMPIFile
-import Base: getindex, start, next, done, length
+import Base: getindex, length, iterate
 
 mutable struct MultiMPIFile <: MPIFile
   files::Vector{MPIFile}
@@ -15,10 +15,14 @@ mutable struct MultiMPIFile <: MPIFile
 end
 
 getindex(f::MultiMPIFile, index::Integer) = f.files[index]
-start(f::MultiMPIFile) = 1
+
 length(f::MultiMPIFile) = length(f.files)
-next(f::MultiMPIFile,state) = (f[state],state+1)
-done(f::MultiMPIFile,state) = state > length(f.files)
+
+start_(f::MultiMPIFile) = 1
+next_(f::MultiMPIFile,state) = (f[state],state+1)
+done_(f::MultiMPIFile,state) = state > length(f.files)
+iterate(f::MultiMPIFile, s=start_(f)) = done_(f, s) ? nothing : next_(f, s)
+
 
 function Base.show(io::IO, f::MultiMPIFile)
   print(io, "Multi MPI File: ", f.files)
