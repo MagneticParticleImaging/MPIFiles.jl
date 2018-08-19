@@ -73,7 +73,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   if sortBySNR && !sortByMixFactors
     SNR = vec(SNR[1:stepsize:nFreq,:,:])
 
-    freq = freq[flipdim(sortperm(SNR[freq]),1)]
+    freq = freq[reverse(sortperm(SNR[freq]),dims=1)]
   end
 
   if !sortBySNR && sortByMixFactors
