@@ -1,6 +1,6 @@
 using MPIFiles
 using Compat
-using Compat.Test
+using Test
 using Compat.UUIDs
 using HTTP
 using Unitful

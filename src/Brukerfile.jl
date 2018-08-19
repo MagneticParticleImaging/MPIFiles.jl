@@ -48,7 +48,7 @@ end
 
 _iscalib(path::String) = isfile(joinpath(path,"pdata", "1", "systemMatrix"))
 
-function (::Type{BrukerFile})(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000)
+function BrukerFile(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000)
   params = JcampdxFile()
   paramsProc = JcampdxFile()
 
@@ -61,7 +61,7 @@ function (::Type{BrukerFile})(path::String; isCalib=_iscalib(path), maxEntriesAc
   end
 end
 
-function (::Type{BrukerFile})()
+function BrukerFile()
   params = JcampdxFile()
   paramsProc = JcampdxFile()
   return BrukerFileMeas("", params, paramsProc, false, false, false,

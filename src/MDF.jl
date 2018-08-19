@@ -39,7 +39,7 @@ end
 
 # This dispatches on the file extension and automatically
 # generates the correct type
-function (::Type{MDFFile})(filename::String)
+function MDFFile(filename::String)
   file = h5open(filename,"r+")
   vers = VersionNumber( read(file, "/version") )
   if vers < v"2.0"

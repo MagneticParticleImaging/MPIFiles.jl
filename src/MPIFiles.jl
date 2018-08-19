@@ -1,15 +1,12 @@
-VERSION < v"0.7.0-beta2.199" && __precompile__()
 module MPIFiles
 
 using Reexport
 
 using Compat
-if VERSION >= v"0.7.0-"
-  using Compat.LinearAlgebra
-  using Compat.Statistics
-  using FFTW
-end
-using Compat.Random
+using Compat.LinearAlgebra
+using Compat.Statistics
+using FFTW
+using Random
 using Compat.UUIDs
 using ProgressMeter
 using Graphics: @mustimplement
@@ -345,7 +342,7 @@ include("Brukerfile.jl")
 
 # This dispatches on the file extension and automatically
 # generates the correct type
-function (::Type{MPIFile})(filename::AbstractString; kargs...)
+function MPIFile(filename::AbstractString; kargs...)
   filenamebase, ext = splitext(filename)
   if ext == ".mdf" || ext == ".hdf" || ext == ".h5"
     return MDFFile(filename; kargs...)
@@ -355,7 +352,7 @@ function (::Type{MPIFile})(filename::AbstractString; kargs...)
 end
 
 # Opens a set of MPIFiles
-function (::Type{MPIFile})(filenames::Vector)
+function MPIFile(filenames::Vector)
   return map(x->MPIFile(x),filenames)
 end
 

@@ -321,7 +321,7 @@ end
 function generateSFDatabase(d::DatasetStore, filename::AbstractString)
   fileList = findSFFiles(d)
   A = generateSFDatabase(fileList)
-  writecsv(filename, A)
+  writedlm(filename, A)
 end
 
 function generateSFDatabase(fileList::Vector)
@@ -398,9 +398,9 @@ function generateSFDatabase_(d::DatasetStore, oldfile, newfile)
 
   if isfile(newfile)
     if isfile(oldfile)
-      mv(newfile, oldfile, remove_destination=true)
+      mv(newfile, oldfile, force=true)
     else
-      mv(newfile, oldfile, remove_destination=false)
+      mv(newfile, oldfile, force=false)
     end
   end
 
@@ -409,7 +409,7 @@ end
 
 function loadSFDatabase(d::BrukerDatasetStore)
   if isfile("/opt/data/SF_Database.csv")
-    return readcsv("/opt/data/SF_Database.csv")
+    return readdlm("/opt/data/SF_Database.csv")
   else
     return nothing
   end
