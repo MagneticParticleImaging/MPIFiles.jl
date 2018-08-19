@@ -409,7 +409,7 @@ end
 
 function loadSFDatabase(d::BrukerDatasetStore)
   if isfile("/opt/data/SF_Database.csv")
-    return readdlm("/opt/data/SF_Database.csv")
+    return readdlm("/opt/data/SF_Database.csv",',')
   else
     return nothing
   end

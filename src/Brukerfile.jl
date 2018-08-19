@@ -346,7 +346,7 @@ function measDataTDPeriods(b::BrukerFile, periods=1:acqNumPeriods(b),
   else
     raw = Mmap.mmap(s, Array{dType,4},
     (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriods(b)))
-    raw = squeeze(sum(raw,2),2)
+    raw = dropdims(sum(raw,2),dims=2)
   end
   data = raw[:,receivers,periods]
   close(s)
