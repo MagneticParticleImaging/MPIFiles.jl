@@ -207,7 +207,7 @@ function getStudy(d::BrukerDatasetStore, studyfolder::String)
         found = false
         for file in r
 
-          if !isnull(tryparse(Int64,file))
+          if tryparse(Int64,file) != nothing
             b = BrukerFileFast(joinpath(studypath, file ))
             name = studyName(b)
             subject = experimentSubject(b)
@@ -301,7 +301,7 @@ function findSFFiles(d::MDFDatasetStore)
 
   for file in files
     prefix, ext = splitext(file)
-    if !isdir(file) && !isnull(tryparse(Int64,prefix)) &&
+    if !isdir(file) && tryparse(Int64,prefix) != nothing &&
        (ext == ".mdf" || ext == ".hdf" || ext == ".h5")
       try
         push!(bfiles, joinpath(path,file))
@@ -453,7 +453,7 @@ function getExperiments(d::MDFDatasetStore, s::Study)
   println("Time for get Experiments")
   @time for file in files
     prefix, ext = splitext(file)
-    if !isdir(file) && !isnull(tryparse(Int64,prefix)) &&
+    if !isdir(file) && tryparse(Int64,prefix) != nothing &&
        (ext == ".mdf" || ext == ".hdf" || ext == ".h5") &&
        isfile(joinpath(s.path,file))
 
@@ -479,8 +479,8 @@ function getNewNumInFolder(d::MDFDatasetStore, path)
     for i=1:length(files)
       pref, ext = splitext(files[i])
       num_ = tryparse(Int64, pref)
-      if !isnull(num_) && get(num_)+1>num
-        num = get(num_)+1
+      if num_ != nothing && num_+1>num
+        num = num_+1
       end
     end
   end
@@ -494,20 +494,6 @@ end
 
 function getNewCalibNum(d::MDFDatasetStore)
   return getNewNumInFolder(d, calibdir(d))
-
-  #=files = readdir(calibdir(d))
-  calibNum = 1
-  if length(files) > 0
-    for i=1:length(files)
-      pref, ext = splitext(files[i])
-      num_ = tryparse(Int64, pref)
-      if !isnull(num_) && get(num_)+1 > calibNum
-        calibNum = get(num_) + 1
-      end
-    end
-  end
-
-  return calibNum=#
 end
 
 ####### Reconstruction Store MDF ###################
