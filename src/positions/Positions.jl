@@ -496,7 +496,7 @@ end
 
 getindex(apos::ArbitraryPositions, i::Integer) = apos.positions[:,i]
 
-function convert(::Type{ArbitraryPositions}, grid::GridPositions)
+function ArbitraryPositions(grid::GridPositions)
   T = eltype(grid.fov)
   positions = zeros(T,3,length(grid))
   for i=1:length(grid)
