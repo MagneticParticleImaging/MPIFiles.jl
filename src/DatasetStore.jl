@@ -132,7 +132,7 @@ function getExperiment(path::String)
 
   exp = Experiment(p, parse(Int64,last(splitdir(prefix))),
                       string(experimentName(b)), acqNumFrames(b),
-                      round.(1000 .* vec(dfStrength(b)[1,:,1]),2), maximum(abs.(acqGradient(b))),
+                      round.(1000 .* vec(dfStrength(b)[1,:,1]),digits=2), maximum(abs.(acqGradient(b))),
                       acqNumAverages(b), scannerOperator(b), string(acqStartTime(b)))
 
   return exp

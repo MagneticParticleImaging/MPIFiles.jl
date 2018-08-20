@@ -285,7 +285,7 @@ end
 function getmask(grid::BreakpointGridPositions)
   bgind=grid.breakpointIndices
   mask = zeros(Bool, length(grid.grid)+length(bgind))
-  mask[bgind] = true
+  mask[bgind] .= true
   return mask
 end
 
