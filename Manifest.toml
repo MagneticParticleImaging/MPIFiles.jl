@@ -129,11 +129,9 @@ version = "0.3.0"
 
 [[HDF5]]
 deps = ["BinDeps", "Blosc", "Compat", "Homebrew", "Libdl", "Pkg", "WinRPM"]
-git-tree-sha1 = "e84e15514971892921b2b82cd70d780833b85fed"
-repo-rev = "master"
-repo-url = "HDF5"
+git-tree-sha1 = "6e1cd8a2a71fe223ceccd8779b43a7daf006db9e"
 uuid = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
-version = "0.9.4+"
+version = "0.9.4"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "Distributed", "IniFile", "MbedTLS", "Sockets", "Test"]
