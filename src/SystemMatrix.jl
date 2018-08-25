@@ -15,7 +15,7 @@ function converttoreal(S::AbstractArray{Complex{T},2}) where {T}
 end
 
 function getSystemMatrix(f::MPIFile,
-           frequencies=1:rxNumFrequencies(f)*rxNumChannels(f)*acqNumPeriodsPerFrame(f);
+           frequencies=1:rxNumFrequencies(f)*rxNumChannels(f);
                          bgCorrection=false, loadasreal=false,
                          kargs...)
   #if measIsTransposed(f) && measIsFourierTransformed(f)
