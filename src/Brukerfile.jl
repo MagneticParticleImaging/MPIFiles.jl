@@ -232,9 +232,9 @@ end
 
 function acqOffsetField(b::BrukerFile) #TODO NOT correct
   if b["MPI_FocusFieldX"] != ""
-    off = repeat(1e-3 * cat(2,[-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
+    off = repeat(1e-3 * cat([-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
                  [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
-                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]])',inner=(1,acqNumPeriodsPerPatch(b)))
+                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]],dims=2)',inner=(1,acqNumPeriodsPerPatch(b)))
   elseif b["CONFIG_MPI_FF_calibration"] != ""
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
