@@ -1,8 +1,10 @@
 import Base: read, getindex, get, haskey
 
-export JcampdxFile
+export JcampdxFile, findfirst_
 
-const JCVAL = Union{AbstractString,Number,Bool,Array,Tuple,Void}
+findfirst_(A, v) = something(findfirst(isequal(v), A), 0)
+
+const JCVAL = Union{AbstractString,Number,Bool,Array,Tuple,Nothing}
 const HTSS = Dict{AbstractString,JCVAL}
 
 mutable struct JcampdxFile
@@ -35,7 +37,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
             return file
           end
 
-          i = search(s, '=')
+          i = search_(s, '=')
           key = strip(s[4:i-1])
 
           # Small HACK
@@ -43,7 +45,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
             return file
           end
 
-          if !isempty(keylist) && findfirst(keylist,key) == 0
+          if !isempty(keylist) && findfirst_(keylist,key) == 0
             continue
           end
 
@@ -54,7 +56,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
             if val[2] != ' '
               file.dict[key] = val
             else
-              j = search(val, ')')
+              j = search_(val, ')')
               currentSizes = [parse(Int64,s) for s in split(val[2:j-1],",")]
               file.dict[key] = nothing
               currentKey = key
@@ -65,8 +67,8 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
         end
       else
          if line[1] == '<'
-           #j = search(val, '>') this was wrong
-           j = search(line, '>')
+           #j = search_(val, '>') this was wrong
+           j = search_(line, '>')
            file.dict[currentKey] = line[2:j-1]
            finishedReading = true
            tupleReading = false
@@ -76,7 +78,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
 
            if file.dict[currentKey] == nothing
              #println("Will now allocate memory of size: ", currentSizes)
-             file.dict[currentKey] = Array{Any}(currentSizes...)
+             file.dict[currentKey] = Array{Any}(undef, currentSizes...)
            end
 
            totalLine = remainingString == nothing ? line[2:end] : remainingString*line
@@ -85,7 +87,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
 
            for part in parts
 
-             j = search(part, ')')
+             j = search_(part, ')')
              if j != 0
                # Tuple read
                try
@@ -146,7 +148,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
 
            if file.dict[currentKey] == nothing
              #println("Will now allocate memory of size: ", currentSizes)
-             file.dict[currentKey] = Array{eltype(vals)}(currentSizes...)
+             file.dict[currentKey] = Array{eltype(vals)}(undef, currentSizes...)
            end
 
            try

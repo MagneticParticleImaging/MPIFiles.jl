@@ -85,7 +85,7 @@ const MDFStore = MDFDatasetStore("/opt/data")
 ### generic functions ###
 
 function ishidden(filename::AbstractString)
-  @static if is_unix()
+  @static if Sys.isunix()
     s = basename(filename)
     return (!isempty(s) && s[1] == '.')
   else
@@ -132,7 +132,7 @@ function getExperiment(path::String)
 
   exp = Experiment(p, parse(Int64,last(splitdir(prefix))),
                       string(experimentName(b)), acqNumFrames(b),
-                      round.(1000.*vec(dfStrength(b)[1,:,1]),2), maximum(abs.(acqGradient(b))),
+                      round.(1000 .* vec(dfStrength(b)[1,:,1]),digits=2), maximum(abs.(acqGradient(b))),
                       acqNumAverages(b), scannerOperator(b), string(acqStartTime(b)))
 
   return exp
@@ -207,7 +207,7 @@ function getStudy(d::BrukerDatasetStore, studyfolder::String)
         found = false
         for file in r
 
-          if !isnull(tryparse(Int64,file))
+          if tryparse(Int64,file) != nothing
             b = BrukerFileFast(joinpath(studypath, file ))
             name = studyName(b)
             subject = experimentSubject(b)
@@ -301,7 +301,7 @@ function findSFFiles(d::MDFDatasetStore)
 
   for file in files
     prefix, ext = splitext(file)
-    if !isdir(file) && !isnull(tryparse(Int64,prefix)) &&
+    if !isdir(file) && tryparse(Int64,prefix) != nothing &&
        (ext == ".mdf" || ext == ".hdf" || ext == ".h5")
       try
         push!(bfiles, joinpath(path,file))
@@ -321,12 +321,12 @@ end
 function generateSFDatabase(d::DatasetStore, filename::AbstractString)
   fileList = findSFFiles(d)
   A = generateSFDatabase(fileList)
-  writecsv(filename, A)
+  writedlm(filename, A)
 end
 
 function generateSFDatabase(fileList::Vector)
 
-  A = Array{Any}(length(fileList)+1,16)
+  A = Array{Any}(undef,length(fileList)+1,16)
 
   # Headerrow
   A[1,1] = "Name"
@@ -363,7 +363,7 @@ function _innerGenerateSFDatabase(A,i,sf)
   A[i,1] = experimentName(b)
   A[i,2] = maximum(acqGradient(b))
   df = vec(dfStrength(b)).*1e3
-  A[i,3:5] = 0.0
+  A[i,3:5] .= 0.0
   for l=1:min(length(df),3)
     A[i,l+2] = df[l]
   end
@@ -398,9 +398,9 @@ function generateSFDatabase_(d::DatasetStore, oldfile, newfile)
 
   if isfile(newfile)
     if isfile(oldfile)
-      mv(newfile, oldfile, remove_destination=true)
+      mv(newfile, oldfile, force=true)
     else
-      mv(newfile, oldfile, remove_destination=false)
+      mv(newfile, oldfile, force=false)
     end
   end
 
@@ -409,7 +409,7 @@ end
 
 function loadSFDatabase(d::BrukerDatasetStore)
   if isfile("/opt/data/SF_Database.csv")
-    return readcsv("/opt/data/SF_Database.csv")
+    return readdlm("/opt/data/SF_Database.csv",',')
   else
     return nothing
   end
@@ -453,7 +453,7 @@ function getExperiments(d::MDFDatasetStore, s::Study)
   println("Time for get Experiments")
   @time for file in files
     prefix, ext = splitext(file)
-    if !isdir(file) && !isnull(tryparse(Int64,prefix)) &&
+    if !isdir(file) && tryparse(Int64,prefix) != nothing &&
        (ext == ".mdf" || ext == ".hdf" || ext == ".h5") &&
        isfile(joinpath(s.path,file))
 
@@ -479,8 +479,8 @@ function getNewNumInFolder(d::MDFDatasetStore, path)
     for i=1:length(files)
       pref, ext = splitext(files[i])
       num_ = tryparse(Int64, pref)
-      if !isnull(num_) && get(num_)+1>num
-        num = get(num_)+1
+      if num_ != nothing && num_+1>num
+        num = num_+1
       end
     end
   end
@@ -494,20 +494,6 @@ end
 
 function getNewCalibNum(d::MDFDatasetStore)
   return getNewNumInFolder(d, calibdir(d))
-
-  #=files = readdir(calibdir(d))
-  calibNum = 1
-  if length(files) > 0
-    for i=1:length(files)
-      pref, ext = splitext(files[i])
-      num_ = tryparse(Int64, pref)
-      if !isnull(num_) && get(num_)+1 > calibNum
-        calibNum = get(num_) + 1
-      end
-    end
-  end
-
-  return calibNum=#
 end
 
 ####### Reconstruction Store MDF ###################

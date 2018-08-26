@@ -1,22 +1,25 @@
-VERSION < v"0.7.0-beta2.199" && __precompile__()
 module MPIFiles
 
 using Reexport
 
 using Compat
-if VERSION >= v"0.7.0-"
-  using Compat.LinearAlgebra
-  using Compat.Statistics
-  using FFTW
-end
-using Compat.Random
+using Compat.LinearAlgebra
+using Compat.Statistics
+using FFTW
+using Random
 using Compat.UUIDs
 using ProgressMeter
 using Graphics: @mustimplement
 @reexport using ImageAxes
+using AxisArrays
+const axes = Base.axes
 @reexport using ImageMetadata
 @reexport using Unitful
 using Interpolations
+using Mmap
+using Dates
+using DelimitedFiles
+
 
 import Base: ndims, time, show, getindex
 
@@ -179,21 +182,21 @@ abstract type MPIFile end
 @mustimplement filepath(f::MPIFile)
 
 function str2uuid(str::String)
-  if contains(str,"-")
+  if occursin("-", str)
     str_ = str
   else
     str_ = string(str[1:8],"-",str[9:12],"-",str[13:16],"-",str[17:20],"-",str[21:end])
   end
   try
-    u = Base.Random.UUID(str_)
+    u = UUID(str_)
     return u
   catch
-    println("could not convert to UUID. str= $(str_)")
-    u = Base.Random.uuid4()
+    println("could not convert to UUID. str_= $(str_)  str=$(str) ")
+    u = uuid4()
     return u
   end
 end
-str2uuid(str::Void) = str
+str2uuid(str::Nothing) = str
 
 # TODO Move to misc
 
@@ -279,7 +282,7 @@ end
 function acqNumPatches(f::MPIFile)
   # not valid for varying gradients / multi gradient
   shifts = acqOffsetFieldShift(f)
-  return size(unique(shifts,2),2)
+  return size(unique(shifts,dims=2),2)
 end
 
 function acqNumPeriodsPerPatch(f::MPIFile)
@@ -291,7 +294,7 @@ export unflattenOffsetFieldShift
 unflattenOffsetFieldShift(f::MPIFile) = analyseFFPos(acqOffsetFieldShift(f))
 function unflattenOffsetFieldShift(shifts::Array)
   # not valid for varying gradients / multi gradient
-  uniqueShifts = unique(shifts,2)
+  uniqueShifts = unique(shifts, dims=2)
   numPeriodsPerFrame = size(shifts,2)
   numPatches = size(uniqueShifts,2)
   numPeriodsPerPatch = div(numPeriodsPerFrame, numPatches)
@@ -301,7 +304,7 @@ function unflattenOffsetFieldShift(shifts::Array)
   flatIndices = zeros(Int64,numPatches,numPeriodsPerPatch)
 
   for i=1:numPatches
-    flatIndices[i,:] = allPeriods[vec(sum(shifts .== uniqueShifts[:,i],1)).==3]
+    flatIndices[i,:] = allPeriods[vec(sum(shifts .== uniqueShifts[:,i],dims=1)).==3]
   end
 
   return flatIndices
@@ -340,7 +343,7 @@ include("Brukerfile.jl")
 
 # This dispatches on the file extension and automatically
 # generates the correct type
-function (::Type{MPIFile})(filename::AbstractString; kargs...)
+function MPIFile(filename::AbstractString; kargs...)
   filenamebase, ext = splitext(filename)
   if ext == ".mdf" || ext == ".hdf" || ext == ".h5"
     return MDFFile(filename; kargs...)
@@ -350,14 +353,14 @@ function (::Type{MPIFile})(filename::AbstractString; kargs...)
 end
 
 # Opens a set of MPIFiles
-function (::Type{MPIFile})(filenames::Vector)
+function MPIFile(filenames::Vector)
   return map(x->MPIFile(x),filenames)
 end
 
 optParam(param, default) = (param == nothing) ? default : param
 
 # Support for handling complex datatypes in HDF5 files
-function writeComplexArray{T,D}(file, dataset, A::Array{Complex{T},D})
+function writeComplexArray(file, dataset, A::AbstractArray{Complex{T},D}) where {T,D}
   d_type_compound = HDF5.h5t_create(HDF5.H5T_COMPOUND,2*sizeof(T))
   HDF5.h5t_insert(d_type_compound, "r", 0 , HDF5.hdf5_type_id(T))
   HDF5.h5t_insert(d_type_compound, "i", sizeof(T) , HDF5.hdf5_type_id(T))

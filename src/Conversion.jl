@@ -39,7 +39,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
         setparam!(params, "measFramePermutation", fullFramePermutation(f))
 
         setparam!(params, "measIsBGFrame",
-          cat(1,zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f))) )
+          cat(zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f)), dims=1))
 
         setparam!(params, "calibSNR", calculateSystemMatrixSNR(f, data))
     end
@@ -97,7 +97,7 @@ function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
   paramsBG["measIsBGFrame"][:] = true
 
   params["measData"] = cat(4, params["measData"], paramsBG["measData"])
-  params["measIsBGFrame"] = cat(1, params["measIsBGFrame"], paramsBG["measIsBGFrame"])
+  params["measIsBGFrame"] = cat(params["measIsBGFrame"], paramsBG["measIsBGFrame"], dims=1)
   params["acqNumFrames"] += paramsBG["acqNumFrames"]
 
   return params

@@ -1,9 +1,13 @@
 using MPIFiles
 using Compat
-using Compat.Test
+using Test
+using Compat.UUIDs
 using HTTP
 using Unitful
 using HDF5
+using Dates
+using Statistics
+using LinearAlgebra
 
 include("Positions.jl")
 include("General.jl")

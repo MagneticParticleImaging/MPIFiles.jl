@@ -1,6 +1,6 @@
 using Unitful, HDF5
 
-import Base: getindex, length, convert, start, done, next, write, range
+import Base: getindex, length, convert, iterate, write, range
 
 export Positions, GridPositions, RegularGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions,
@@ -48,7 +48,8 @@ end
 function range(grid::RegularGridPositions, dim::Int)
   if grid.shape[dim] > 1
     sp = spacing(grid)
-    return range(grid.center[dim] - grid.fov[dim]/2 + sp[dim]/2, sp[dim], grid.shape[dim])
+    return range(grid.center[dim] - grid.fov[dim]/2 + sp[dim]/2,
+                 step=sp[dim], length=grid.shape[dim])
   else
     return 1:1
   end
@@ -132,9 +133,9 @@ function getindex(grid::RegularGridPositions, i::Integer)
   if length(grid.shape) == 1 #Very ugly but improves compile time
     idx = [i]
   elseif length(grid.shape) == 2
-    idx = collect(ind2sub(tuple(grid.shape[1],grid.shape[2]), i))
+    idx = collect(Tuple((CartesianIndices(tuple(grid.shape[1],grid.shape[2])))[i]))
   else
-    idx = collect(ind2sub(tuple(grid.shape[1],grid.shape[2],grid.shape[3]), i))
+    idx = collect(Tuple((CartesianIndices(tuple(grid.shape[1],grid.shape[2],grid.shape[3])))[i]))
   end
 
   for d=1:length(idx)
@@ -142,7 +143,7 @@ function getindex(grid::RegularGridPositions, i::Integer)
       idx[d] = grid.shape[d]-idx[d]+1
     end
   end
-  return ((-shape(grid).+(2.*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
+  return ((-shape(grid).+(2 .*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
 end
 
 function getindex(grid::RegularGridPositions, idx::Vector{T}) where T<:Number
@@ -151,11 +152,12 @@ function getindex(grid::RegularGridPositions, idx::Vector{T}) where T<:Number
       idx[d] = grid.shape[d]-idx[d]+1
     end
   end
-  return 0.5.*fieldOfView(grid).*(-1 + (2.*idx .- 1) ./ shape(grid)) .+ fieldOfViewCenter(grid)
+  return 0.5.*fieldOfView(grid) .* (-1 .+ (2 .* idx .- 1) ./ shape(grid)) .+ fieldOfViewCenter(grid)
 end
 
 function posToIdxFloat(grid::RegularGridPositions,pos::Vector)
-  idx = 0.5*(shape(grid).* ((pos .- fieldOfViewCenter(grid)) ./ ( 0.5.*fieldOfView(grid) ) + 1) + 1)
+  idx = 0.5 .* (shape(grid) .* ((pos .- fieldOfViewCenter(grid)) ./
+              ( 0.5 .* fieldOfView(grid) ) .+ 1) .+ 1)
   return idx
 end
 
@@ -170,7 +172,7 @@ function posToIdx(grid::RegularGridPositions,pos::Vector)
 end
 
 function posToLinIdx(grid::RegularGridPositions,pos::Vector)
-  return sub2ind(tuple(shape(grid)...), posToIdx(grid,pos)...)
+  return (LinearIndices(tuple(shape(grid)...)))[posToIdx(grid,pos)...]
 end
 
 # Chebyshev Grid
@@ -198,8 +200,8 @@ function getindex(grid::ChebyshevGridPositions, i::Integer)
   if i>length(grid) || i<1
     throw(BoundsError(grid,i))
   else
-    idx = collect(ind2sub(tuple(shape(grid)...), i))
-    return -cos.((idx.-0.5).*pi./shape(grid)).*fieldOfView(grid)./2 .+ fieldOfViewCenter(grid)
+    idx = collect(Tuple(CartesianIndices(tuple(shape(grid)...))[i]))
+    return -cos.((idx .- 0.5) .* pi ./ shape(grid)) .* fieldOfView(grid) ./ 2 .+ fieldOfViewCenter(grid)
   end
 end
 
@@ -226,13 +228,13 @@ end
 
 function indexPermutation(grid::MeanderingGridPositions, i::Integer)
   dims = tuple(shape(grid)...)
-  idx = collect(ind2sub(dims, i))
+  idx = collect(Tuple(CartesianIndices(dims)[i]))
     for d=2:3
       if isodd(sum(idx[d:3])-length(idx[d:3]))
       idx[d-1] = shape(grid)[d-1] + 1 - idx[d-1]
     end
   end
-  linidx = sub2ind(dims,idx...)
+  linidx = (LinearIndices(dims))[idx...]
 end
 
 function getindex(grid::MeanderingGridPositions, i::Integer)
@@ -242,7 +244,7 @@ end
 
 function getPermutation(grid::MeanderingGridPositions)
   N = length(grid)
-  perm = Array{Int}(N)
+  perm = Array{Int}(undef,N)
 
   for i in eachindex(perm)
     perm[i] = indexPermutation(grid,i)
@@ -283,7 +285,7 @@ end
 function getmask(grid::BreakpointGridPositions)
   bgind=grid.breakpointIndices
   mask = zeros(Bool, length(grid.grid)+length(bgind))
-  mask[bgind] = true
+  mask[bgind] .= true
   return mask
 end
 
@@ -293,10 +295,10 @@ function getindex(grid::BreakpointGridPositions, i::Integer)
 
   if i>(length(grid.grid)+length(bgind)) || i<1
     return throw(BoundsError(grid,i))
-  elseif any(i.==bgind)
+  elseif any(i .== bgind)
     return grid.breakpointPosition
   else
-    pastBgind=sum(i.>bgind)
+    pastBgind = sum(i .> bgind)
     return grid.grid[i-pastBgind]
   end
 end
@@ -453,7 +455,7 @@ getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] 
 """
 Returns the t-Design Array for choosen t and N.
 """
-function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{V}=[0.0,0.0,0.0]Unitful.mm, filename::String=joinpath(Pkg.dir("MPIFiles"),"src/positions/TDesigns.hd5")) where {S,V<:Unitful.Length}
+function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{V}=[0.0,0.0,0.0]Unitful.mm, filename::String=joinpath(@__DIR__, "TDesigns.hd5")) where {S,V<:Unitful.Length}
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
@@ -470,7 +472,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
       end
       sort!(Ns)
       println(Ns)
-      throw(DomainError())
+      throw(DomainError(1))
     else
       println("spherical $t-Design does not exist!")
       ts = Int[]
@@ -482,7 +484,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
       end
       sort!(ts)
       println(ts)
-      throw(DomainError())
+      throw(DomainError(1))
     end
   end
 end
@@ -494,7 +496,7 @@ end
 
 getindex(apos::ArbitraryPositions, i::Integer) = apos.positions[:,i]
 
-function convert(::Type{ArbitraryPositions}, grid::GridPositions)
+function ArbitraryPositions(grid::GridPositions)
   T = eltype(grid.fov)
   positions = zeros(T,3,length(grid))
   for i=1:length(grid)
@@ -521,10 +523,11 @@ length(grid::GridPositions) = prod(grid.shape)
 length(rpos::UniformRandomPositions) = rpos.N
 length(mgrid::MeanderingGridPositions) = length(mgrid.grid)
 length(bgrid::BreakpointGridPositions) = length(bgrid.grid)+length(bgrid.breakpointIndices)
-start(grid::Positions) = 1
-next(grid::Positions,state) = (grid[state],state+1)
-done(grid::Positions,state) = state > length(grid)
 
+start_(grid::Positions) = 1
+next_(grid::Positions,state) = (grid[state],state+1)
+done_(grid::Positions,state) = state > length(grid)
+iterate(grid::Positions, s=start_(grid)) = done_(grid, s) ? nothing : next_(grid, s)
 
 
 include("Interpolation.jl")

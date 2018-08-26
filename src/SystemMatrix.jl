@@ -1,9 +1,9 @@
 export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR
 
-function converttoreal{T}(S::AbstractArray{Complex{T},2})
+function converttoreal(S::AbstractArray{Complex{T},2}) where {T}
   N = size(S,1)
   M = size(S,2)
-  S = reinterpret(T,S,(2*N,M))
+  S = reshape(reinterpret(T,vec(S)),(2*N,M))
   p = Progress(M, 1, "Converting system matrix to real...")
   for l=1:M
     tmp = S[:,l]
@@ -15,7 +15,7 @@ function converttoreal{T}(S::AbstractArray{Complex{T},2})
 end
 
 function getSystemMatrix(f::MPIFile,
-           frequencies=1:rxNumFrequencies(f)*rxNumChannels(f)*acqNumPeriodsPerFrame(f);
+           frequencies=1:rxNumFrequencies(f)*rxNumChannels(f);
                          bgCorrection=false, loadasreal=false,
                          kargs...)
   #if measIsTransposed(f) && measIsFourierTransformed(f)
@@ -23,7 +23,7 @@ function getSystemMatrix(f::MPIFile,
   #else
   #  error("TODO: implement making a SF using getMeasurement")
   #end
-  S = map(Complex64, data)
+  S = map(ComplexF32, data)
 
   if loadasreal
     return converttoreal(S)

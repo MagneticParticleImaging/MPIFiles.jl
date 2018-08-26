@@ -21,7 +21,7 @@ function saveParams(file, path, params::Dict)
       write(file, ppath, UInt8(value))
       dset = file[ppath]
       attrs(dset)["isbool"] = "true"
-    elseif typeof(value) <: Range
+    elseif typeof(value) <: AbstractRange
       write(file, ppath, [first(value),step(value),last(value)])
       dset = file[ppath]
       attrs(dset)["isrange"] = "true"

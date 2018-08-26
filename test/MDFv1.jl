@@ -36,7 +36,7 @@ mdfv2 = MPIFile(fnMeasV2)
 @test typeof(mdfv2) == MDFFileV2
 
 # only test this for v1
-@test uuid(mdfv1) == Base.Random.UUID("4b0ffb84-29f5-f388-49f2-92a206bba885")
+@test uuid(mdfv1) == UUID("4b0ffb84-29f5-f388-49f2-92a206bba885")
 @test version(mdfv1) == v"1.0.0"
 @test time(mdfv1) == DateTime("2016-02-08T14:28:34.673")
 

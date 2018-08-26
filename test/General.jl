@@ -12,6 +12,7 @@ fnSM1DV1 = "systemMatrix1D_V1.mdf"
 fnSM1DV2 = "systemMatrix1D_V2.mdf"
 
 if !isdir(fnSMBruker)
+  println("download $fnSMBruker")
   HTTP.open("GET", "http://media.tuhh.de/ibi/"*fnSMBruker*".zip") do http
     open(fnSMBruker*".zip", "w") do file
         write(file, http)
@@ -20,6 +21,7 @@ if !isdir(fnSMBruker)
   run(`unzip $(fnSMBruker).zip`)
 end
 if !isdir(fnMeasBruker)
+  println("download $fnMeasBruker")
   HTTP.open("GET", "http://media.tuhh.de/ibi/"*fnMeasBruker*".zip") do http
     open(fnMeasBruker*".zip", "w") do file
         write(file, http)
@@ -28,6 +30,7 @@ if !isdir(fnMeasBruker)
   run(`unzip $(fnMeasBruker).zip`)
 end
 if !isdir(fnSM1DBruker)
+  println("download $fnSM1DBruker")
   HTTP.open("GET", "http://media.tuhh.de/ibi/"*fnSM1DBruker*".zip") do http
     open(fnSM1DBruker*".zip", "w") do file
         write(file, http)
