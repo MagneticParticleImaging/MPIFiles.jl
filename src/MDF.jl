@@ -375,8 +375,16 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
   if bgCorrection # this assumes equidistent bg frames
     println("Applying bg correction on system matrix (MDF)")
     bgdata = data[measBGFrameIdx(f),:]
+    blockLen = measBGFrameBlockLengths( invpermute!(measIsBGFrame(f), measFramePermutation(f)) )
+    st = 1
+    for j=1:length(blockLen)
+      bgdata[st:st+blockLen[j]-1,:] .=
+           mean(bgdata[st:st+blockLen[j]-1,:], dims=1)
+      st += blockLen[j]
+    end
+
     bgdataInterp = interpolate(bgdata, (BSpline(Linear()),NoInterp()), OnGrid())
-    #Cubic does not work for complex numbers
+    # Cubic does not work for complex numbers
     origIndex = measFramePermutation(f)
     M = size(fgdata,1)
     K = size(bgdata,1)

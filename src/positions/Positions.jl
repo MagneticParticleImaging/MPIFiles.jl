@@ -10,7 +10,6 @@ export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
 export idxToPos, posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid
 
-
 abstract type Positions end
 abstract type GridPositions<:Positions end
 

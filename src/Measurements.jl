@@ -173,6 +173,14 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
       idxBG = measBGFrameIdx(f)
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
       if interpolateBG
+        blockLen = measBGFrameBlockLengths(measIsBGFrame(f))
+        st = 1
+        for j=1:length(blockLen)
+          dataBG[:,:,:,st:st+blockLen[j]-1] .=
+               mean(dataBG[:,:,:,st:st+blockLen[j]-1], dims=4)
+          st += blockLen[j]
+        end
+
         dataBGInterp = interpolate(dataBG,
           (NoInterp(),NoInterp(),NoInterp(),BSpline(Linear())), OnGrid()) #OnCell?
 

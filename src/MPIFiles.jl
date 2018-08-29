@@ -198,7 +198,7 @@ function str2uuid(str::String)
 end
 str2uuid(str::Nothing) = str
 
-# TODO Move to misc
+# TODO Move the following functions to misc
 
 export rxNumFrequencies, acqFov, rxFrequencies, rxTimePoints, acqGradientDiag
 
@@ -235,7 +235,7 @@ end
 #end
 
 export acqNumFGFrames, acqNumBGFrames, measFGFrameIdx, measBGFrameIdx, acqOffsetFieldShift,
-       acqFramePeriod, acqNumPeriods, acqNumPatches, acqNumPeriodsPerPatch
+       acqFramePeriod, acqNumPeriods, acqNumPatches, acqNumPeriodsPerPatch, measBGFrameBlockLengths
 
 acqFramePeriod(b::MPIFile) = dfCycle(b) * acqNumAverages(b) * acqNumPeriodsPerFrame(b)
 
@@ -278,6 +278,24 @@ function measFGFrameIdx(f::MPIFile)
   end
   return idx
 end
+
+
+function measBGFrameBlockLengths(mask)
+  len = Vector{Int}(undef,0)
+
+  groupIdxStart = -1
+  for i=1:(length(mask)+1)
+    if i <= length(mask) && mask[i] && groupIdxStart == -1
+      groupIdxStart = i
+    end
+    if groupIdxStart != -1 && ((i == length(mask)+1) || !mask[i])
+      push!(len, i-groupIdxStart)
+      groupIdxStart = - 1
+    end
+  end
+  return len
+end
+
 
 function acqNumPatches(f::MPIFile)
   # not valid for varying gradients / multi gradient
@@ -357,8 +375,6 @@ function MPIFile(filenames::Vector)
   return map(x->MPIFile(x),filenames)
 end
 
-optParam(param, default) = (param == nothing) ? default : param
-
 # Support for handling complex datatypes in HDF5 files
 function writeComplexArray(file, dataset, A::AbstractArray{Complex{T},D}) where {T,D}
   d_type_compound = HDF5.h5t_create(HDF5.H5T_COMPOUND,2*sizeof(T))
@@ -418,13 +434,7 @@ include("Conversion.jl")
 include("Image.jl")
 include("DatasetStore.jl")
 include("MixingFactors.jl")
-
 include("positions/Positions.jl")
-## interface of Positions submodule
-export Positions, RegularGridPositions, ChebyshevGridPositions,
-       MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SphericalTDesign
-export loadTDesign, getPermutation
-export fieldOfView, fieldOfViewCenter, shape
 
 
 end # module
