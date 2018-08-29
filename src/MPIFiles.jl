@@ -3,10 +3,10 @@ module MPIFiles
 using Reexport
 
 using Compat
-using Compat.LinearAlgebra
-using Compat.Statistics
-using FFTW
-using Random
+@reexport using LinearAlgebra
+@reexport using Statistics
+@reexport using FFTW
+@reexport using Random
 using Compat.UUIDs
 using ProgressMeter
 using Graphics: @mustimplement
@@ -16,9 +16,9 @@ const axes = Base.axes
 @reexport using ImageMetadata
 @reexport using Unitful
 using Interpolations
-using Mmap
-using Dates
-using DelimitedFiles
+@reexport using Mmap
+@reexport using Dates
+@reexport using DelimitedFiles
 
 
 import Base: ndims, time, show, getindex
