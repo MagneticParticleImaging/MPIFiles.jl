@@ -14,7 +14,7 @@ mutable struct MDFFileV1 <: MDFFile
   mmap_measData
 end
 
-MDFFileV1(filename::String, file=h5open(filename,"r+")) =
+MDFFileV1(filename::String, file=h5open(filename,"r")) =
    MDFFileV1(filename, file, nothing)
 
 mutable struct MDFFileV2 <: MDFFile
@@ -23,7 +23,7 @@ mutable struct MDFFileV2 <: MDFFile
   mmap_measData
 end
 
-function MDFFileV2(filename::String, file=h5open(filename,"r+"))
+function MDFFileV2(filename::String, file=h5open(filename,"r"))
   f = MDFFileV2(filename, file, nothing)
 
   parameter = "/measurement/data"
