@@ -232,14 +232,14 @@ end
 
 function acqOffsetField(b::BrukerFile) #TODO NOT correct
   if b["MPI_FocusFieldX"] != ""
-    off = repeat(1e-3 * cat([-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
-                 [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
-                 [-parse(Float64,a) for a in b["MPI_FocusFieldZ"]],dims=2)',inner=(1,acqNumPeriodsPerPatch(b)))
+    off = repeat(1e-3 * cat([parse(Float64,a) for a in b["MPI_FocusFieldX"]],
+                 [parse(Float64,a) for a in b["MPI_FocusFieldY"]],
+                 [parse(Float64,a) for a in b["MPI_FocusFieldZ"]],dims=2)',inner=(1,acqNumPeriodsPerPatch(b)))
   elseif b["CONFIG_MPI_FF_calibration"] != ""
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
     voltage = repeat(voltage,inner=(1,acqNumPeriodsPerPatch(b)))
-    calibFac = -1.0 / 100000 ./ parse.(Float64,b["CONFIG_MPI_FF_calibration"])
+    calibFac = 1.0 / 100000 ./ parse.(Float64,b["CONFIG_MPI_FF_calibration"])
     off = Float64[voltage[d,j]*calibFac[d-1] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
   else # legacy
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
