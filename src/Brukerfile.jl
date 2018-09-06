@@ -245,7 +245,7 @@ function acqOffsetField(b::BrukerFile) #TODO NOT correct
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
     voltage = repeat(voltage,inner=(1,acqNumPeriodsPerPatch(b)))
-    calibFac = [2.5 / 49.45, 0.5 * (-2.5)*0.008/-22.73, 0.5*2.5*0.008/-22.73, 1.5*0.0094/13.2963]
+    calibFac = [2.5 / 49.45, 0.5 * (-2.5)*0.008/22.73, 0.5*2.5*0.008/22.73, -1.5*0.0094/13.2963]
     off = Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
   end
   return reshape(off, 3, 1, :)
