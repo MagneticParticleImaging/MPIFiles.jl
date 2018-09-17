@@ -2,7 +2,7 @@ using HDF5
 
 import HDF5: h5read
 
-export IMTFile, IMTFileCalib, IMTFileMeas, addTrailingSingleton 
+export IMTFile, IMTFileCalib, IMTFileMeas, addTrailingSingleton
 
 abstract type IMTFile <: MPIFile end
 
@@ -34,8 +34,7 @@ function IMTFileMeas(filename::String, file=h5open(filename,"r"))
 end
 
 # Dispatch on file extension
-function (::Type{IMTFile})(filename::String)
- file = h5open(filename,"r")
+function (::Type{IMTFile})(filename::String, file = h5open(filename,"r"))
  if !exists(file, "/measurements")
    return IMTFileCalib(filename, file)
  else
@@ -71,9 +70,9 @@ end
 
 
 # general parameters
-version(f::IMTFile) = v"0.0.0"  
-uuid(f::IMTFile) = uuid4()  
-time(f::IMTFile) = Dates.unix2datetime(0) 
+version(f::IMTFile) = v"0.0.0"
+uuid(f::IMTFile) = uuid4()
+time(f::IMTFile) = Dates.unix2datetime(0)
 
 # study parameters
 studyName(f::IMTFile) = "n.a."
@@ -84,14 +83,14 @@ studyDescription(f::IMTFile) = "n.a."
 # experiment parameters
 experimentName(f::IMTFile) = "n.a."
 experimentNumber(f::IMTFile) = 0
-experimentUuid(f::IMTFile) = uuid4() 
-experimentDescription(f::IMTFile) = "n.a." 
-experimentSubject(f::IMTFile) = "n.a." 
-experimentIsSimulation(f::IMTFile) = true 
+experimentUuid(f::IMTFile) = uuid4()
+experimentDescription(f::IMTFile) = "n.a."
+experimentSubject(f::IMTFile) = "n.a."
+experimentIsSimulation(f::IMTFile) = true
 experimentIsCalibration(f::IMTFileMeas) = false
 experimentIsCalibration(f::IMTFileCalib) = true
-experimentHasReconstruction(f::IMTFile) = false 
-experimentHasMeasurement(f::IMTFile) = true 
+experimentHasReconstruction(f::IMTFile) = false
+experimentHasMeasurement(f::IMTFile) = true
 
 # tracer parameters
 tracerName(f::IMTFile)::Vector{String} = ["n.a"]
@@ -124,7 +123,7 @@ scannerTopology(f::IMTFile)::String = f["n.a."]
 # acquisition parameters
 acqStartTime(f::IMTFile)::DateTime = Dates.unix2datetime(0) #DateTime( f["/acquisition/time"] )
 acqNumAverages(f::IMTFileCalib)::Int = 1 # f["/acquisition/drivefield/averages"]
-acqNumAverages(f::IMTFileMeas)::Int = 1 
+acqNumAverages(f::IMTFileMeas)::Int = 1
 #function acqNumFrames(f::IMTFileCalib)::Int
 #  if experimentIsCalibration(f)
 #    if f.mmap_measData == nothing
@@ -142,22 +141,22 @@ acqNumFrames(f::IMTFileMeas)::Int = 1 #f["/acquisition/numFrames"]
 acqNumPeriodsPerFrame(f::IMTFile)::Int = 1
 
 acqGradient(f::IMTFile)::Array{Float64,4} = reshape(diagm([0.0,0.0,0.0]), 3,3,1,1)
-acqOffsetField(f::IMTFile)::Array{Float64,3} = reshape([0.0,0.0,0.0],3,1,1) 
+acqOffsetField(f::IMTFile)::Array{Float64,3} = reshape([0.0,0.0,0.0],3,1,1)
 
 # drive-field parameters
-dfNumChannels(f::IMTFile) = 1 
+dfNumChannels(f::IMTFile) = 1
 dfStrength(f::IMTFile) = 0.0 # addTrailingSingleton( addLeadingSingleton(f["/acquisition/drivefield/strength"], 2), 3)
 dfPhase(f::IMTFile) = 0.0  #dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
-dfBaseFrequency(f::IMTFile) = 2.5e6 
-dfCustomWaveform(f::IMTFile) = "n.a." 
+dfBaseFrequency(f::IMTFile) = 2.5e6
+dfCustomWaveform(f::IMTFile) = "n.a."
 dfDivider(f::IMTFile) = reshape([102; 96; 99],:,1) #addTrailingSingleton(f["/acquisition/drivefield/divider"],2)
 dfWaveform(f::IMTFile) = "sine"
 dfCycle(f::IMTFile) = f["/timeLength"]
 
 # receiver parameters
-rxNumChannels(f::IMTFileMeas) = size(f["/measurements"],2) 
+rxNumChannels(f::IMTFileMeas) = size(f["/measurements"],2)
 rxNumChannels(f::IMTFileCalib) = 3 #size(f["/numberOfAvailableFrequencies"],2) TODO
-rxBandwidth(f::IMTFile) = 1.25e6 
+rxBandwidth(f::IMTFile) = 1.25e6
 rxNumSamplingPoints(f::IMTFile) = (f["/numberOfAvailableFrequencies"][1]-1)*2
 rxTransferFunction(f::IMTFile) = nothing
 rxInductionFactor(f::IMTFile) = nothing
@@ -315,7 +314,7 @@ function measIsFourierTransformed(f::IMTFileCalib)
   end
 end
 
-measIsFourierTransformed(f::IMTFile) = true 
+measIsFourierTransformed(f::IMTFile) = true
 measIsTFCorrected(f::IMTFile) = false
 measIsSpectralLeakageCorrected(f::IMTFile) = false
 
@@ -324,33 +323,31 @@ measIsBGCorrected(f::IMTFileMeas) = true #Bool(f["/measurement/isBackgroundCorre
 
 measIsFrequencySelection(f::IMTFile) = false
 
-measIsTransposed(f::IMTFileCalib) = true 
+measIsTransposed(f::IMTFileCalib) = true
 measIsTransposed(f::IMTFileMeas) = false
 
-measIsFramePermutation(f::IMTFileCalib) = true 
-measIsFramePermutation(f::IMTFileMeas) = false 
+measIsFramePermutation(f::IMTFileCalib) = true
+measIsFramePermutation(f::IMTFileMeas) = false
 
 measIsBGFrame(f::IMTFile) = zeros(Bool, acqNumFrames(f))
 
 measFramePermutation(f::IMTFileCalib) = nothing
 measFramePermutation(f::IMTFileMeas) = nothing
- 
+
 #fullFramePermutation(f::IMTFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
 
 #calibrations
 #calibSNR(f::IMTFile) = addTrailingSingleton(f["/calibration/snrFD"],3)
 calibFov(f::IMTFile) = f["/fov"]
 calibFovCenter(f::IMTFile) = [0.0,0.0,0.0]
-calibSize(f::IMTFile) = nothing 
-calibOrder(f::IMTFile) = "xyz" 
-#calibOffsetField(f::IMTFile) = [0.0,0.0,0.0] 
+calibSize(f::IMTFile) = nothing
+calibOrder(f::IMTFile) = "xyz"
+#calibOffsetField(f::IMTFile) = [0.0,0.0,0.0]
 calibDeltaSampleSize(f::IMTFile) = [0.0,0.0,0.0]
-calibMethod(f::IMTFile) = "simulation" 
+calibMethod(f::IMTFile) = "simulation"
 #calibIsMeanderingGrid(f::IMTFile) = Bool(f["/calibration/isMeanderingGrid", 0])
 #calibPositions(f::IMTFile) = f["/calibration/positions"]
 
 
 # additional functions that should be implemented by an MPIFile
 filepath(f::IMTFile) = f.filename
-
-

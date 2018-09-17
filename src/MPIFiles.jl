@@ -358,13 +358,19 @@ include("Custom.jl")
 include("FramePermutation.jl")
 include("MDF.jl")
 include("Brukerfile.jl")
+include("IMT.jl")
 
 # This dispatches on the file extension and automatically
 # generates the correct type
 function MPIFile(filename::AbstractString; kargs...)
   filenamebase, ext = splitext(filename)
   if ext == ".mdf" || ext == ".hdf" || ext == ".h5"
-    return MDFFile(filename; kargs...)
+    file = h5open(filename,"r")
+    if exists(file, "/version")
+      return MDFFile(filename, file; kargs...)
+    else
+      return IMTFile(filename, file; kargs...)
+    end
   else
     return BrukerFile(filename; kargs...)
   end
