@@ -93,7 +93,7 @@ experimentHasReconstruction(f::IMTFile) = false
 experimentHasMeasurement(f::IMTFile) = true
 
 # tracer parameters
-tracerName(f::IMTFile)::Vector{String} = ["n.a"]
+tracerName(f::IMTFile)::Vector{String} = _makeStringArray(["n.a"])
 tracerBatch(f::IMTFile)::Vector{String} = ["n.a"]
 tracerVolume(f::IMTFile)::Vector{Float64} = [0.0]
 tracerConcentration(f::IMTFile)::Vector{Float64} = [0.0]
@@ -114,11 +114,11 @@ tracerInjectionTime(f::IMTFile) = Dates.unix2datetime(0) #DateTime( f["/tracer/i
 tracerVendor(f::IMTFile)::Vector{String} = ["n.a."] #[f["/tracer/vendor"]]
 
 # scanner parameters
-scannerFacility(f::IMTFile)::String = f["n.a."]
-scannerOperator(f::IMTFile)::String = f["n.a."]
-scannerManufacturer(f::IMTFile)::String = f["n.a."]
-scannerName(f::IMTFile)::String = f["n.a."]
-scannerTopology(f::IMTFile)::String = f["n.a."]
+scannerFacility(f::IMTFile)::String = "n.a."
+scannerOperator(f::IMTFile)::String = "n.a."
+scannerManufacturer(f::IMTFile)::String = "n.a."
+scannerName(f::IMTFile)::String = "n.a."
+scannerTopology(f::IMTFile)::String = "n.a."
 
 # acquisition parameters
 acqStartTime(f::IMTFile)::DateTime = Dates.unix2datetime(0) #DateTime( f["/acquisition/time"] )
@@ -144,9 +144,9 @@ acqGradient(f::IMTFile)::Array{Float64,4} = reshape(diagm([0.0,0.0,0.0]), 3,3,1,
 acqOffsetField(f::IMTFile)::Array{Float64,3} = reshape([0.0,0.0,0.0],3,1,1)
 
 # drive-field parameters
-dfNumChannels(f::IMTFile) = 1
-dfStrength(f::IMTFile) = 0.0 # addTrailingSingleton( addLeadingSingleton(f["/acquisition/drivefield/strength"], 2), 3)
-dfPhase(f::IMTFile) = 0.0  #dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
+dfNumChannels(f::IMTFile) = 3
+dfStrength(f::IMTFile) = [0.0 0.0 0.0] # addTrailingSingleton( addLeadingSingleton(f["/acquisition/drivefield/strength"], 2), 3)
+dfPhase(f::IMTFile) = [0.0 0.0 0.0]  #dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
 dfBaseFrequency(f::IMTFile) = 2.5e6
 dfCustomWaveform(f::IMTFile) = "n.a."
 dfDivider(f::IMTFile) = reshape([102; 96; 99],:,1) #addTrailingSingleton(f["/acquisition/drivefield/divider"],2)
@@ -156,7 +156,7 @@ dfCycle(f::IMTFile) = f["/timeLength"]
 # receiver parameters
 rxNumChannels(f::IMTFileMeas) = size(f["/measurements"],2)
 rxNumChannels(f::IMTFileCalib) = 3 #size(f["/numberOfAvailableFrequencies"],2) TODO
-rxBandwidth(f::IMTFile) = 1.25e6
+rxBandwidth(f::IMTFile)::Float64 = 1.25e6
 rxNumSamplingPoints(f::IMTFile) = (f["/numberOfAvailableFrequencies"][1]-1)*2
 rxTransferFunction(f::IMTFile) = nothing
 rxInductionFactor(f::IMTFile) = nothing
