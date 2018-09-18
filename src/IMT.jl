@@ -155,68 +155,39 @@ dfCycle(f::IMTFile) = f["/timeLength"]
 
 # receiver parameters
 rxNumChannels(f::IMTFileMeas) = size(f["/measurements"],2)
-rxNumChannels(f::IMTFileCalib) = 3 #size(f["/numberOfAvailableFrequencies"],2) TODO
+rxNumChannels(f::IMTFileCalib) = size(f["/numberOfAvailableFrequencies"],2) #TODO
 rxBandwidth(f::IMTFile)::Float64 = 1.25e6
 rxNumSamplingPoints(f::IMTFile) = (f["/numberOfAvailableFrequencies"][1]-1)*2
 rxTransferFunction(f::IMTFile) = nothing
 rxInductionFactor(f::IMTFile) = nothing
 
 rxUnit(f::IMTFile) = "a.u."
-#rxDataConversionFactor(f::IMTFileCalib) = nothing #repeat([1.0, 0.0], outer=(1,rxNumChannels(f)))
+rxDataConversionFactor(f::IMTFile) = repeat([1.0, 0.0], outer=(1,rxNumChannels(f)))
 #rxDataConversionFactor(f::IMTFileMeas) = f["/acquisition/receiver/dataConversionFactor"]
 
 # measurements
-function measData(f::IMTFileMeas, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
+function measData(f::IMTFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
   if !exists(f.file, "/measurements")
     # file is calibration
-    data = f["/systemResponseFrequencies"]
-    #data = f["/calibration/dataFD"]
+    dataFD = f["/systemResponseFrequencies"]
     if ndims(data) == 4
       return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),1))
     else
       return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
     end
   end
+  
   tdExists = exists(f.file, "/measurements")
 
   if tdExists
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurements"])
-    end
-    data = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
-    for (i,fr) in enumerate(frames)
-      data[:,:,:,i] = f.mmap_measData[:, receivers, fr]
-    end
-    return reshape(data,size(data,1),size(data,2),1,size(data,3))
-  else
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataFD"])
-    end
-    data = zeros(Float64, 2, rxNumFrequencies(f), length(receivers), length(frames))
-    for (i,fr) in enumerate(frames)
-      data[:,:,:,i] = f.mmap_measData[:,:,receivers, fr]
-    end
-
-    dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
-    dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
-    return reshape(dataTD,size(dataTD,1),size(dataTD,2),1,size(dataTD,3))
+    dataTD = f["/measurements"]
+    #dataTD = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
+    #TODO implement for frames > 1 
+    dataTD = reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames))
+    return dataTD
   end
 end
-
-function measData(f::IMTFileCalib, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
-                  receivers=1:rxNumChannels(f))
-
-  if measIsTransposed(f)
-    data = f.mmap_measData[frames, :, receivers, periods]
-    data = reshape(data, length(frames), size(data,2), length(receivers), length(periods))
-  else
-    data = f.mmap_measData[:, receivers, periods, frames]
-    data = reshape(data, size(data,1), length(receivers), length(periods), length(frames))
-  end
-  return data
-end
-
 
 function measDataTDPeriods(f::IMTFileCalib, periods=1:acqNumPeriods(f),
                   receivers=1:rxNumChannels(f))
