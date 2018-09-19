@@ -98,20 +98,8 @@ tracerBatch(f::IMTFile)::Vector{String} = ["n.a"]
 tracerVolume(f::IMTFile)::Vector{Float64} = [0.0]
 tracerConcentration(f::IMTFile)::Vector{Float64} = [0.0]
 tracerSolute(f::IMTFile)::Vector{String} = ["Fe"]
-#function tracerInjectionTime(f::IMTFile)::Vector{DateTime}
-#  p = typeof(f) == IMTFile ? "/tracer/time" : "/tracer/injectionTime"
-#  if f[p] == nothing
-#    return nothing
-#  end
-
-#  if typeof(f[p]) == String
-#    return [DateTime(f[p])]
-#  else
-#    return [DateTime(y) for y in f[p]]
-#  end
-#end
-tracerInjectionTime(f::IMTFile) = Dates.unix2datetime(0) #DateTime( f["/tracer/injectionTime"] )
-tracerVendor(f::IMTFile)::Vector{String} = ["n.a."] #[f["/tracer/vendor"]]
+tracerInjectionTime(f::IMTFile) = Dates.unix2datetime(0) 
+tracerVendor(f::IMTFile)::Vector{String} = ["n.a."] 
 
 # scanner parameters
 scannerFacility(f::IMTFile)::String = "n.a."
@@ -121,23 +109,11 @@ scannerName(f::IMTFile)::String = "n.a."
 scannerTopology(f::IMTFile)::String = "n.a."
 
 # acquisition parameters
-acqStartTime(f::IMTFile)::DateTime = Dates.unix2datetime(0) #DateTime( f["/acquisition/time"] )
-acqNumAverages(f::IMTFileCalib)::Int = 1 # f["/acquisition/drivefield/averages"]
+acqStartTime(f::IMTFile)::DateTime = Dates.unix2datetime(0) 
+acqNumAverages(f::IMTFileCalib)::Int = 1 
 acqNumAverages(f::IMTFileMeas)::Int = 1
-#function acqNumFrames(f::IMTFileCalib)::Int
-#  if experimentIsCalibration(f)
-#    if f.mmap_measData == nothing
-#      h5open(f.filename,"r") do file
-#        f.mmap_measData = readmmap(file["/calibration/dataFD"])
-#      end
-#    end
-#    return size(f.mmap_measData,2)
-#  else
-#    return f["/acquisition/numFrames"]
-#  end
-#end
-acqNumFrames(f::IMTFileCalib)::Int = 1 #f["/acquisition/numFrames"]
-acqNumFrames(f::IMTFileMeas)::Int = 1 #f["/acquisition/numFrames"]
+acqNumFrames(f::IMTFileCalib)::Int = 1 
+acqNumFrames(f::IMTFileMeas)::Int = 1 
 acqNumPeriodsPerFrame(f::IMTFile)::Int = 1
 
 acqGradient(f::IMTFile)::Array{Float64,4} = reshape(diagm([0.0,0.0,0.0]), 3,3,1,1)
@@ -146,16 +122,16 @@ acqOffsetField(f::IMTFile)::Array{Float64,3} = reshape([0.0,0.0,0.0],3,1,1)
 # drive-field parameters
 dfNumChannels(f::IMTFile) = 3
 dfStrength(f::IMTFile) = [0.0 0.0 0.0] # addTrailingSingleton( addLeadingSingleton(f["/acquisition/drivefield/strength"], 2), 3)
-dfPhase(f::IMTFile) = [0.0 0.0 0.0]  #dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
+dfPhase(f::IMTFile) = [0.0 0.0 0.0]   
 dfBaseFrequency(f::IMTFile) = 2.5e6
 dfCustomWaveform(f::IMTFile) = "n.a."
-dfDivider(f::IMTFile) = reshape([102; 96; 99],:,1) #addTrailingSingleton(f["/acquisition/drivefield/divider"],2)
+dfDivider(f::IMTFile) = reshape([102; 96; 99],:,1) 
 dfWaveform(f::IMTFile) = "sine"
 dfCycle(f::IMTFile) = f["/timeLength"]
 
 # receiver parameters
 rxNumChannels(f::IMTFileMeas) = size(f["/measurements"],2)
-rxNumChannels(f::IMTFileCalib) = size(f["/numberOfAvailableFrequencies"],2) #TODO
+rxNumChannels(f::IMTFileCalib) = size(f["/numberOfAvailableFrequencies"],1) 
 rxBandwidth(f::IMTFile)::Float64 = 1.25e6
 rxNumSamplingPoints(f::IMTFile) = (f["/numberOfAvailableFrequencies"][1]-1)*2
 rxTransferFunction(f::IMTFile) = nothing
@@ -171,57 +147,53 @@ function measData(f::IMTFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsP
   if !exists(f.file, "/measurements")
     # file is calibration
     dataFD = f["/systemResponseFrequencies"]
-    if ndims(data) == 4
-      return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),1))
-    else
-      return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4),size(data,5)))
-    end
+    dataFD = reshape(reinterpret(Complex{eltype(dataFD)}, vec(dataFD)), (20,size(dataFD,2),size(dataFD,3),size(dataFD,4)))
+    return dataFD = reshape(dataFD, (size(dataFD,1)*size(dataFD,2)*size(dataFD,3), 26929, 3, 1))
   end
   
   tdExists = exists(f.file, "/measurements")
 
   if tdExists
     dataTD = f["/measurements"]
-    #dataTD = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
     #TODO implement for frames > 1 
     dataTD = reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames))
     return dataTD
   end
 end
 
-function measDataTDPeriods(f::IMTFileCalib, periods=1:acqNumPeriods(f),
-                  receivers=1:rxNumChannels(f))
-  tdExists = exists(f.file, "/measurement/dataTD")
+#function measDataTDPeriods(f::IMTFileCalib, periods=1:acqNumPeriods(f),
+#                  receivers=1:rxNumChannels(f))
+#  tdExists = exists(f.file, "/measurement/dataTD")
 
-  if tdExists
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataTD"])
-    end
-    data = f.mmap_measData[:, receivers, periods]
-    return data
-  else
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataFD"])
-    end
-    data = f.mmap_measData[:, :, receivers, periods]
+#  if tdExists
+#    if f.mmap_measData == nothing
+#      f.mmap_measData = readmmap(f.file["/measurement/dataTD"])
+#    end
+#    data = f.mmap_measData[:, receivers, periods]
+#    return data
+#  else
+#    if f.mmap_measData == nothing
+#      f.mmap_measData = readmmap(f.file["/measurement/dataFD"])
+#    end
+#    data = f.mmap_measData[:, :, receivers, periods]
 
-    dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
-    dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
-    return dataTD
-  end
-end
+#    dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
+#    dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
+#    return dataTD
+#  end
+#end
 
 
-function measDataTDPeriods(f::IMTFileMeas, periods=1:acqNumPeriods(f),
-                  receivers=1:rxNumChannels(f))
-  if measIsTransposed(f)
-    error("measDataTDPeriods can currently not handle transposed data!")
-  end
+#function measDataTDPeriods(f::IMTFileMeas, periods=1:acqNumPeriods(f),
+#                  receivers=1:rxNumChannels(f))
+#  if measIsTransposed(f)
+#    error("measDataTDPeriods can currently not handle transposed data!")
+#  end
 
-  data = reshape(f.mmap_measData,Val{3})[:, receivers, periods]
+#  data = reshape(f.mmap_measData,Val{3})[:, receivers, periods]
 
-  return data
-end
+#  return data
+#end
 
 function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
   if !experimentIsCalibration(f)
@@ -276,34 +248,31 @@ function systemMatrixWithBG(f::IMTFileMeas)
   return data
 end
 
-
-function measIsFourierTransformed(f::IMTFileCalib)
+function measIsFourierTransformed(f::IMTFile)
   if !experimentIsCalibration(f)
-    return false
+    return false 
   else
     return true
   end
 end
 
-measIsFourierTransformed(f::IMTFile) = true
 measIsTFCorrected(f::IMTFile) = false
 measIsSpectralLeakageCorrected(f::IMTFile) = false
 
-measIsBGCorrected(f::IMTFileCalib) = false
-measIsBGCorrected(f::IMTFileMeas) = true #Bool(f["/measurement/isBackgroundCorrected"])
+measIsBGCorrected(f::IMTFile) = false
 
 measIsFrequencySelection(f::IMTFile) = false
 
-measIsTransposed(f::IMTFileCalib) = true
-measIsTransposed(f::IMTFileMeas) = false
+#measIsTransposed(f::IMTFileCalib) = true
+#measIsTransposed(f::IMTFileMeas) = false
 
-measIsFramePermutation(f::IMTFileCalib) = true
-measIsFramePermutation(f::IMTFileMeas) = false
+#measIsFramePermutation(f::IMTFileCalib) = true
+#measIsFramePermutation(f::IMTFileMeas) = false
 
-measIsBGFrame(f::IMTFile) = zeros(Bool, acqNumFrames(f))
+#measIsBGFrame(f::IMTFile) = zeros(Bool, acqNumFrames(f))
 
-measFramePermutation(f::IMTFileCalib) = nothing
-measFramePermutation(f::IMTFileMeas) = nothing
+#measFramePermutation(f::IMTFileCalib) = nothing
+#measFramePermutation(f::IMTFileMeas) = nothing
 
 #fullFramePermutation(f::IMTFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
 

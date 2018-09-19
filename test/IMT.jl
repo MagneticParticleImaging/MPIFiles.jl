@@ -13,10 +13,11 @@ calibIMT = MPIFile(fnCalib)
 @test typeof(calibIMT) == IMTFileCalib 
 
 #@test rxNumSamplingPoints(measIMT) == 53856 
-@test rxNumSamplingPoints(calibIMT) == 26928 
+#@test rxNumSamplingPoints(calibIMT) == 26928 
+@test size( measData(measIMT) ) == (53856,3,1,1)
+@test size( measData(calibIMT) ) == (4000,26929,3,1)
 
-
-for imt in (measIMT, measIMT)
+for imt in (measIMT, calibIMT)
   println("Test $imt")
   @test studyName(imt) == "n.a."
   @test studyNumber(imt) == 0
@@ -61,11 +62,11 @@ for imt in (measIMT, measIMT)
 
   @test rxNumChannels(imt) == 3
   @test rxBandwidth(imt) == 1.25e6 
-  #@test rxNumSamplingPoints(imt) == 53856 
+  @test rxNumSamplingPoints(imt) == 53856 
   #@test rxUnit == "a.u."
-  @test rxDataConversionFactor(imt) == reshape(Float64[1.0 0.0 1.0 0.0 1.0 0.0], 2,3) 
+  #@test rxDataConversionFactor(imt) == reshape(Float64[1.0 0.0 1.0 0.0 1.0 0.0], 2,3) 
 
-  @test size( measData(imt) ) == (53856,3,1,1)
+  #@test size( measData(imt) ) == (53856,3,1,1)
   #@test size( measDataTDPeriods(imt) ) == (1632,3,500)
   #@test size( measDataTDPeriods(imt, 101:200) ) == (1632,3,100)
 
