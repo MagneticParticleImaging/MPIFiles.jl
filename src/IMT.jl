@@ -263,16 +263,16 @@ measIsBGCorrected(f::IMTFile) = false
 
 measIsFrequencySelection(f::IMTFile) = false
 
-#measIsTransposed(f::IMTFileCalib) = true
-#measIsTransposed(f::IMTFileMeas) = false
+measIsTransposed(f::IMTFileCalib) = true
+measIsTransposed(f::IMTFileMeas) = false 
 
-#measIsFramePermutation(f::IMTFileCalib) = true
-#measIsFramePermutation(f::IMTFileMeas) = false
+measIsFramePermutation(f::IMTFileCalib) = false 
+measIsFramePermutation(f::IMTFileMeas) = false
 
-#measIsBGFrame(f::IMTFile) = zeros(Bool, acqNumFrames(f))
+measIsBGFrame(f::IMTFile) = zeros(Bool, acqNumFrames(f))
 
-#measFramePermutation(f::IMTFileCalib) = nothing
-#measFramePermutation(f::IMTFileMeas) = nothing
+measFramePermutation(f::IMTFileCalib) = nothing
+measFramePermutation(f::IMTFileMeas) = nothing
 
 #fullFramePermutation(f::IMTFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
 
