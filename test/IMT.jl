@@ -2,8 +2,23 @@
 
 # Download test files -> TODO
 
-fnMeas = "measurement3D.h5"
-fnCalib = "SF3D.h5"
+fnMeas = "measurementIMT2D.h5"
+fnCalib = "systemMatrixIMT2D.h5"
+
+if !isfile(fnCalib)
+  HTTP.open("GET", "http://media.tuhh.de/ibi/imt/systemMatrixIMT2D.h5") do http
+    open(fnCalib, "w") do file
+        write(file, http)
+    end
+  end
+end
+if !isfile(fnMeas)
+  HTTP.open("GET", "http://media.tuhh.de/ibi/imt/measurementIMT2D.h5") do http
+    open(fnMeas, "w") do file
+        write(file, http)
+    end
+  end
+end
 
 # Measurement File 
 
@@ -14,8 +29,8 @@ calibIMT = MPIFile(fnCalib)
 
 #@test rxNumSamplingPoints(measIMT) == 53856 
 #@test rxNumSamplingPoints(calibIMT) == 26928 
-@test size( measData(measIMT) ) == (53856,3,1,1)
-@test size( measData(calibIMT) ) == (4000,26929,3,1)
+#@test size( measData(measIMT) ) == (53856,3,1,1)
+#@test size( measData(calibIMT) ) == (4000,26929,3,1)
 
 for imt in (measIMT, calibIMT)
   println("Test $imt")
@@ -40,7 +55,7 @@ for imt in (measIMT, calibIMT)
   @test tracerVendor(imt) == ["n.a."]
   @test tracerVolume(imt) == [0.0]
   @test tracerConcentration(imt) == [0.0]
-  @test tracerInjectionTime(imt) == Dates.unix2datetime(0) 
+  @test tracerInjectionTime(imt) == [Dates.unix2datetime(0)] 
 
   @test acqStartTime(imt) == Dates.unix2datetime(0) #DateTime("2015-09-15T11:17:23.011")
   @test acqGradient(imt)[:,:,1,1] == [0 0 0; 0 0 0; 0 0 0]
@@ -52,17 +67,18 @@ for imt in (measIMT, calibIMT)
   #@test acqOffsetField(imt) == [0; 0; 0]
   #@test acqNumPeriods(imt) == 500
 
-  @test dfNumChannels(imt) == 3
+  @test dfNumChannels(imt) == 2
   @test dfWaveform(imt) == "sine"
   @test dfStrength(imt)[:,:,1] == [0.0 0.0 0.0]
   @test dfPhase(imt)[:,:,1] == [0.0 0.0 0.0] #[1.5707963267948966 1.5707963267948966 1.5707963267948966]
   @test dfBaseFrequency(imt) == 2500000.0
   @test dfDivider(imt)[:,1] == [102; 96; 99]
-  @test dfCycle(imt) == [0.0215424]
+  #@test dfCycle(imt) == [0.0215424]
+  @test dfCycle(imt) == [0.0006528]
 
-  @test rxNumChannels(imt) == 3
+  @test rxNumChannels(imt) == 2
   @test rxBandwidth(imt) == 1.25e6 
-  @test rxNumSamplingPoints(imt) == 53856 
+  @test rxNumSamplingPoints(imt) == 1632 
   #@test rxUnit == "a.u."
   #@test rxDataConversionFactor(imt) == reshape(Float64[1.0 0.0 1.0 0.0 1.0 0.0], 2,3) 
 

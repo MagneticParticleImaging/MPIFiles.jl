@@ -98,7 +98,7 @@ tracerBatch(f::IMTFile)::Vector{String} = ["n.a"]
 tracerVolume(f::IMTFile)::Vector{Float64} = [0.0]
 tracerConcentration(f::IMTFile)::Vector{Float64} = [0.0]
 tracerSolute(f::IMTFile)::Vector{String} = ["Fe"]
-tracerInjectionTime(f::IMTFile) = Dates.unix2datetime(0) 
+tracerInjectionTime(f::IMTFile) = [Dates.unix2datetime(0)] 
 tracerVendor(f::IMTFile)::Vector{String} = ["n.a."] 
 
 # scanner parameters
@@ -120,7 +120,8 @@ acqGradient(f::IMTFile)::Array{Float64,4} = reshape(diagm([0.0,0.0,0.0]), 3,3,1,
 acqOffsetField(f::IMTFile)::Array{Float64,3} = reshape([0.0,0.0,0.0],3,1,1)
 
 # drive-field parameters
-dfNumChannels(f::IMTFile) = 3
+dfNumChannels(f::IMTFileMeas) = size(f["/measurements"], 2)
+dfNumChannels(f::IMTFileCalib) = size(f["/numberOfAvailableFrequencies"],1) 
 dfStrength(f::IMTFile) = [0.0 0.0 0.0] # addTrailingSingleton( addLeadingSingleton(f["/acquisition/drivefield/strength"], 2), 3)
 dfPhase(f::IMTFile) = [0.0 0.0 0.0]   
 dfBaseFrequency(f::IMTFile) = 2.5e6
