@@ -6,7 +6,7 @@ function getInterpolator(A::AbstractArray{T,3}, grid::RegularGridPositions) wher
           size(A,2)==1 ? NoInterp() : BSpline(Linear()),
           size(A,3)==1 ? NoInterp() : BSpline(Linear()) )
 
-  itp = interpolate(A, tmp, OnCell())
+  itp = extrapolate(interpolate(A, tmp),0.0)
   sitp = scale(itp, range(grid,1), range(grid,2), range(grid,3))
   return sitp
 end
@@ -26,7 +26,7 @@ function _interpolate_inner(AInterp,N,sitp,rx,ry,rz)
   for nz=1:N[3]
     for ny=1:N[2]
       for nx=1:N[1]
-        AInterp[nx,ny,nz] = sitp[rx[nx],ry[ny],rz[nz]]
+        AInterp[nx,ny,nz] = sitp(rx[nx],ry[ny],rz[nz])
       end
     end
   end
