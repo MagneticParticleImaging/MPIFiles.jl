@@ -443,7 +443,14 @@ function measIsTransposed(f::MDFFileV1)
     return true
   end
 end
-measIsTransposed(f::MDFFileV2) = Bool(f["/measurement/isTransposed"])
+
+function measIsTransposed(f::MDFFileV2)
+  if exists(f.file, "/measurement/isFastFrameAxis")
+    return Bool(f["/measurement/isFastFrameAxis"])
+  else
+    return Bool(f["/measurement/isTransposed"])
+  end
+end
 
 function measIsFramePermutation(f::MDFFileV1)
   if !experimentIsCalibration(f)
