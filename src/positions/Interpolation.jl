@@ -6,7 +6,7 @@ function getInterpolator(A::AbstractArray{T,3}, grid::RegularGridPositions) wher
           size(A,2)==1 ? NoInterp() : BSpline(Linear()),
           size(A,3)==1 ? NoInterp() : BSpline(Linear()) )
 
-  itp = extrapolate(interpolate(A, tmp),0.0)
+  itp = extrapolate(interpolate(A, tmp), 0.0)
   sitp = scale(itp, range(grid,1), range(grid,2), range(grid,3))
   return sitp
 end

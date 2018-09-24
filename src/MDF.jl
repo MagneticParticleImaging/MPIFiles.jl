@@ -382,7 +382,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
       st += blockLen[j]
     end
 
-    bgdataInterp = interpolate(bgdata, (BSpline(Linear()),NoInterp()), OnGrid())
+    bgdataInterp = interpolate(bgdata, (BSpline(Linear()), NoInterp()))
     # Cubic does not work for complex numbers
     origIndex = measFramePermutation(f)
     M = size(fgdata,1)
@@ -391,7 +391,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
     for m=1:M
       alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
       for k=1:size(fgdata,2)
-        fgdata[m,k] -= bgdataInterp[alpha,k]
+        fgdata[m,k] -= bgdataInterp(alpha,k)
       end
     end
   end
