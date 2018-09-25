@@ -29,8 +29,8 @@ calibIMT = MPIFile(fnCalib)
 
 #@test rxNumSamplingPoints(measIMT) == 53856 
 #@test rxNumSamplingPoints(calibIMT) == 26928 
-#@test size( measData(measIMT) ) == (53856,3,1,1)
-#@test size( measData(calibIMT) ) == (4000,26929,3,1)
+@test size( measData(measIMT) ) == (1632,2,1,1)
+@test size( measData(calibIMT) ) == (400,817,2,1)
 
 for imt in (measIMT, calibIMT)
   println("Test $imt")
@@ -82,7 +82,7 @@ for imt in (measIMT, calibIMT)
   #@test rxUnit == "a.u."
   #@test rxDataConversionFactor(imt) == reshape(Float64[1.0 0.0 1.0 0.0 1.0 0.0], 2,3) 
 
-  #@test size( measData(imt) ) == (53856,3,1,1)
+  #@test size( measData(imt) ) == (1632,2,1,1)
   #@test size( measDataTDPeriods(imt) ) == (1632,3,500)
   #@test size( measDataTDPeriods(imt, 101:200) ) == (1632,3,100)
 

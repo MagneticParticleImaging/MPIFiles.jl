@@ -148,8 +148,8 @@ function measData(f::IMTFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsP
   if !exists(f.file, "/measurements")
     # file is calibration
     dataFD = f["/systemResponseFrequencies"]
-    dataFD = reshape(reinterpret(Complex{eltype(dataFD)}, vec(dataFD)), (20,size(dataFD,2),size(dataFD,3),size(dataFD,4)))
-    return dataFD = reshape(dataFD, (size(dataFD,1)*size(dataFD,2)*size(dataFD,3), 26929, 3, 1))
+    dataFD = reshape(reinterpret(Complex{eltype(dataFD)}, vec(dataFD)), (div(size(dataFD,1),2),size(dataFD,2),size(dataFD,3),size(dataFD,4)))
+    return dataFD = reshape(dataFD, (size(dataFD,1)*size(dataFD,2)*size(dataFD,3), div(size(dataFD,4),2), length(receivers), length(frames)))
   end
   
   tdExists = exists(f.file, "/measurements")
@@ -161,40 +161,6 @@ function measData(f::IMTFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsP
     return dataTD
   end
 end
-
-#function measDataTDPeriods(f::IMTFileCalib, periods=1:acqNumPeriods(f),
-#                  receivers=1:rxNumChannels(f))
-#  tdExists = exists(f.file, "/measurement/dataTD")
-
-#  if tdExists
-#    if f.mmap_measData == nothing
-#      f.mmap_measData = readmmap(f.file["/measurement/dataTD"])
-#    end
-#    data = f.mmap_measData[:, receivers, periods]
-#    return data
-#  else
-#    if f.mmap_measData == nothing
-#      f.mmap_measData = readmmap(f.file["/measurement/dataFD"])
-#    end
-#    data = f.mmap_measData[:, :, receivers, periods]
-
-#    dataFD = reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3),size(data,4)))
-#    dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
-#    return dataTD
-#  end
-#end
-
-
-#function measDataTDPeriods(f::IMTFileMeas, periods=1:acqNumPeriods(f),
-#                  receivers=1:rxNumChannels(f))
-#  if measIsTransposed(f)
-#    error("measDataTDPeriods can currently not handle transposed data!")
-#  end
-
-#  data = reshape(f.mmap_measData,Val{3})[:, receivers, periods]
-
-#  return data
-#end
 
 function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
   if !experimentIsCalibration(f)
@@ -278,16 +244,16 @@ measFramePermutation(f::IMTFileMeas) = nothing
 #fullFramePermutation(f::IMTFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
 
 #calibrations
-#calibSNR(f::IMTFile) = addTrailingSingleton(f["/calibration/snrFD"],3)
+calibSNR(f::IMTFileCalib) = zeros(817,3,1) 
 calibFov(f::IMTFile) = f["/fov"]
 calibFovCenter(f::IMTFile) = [0.0,0.0,0.0]
 calibSize(f::IMTFile) = nothing
 calibOrder(f::IMTFile) = "xyz"
-#calibOffsetField(f::IMTFile) = [0.0,0.0,0.0]
+calibOffsetField(f::IMTFileCalib) = nothing 
 calibDeltaSampleSize(f::IMTFile) = [0.0,0.0,0.0]
 calibMethod(f::IMTFile) = "simulation"
 #calibIsMeanderingGrid(f::IMTFile) = Bool(f["/calibration/isMeanderingGrid", 0])
-#calibPositions(f::IMTFile) = f["/calibration/positions"]
+calibPositions(f::IMTFileCalib) = f["/calibration/positions"]
 
 
 # additional functions that should be implemented by an MPIFile
