@@ -1,5 +1,3 @@
-search_(s,c) = something(findfirst(isequal(c), s), 0)
-
 include("Jcampdx.jl")
 
 export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8, sfPath
@@ -184,8 +182,9 @@ scannerTopology(b::BrukerFile) = "FFP"
 
 # acquisition parameters
 function acqStartTime(b::BrukerFile)
-  acq = b["ACQ_time"] #b["VisuAcqDate"]
-  DateTime( replace(acq[2:search_(acq,'+')-1],"," => ".") )
+  m = match(r"<(.+)\+",b["ACQ_time"])
+  timeString = replace(m.captures[1],"," => ".")
+  return DateTime( timeString )
 end
 function acqNumFrames(b::BrukerFileMeas)
   M = Int64(b["ACQ_jobs"][1][8])
@@ -472,7 +471,8 @@ filepath(b::BrukerFile) = b.path
 
 function sfPath(b::BrukerFile)
   tmp = b["PVM_MPI_FilenameSystemMatrix",1]
-  tmp[1:search_(tmp,"/pdata")[1]]
+  m = match(r"^(.+)\/pdata",tmp)
+  return string(m.captures[1])
 end
 
 ### The following is for field measurements from Alex Webers method
