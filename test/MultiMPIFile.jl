@@ -12,7 +12,7 @@ mdfv2 = MPIFile(fnMeasMultiV2)
 @test typeof(mdfv2) == MDFFileV2
 
 for mdf in (measBruker,mdfv2)
-  println("Test $mdf")
+  @info "Test $mdf"
   @test studyName(mdf) == "Wuerfelphantom_Wuerfelphantom_1"
   @test studyNumber(mdf) == 1
   @test studyDescription(mdf) == "n.a."

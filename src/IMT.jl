@@ -277,7 +277,7 @@ function systemMatrix(f::IMTFileMeas, rows, bgCorrection=true)
 
   fgdata = data[measFGFrameIdx(f),:]
   if bgCorrection # this assumes equidistent bg frames
-    println("Applying bg correction on system matrix (MDF)")
+    @debug "Applying bg correction on system matrix (MDF)"
     bgdata = data[measBGFrameIdx(f),:]
     bgdataInterp = interpolate(bgdata, (BSpline(Linear()), NoInterp()))
     #Cubic does not work for complex numbers

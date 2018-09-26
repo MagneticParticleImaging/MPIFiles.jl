@@ -76,7 +76,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
            tupleReading = true
 
            if file.dict[currentKey] == nothing
-             #println("Will now allocate memory of size: ", currentSizes)
+             @debug "Will now allocate memory of size:" currentSizes
              file.dict[currentKey] = Array{Any}(undef, currentSizes...)
            end
 
@@ -111,12 +111,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
                    tupleReading = false
                  end
                catch
-                 println("currentIdx = ", currentIdx)
-                 println("vals = ", vals)
-                 println("size = ", currentSizes)
-                 println("size = ", size( file.dict[currentKey]) )
-                 println("numKeys = ", length( keys(file.dict) ))
-                 println("currentKey = ", currentKey)
+                 @debug "" currentIdx vals currentSizes size(file.dict[currentKey]) length(keys(file.dict)) currentKey
                  #rethrow()
                  finishedReading = true
                  tupleReading = false
@@ -146,7 +141,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
            end
 
            if file.dict[currentKey] == nothing
-             #println("Will now allocate memory of size: ", currentSizes)
+             @debug "Will now allocate memory of size:" currentSizes
              file.dict[currentKey] = Array{eltype(vals)}(undef, currentSizes...)
            end
 
@@ -158,10 +153,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
                tupleReading = false
              end
            catch
-             println("currentIdx = ", currentIdx)
-             println("vals = ", vals)
-             println("size = ", currentSizes)
-             println("size = ", size( file.dict[currentKey]) )
+             @debug "" currentIdx vals currentSizes size(file.dict[currentKey])
              rethrow()
            end
          end

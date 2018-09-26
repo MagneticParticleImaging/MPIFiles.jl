@@ -372,7 +372,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
 
   fgdata = data[measFGFrameIdx(f),:]
   if bgCorrection # this assumes equidistent bg frames
-    println("Applying bg correction on system matrix (MDF)")
+    @debug "Applying bg correction on system matrix (MDF)"
     bgdata = data[measBGFrameIdx(f),:]
     blockLen = measBGFrameBlockLengths( invpermute!(measIsBGFrame(f), measFramePermutation(f)) )
     st = 1

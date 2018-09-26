@@ -20,7 +20,7 @@ end
 hannWindow(M) = (1.0 .- cos.(2*π/(M-1)*(0:(M-1))))/(M-1)*M
 
 function measDataSpectralLeakageCorrectedSinglePatch(f::MPIFile, frames)
-  #println("Apply Spectral Cleaning")
+  @debug "Apply Spectral Cleaning"
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
   numFrames = acqNumFrames(f)
@@ -55,7 +55,7 @@ function measDataSpectralLeakageCorrectedSinglePatch(f::MPIFile, frames)
 end
 
 function measDataSpectralLeakageCorrectedMultiPatch(f::MPIFile, frames, periods)
-  #println("Apply Spectral Cleaning")
+  @debug "Apply Spectral Cleaning"
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
   numFrames = acqNumFrames(f)
@@ -116,11 +116,10 @@ end
 returnasreal(u::AbstractArray{T}) where {T<:Real} = u
 
 function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
-            numAverages=1,  verbose = false, periods=1:acqNumPeriodsPerFrame(f),
+            numAverages=1,  periods=1:acqNumPeriodsPerFrame(f),
             averagePeriodsPerPatch=false, kargs...)
 
-  verbose && println( rxNumSamplingPoints(f), " ",
-                      rxNumChannels(f), " ", acqNumFrames(f), )
+  @debug "frequency and frame selection" rxNumSamplingPoints(f) rxNumChannels(f) acqNumFrames(f)
 
   if numAverages == 1
     data = measDataLowLevel(f, frames, periods; kargs...)
@@ -169,7 +168,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
     data = getAveragedMeasurements(f; frames=idx[frames], kargs...)
 
     if bgCorrection
-      println("Applying bg correction ...")
+      @debug "Applying bg correction ..."
       idxBG = measBGFrameIdx(f)
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
       if interpolateBG

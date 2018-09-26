@@ -41,7 +41,7 @@ mdfv2 = MPIFile(fnMeasV2)
 @test time(mdfv1) == DateTime("2016-02-08T14:28:34.673")
 
 for mdf in (mdfv1,mdfv2)
-  println("Test $mdf")
+  @info "Test $mdf"
   @test studyName(mdf) == "Wuerfelphantom"
   @test studyNumber(mdf) == 0
   @test studyDescription(mdf) == "n.a."
@@ -121,7 +121,7 @@ smv2 = MPIFile(fnSMV2)
 @test typeof(smv2) == MDFFileV2
 
 for sm in (smv1,smv2)
-  println("Test $sm")
+  @info "Test $sm"
 
   @test size( measData(sm) ) == (1936,817,3,1)
   @test measIsFourierTransformed(sm) == true

@@ -463,17 +463,14 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
     return SphericalTDesign(UInt(t),radius,positions, center)
   else
     if exists(h5file, "/$t-Design/")
-      println("spherical $t-Design with $N Points does not exist!")
-      println("There are spherical $t-Designs with following N:")
       Ns = Int[]
       for N in keys(read(h5file, string("/$t-Design")))
 	push!(Ns,parse(Int,N))
       end
       sort!(Ns)
-      println(Ns)
+      @info "spherical $t-Design with $N Points does not exist!\nThere are spherical $t-Designs with following N:" Ns
       throw(DomainError(1))
     else
-      println("spherical $t-Design does not exist!")
       ts = Int[]
       for d in keys(read(h5file))
 	m = match(r"(\d{1,})-(Design)",d)
@@ -482,7 +479,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
         end
       end
       sort!(ts)
-      println(ts)
+      @info "spherical $t-Design does not exist!\n There are spherical $t-Designs with following t's:" ts
       throw(DomainError(1))
     end
   end

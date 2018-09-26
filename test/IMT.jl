@@ -22,7 +22,6 @@ measIMT = MPIFile(fnMeas)
 @test studyName(imt) == "n.a."
 
 #for imt in (measIMT,calibIMT)
-#  println("Test $imt")
 #  @test studyName(imt) == "n.a."
 #  @test studyNumber(imt) == 0
 #  @test studyDescription(imt) == "n.a."
@@ -101,8 +100,6 @@ measIMT = MPIFile(fnMeas)
 #@test typeof(smv2) == MDFFileV2
 
 #for sm in (smv1,smv2)
-#  println("Test $sm")
-
 #  @test size( measData(sm) ) == (1936,817,3,1)
 #  @test measIsFourierTransformed(sm) == true
 #  @test measIsTFCorrected(sm) == false

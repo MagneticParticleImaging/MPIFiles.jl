@@ -306,7 +306,7 @@ function findSFFiles(d::MDFDatasetStore)
       try
         push!(bfiles, joinpath(path,file))
       catch e
-        println(e)
+        @debug "" e
       end
     end
   end
@@ -417,7 +417,7 @@ end
 
 function loadSFDatabase(d::MDFDatasetStore)
   files = readdir(calibdir(d))
-  #println(files)
+  @debug "system function database" files
   mdffiles = files[endswith.(files,".mdf")]
   fileList = calibdir(d).*"/".*mdffiles
   A = generateSFDatabase(fileList)
@@ -438,7 +438,7 @@ function getExperiments(d::BrukerDatasetStore, s::Study)
 
       push!(experiments, exp)
     #catch e
-    #  println(e)
+    #  @debug "" e
     #end
   end
   return experiments
@@ -450,7 +450,7 @@ function getExperiments(d::MDFDatasetStore, s::Study)
 
   experiments = Experiment[]
 
-  println("Time for get Experiments")
+  @debug "Time for get Experiments"
   @time for file in files
     prefix, ext = splitext(file)
     if !isdir(file) && tryparse(Int64,prefix) != nothing &&
@@ -582,7 +582,7 @@ function loadParams(reco::Reconstruction)
     if exists(g, "parameters") #new world order
       reco.params = loadParams(reco.path, "/reconstruction/parameters")
     else #this needs to go
-      println("opening legacy file")
+      @debug "opening legacy file"
       prefix, ext = splitext(reco.path)
       reco.params = load(prefix*".jld","recoParams")
     end

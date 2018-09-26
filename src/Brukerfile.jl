@@ -11,7 +11,7 @@ function latin1toutf8(str::AbstractString)
 end
 
 function latin1toutf8(str::Nothing)
-  println(stacktrace())
+  error("Can not convert noting to UTF8!")
 end
 
 abstract type BrukerFile <: MPIFile end
