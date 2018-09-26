@@ -243,7 +243,7 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/measurement/isTransferFunctionCorrected", Int8(params["measIsTFCorrected"]))
     write(file, "/measurement/isFrequencySelection", Int8(params["measIsFrequencySelection"]))
     write(file, "/measurement/isBackgroundCorrected",  Int8(params["measIsBGCorrected"]))
-    write(file, "/measurement/isTransposed",  Int8(params["measIsTransposed"]))
+    write(file, "/measurement/isFastFrameAxis",  Int8(params["measIsTransposed"]))
     write(file, "/measurement/isFramePermutation",  Int8(params["measIsFramePermutation"]))
 
     if hasKeyAndValue(params, "measFramePermutation")

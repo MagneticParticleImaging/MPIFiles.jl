@@ -182,7 +182,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
         end
 
         dataBGInterp = interpolate(dataBG,
-          (NoInterp(),NoInterp(),NoInterp(),BSpline(Linear())), OnGrid()) #OnCell?
+          (NoInterp(), NoInterp(), NoInterp(), BSpline(Linear()))) #OnCell?
 
         origIndex = idx[frames]
         M = size(data,4)
@@ -193,7 +193,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
           for k1=1:size(data,1)
             for k2=1:size(data,2)
               for k3=1:size(data,3)
-                data[k1,k2,k3,m] -= dataBGInterp[k1,k2,k3,alpha]
+                data[k1,k2,k3,m] -= dataBGInterp(k1,k2,k3,alpha)
               end
             end
           end

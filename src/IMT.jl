@@ -279,7 +279,7 @@ function systemMatrix(f::IMTFileMeas, rows, bgCorrection=true)
   if bgCorrection # this assumes equidistent bg frames
     println("Applying bg correction on system matrix (MDF)")
     bgdata = data[measBGFrameIdx(f),:]
-    bgdataInterp = interpolate(bgdata, (BSpline(Linear()),NoInterp()), OnGrid())
+    bgdataInterp = interpolate(bgdata, (BSpline(Linear()), NoInterp()))
     #Cubic does not work for complex numbers
     origIndex = measFramePermutation(f)
     M = size(fgdata,1)
@@ -288,7 +288,7 @@ function systemMatrix(f::IMTFileMeas, rows, bgCorrection=true)
     for m=1:M
       alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
       for k=1:size(fgdata,2)
-        fgdata[m,k] -= bgdataInterp[alpha,k]
+        fgdata[m,k] -= bgdataInterp(alpha,k)
       end
     end
   end
