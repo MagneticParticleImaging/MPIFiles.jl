@@ -11,6 +11,7 @@ abstract type IMTFile <: MPIFile end
 mutable struct IMTFileCalib <: IMTFile
   filename::String
   file::HDF5File
+  mmap_measData
 end
 
 #IMTFileCalib(filename::String, file=h5open(filename,"r")) =
@@ -25,6 +26,7 @@ end
 mutable struct IMTFileMeas <: IMTFile
   filename::String
   file::HDF5File
+  mmap_measData
 end
 
 function IMTFileMeas(filename::String, file=h5open(filename,"r"))
@@ -145,6 +147,8 @@ rxDataConversionFactor(f::IMTFile) = repeat([1.0, 0.0], outer=(1,rxNumChannels(f
 # measurements
 function measData(f::IMTFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
+  
+  println("measData is called")		  
   if !exists(f.file, "/measurements")
     # file is calibration
     dataFD = f["/systemResponseFrequencies"]
@@ -157,72 +161,79 @@ function measData(f::IMTFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsP
   if tdExists
     dataTD = f["/measurements"]
     #TODO implement for frames > 1 
-    dataTD = reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames))
-    return dataTD
+   # dataFD = rfft(reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames)))
+    dataFD = reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames))
+    #dataFD = reshape(dataTD, size(dataTD,1), size(dataTD,2), length(frames))
+    return dataFD
   end
 end
 
+
 function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
+  
+  println("systemMatrix is called")
+	
   if !experimentIsCalibration(f)
     return nothing
   end
   if f.mmap_measData == nothing
-    f.mmap_measData = readmmap(f.file["/calibration/dataFD"])
+    f.mmap_measData = readmmap(f.file["/systemResponseFrequencies"])
   end
 
   data = reshape(f.mmap_measData,Val{3})[:, :, rows]
-  return reinterpret(Complex{eltype(data)}, data, (size(data,2),size(data,3)))
+  return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (div(size(data,1),2)*size(data,2),size(data,3)))
 end
 
-function systemMatrix(f::IMTFileMeas, rows, bgCorrection=true)
-  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
-    !measIsFourierTransformed(f)
-    return nothing
-  end
+#function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
+ # if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
+ #   !measIsFourierTransformed(f)
+ #   return nothing
+ # end
 
-  data_ = reshape(f.mmap_measData,size(f.mmap_measData,1),
-                                  size(f.mmap_measData,2)*size(f.mmap_measData,3),
-                                  size(f.mmap_measData,4))[:, rows, :]
-  data = reshape(data_, Val{2})
+#  data_ = reshape(f.mmap_measData,size(f.mmap_measData,1),
+#                                  size(f.mmap_measData,2)*size(f.mmap_measData,3),
+#                                  size(f.mmap_measData,4))[:, rows, :]
+#  data = reshape(data_, Val{2})
 
-  fgdata = data[measFGFrameIdx(f),:]
-  if bgCorrection # this assumes equidistent bg frames
-    println("Applying bg correction on system matrix (MDF)")
-    bgdata = data[measBGFrameIdx(f),:]
-    bgdataInterp = interpolate(bgdata, (BSpline(Linear()),NoInterp()), OnGrid())
+#  fgdata = data[measFGFrameIdx(f),:]
+#  if bgCorrection # this assumes equidistent bg frames
+#    println("Applying bg correction on system matrix (MDF)")
+#    bgdata = data[measBGFrameIdx(f),:]
+#    bgdataInterp = interpolate(bgdata, (BSpline(Linear()),NoInterp()), OnGrid())
     #Cubic does not work for complex numbers
-    origIndex = measFramePermutation(f)
-    M = size(fgdata,1)
-    K = size(bgdata,1)
-    N = M + K
-    for m=1:M
-      alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
-      for k=1:size(fgdata,2)
-        fgdata[m,k] -= bgdataInterp[alpha,k]
-      end
-    end
-  end
-  return fgdata
-end
+#    origIndex = measFramePermutation(f)
+#    M = size(fgdata,1)
+#    K = size(bgdata,1)
+#    N = M + K
+#    for m=1:M
+#      alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
+#      for k=1:size(fgdata,2)
+#        fgdata[m,k] -= bgdataInterp[alpha,k]
+#      end
+#    end
+#  end
+#  return fgdata
+#end
 
-function systemMatrixWithBG(f::IMTFileMeas)
-  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
-      !measIsFourierTransformed(f)
-      return nothing
-  end
+#function systemMatrixWithBG(f::IMTFileMeas)
+#  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
+#      !measIsFourierTransformed(f)
+#      return nothing
+#  end
 
-  data = f.mmap_measData[:, :, :, :]
-  return data
-end
+#  data = f.mmap_measData[:, :, :, :]
+#  return data
+#end
 
-function measIsFourierTransformed(f::IMTFile)
-  if !experimentIsCalibration(f)
-    return false 
-  else
-    return true
-  end
-end
+#function measIsFourierTransformed(f::IMTFile)
+#  if !experimentIsCalibration(f)
+#    return false 
+#  else
+#    return true
+#  end
+#end
 
+measIsFourierTransformed(f::IMTFile) = true
 measIsTFCorrected(f::IMTFile) = false
 measIsSpectralLeakageCorrected(f::IMTFile) = false
 
@@ -247,7 +258,7 @@ measFramePermutation(f::IMTFileMeas) = nothing
 calibSNR(f::IMTFileCalib) = zeros(817,3,1) 
 calibFov(f::IMTFile) = f["/fov"]
 calibFovCenter(f::IMTFile) = [0.0,0.0,0.0]
-calibSize(f::IMTFile) = nothing
+calibSize(f::IMTFile) = [20, 20, 1] 
 calibOrder(f::IMTFile) = "xyz"
 calibOffsetField(f::IMTFileCalib) = nothing 
 calibDeltaSampleSize(f::IMTFile) = [0.0,0.0,0.0]

@@ -29,7 +29,7 @@ calibIMT = MPIFile(fnCalib)
 
 #@test rxNumSamplingPoints(measIMT) == 53856 
 #@test rxNumSamplingPoints(calibIMT) == 26928 
-@test size( measData(measIMT) ) == (1632,2,1,1)
+@test size( measData(measIMT) ) == (817,2,1,1)
 @test size( measData(calibIMT) ) == (400,817,2,1)
 
 for imt in (measIMT, calibIMT)
@@ -82,7 +82,6 @@ for imt in (measIMT, calibIMT)
   #@test rxUnit == "a.u."
   #@test rxDataConversionFactor(imt) == reshape(Float64[1.0 0.0 1.0 0.0 1.0 0.0], 2,3) 
 
-  #@test size( measData(imt) ) == (1632,2,1,1)
   #@test size( measDataTDPeriods(imt) ) == (1632,3,500)
   #@test size( measDataTDPeriods(imt, 101:200) ) == (1632,3,100)
 
@@ -119,7 +118,7 @@ end
 #  @test size( calibSNR(sm) ) == (817,3,1)
 #  @test calibFov(sm) == [0.044; 0.044; 0.001]
 #  @test calibFovCenter(sm) == [0.0; -0.0; 0.0]
-#  @test calibSize(sm) == [44; 44; 1]
+#  @test calibSize(sm) == [20; 20; 1]
 #  @test calibOrder(sm) == "xyz"
 #  @test calibPositions(smv1) == nothing
 #  @test calibOffsetField(smv1) == nothing
