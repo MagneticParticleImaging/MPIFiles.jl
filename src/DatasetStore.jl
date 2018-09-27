@@ -272,8 +272,6 @@ function findSFFiles(d::BrukerDatasetStore)
 
   bfiles = String[]
 
-  p = Progress(length(studies), 1, "Crawling Datadir...")
-
   for study in studies
     studypath = joinpath(d.path,study)
     if isdir(studypath) && study[1] != '.'
@@ -287,7 +285,6 @@ function findSFFiles(d::BrukerDatasetStore)
         end
       end
     end
-    next!(p)
   end
   bfiles
 end
@@ -346,13 +343,9 @@ function generateSFDatabase(fileList::Vector)
   A[1,15] = "StartDate"
   A[1,16] = "MeasurementTime"
 
- #p = Progress(length(fileList), 1, "Generating SF Database...")
-
   for (k,sf) in enumerate(fileList)
     i=k+1
     _innerGenerateSFDatabase(A,i,sf)
-
-    #next!(p)
   end
   return A
 end

@@ -132,14 +132,12 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
 
     data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
 
-    p = Progress(nBlocks, 1, "Loading measurement from $(filepath(f)) ...")
     for i = 1:nBlocks
       index1 = 1 + (i-1)*numAverages
       index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
 
       tmp = measDataLowLevel(f, frames[index1:index2], periods; kargs...)
       data[:,:,:,i] = mean(tmp,dims=4)
-      next!(p)
     end
   end
 

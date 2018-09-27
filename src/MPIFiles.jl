@@ -8,7 +8,6 @@ using Compat
 @reexport using FFTW
 @reexport using Random
 using Compat.UUIDs
-using ProgressMeter
 using Graphics: @mustimplement
 @reexport using ImageAxes
 using AxisArrays
