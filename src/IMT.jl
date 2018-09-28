@@ -148,7 +148,6 @@ rxDataConversionFactor(f::IMTFile) = repeat([1.0, 0.0], outer=(1,rxNumChannels(f
 function measData(f::IMTFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
   
-  println("measData is called")		  
   if !exists(f.file, "/measurements")
     # file is calibration
     dataFD = f["/systemResponseFrequencies"]
@@ -161,18 +160,16 @@ function measData(f::IMTFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsP
   if tdExists
     dataTD = f["/measurements"]
     #TODO implement for frames > 1 
-   # dataFD = rfft(reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames)))
-    dataFD = reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames))
-    #dataFD = reshape(dataTD, size(dataTD,1), size(dataTD,2), length(frames))
-    return dataFD
+    ##dataFD = rfft(reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames)))
+    dataTD = reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames))
+    ##dataFD = reshape(dataTD, size(dataTD,1), size(dataTD,2), length(frames))
+    return dataTD
   end
 end
 
 
 function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
   
-  println("systemMatrix is called")
-	
   if !experimentIsCalibration(f)
     return nothing
   end
