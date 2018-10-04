@@ -4,7 +4,12 @@
 
 *.mdf
 *.zip
+*.h5
+*.xml
 
+test/IdealScanner2D.jl
+test/MDFv2.jl
+test/runtests.jl
 test/measurement_Bruker/
 test/systemMatrix_Bruker/
 test/systemMatrix1D_Bruker/
