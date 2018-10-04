@@ -16,4 +16,4 @@ include("MultiMPIFile.jl")
 include("Reco.jl")
 #include("IMT.jl")
 
-println("The unit tests are done!")
+@info "The unit tests are done!"

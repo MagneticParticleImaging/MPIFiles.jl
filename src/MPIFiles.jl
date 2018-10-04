@@ -8,7 +8,6 @@ using Compat
 @reexport using FFTW
 @reexport using Random
 using Compat.UUIDs
-using ProgressMeter
 using Graphics: @mustimplement
 @reexport using ImageAxes
 using AxisArrays
@@ -191,7 +190,7 @@ function str2uuid(str::String)
     u = UUID(str_)
     return u
   catch
-    println("could not convert to UUID. str_= $(str_)  str=$(str) ")
+    @warn "could not convert to UUID." str_ str
     u = uuid4()
     return u
   end

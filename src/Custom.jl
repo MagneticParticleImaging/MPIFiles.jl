@@ -51,7 +51,7 @@ function saveParams(file, path, params::Dict)
     elseif typeof(value) <: Array{Any}
       write(file, ppath, [v for v in value])
     elseif typeof(value) <: MPIFile
-      println("Do nothing")
+      @debug "Do nothing"
     else
       write(file, ppath, value)
     end

@@ -372,7 +372,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
 
   fgdata = data[measFGFrameIdx(f),:]
   if bgCorrection # this assumes equidistent bg frames
-    println("Applying bg correction on system matrix (MDF)")
+    @debug "Applying bg correction on system matrix (MDF)"
     bgdata = data[measBGFrameIdx(f),:]
     blockLen = measBGFrameBlockLengths( invpermute!(measIsBGFrame(f), measFramePermutation(f)) )
     st = 1
@@ -382,7 +382,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
       st += blockLen[j]
     end
 
-    bgdataInterp = interpolate(bgdata, (BSpline(Linear()),NoInterp()), OnGrid())
+    bgdataInterp = interpolate(bgdata, (BSpline(Linear()), NoInterp()))
     # Cubic does not work for complex numbers
     origIndex = measFramePermutation(f)
     M = size(fgdata,1)
@@ -391,7 +391,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
     for m=1:M
       alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
       for k=1:size(fgdata,2)
-        fgdata[m,k] -= bgdataInterp[alpha,k]
+        fgdata[m,k] -= bgdataInterp(alpha,k)
       end
     end
   end
@@ -443,7 +443,14 @@ function measIsTransposed(f::MDFFileV1)
     return true
   end
 end
-measIsTransposed(f::MDFFileV2) = Bool(f["/measurement/isTransposed"])
+
+function measIsTransposed(f::MDFFileV2)
+  if exists(f.file, "/measurement/isFastFrameAxis")
+    return Bool(f["/measurement/isFastFrameAxis"])
+  else
+    return Bool(f["/measurement/isTransposed"])
+  end
+end
 
 function measIsFramePermutation(f::MDFFileV1)
   if !experimentIsCalibration(f)

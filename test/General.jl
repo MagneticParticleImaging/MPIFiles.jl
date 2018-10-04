@@ -12,7 +12,7 @@ fnSM1DV1 = "systemMatrix1D_V1.mdf"
 fnSM1DV2 = "systemMatrix1D_V2.mdf"
 
 if !isdir(fnSMBruker)
-  println("download $fnSMBruker")
+  @info "download $fnSMBruker"
   HTTP.open("GET", "http://media.tuhh.de/ibi/"*fnSMBruker*".zip") do http
     open(fnSMBruker*".zip", "w") do file
         write(file, http)
@@ -21,7 +21,7 @@ if !isdir(fnSMBruker)
   run(`unzip $(fnSMBruker).zip`)
 end
 if !isdir(fnMeasBruker)
-  println("download $fnMeasBruker")
+  @info "download $fnMeasBruker"
   HTTP.open("GET", "http://media.tuhh.de/ibi/"*fnMeasBruker*".zip") do http
     open(fnMeasBruker*".zip", "w") do file
         write(file, http)
@@ -30,7 +30,7 @@ if !isdir(fnMeasBruker)
   run(`unzip $(fnMeasBruker).zip`)
 end
 if !isdir(fnSM1DBruker)
-  println("download $fnSM1DBruker")
+  @info "download $fnSM1DBruker"
   HTTP.open("GET", "http://media.tuhh.de/ibi/"*fnSM1DBruker*".zip") do http
     open(fnSM1DBruker*".zip", "w") do file
         write(file, http)
@@ -49,7 +49,7 @@ mdfv2 = MPIFile(fnMeasV2)
 @test typeof(mdfv2) == MDFFileV2
 
 for mdf in (measBruker,mdfv2)
-  println("Test $mdf")
+  @info "Test $mdf"
   @test studyName(mdf) == "Wuerfelphantom_Wuerfelphantom_1"
   @test studyNumber(mdf) == 1
   @test studyDescription(mdf) == "n.a."
@@ -144,7 +144,7 @@ smv3 = MPIFile(fnSMV3)
 
 
 for sm in (smBruker,smv2,smv3)
-  println("Test $sm")
+  @info "Test $sm"
 
   @test size( systemMatrixWithBG(sm) ) == (1959,817,3,1)
   @test size( systemMatrix(sm,1:10) ) == (1936,10)
@@ -196,7 +196,7 @@ sm1D = MPIFile(fnSM1DV1)
 
 
 for sm in (sm1DBruker,sm1D)
-  println("Test $sm")
+  @info "Test $sm"
 
   @test size( systemMatrixWithBG(sm) ) == (67,52,3,1)
   @test size( systemMatrix(sm,1:10) ) == (60,10)
@@ -216,7 +216,7 @@ sm1DMeas = MPIFile(fnSM1DV2)
 @test typeof(sm1DMeas) == MDFFileV2
 
 for sm in (sm1DBrukerMeas,sm1DMeas)
-  println("Test $sm")
+  @info "Test $sm"
 
   @test size(measData(sm)) == (102, 3, 1, 67)
 

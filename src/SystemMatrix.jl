@@ -4,12 +4,10 @@ function converttoreal(S::AbstractArray{Complex{T},2}) where {T}
   N = size(S,1)
   M = size(S,2)
   S = reshape(reinterpret(T,vec(S)),(2*N,M))
-  p = Progress(M, 1, "Converting system matrix to real...")
   for l=1:M
     tmp = S[:,l]
     S[1:N,l] = tmp[1:2:end]
     S[N+1:end,l] = tmp[2:2:end]
-    next!(p)
   end
   return reshape(S,(N,2*M))
 end

@@ -181,47 +181,6 @@ function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
   return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (div(size(data,1),2)*size(data,2),size(data,3)))
 end
 
-#function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
- # if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
- #   !measIsFourierTransformed(f)
- #   return nothing
- # end
-
-#  data_ = reshape(f.mmap_measData,size(f.mmap_measData,1),
-#                                  size(f.mmap_measData,2)*size(f.mmap_measData,3),
-#                                  size(f.mmap_measData,4))[:, rows, :]
-#  data = reshape(data_, Val{2})
-
-#  fgdata = data[measFGFrameIdx(f),:]
-#  if bgCorrection # this assumes equidistent bg frames
-#    println("Applying bg correction on system matrix (MDF)")
-#    bgdata = data[measBGFrameIdx(f),:]
-#    bgdataInterp = interpolate(bgdata, (BSpline(Linear()),NoInterp()), OnGrid())
-    #Cubic does not work for complex numbers
-#    origIndex = measFramePermutation(f)
-#    M = size(fgdata,1)
-#    K = size(bgdata,1)
-#    N = M + K
-#    for m=1:M
-#      alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
-#      for k=1:size(fgdata,2)
-#        fgdata[m,k] -= bgdataInterp[alpha,k]
-#      end
-#    end
-#  end
-#  return fgdata
-#end
-
-#function systemMatrixWithBG(f::IMTFileMeas)
-#  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
-#      !measIsFourierTransformed(f)
-#      return nothing
-#  end
-
-#  data = f.mmap_measData[:, :, :, :]
-#  return data
-#end
-
 #function measIsFourierTransformed(f::IMTFile)
 #  if !experimentIsCalibration(f)
 #    return false 

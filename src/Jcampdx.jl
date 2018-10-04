@@ -37,7 +37,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
             return file
           end
 
-          i = search_(s, '=')
+          i = findfirst_(s, '=')
           key = strip(s[4:i-1])
 
           # Small HACK
@@ -56,7 +56,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
             if val[2] != ' '
               file.dict[key] = val
             else
-              j = search_(val, ')')
+              j = findfirst_(val, ')')
               currentSizes = [parse(Int64,s) for s in split(val[2:j-1],",")]
               file.dict[key] = nothing
               currentKey = key
@@ -67,8 +67,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
         end
       else
          if line[1] == '<'
-           #j = search_(val, '>') this was wrong
-           j = search_(line, '>')
+           j = findfirst_(line, '>')
            file.dict[currentKey] = line[2:j-1]
            finishedReading = true
            tupleReading = false
@@ -77,7 +76,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
            tupleReading = true
 
            if file.dict[currentKey] == nothing
-             #println("Will now allocate memory of size: ", currentSizes)
+             @debug "Will now allocate memory of size:" currentSizes
              file.dict[currentKey] = Array{Any}(undef, currentSizes...)
            end
 
@@ -87,7 +86,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
 
            for part in parts
 
-             j = search_(part, ')')
+             j = findfirst_(part, ')')
              if j != 0
                # Tuple read
                try
@@ -112,12 +111,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
                    tupleReading = false
                  end
                catch
-                 println("currentIdx = ", currentIdx)
-                 println("vals = ", vals)
-                 println("size = ", currentSizes)
-                 println("size = ", size( file.dict[currentKey]) )
-                 println("numKeys = ", length( keys(file.dict) ))
-                 println("currentKey = ", currentKey)
+                 @debug "" currentIdx vals currentSizes size(file.dict[currentKey]) length(keys(file.dict)) currentKey
                  #rethrow()
                  finishedReading = true
                  tupleReading = false
@@ -147,7 +141,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
            end
 
            if file.dict[currentKey] == nothing
-             #println("Will now allocate memory of size: ", currentSizes)
+             @debug "Will now allocate memory of size:" currentSizes
              file.dict[currentKey] = Array{eltype(vals)}(undef, currentSizes...)
            end
 
@@ -159,10 +153,7 @@ function read(file::JcampdxFile, stream::IO, keylist::Vector=String[]; maxEntrie
                tupleReading = false
              end
            catch
-             println("currentIdx = ", currentIdx)
-             println("vals = ", vals)
-             println("size = ", currentSizes)
-             println("size = ", size( file.dict[currentKey]) )
+             @debug "" currentIdx vals currentSizes size(file.dict[currentKey])
              rethrow()
            end
          end

@@ -61,6 +61,7 @@ for imt in (measIMT, calibIMT)
   @test acqGradient(imt)[:,:,1,1] == [0 0 0; 0 0 0; 0 0 0]
   #@test acqFramePeriod(imt) == 0.0215424
   @test acqNumPeriodsPerFrame(imt) == 1
+
   #@test acqOffsetFieldShift(imt)[:,1,1] == [0.0; 0.0; -0.0]
   @test acqNumAverages(imt) == 1
   @test acqNumFrames(imt) == 1
@@ -108,6 +109,7 @@ end
 
 #for sm in (calibIMT)
 #  println("Test $sm")
+
 
 #  @test size( measData(sm) ) == (1936,817,3,1)
 #  @test measIsFourierTransformed(sm) == true

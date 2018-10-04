@@ -20,7 +20,7 @@ end
 hannWindow(M) = (1.0 .- cos.(2*π/(M-1)*(0:(M-1))))/(M-1)*M
 
 function measDataSpectralLeakageCorrectedSinglePatch(f::MPIFile, frames)
-  #println("Apply Spectral Cleaning")
+  @debug "Apply Spectral Cleaning"
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
   numFrames = acqNumFrames(f)
@@ -55,7 +55,7 @@ function measDataSpectralLeakageCorrectedSinglePatch(f::MPIFile, frames)
 end
 
 function measDataSpectralLeakageCorrectedMultiPatch(f::MPIFile, frames, periods)
-  #println("Apply Spectral Cleaning")
+  @debug "Apply Spectral Cleaning"
   numTimePoints = rxNumSamplingPoints(f)
   numReceivers = rxNumChannels(f)
   numFrames = acqNumFrames(f)
@@ -116,11 +116,10 @@ end
 returnasreal(u::AbstractArray{T}) where {T<:Real} = u
 
 function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
-            numAverages=1,  verbose = false, periods=1:acqNumPeriodsPerFrame(f),
+            numAverages=1,  periods=1:acqNumPeriodsPerFrame(f),
             averagePeriodsPerPatch=false, kargs...)
 
-  verbose && println( rxNumSamplingPoints(f), " ",
-                      rxNumChannels(f), " ", acqNumFrames(f), )
+  @debug "frequency and frame selection" rxNumSamplingPoints(f) rxNumChannels(f) acqNumFrames(f)
 
   if numAverages == 1
     data = measDataLowLevel(f, frames, periods; kargs...)
@@ -133,14 +132,12 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
 
     data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
 
-    p = Progress(nBlocks, 1, "Loading measurement from $(filepath(f)) ...")
     for i = 1:nBlocks
       index1 = 1 + (i-1)*numAverages
       index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
 
       tmp = measDataLowLevel(f, frames[index1:index2], periods; kargs...)
       data[:,:,:,i] = mean(tmp,dims=4)
-      next!(p)
     end
   end
 
@@ -169,7 +166,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
     data = getAveragedMeasurements(f; frames=idx[frames], kargs...)
 
     if bgCorrection
-      println("Applying bg correction ...")
+      @debug "Applying bg correction ..."
       idxBG = measBGFrameIdx(f)
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
       if interpolateBG
@@ -182,7 +179,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
         end
 
         dataBGInterp = interpolate(dataBG,
-          (NoInterp(),NoInterp(),NoInterp(),BSpline(Linear())), OnGrid()) #OnCell?
+          (NoInterp(), NoInterp(), NoInterp(), BSpline(Linear()))) #OnCell?
 
         origIndex = idx[frames]
         M = size(data,4)
@@ -193,7 +190,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
           for k1=1:size(data,1)
             for k2=1:size(data,2)
               for k3=1:size(data,3)
-                data[k1,k2,k3,m] -= dataBGInterp[k1,k2,k3,alpha]
+                data[k1,k2,k3,m] -= dataBGInterp(k1,k2,k3,alpha)
               end
             end
           end
