@@ -3,9 +3,9 @@
 
 export imcenter, loadRecoDataMDF, saveRecoDataMDF
 
+converttometer(x) = ustrip.(uconvert.(u"m",x))
 imcenter(img::AxisArray) = map(x->(0.5*(last(x)+first(x))), ImageAxes.filter_space_axes(AxisArrays.axes(img), axisvalues(img)))
-imcenter(img::ImageMeta) = imcenter(data(img))
-
+imcenter(img::ImageMeta) = converttometer(imcenter(data(img)))
 
 function saveRecoDataMDF(filename, image::ImageMeta)
   C = colordim(image) == 0 ? 1 : size(image,colordim(image))
@@ -21,7 +21,7 @@ function saveRecoDataMDF(filename, image::ImageMeta)
 
   params = properties(image)
   params["recoData"] = c
-  params["recoFov"] = collect(grid) .* collect(pixelspacing(image))[1:3]
+  params["recoFov"] = collect(grid) .* collect(converttometer(pixelspacing(image)))
   params["recoFovCenter"] = collect(imcenter(image))[1:3]
   params["recoSize"] = collect(grid)
   params["recoOrder"] = "xyz"
@@ -54,30 +54,32 @@ function loadRecoDataMDF(f::MDFFile)
 end
 
 function loadRecoDataMDF_(f::MDFFile)
-
+  # preparation for spatial axes
   rsize::Vector{Int64} = recoSize(f)
-
-  pixspacing::Vector{Float64} = recoFov(f) ./ rsize
-
-  c_::Array{Float32,3} = recoData(f)
-  #c_::Array{Float32,3} = h5read(filename, "/reconstruction/data")
-  c::Array{Float32,5} = reshape(c_, size(c_,1), rsize[1], rsize[2], rsize[3], size(c_,3))
-
+  pixspacing = (recoFov(f) ./ rsize)*1000u"mm"
   off::Vector{Float64} = vec(recoFovCenter(f))
-  offset::Vector{Float64} = [0.0,0.0,0.0]
+  offset = [0.0,0.0,0.0]*u"mm"
   if off != nothing
-    offset[:] = off .- 0.5.*recoFov(f) .+ 0.5.*pixspacing
+    offset[:] = (off .- 0.5.*recoFov(f))*u"m" .+ 0.5.*pixspacing
   end
-  periodTime = Float64(acqFramePeriod(f))
 
-  ax1 = Axis{:color}(range(0.0, step=1.0, length=size(c,1)))
-  ax2 = Axis{:x}(range(offset[1], step=pixspacing[1], length=size(c,2)))
-  ax3 = Axis{:y}(range(offset[2], step=pixspacing[2], length=size(c,3)))
-  ax4 = Axis{:z}(range(offset[3], step=pixspacing[3], length=size(c,4)))
-  ax5 = Axis{:time}(range(0.0, step=periodTime, length=size(c,5)))
-  im = AxisArray(c,ax1,ax2,ax3,ax4,ax5)
+  # preparation for time axis
+  periodTime = Float64(acqNumAverages(f)*acqFramePeriod(f))*u"s"
+  if exists(f.file, "/reconstruction/parameters/nAverages")
+    periodTime *= read(f.file, "/reconstruction/parameters/nAverages")
+  else
+    @warn "No reconstruction averaging number found. tempoaral spacings in axis `:time` might be wrong."
+  end
 
-  return im
+  # load data
+  c_::Array{Float32,3} = recoData(f)
+  c::Array{Float32,5} = reshape(c_, size(c_,1), rsize[1], rsize[2], rsize[3], size(c_,3))
+  
+  return AxisArray(c, Axis{:color}(1:size(c,1)),
+		   Axis{:x}(range(offset[1], step=pixspacing[1], length=size(c,2))),
+		   Axis{:y}(range(offset[2], step=pixspacing[2], length=size(c,3))),
+		   Axis{:z}(range(offset[3], step=pixspacing[3], length=size(c,4))),
+		   Axis{:time}(range(0.0u"s", step=periodTime, length=size(c,5))))
 end
 
 #precompile(MPIFiles.loadRecoDataMDF_,(MDFFileV1,))
