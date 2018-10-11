@@ -95,8 +95,8 @@ experimentHasReconstruction(f::IMTFile) = false
 experimentHasMeasurement(f::IMTFile) = true
 
 # tracer parameters
-tracerName(f::IMTFile)::Vector{String} = _makeStringArray(["n.a"])
-tracerBatch(f::IMTFile)::Vector{String} = ["n.a"]
+tracerName(f::IMTFile)::Vector{String} = _makeStringArray(["n.a."])
+tracerBatch(f::IMTFile)::Vector{String} = ["n.a."]
 tracerVolume(f::IMTFile)::Vector{Float64} = [0.0]
 tracerConcentration(f::IMTFile)::Vector{Float64} = [0.0]
 tracerSolute(f::IMTFile)::Vector{String} = ["Fe"]
