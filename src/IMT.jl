@@ -100,8 +100,8 @@ tracerBatch(f::IMTFile)::Vector{String} = ["n.a."]
 tracerVolume(f::IMTFile)::Vector{Float64} = [0.0]
 tracerConcentration(f::IMTFile)::Vector{Float64} = [0.0]
 tracerSolute(f::IMTFile)::Vector{String} = ["Fe"]
-tracerInjectionTime(f::IMTFile) = [Dates.unix2datetime(0)] 
-tracerVendor(f::IMTFile)::Vector{String} = ["n.a."] 
+tracerInjectionTime(f::IMTFile) = [Dates.unix2datetime(0)]
+tracerVendor(f::IMTFile)::Vector{String} = ["n.a."]
 
 # scanner parameters
 scannerFacility(f::IMTFile)::String = "n.a."
@@ -111,30 +111,30 @@ scannerName(f::IMTFile)::String = "n.a."
 scannerTopology(f::IMTFile)::String = "n.a."
 
 # acquisition parameters
-acqStartTime(f::IMTFile)::DateTime = Dates.unix2datetime(0) 
-acqNumAverages(f::IMTFileCalib)::Int = 1 
+acqStartTime(f::IMTFile)::DateTime = Dates.unix2datetime(0)
+acqNumAverages(f::IMTFileCalib)::Int = 1
 acqNumAverages(f::IMTFileMeas)::Int = 1
-acqNumFrames(f::IMTFileCalib)::Int = 1 
-acqNumFrames(f::IMTFileMeas)::Int = 1 
+acqNumFrames(f::IMTFileCalib)::Int = 1
+acqNumFrames(f::IMTFileMeas)::Int = 1
 acqNumPeriodsPerFrame(f::IMTFile)::Int = 1
 
-acqGradient(f::IMTFile)::Array{Float64,4} = reshape(diagm([0.0,0.0,0.0]), 3,3,1,1)
+acqGradient(f::IMTFile)::Array{Float64,4} = reshape(Matrix(Diagonal([0.0,0.0,0.0])), 3,3,1,1)
 acqOffsetField(f::IMTFile)::Array{Float64,3} = reshape([0.0,0.0,0.0],3,1,1)
 
 # drive-field parameters
 dfNumChannels(f::IMTFileMeas) = size(f["/measurements"], 2)
-dfNumChannels(f::IMTFileCalib) = size(f["/numberOfAvailableFrequencies"],1) 
+dfNumChannels(f::IMTFileCalib) = size(f["/numberOfAvailableFrequencies"],1)
 dfStrength(f::IMTFile) = [0.0 0.0 0.0] # addTrailingSingleton( addLeadingSingleton(f["/acquisition/drivefield/strength"], 2), 3)
-dfPhase(f::IMTFile) = [0.0 0.0 0.0]   
+dfPhase(f::IMTFile) = [0.0 0.0 0.0]
 dfBaseFrequency(f::IMTFile) = 2.5e6
 dfCustomWaveform(f::IMTFile) = "n.a."
-dfDivider(f::IMTFile) = reshape([102; 96; 99],:,1) 
+dfDivider(f::IMTFile) = reshape([102; 96; 99],:,1)
 dfWaveform(f::IMTFile) = "sine"
 dfCycle(f::IMTFile) = f["/timeLength"]
 
 # receiver parameters
 rxNumChannels(f::IMTFileMeas) = size(f["/measurements"],2)
-rxNumChannels(f::IMTFileCalib) = size(f["/numberOfAvailableFrequencies"],1) 
+rxNumChannels(f::IMTFileCalib) = size(f["/numberOfAvailableFrequencies"],1)
 rxBandwidth(f::IMTFile)::Float64 = 1.25e6
 rxNumSamplingPoints(f::IMTFile) = (f["/numberOfAvailableFrequencies"][1]-1)*2
 rxTransferFunction(f::IMTFile) = nothing
@@ -147,19 +147,19 @@ rxDataConversionFactor(f::IMTFile) = repeat([1.0, 0.0], outer=(1,rxNumChannels(f
 # measurements
 function measData(f::IMTFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
-  
+
   if !exists(f.file, "/measurements")
     # file is calibration
     dataFD = f["/systemResponseFrequencies"]
     dataFD = reshape(reinterpret(Complex{eltype(dataFD)}, vec(dataFD)), (div(size(dataFD,1),2),size(dataFD,2),size(dataFD,3),size(dataFD,4)))
     return dataFD = reshape(dataFD, (size(dataFD,1)*size(dataFD,2)*size(dataFD,3), div(size(dataFD,4),2), length(receivers), length(frames)))
   end
-  
+
   tdExists = exists(f.file, "/measurements")
 
   if tdExists
     dataTD = f["/measurements"]
-    #TODO implement for frames > 1 
+    #TODO implement for frames > 1
     ##dataFD = rfft(reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames)))
     dataTD = reshape(dataTD, size(dataTD,1), size(dataTD,2), 1, length(frames))
     ##dataFD = reshape(dataTD, size(dataTD,1), size(dataTD,2), length(frames))
@@ -169,7 +169,7 @@ end
 
 
 function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
-  
+
   if !experimentIsCalibration(f)
     return nothing
   end
@@ -183,7 +183,7 @@ end
 
 #function measIsFourierTransformed(f::IMTFile)
 #  if !experimentIsCalibration(f)
-#    return false 
+#    return false
 #  else
 #    return true
 #  end
@@ -198,9 +198,9 @@ measIsBGCorrected(f::IMTFile) = false
 measIsFrequencySelection(f::IMTFile) = false
 
 measIsTransposed(f::IMTFileCalib) = true
-measIsTransposed(f::IMTFileMeas) = false 
+measIsTransposed(f::IMTFileMeas) = false
 
-measIsFramePermutation(f::IMTFileCalib) = false 
+measIsFramePermutation(f::IMTFileCalib) = false
 measIsFramePermutation(f::IMTFileMeas) = false
 
 measIsBGFrame(f::IMTFile) = zeros(Bool, acqNumFrames(f))
@@ -211,12 +211,12 @@ measFramePermutation(f::IMTFileMeas) = nothing
 #fullFramePermutation(f::IMTFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
 
 #calibrations
-calibSNR(f::IMTFileCalib) = zeros(817,3,1) 
+calibSNR(f::IMTFileCalib) = zeros(817,3,1)
 calibFov(f::IMTFile) = f["/fov"]
 calibFovCenter(f::IMTFile) = [0.0,0.0,0.0]
-calibSize(f::IMTFile) = [20, 20, 1] 
+calibSize(f::IMTFile) = [20, 20, 1]
 calibOrder(f::IMTFile) = "xyz"
-calibOffsetField(f::IMTFileCalib) = nothing 
+calibOffsetField(f::IMTFileCalib) = nothing
 calibDeltaSampleSize(f::IMTFile) = [0.0,0.0,0.0]
 calibMethod(f::IMTFile) = "simulation"
 #calibIsMeanderingGrid(f::IMTFile) = Bool(f["/calibration/isMeanderingGrid", 0])
