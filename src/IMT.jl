@@ -134,7 +134,7 @@ dfCycle(f::IMTFile) = f["/timeLength"][1]
 
 # receiver parameters
 rxNumChannels(f::IMTFileMeas) = size(f["/measurements"],2)
-rxNumChannels(f::IMTFileCalib) = size(f["/numberOfAvailableFrequencies"],1)
+rxNumChannels(f::IMTFileCalib) = length(f["/numberOfAvailableFrequencies"])
 rxBandwidth(f::IMTFile)::Float64 = 1.25e6
 rxNumSamplingPoints(f::IMTFile) = (f["/numberOfAvailableFrequencies"][1]-1)*2
 rxTransferFunction(f::IMTFile) = nothing
@@ -189,7 +189,9 @@ end
 #  end
 #end
 
-measIsFourierTransformed(f::IMTFile) = true
+measIsFourierTransformed(f::IMTFileMeas) = false
+measIsFourierTransformed(f::IMTFileCalib) = true
+
 measIsTFCorrected(f::IMTFile) = false
 measIsSpectralLeakageCorrected(f::IMTFile) = false
 
@@ -211,10 +213,12 @@ measFramePermutation(f::IMTFileMeas) = nothing
 #fullFramePermutation(f::IMTFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
 
 #calibrations
-calibSNR(f::IMTFileCalib) = zeros(817,3,1)
+calibSNR(f::IMTFileCalib) = 100*ones(rxNumFrequencies(f),rxNumChannels(f),1)
 calibFov(f::IMTFile) = f["/fov"]
 calibFovCenter(f::IMTFile) = [0.0,0.0,0.0]
-calibSize(f::IMTFile) = [20, 20, 1]
+calibSize(f::IMTFile) = [div(size(f["/systemResponseFrequencies"],1),2),
+                         size(f["/systemResponseFrequencies"],2),
+                         size(f["/systemResponseFrequencies"],3)]
 calibOrder(f::IMTFile) = "xyz"
 calibOffsetField(f::IMTFileCalib) = nothing
 calibDeltaSampleSize(f::IMTFile) = [0.0,0.0,0.0]
