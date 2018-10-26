@@ -130,7 +130,7 @@ dfBaseFrequency(f::IMTFile) = 2.5e6
 dfCustomWaveform(f::IMTFile) = "n.a."
 dfDivider(f::IMTFile) = reshape([102; 96; 99],:,1)
 dfWaveform(f::IMTFile) = "sine"
-dfCycle(f::IMTFile) = f["/timeLength"]
+dfCycle(f::IMTFile) = f["/timeLength"][1]
 
 # receiver parameters
 rxNumChannels(f::IMTFileMeas) = size(f["/measurements"],2)
@@ -177,7 +177,7 @@ function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
     f.mmap_measData = readmmap(f.file["/systemResponseFrequencies"])
   end
 
-  data = reshape(f.mmap_measData,Val{3})[:, :, rows]
+  data = reshape(f.mmap_measData,Val(3))[:, :, rows]
   return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (div(size(data,1),2)*size(data,2),size(data,3)))
 end
 
