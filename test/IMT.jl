@@ -20,8 +20,8 @@ end
 
 measIMT = MPIFile(fnMeas)
 calibIMT = MPIFile(fnCalib)
-@test typeof(measIMT) == IMTFileMeas 
-@test typeof(calibIMT) == IMTFileCalib 
+@test typeof(measIMT) == IMTFileMeas
+@test typeof(calibIMT) == IMTFileCalib
 
 @test size( measData(measIMT) ) == (1632, 2, 1, 1)
 @test size( measData(calibIMT) ) == (400, 817, 2, 1)
@@ -33,12 +33,12 @@ for imt in (measIMT, calibIMT)
   @test studyDescription(imt) == "n.a."
 
   @test experimentName(imt) == "n.a."
-  @test experimentNumber(imt) == 0 
+  @test experimentNumber(imt) == 0
   @test experimentDescription(imt) == "n.a."
   @test experimentSubject(imt) == "n.a."
-  @test experimentIsSimulation(imt) == true 
+  @test experimentIsSimulation(imt) == true
 
-  @test scannerFacility(imt) == "n.a." 
+  @test scannerFacility(imt) == "n.a."
   @test scannerOperator(imt) == "n.a."
   @test scannerManufacturer(imt) == "n.a."
   @test scannerName(imt) == "n.a."
@@ -49,18 +49,18 @@ for imt in (measIMT, calibIMT)
   @test tracerVendor(imt) == ["n.a."]
   @test tracerVolume(imt) == [0.0]
   @test tracerConcentration(imt) == [0.0]
-  @test tracerInjectionTime(imt) == [Dates.unix2datetime(0)] 
+  @test tracerInjectionTime(imt) == [Dates.unix2datetime(0)]
 
   @test acqStartTime(imt) == Dates.unix2datetime(0)
   @test acqGradient(imt)[:,:,1,1] == [0 0 0; 0 0 0; 0 0 0]
-  @test acqFramePeriod(imt) == [0.0006528]
+  @test acqFramePeriod(imt) == 0.0006528
   @test acqNumPeriodsPerFrame(imt) == 1
 
   #@test acqOffsetFieldShift(imt)[:,1,1] == [NaN; NaN; NaN]
   @test acqNumAverages(imt) == 1
   @test acqNumFrames(imt) == 1
   #@test acqOffsetField(imt) == [0.0; 0.0; 0.0]
-  @test acqNumPeriods(imt) == 1 
+  @test acqNumPeriods(imt) == 1
 
   @test dfNumChannels(imt) == 2
   @test dfWaveform(imt) == "sine"
@@ -68,13 +68,13 @@ for imt in (measIMT, calibIMT)
   @test dfPhase(imt)[:,:,1] == [0.0 0.0 0.0] #[1.5707963267948966 1.5707963267948966 1.5707963267948966]
   @test dfBaseFrequency(imt) == 2500000.0
   @test dfDivider(imt)[:,1] == [102; 96; 99]
-  @test dfCycle(imt) == [0.0006528]
+  @test dfCycle(imt) == 0.0006528
 
   @test rxNumChannels(imt) == 2
-  @test rxBandwidth(imt) == 1.25e6 
-  @test rxNumSamplingPoints(imt) == 1632 
-  @test rxUnit == MPIFiles.rxUnit 
-  @test rxDataConversionFactor(imt) == reshape(Float64[1.0 0.0 1.0 0.0], 2, 2) 
+  @test rxBandwidth(imt) == 1.25e6
+  @test rxNumSamplingPoints(imt) == 1632
+  @test rxUnit == MPIFiles.rxUnit
+  @test rxDataConversionFactor(imt) == reshape(Float64[1.0 0.0 1.0 0.0], 2, 2)
 
   #@test size(getMeasurements(imt, numAverages=1,
   #            spectralLeakageCorrection=false)) == (53856,3,1,1)
@@ -93,13 +93,13 @@ for imt in (measIMT, calibIMT)
 
 end
 
-# Calibration File 
+# Calibration File
 
   @test size( measData(calibIMT) ) == (400, 817, 2, 1)
   @test measIsFourierTransformed(calibIMT) == true
   @test measIsTFCorrected(calibIMT) == false
-  @test measIsTransposed(calibIMT) == true 
-  @test measIsBGCorrected(calibIMT) == false 
+  @test measIsTransposed(calibIMT) == true
+  @test measIsBGCorrected(calibIMT) == false
 
   @test size( calibSNR(calibIMT) ) == (817, 3, 1)
   @test calibFov(calibIMT) == [0.01, 0.01, 0.0001]
@@ -110,7 +110,7 @@ end
   @test calibOffsetField(calibIMT) == nothing
   @test calibDeltaSampleSize(calibIMT) == [0.0; 0.0; 0.0]
   @test calibMethod(calibIMT) == "simulation"
-  
+
 
 #  @test size(filterFrequencies(sm, SNRThresh = 5)) == (147,)
 #  #@test size(filterFrequencies(sm, numUsedFreqs = 100)) == (100,) # not working
