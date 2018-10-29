@@ -101,7 +101,7 @@ end
   @test measIsTransposed(calibIMT) == true
   @test measIsBGCorrected(calibIMT) == false
 
-  @test size( calibSNR(calibIMT) ) == (817, 3, 1)
+  @test size( calibSNR(calibIMT) ) == (817, 2, 1)
   @test calibFov(calibIMT) == [0.01, 0.01, 0.0001]
   @test calibFovCenter(calibIMT) == [0.0; 0.0; 0.0]
   @test calibSize(calibIMT) == [20; 20; 1]
