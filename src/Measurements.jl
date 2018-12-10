@@ -196,7 +196,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
           end
         end
       else
-        data[:,:,:,:] .-= mean(dataBG,4)
+        data[:,:,:,:] .-= mean(dataBG, dims=4)
       end
     end
 
@@ -217,7 +217,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
       idxBG = measBGFrameIdx(f)
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
 
-      data[:,:,:,:] .-= mean(dataBG,4)
+      data[:,:,:,:] .-= mean(dataBG, dims=4)
     end
   end
 
