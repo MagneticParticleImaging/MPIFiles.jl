@@ -9,18 +9,18 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   nReceivers = rxNumChannels(f)
   nPeriods = 1 #acqNumPeriodsPerFrame(f)
 
-  minIdx = round(Int, minFreq / rxBandwidth(f) * nFreq )
-  maxIdx = round(Int, maxFreq / rxBandwidth(f) * nFreq )
+  minIdx = floor(Int, minFreq / rxBandwidth(f) * (nFreq-1) ) + 1
+  maxIdx = ceil(Int, maxFreq / rxBandwidth(f) * (nFreq-1) ) + 1
 
   freqMask = zeros(Bool,nFreq,nReceivers,nPeriods)
 
   freqMask[:,recChannels,:] .= true
 
   if minIdx > 0
-    freqMask[1:(minIdx-1),:,:] .= false
+    freqMask[1:(minIdx),:,:] .= false
   end
   if maxIdx < nFreq
-    freqMask[(maxIdx+1):end,:,:] .= false
+    freqMask[(maxIdx):end,:,:] .= false
   end
 
   if maxMixingOrder > 0
