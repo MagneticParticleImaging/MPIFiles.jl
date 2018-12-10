@@ -53,7 +53,7 @@ for imt in (measIMT, calibIMT)
 
   @test acqStartTime(imt) == Dates.unix2datetime(0)
   @test acqGradient(imt)[:,:,1,1] == [0 0 0; 0 0 0; 0 0 0]
-  @test acqFramePeriod(imt) == [0.0006528]
+  @test acqFramePeriod(imt) == 0.0006528
   @test acqNumPeriodsPerFrame(imt) == 1
 
   #@test acqOffsetFieldShift(imt)[:,1,1] == [NaN; NaN; NaN]
@@ -68,7 +68,7 @@ for imt in (measIMT, calibIMT)
   @test dfPhase(imt)[:,:,1] == [0.0 0.0 0.0] #[1.5707963267948966 1.5707963267948966 1.5707963267948966]
   @test dfBaseFrequency(imt) == 2500000.0
   @test dfDivider(imt)[:,1] == [102; 96; 99]
-  @test dfCycle(imt) == [0.0006528]
+  @test dfCycle(imt) == 0.0006528
 
   @test rxNumChannels(imt) == 2
   @test rxBandwidth(imt) == 1.25e6 
@@ -101,7 +101,7 @@ end
   @test measIsTransposed(calibIMT) == true 
   @test measIsBGCorrected(calibIMT) == false 
 
-  @test size( calibSNR(calibIMT) ) == (817, 3, 1)
+  @test size( calibSNR(calibIMT) ) == (817, 2, 1)
   @test calibFov(calibIMT) == [0.01, 0.01, 0.0001]
   @test calibFovCenter(calibIMT) == [0.0; 0.0; 0.0]
   @test calibSize(calibIMT) == [20; 20; 1]
