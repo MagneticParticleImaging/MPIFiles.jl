@@ -1,11 +1,11 @@
 # MDF reconstruction data is loaded/stored using ImageMeta objects from
 # the ImageMetadata.jl package.
 
-export imcenter, loadRecoDataMDF, saveRecoDataMDF
+export converttometer, imcenter, loadRecoDataMDF, saveRecoDataMDF
 
 converttometer(x) = ustrip.(uconvert.(u"m",x))
 imcenter(img::AxisArray) = map(x->(0.5*(last(x)+first(x))), ImageAxes.filter_space_axes(AxisArrays.axes(img), axisvalues(img)))
-imcenter(img::ImageMeta) = converttometer(imcenter(data(img)))
+imcenter(img::ImageMeta) = imcenter(data(img))
 
 function saveRecoDataMDF(filename, image::ImageMeta)
   C = colordim(image) == 0 ? 1 : size(image,colordim(image))
@@ -22,7 +22,7 @@ function saveRecoDataMDF(filename, image::ImageMeta)
   params = properties(image)
   params["recoData"] = c
   params["recoFov"] = collect(grid) .* collect(converttometer(pixelspacing(image)))
-  params["recoFovCenter"] = collect(imcenter(image))[1:3]
+  params["recoFovCenter"] = collect(converttometer(imcenter(image)))[1:3]
   params["recoSize"] = collect(grid)
   params["recoOrder"] = "xyz"
   if haskey(params,"recoParams")
