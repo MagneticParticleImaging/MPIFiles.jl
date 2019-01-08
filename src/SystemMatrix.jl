@@ -35,21 +35,26 @@ function getSystemMatrixReshaped(f::MPIFile; kargs...)
                             rxNumChannels(f),acqNumPeriodsPerFrame(f))
 end
 
-#function calculateSystemMatrixSNR(f::MPIFile)
-#
-#end
+function calculateSystemMatrixSNR(f::MPIFile)
+  data = systemMatrixWithBG(f)
+  SNR = calculateSystemMatrixSNR(f, data)
+  return SNR
+end
 
 function calculateSystemMatrixSNR(f::MPIFile, S::Array)
   SNR = zeros(rxNumFrequencies(f),rxNumChannels(f),acqNumPeriodsPerFrame(f))
   for j=1:acqNumPeriodsPerFrame(f)
     for r=1:rxNumChannels(f)
       for k=1:rxNumFrequencies(f)
+        diffBG = diff(S[(acqNumFGFrames(f)+1):end,k,r,j])
         meanBG = mean(S[(acqNumFGFrames(f)+1):end,k,r,j])
         signal = maximum(abs.(S[1:acqNumFGFrames(f),k,r,j].-meanBG))
-        noise = mean(abs.(S[(acqNumFGFrames(f)+1):end,k,r,j].-meanBG))
+        #noise = mean(abs.(S[(acqNumFGFrames(f)+1):end,k,r,j].-meanBG))
+        noise = mean(abs.(diffBG))
         SNR[k,r,j] = signal / noise
       end
     end
   end
+  SNR[:,:,:] .= mean(SNR,dims=3)
   return SNR
 end
