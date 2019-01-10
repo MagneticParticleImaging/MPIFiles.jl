@@ -122,7 +122,9 @@ function saveasMDFHacking(filenameOut::String, f::MPIFile)
     dataSet["acqNumPeriodsPerFrame"]=1
     dataSet["measData"]=reshape(dataSet["measData"],size(dataSet["measData"],1),size(dataSet["measData"],2),1,size(dataSet["measData"],3)*size(dataSet["measData"],4))
     dataSet["dfStrength"]=dataSet["dfStrength"][:,:,1:1]
-    dataSet["acqOffsetField"]=dataSet["acqOffsetField"][:,1:1]
+    println(dataSet["dfStrength"],typeof(dataSet["dfStrength"]))
+    println(dataSet["dfStrength"][:,:,1:1],typeof(dataSet["dfStrength"][:,:,1:1]))
+    dataSet["acqOffsetField"]=dataSet["acqOffsetField"]
     #dataSet["acqOffsetFieldShift"]=dataSet["acqOffsetFieldShift"][:,1:1]
     dataSet["dfPhase"]=dataSet["dfPhase"][:,:,1:1]
     saveasMDF(filenameOut, dataSet)
