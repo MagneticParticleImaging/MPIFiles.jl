@@ -299,7 +299,7 @@ function findSFFiles(d::MDFDatasetStore)
   for file in files
     prefix, ext = splitext(file)
     if !isdir(file) && tryparse(Int64,prefix) != nothing &&
-       (ext == ".mdf" || ext == ".hdf" || ext == ".h5")
+       (ext == ".mdf" || ext == ".hdf" || ext == ".h5") && !occursin("td.mdf",file)
       try
         push!(bfiles, joinpath(path,file))
       catch e
