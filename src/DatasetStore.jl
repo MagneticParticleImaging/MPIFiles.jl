@@ -415,7 +415,7 @@ end
 function loadSFDatabase(d::MDFDatasetStore)
   files = readdir(calibdir(d))
   @debug "system function database" files
-  mdffiles = files[endswith.(files,".mdf")]
+  mdffiles = files[endswith.(files,".mdf") .& .!endswith.(files,"td.mdf")]
   fileList = calibdir(d).*"/".*mdffiles
   A = generateSFDatabase(fileList)
   return A
