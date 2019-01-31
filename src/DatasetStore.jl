@@ -299,7 +299,7 @@ function findSFFiles(d::MDFDatasetStore)
   for file in files
     prefix, ext = splitext(file)
     if !isdir(file) && tryparse(Int64,prefix) != nothing &&
-       (ext == ".mdf" || ext == ".hdf" || ext == ".h5")
+       (ext == ".mdf" || ext == ".hdf" || ext == ".h5") && !occursin("td.mdf",file)
       try
         push!(bfiles, joinpath(path,file))
       catch e
@@ -415,7 +415,7 @@ end
 function loadSFDatabase(d::MDFDatasetStore)
   files = readdir(calibdir(d))
   @debug "system function database" files
-  mdffiles = files[endswith.(files,".mdf")]
+  mdffiles = files[endswith.(files,".mdf") .& .!endswith.(files,"td.mdf")]
   fileList = calibdir(d).*"/".*mdffiles
   A = generateSFDatabase(fileList)
   return A
