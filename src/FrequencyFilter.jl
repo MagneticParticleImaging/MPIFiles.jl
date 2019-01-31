@@ -16,10 +16,10 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
 
   freqMask[:,recChannels,:] .= true
 
-  if minIdx > 0
+  if minFreq > 0
     freqMask[1:(minIdx),:,:] .= false
   end
-  if maxIdx < nFreq
+  if maxFreq < nFreq
     freqMask[(maxIdx):end,:,:] .= false
   end
 
