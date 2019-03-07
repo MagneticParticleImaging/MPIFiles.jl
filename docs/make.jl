@@ -1,8 +1,7 @@
-import ImageMagick
-using Documenter, MPIReco
+using Documenter, MPIFiles
 
 makedocs(
-    modules = [MPIReco],
+    modules = [MPIFiles],
     format = :html,
     sitename = "Julia MPI Package",
     authors = "Tobias Knopp, et al.",
@@ -23,6 +22,6 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/MagneticParticleImaging/MPIReco.jl.git",
+    repo = "github.com/MagneticParticleImaging/MPIFiles.jl.git",
     target = "build",
 )
