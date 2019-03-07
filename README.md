@@ -4,4 +4,4 @@
 
 [![codecov.io](http://codecov.io/github/MagneticParticleImaging/MPIFiles.jl/coverage.svg?branch=master)](http://codecov.io/github/MagneticParticleImaging/MPIFiles.jl?branch=master)
 
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://magneticparticleimaging.github.io/MPIReco.jl/latest)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://magneticparticleimaging.github.io/MPIFiles.jl/latest)
