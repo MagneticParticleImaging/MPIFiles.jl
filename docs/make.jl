@@ -8,15 +8,12 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Getting Started" => "gettingStarted.md",
-        "Acquisition Data" => "acquisitionData.md",
-        "File Handling" => "filehandling.md",
-        "Images" => "image.md",
-        "Offresonance" => "offresonance.md",
-        "Parallel Imaging" => "SENSE.md",
-        "Trajectory" => "trajectories.md",
-        "Imaging Operators" => "operators.md",
-        "Simulation" => "simulation.md",
-        "Reconstruction" => "reconstruction.md",
+        "Low Level Interface" => "lowlevel.md",
+        "Conversion" => "conversion.md",
+        "Measurements" => "measurements.md",
+        "System Matrix" => "systemmatrix.md",
+        "Images" => "images.md",
+        "Positions" => "positions.md"
     ],
     html_prettyurls = false, #!("local" in ARGS),
 )
