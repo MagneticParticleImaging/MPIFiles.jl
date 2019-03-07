@@ -1,32 +1,51 @@
-# MRIReco.jl
+# MPIFiles.jl
 
-*Magnetic Resonance Imaging Reconstruction*
+*Magnetic Particle Imaging Files*
 
 ## Introduction
 
-MPIReco is a Julia packet for magnetic resonance imaging. It contains algorithms for the simulation and reconstruction of MRT data and is both easy to use and flexibly expandable.
+MPIFiles.jl is a Julia package for handling files that are related to the tomographic imaging method magnetic particle imaging. It supports different file formats:
+* Brukerfiles, i.e. files stored using the preclinical MPI scanner from Bruker
+* [Magnetic Particle Imaging Data Format (MDF) files ](https://github.com/MagneticParticleImaging/MDF)
+* IMT files, i.e. files created at the Institute of Medical Engineering in Lübeck
 
-Both direct and iterative methods are available for image reconstruction. In particular, modern compressed sensing algorithms such as ADMM can be used.
+For all of these formats there is full support for reading the files. Write support is currently
+only available for MDF files. All files can be converted to MDF files using this capability.
 
-The MRT imaging operator can be set up for a variety of scanning patterns (cartesian, spiral, radial, ...) and can take into account field inhomogeneity as well as the use of coil arrays. The operator can be quickly evaluated using NFFT-based methods.
+MPIFiles.jl provides a generic interface for different MPI files. In turn it is possible
+to write generic algorithms that work for all supported file formats.
 
-One strength of the package is that it is strongly modular and uses high quality Julia packages. These are e.g.
- * NFFT.jl and FFTW.jl for fast Fourier transformations
- * Wavelets.jl for sparsification
- * LinearOperators.jl in order to be able to divide the imaging operator modularly into individual parts
- * RegularizedLeastSquares.jl for modern algorithms for solving linear optimization problems
+MPI files can be divided into three different categories
+* [Measurements](@ref)
+* [System Matrices](@ref)
+* [Reconstruction Results](@ref)
+Each of these file types is supported and discussed in the referenced pages. 
 
-This interaction allows new algorithms to be easily integrated into the software framework. It is not necessary to program in C/C++ but the advantages of the scientific high-level language Julia can be used.
-
-!!! note
-    MRIReco.jl is work in progress and in some parts not entirely optimized. In particular the FFT and NFFT implementation are currently limited to the CPU and do not support
-    GPU acceleration yet.
 
 ## Installation
 
-Start julia and open the package mode by entering `]`. The enter
+Start julia and open the package mode by entering `]`. Then enter
 ```julia
-add https://github.com/tknopp/RegularizedLeastSquares.jl
-add https://github.com/MagneticResonanceImaging/MRIReco.jl
+add https://github.com/MagneticParticleImaging/MPIFiles.jl
 ```
-This will install the packages `RegularizedLeastSquares.jl`, `MRIReco.jl`, and all its dependencies.
+This will install the packages `MPIFiles.jl` and all its dependencies.
+
+## License / Terms of Usage
+
+The source code of this project is licensed under the MIT license. This implies that
+you are free to use, share, and adapt it. However, please give appropriate credit by citing the project.
+
+## Contact
+
+If you have problems using the software, find mistakes, or have general questions please use
+the [issue tracker](https://github.com/MagneticParticleImaging/MPIFiles.jl/issues) to contact us.
+
+## Contributors
+
+* [Tobias Knopp](https://www.tuhh.de/ibi/people/tobias-knopp-head-of-institute.html)
+* [Martin Möddel](https://www.tuhh.de/ibi/people/martin-moeddel.html)
+* [Patryk Szwargulski](https://www.tuhh.de/ibi/people/patryk-szwargulski.html)
+* [Florian Griese](https://www.tuhh.de/ibi/people/florian-griese.html)
+* [Franziska Werner](https://www.tuhh.de/ibi/people/franziska-werner.html)
+* [Nadine Gdaniec](https://www.tuhh.de/ibi/people/nadine-gdaniec.html)
+* [Marija Boberg](https://www.tuhh.de/ibi/people/marija-boberg.html)

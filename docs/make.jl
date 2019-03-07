@@ -3,7 +3,7 @@ using Documenter, MPIFiles
 makedocs(
     modules = [MPIFiles],
     format = :html,
-    sitename = "Julia MPI Package",
+    sitename = "MPI Files",
     authors = "Tobias Knopp, et al.",
     pages = [
         "Home" => "index.md",
