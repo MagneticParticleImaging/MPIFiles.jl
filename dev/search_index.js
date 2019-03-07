@@ -9,11 +9,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#MRIReco.jl-1",
+    "location": "index.html#MPIFiles.jl-1",
     "page": "Home",
-    "title": "MRIReco.jl",
+    "title": "MPIFiles.jl",
     "category": "section",
-    "text": "Magnetic Resonance Imaging Reconstruction"
+    "text": "Magnetic Particle Imaging Files"
 },
 
 {
@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Introduction",
     "category": "section",
-    "text": "MPIReco is a Julia packet for magnetic resonance imaging. It contains algorithms for the simulation and reconstruction of MRT data and is both easy to use and flexibly expandable.Both direct and iterative methods are available for image reconstruction. In particular, modern compressed sensing algorithms such as ADMM can be used.The MRT imaging operator can be set up for a variety of scanning patterns (cartesian, spiral, radial, ...) and can take into account field inhomogeneity as well as the use of coil arrays. The operator can be quickly evaluated using NFFT-based methods.One strength of the package is that it is strongly modular and uses high quality Julia packages. These are e.g.NFFT.jl and FFTW.jl for fast Fourier transformations\nWavelets.jl for sparsification\nLinearOperators.jl in order to be able to divide the imaging operator modularly into individual parts\nRegularizedLeastSquares.jl for modern algorithms for solving linear optimization problemsThis interaction allows new algorithms to be easily integrated into the software framework. It is not necessary to program in C/C++ but the advantages of the scientific high-level language Julia can be used.note: Note\nMRIReco.jl is work in progress and in some parts not entirely optimized. In particular the FFT and NFFT implementation are currently limited to the CPU and do not support GPU acceleration yet."
+    "text": "MPIFiles.jl is a Julia package for handling files that are related to the tomographic imaging method magnetic particle imaging. It supports different file formats:Brukerfiles, i.e. files stored using the preclinical MPI scanner from Bruker\nMagnetic Particle Imaging Data Format (MDF) files \nIMT files, i.e. files created at the Institute of Medical Engineering in LübeckFor all of these formats there is full support for reading the files. Write support is currently only available for MDF files. All files can be converted to MDF files using this capability.MPIFiles.jl provides a generic interface for different MPI files. In turn it is possible to write generic algorithms that work for all supported file formats.MPI files can be divided into three different categoriesMeasurements\nSystem Matrices\nReconstruction ResultsEach of these file types is supported and discussed in the referenced pages. "
 },
 
 {
@@ -29,7 +29,31 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "Start julia and open the package mode by entering ]. The enteradd https://github.com/tknopp/RegularizedLeastSquares.jl\nadd https://github.com/MagneticResonanceImaging/MRIReco.jlThis will install the packages RegularizedLeastSquares.jl, MRIReco.jl, and all its dependencies."
+    "text": "Start julia and open the package mode by entering ]. Then enteradd https://github.com/MagneticParticleImaging/MPIFiles.jlThis will install the packages MPIFiles.jl and all its dependencies."
+},
+
+{
+    "location": "index.html#License-/-Terms-of-Usage-1",
+    "page": "Home",
+    "title": "License / Terms of Usage",
+    "category": "section",
+    "text": "The source code of this project is licensed under the MIT license. This implies that you are free to use, share, and adapt it. However, please give appropriate credit by citing the project."
+},
+
+{
+    "location": "index.html#Contact-1",
+    "page": "Home",
+    "title": "Contact",
+    "category": "section",
+    "text": "If you have problems using the software, find mistakes, or have general questions please use the issue tracker to contact us."
+},
+
+{
+    "location": "index.html#Contributors-1",
+    "page": "Home",
+    "title": "Contributors",
+    "category": "section",
+    "text": "Tobias Knopp\nMartin Möddel\nPatryk Szwargulski\nFlorian Griese\nFranziska Werner\nNadine Gdaniec\nMarija Boberg"
 },
 
 {
@@ -89,10 +113,26 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "measurements.html#Measurements-1",
+    "page": "Measurements",
+    "title": "Measurements",
+    "category": "section",
+    "text": ""
+},
+
+{
     "location": "systemmatrix.html#",
     "page": "System Matrix",
     "title": "System Matrix",
     "category": "page",
+    "text": ""
+},
+
+{
+    "location": "systemmatrix.html#System-Matrices-1",
+    "page": "System Matrix",
+    "title": "System Matrices",
+    "category": "section",
     "text": ""
 },
 
@@ -105,11 +145,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "images.html#File-Handling-1",
+    "location": "images.html#Reconstruction-Results-1",
     "page": "Images",
-    "title": "File Handling",
+    "title": "Reconstruction Results",
     "category": "section",
-    "text": "MRI Acquisition Data can not only be generated from Simulation but also from files. Currently, MRIReco supports the ISMRMRD data format and a custom MRILib specific data format. Both formats are a subtype of MRIFile and implement the functionstrajectory(f::MRIFile)\nsequence(f::MRIFile)\nrawdata(f::MRIFile)\nacquisitionData(f::MRIFile)which allow to access specific parts of the MRIFile. The last function acquisitionData returns an AcquisitionData data object which can be used directly in the Reconstruction methods."
+    "text": ""
 },
 
 {
