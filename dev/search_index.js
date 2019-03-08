@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Introduction",
     "category": "section",
-    "text": "MPIFiles.jl is a Julia package for handling files that are related to the tomographic imaging method magnetic particle imaging. It supports different file formats:Brukerfiles, i.e. files stored using the preclinical MPI scanner from Bruker\nMagnetic Particle Imaging Data Format (MDF) files \nIMT files, i.e. files created at the Institute of Medical Engineering in LübeckFor all of these formats there is full support for reading the files. Write support is currently only available for MDF files. All files can be converted to MDF files using this capability.MPIFiles.jl provides a generic interface for different MPI files. In turn it is possible to write generic algorithms that work for all supported file formats.MPI files can be divided into three different categoriesMeasurements\nSystem Matrices\nReconstruction ResultsEach of these file types is supported and discussed in the referenced pages. "
+    "text": "MPIFiles.jl is a Julia package for handling files that are related to the tomographic imaging method magnetic particle imaging. It supports different file formats:Brukerfiles, i.e. files stored using the preclinical MPI scanner from Bruker\nMagnetic Particle Imaging Data Format (MDF) files\nIMT files, i.e. files created at the Institute of Medical Engineering in LübeckFor all of these formats there is full support for reading the files. Write support is currently only available for MDF files. All files can be converted to MDF files using this capability.MPIFiles.jl provides a generic interface for different MPI files. In turn it is possible to write generic algorithms that work for all supported file formats.MPI files can be divided into three different categoriesMeasurements\nSystem Matrices\nReconstruction ResultsEach of these file types is supported and discussed in the referenced pages."
 },
 
 {
@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Installation",
     "category": "section",
-    "text": "Start julia and open the package mode by entering ]. Then enteradd https://github.com/MagneticParticleImaging/MPIFiles.jlThis will install the packages MPIFiles.jl and all its dependencies."
+    "text": "Start julia and open the package mode by entering ]. Then enteradd MPIFilesThis will install the packages MPIFiles.jl and all its dependencies."
 },
 
 {
@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting Started",
     "title": "Getting Started",
     "category": "section",
-    "text": "We will start with a very simple example and perform simple simulation and reconstruction based on a shepp logan phantom. The program looks like this# image\nN = 256\nI = shepp_logan(N)\n\n# simulation parameters\nparams = Dict{Symbol, Any}()\nparams[:simulation] = \"fast\"\nparams[:trajName] = \"Radial\"\nparams[:numProfiles] = floor(Int64, pi/2*N)\nparams[:numSamplingPerProfile] = 2*N\n\n# do simulation\nacqData = simulation(I, params)\n\n# reco parameters\nparams = Dict{Symbol, Any}()\nparams[:reco] = \"direct\"\nparams[:shape] = (N,N)\nIreco = reconstruction(acqData, params)We will go through the program step by step. First we create a 2D shepp logan phantom of size N=256. Then we setup a dictionary that defines the simulation parameters. Here, we chose a simple radial trajectory with 402 spokes and 512 samples per profile. We use a gridding-based simulator by setting params[:simulation] = \"fast\"After setting up the parameter dictionary params, the simulation is performed by callingacqData = simulation(I, params)The result simulation function outputs an acquisition object that is discussed in more detail in the section Acquisition Data. The acquisition data can also be stored to or loaded from a file, which will be discussed in section File Handling.Using the acquisition data we can perform a reconstruction. To this end, again a parameter dictionary is setup and some basic configuration is done. In this case, for instance we specify that we want to apply a simple NFFT-based gridding reconstruction. The reconstruction is invoked by callingIreco = reconstruction(acqData, params)The resulting image is of type AxisArray and has 5 dimensions. One can display the image object by callingusing ImageView\nimshow(abs.(Ireco[:,:,1,1,1]))Alternatively one can store the image into a file, which will be discussed in the section on Images.The original phantom and the reconstructed image are shown below(Image: Phantom) (Image: Reconstruction)We will discuss reconstruction in more detail in the Reconstruction section. Simulation will be discussed in more detail in the Simulation section."
+    "text": "An MPI data file consists of a collection of parameters that can be divided into metadata and measurement data. Let us now consider that the string filename contains the path to an MPI file (e.g. an MDF file). Then be can open the file by callingjulia> f = MPIFile(filename)f can be considered to be a handle to the file. The file will be automatically be closed when f is garbage collected. The philosophy of MPIFiles.jl is that the content of the file is only loaded on demand. Hence, opening an MPI file is a cheap operations. This design allows it, to handle system matrices, which are larger than the main memory of the computer.Using the file handle it is possible now to read out different metadata. For instance we can determine the number of frames measured:julia> acqNumFrames(f)\n500Or we can access the drive field strengthjulia> dfStrength(f)\n1×3×1 Array{Float64,3}:\n[:, :, 1] =\n 0.014  0.014  0.0Now let us load some measurement data. This can be done by callingu = getMeasurementsFD(f, frames=1:100, numAverages=100)Then we can display the data using the PyPlot packageusing PyPlot\nfigure(6, figsize=(6,4))\nsemilogy(abs.(u[1:400,1,1,1]))(Image: Spectrum)This shows a typical spectrum for a 2D Lissajous sampling pattern. The getMeasurementsFD is a high level interface for loading MPI data, which has several parameters that allow to customize the loading process. Details on loading measurement data are outlined in Measurements.In the following we will first discuss the low level interface."
 },
 
 {
@@ -81,11 +81,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "lowlevel.html#Acquisition-Data-1",
+    "location": "lowlevel.html#Low-Level-Interface-1",
     "page": "Low Level Interface",
-    "title": "Acquisition Data",
+    "title": "Low Level Interface",
     "category": "section",
-    "text": "All acquisition data is stored in the a type that looks like thismutable struct AcquisitionData{S<:AbstractSequence}\n  seq::S\n  kdata::Vector{ComplexF64}\n  numEchoes::Int64\n  numCoils::Int64\n  numSlices::Int64\n  samplePointer::Vector{Int64}\n  subsampleIndices::Array{Int64}\n  encodingSize::Vector{Int64}\n  fov::Vector{Float64}\nendThe composite type consists of the imaging sequence, the k-space data, several parameters describing the dimension of the data and some additional index vectors.The k-space data kdata is flattened into a 1D vector but it represents data from a 4D space with dimensionskspace nodes\necho times\ncoils\nslices / repetitionsThe reason to use a flattened 1D data is that the number k-space nodes needs not to be constant for different echo times. The entry point to the data is stored in the index vector samplePointer. It has lengthnumEchoes * numCoils * numSlicesand gives for each combination of echo, coil and slice the corresponding index, where the k-space data starts. The end-point can be obtained by incrementing the index by one.In case of undersampled data, the subsampling indices are stored in subsampleIndices. One check if the data is undersampled by checking if isempty(subsampleIndices).The encoded space is stored in the field encodingSize. It is especially relevant for non-Cartesian trajectories where it is not clear upfront, how large the grid size for reconstruction can be chosen. Finally fov describes the physical lengths of the encoding grid."
+    "text": "The low level interface of MPIFiles.jl consists of a collection of methods that need to be implemented for each file format. It consists of the following methods# general\nversion, uuid\n\n# study parameters\nstudyName, studyNumber, studyUuid, studyDescription\n\n# experiment parameters\nexperimentName, experimentNumber, experimentUuid, experimentDescription,\nexperimentSubject, experimentIsSimulation, experimentIsCalibration,\nexperimentHasMeasurement, experimentHasReconstruction\n\n# tracer parameters\ntracerName, tracerBatch, tracerVolume, tracerConcentration, tracerSolute,\ntracerInjectionTime, tracerVendor\n\n# scanner parameters\nscannerFacility, scannerOperator, scannerManufacturer, scannerName, scannerTopology\n\n# acquisition parameters\nacqStartTime, acqNumFrames, acqNumAverages, acqGradient, acqOffsetField,\nacqNumPeriodsPerFrame, acqSize\n\n# drive-field parameters\ndfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform, dfDivider,\ndfWaveform, dfCycle\n\n# receiver parameters\nrxNumChannels, rxBandwidth, rxNumSamplingPoints, rxTransferFunction, rxUnit,\nrxDataConversionFactor, rxInductionFactor\n\n# measurements\nmeasData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,\nmeasIsBGCorrected, measIsTransposed, measIsFramePermutation, measIsFrequencySelection,\nmeasIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation\n\n# calibrations\ncalibSNR, calibFov, calibFovCenter, calibSize, calibOrder, calibPositions,\ncalibOffsetField, calibDeltaSampleSize, calibMethod, calibIsMeanderingGrid\n\n# reconstruction results\nrecoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions\n\n# additional functions that should be implemented by an MPIFile\nfilepath, systemMatrixWithBG, systemMatrix, selectedChannelsThe interface is structured in a similar way as the parameters within the MDF. Basically, there is a direct mapping between the MDF parameters and the MPIFiles interface. For instance the parameter acqNumAvarages maps to the MDF parameter /acquisition/numAverages. Also the dimensionality of the parameters described in the MDF is preserved. Thus, the MDF specification can be used as a documentation of the low level interface of MPIFiles.note: Note\nNote that the dimensions in the MDF documentation are flipped compared to the dimensions in Julia. This is because Julia stores the data in column major order, while HDF5 considers row major order"
 },
 
 {
@@ -97,11 +97,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "conversion.html#Images-1",
+    "location": "conversion.html#Conversion-1",
     "page": "Conversion",
-    "title": "Images",
+    "title": "Conversion",
     "category": "section",
-    "text": "All reconstructed data is stored as an AxisArray. The AxisArrays package is part of the Images package family, which groups all image processing related functionality together. We note that the term Image does not restrict the dimensionality of the data types to 2D but in fact images can be of arbitrary dimensionality.The reconstructed MRI image I is an AxisArray and has five dimensions. The first three are the spatial dimension x, y, and z, whereas dimension four encodes the number of echos that have been reconstructed, while dimension five encodes individual coils that may have been reconstructed independently. By using an AxisArray the object does not only consist of the data but it additionally encodes the physical size of the image as well as the echo times. To extract the ordinary Julia array one can simply use Ireco.data.The advantage of encoding the physical dimensions is the image data can be stored without loosing the dimensions of the data. For instance one can callsaveImage(filename, I)to store the image andI = loadImage(filename)to load the image. Currently, MRIReco does support the NIfTI file format. By default, saveImage stores the data complex valued if the image I is complex valued. To store the magnitude image one can callsaveImage(filename, I, true)"
+    "text": "With the support for reading different file formats and the ability to store data in the MDF, it is also possible to convert files into MDF. This can be done by callingsaveasMDF(filenameOut, filenameIn)The second argument can alternatively also be an MPIFile handle.There is also a more low level interface which gives the user the control to change parameters before storing. This look like thisparams = loadDataset(f)\n# do something with params\nsaveasMDF(filenameOut, params)Here, f is an MPIFile handle and the command loadDataset loads the entire dataset including all parameters into a Julia Dict that can be modified by the user. After modification one can store the data by passing the Dict as the second argument to the saveasMDF function.note: Note\nThe parameters in the Dict returned by loadDataset have the same keys as the corresponding accessor functions listed in the Low Level Interface."
 },
 
 {
@@ -117,7 +117,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Measurements",
     "title": "Measurements",
     "category": "section",
-    "text": ""
+    "text": "The low level interface allows to load measured MPI data via the measData function. The returned data is exactly how it is stored on disc. This has the disadvantage that the user needs to handle different sorts of data that can be stored in the measData field. To cope with this issue, the MDF also has a high level interface for loading measurement data. The first is the functionfunction getMeasurements(f::MPIFile, neglectBGFrames=true;\n                frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),\n                numAverages=1,\n                bgCorrection=false,\n                interpolateBG=false,\n                tfCorrection=measIsTFCorrected(f),\n                sortFrames=false,\n                spectralLeakageCorrection=true,\n                kargs...)that loads the MPI data in time domain. Background frames can be neglected or included, frames can be selected by specifying frames, block averaging can be applied by specifying numAverages, bgCorrection allows to apply background correction, tfCorrection allows for a correction of the transfer function, interpolateBG applies an optional interpolation in case that multiple background intervals are included in the measurement, sortFrames puts all background frames to the end of the returned data file, and spectralLeakageCorrection controls whether a spectral leakage correction is applied.The array returned by getMeasurements is of type Float32 and has four dimensionstime dimension (over one period)\nreceive channel dimension\npatch dimension\nframe dimensionInstead of loading the data in time domain, one can also load the frequency domain data by callingfunction getMeasurementsFD(f::MPIFile, neglectBGFrames=true;\n                  loadasreal=false,\n                  transposed=false,\n                  frequencies=nothing,\n                  tfCorrection=measIsTFCorrected(f),\n                  kargs...)The function has basically the same parameters as getMeasurements but additionally it is possible to load the data in real form (useful when using a solver that cannot handle complex numbers), it is possible to specify the frequencies (specified by the indices) that should be loaded, and it is possible to transpose the data in a special way, where the frame dimension is changed to be the first dimension. getMeasurementsFD returns a 4D array where of type ComplexF32 with dimensionsfrequency dimension\nreceive channel dimension\npatch dimension\nframe dimension"
 },
 
 {
@@ -133,31 +133,39 @@ var documenterSearchIndex = {"docs": [
     "page": "System Matrix",
     "title": "System Matrices",
     "category": "section",
+    "text": "For loading the system matrix, one could in principle again call measData but there is again a high level function for this job. Since system functions can be very large it is crutial to load only the subset of frequencies that are used during reconstruction The high level system matrix loading function is called getSystemMatrix and has the following interfacefunction getSystemMatrix(f::MPIFile,\n                         frequencies=1:rxNumFrequencies(f)*rxNumChannels(f);\n                         bgCorrection=false,\n                         loadasreal=false,\n                         kargs...)loadasreal can again be used when using a solver requiring real numbers. The most important parameter is frequencies, which defaults to all possible frequencies over all receive channels. In practice one will determine the frequencies using the the Frequency Filter functionality."
+},
+
+{
+    "location": "frequencyFilter.html#",
+    "page": "Frequency Filter",
+    "title": "Frequency Filter",
+    "category": "page",
     "text": ""
 },
 
 {
+    "location": "frequencyFilter.html#Frequency-Filter-1",
+    "page": "Frequency Filter",
+    "title": "Frequency Filter",
+    "category": "section",
+    "text": "A frequency filter can be calculated using the functionfunction filterFrequencies(f::MPIFile;\n                           SNRThresh=-1,\n                           minFreq=0, maxFreq=rxBandwidth(f),\n                           recChannels=1:rxNumChannels(f),\n                           sortBySNR=false,\n                           numUsedFreqs=-1,\n                           stepsize=1,\n                           maxMixingOrder=-1,\n                           sortByMixFactors=false)Usually one will apply an SNR threshold SNRThresh > 1.5 and a minFreq that is larger than the excitation frequencies. The frequencies are specified in Hz. Also useful is the opportunity to select specific receive channels by specifying recChannels.The return value of filterFrequencies is of type Vector{Int64} and can be directly passed to getMeasurements, getMeasurementsFD, and getSystemMatrix."
+},
+
+{
     "location": "images.html#",
-    "page": "Images",
-    "title": "Images",
+    "page": "Reconstructions",
+    "title": "Reconstructions",
     "category": "page",
     "text": ""
 },
 
 {
     "location": "images.html#Reconstruction-Results-1",
-    "page": "Images",
+    "page": "Reconstructions",
     "title": "Reconstruction Results",
     "category": "section",
-    "text": ""
-},
-
-{
-    "location": "positions.html#",
-    "page": "Positions",
-    "title": "Positions",
-    "category": "page",
-    "text": ""
+    "text": "MDF files can also contain reconstruction results instead of measurement data. The low level results can be retrieved using the Low Level Interfacefunction recoData(f::MPIFile)\nfunction recoFov(f::MPIFile)\nfunction recoFovCenter(f::MPIFile)\nfunction recoSize(f::MPIFile)\nfunction recoOrder(f::MPIFile)\nfunction recoPositions(f::MPIFile)Instead one can also combine these data into an ImageMetadata object from the Images.jl package by calling the functionsfunction loadRecoDataMDF(filename::AbstractString)The ImageMetadata object does also pull all relevant metadata from an MDF such that the file can be also be stored usingfunction saveRecoDataMDF(filename, image::ImageMeta)These two functions are especially relevant when using the package   MPIReco.jl"
 },
 
 ]}
