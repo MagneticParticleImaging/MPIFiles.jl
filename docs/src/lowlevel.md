@@ -1,43 +1,58 @@
-# Acquisition Data
+# Low Level Interface
 
-All acquisition data is stored in the a type that looks like this
+The low level interface of MPIFiles.jl consists of a collection of methods that
+need to be implemented for each file format. It consists of the following methods
 ```julia
-mutable struct AcquisitionData{S<:AbstractSequence}
-  seq::S
-  kdata::Vector{ComplexF64}
-  numEchoes::Int64
-  numCoils::Int64
-  numSlices::Int64
-  samplePointer::Vector{Int64}
-  subsampleIndices::Array{Int64}
-  encodingSize::Vector{Int64}
-  fov::Vector{Float64}
-end
+# general
+version, uuid
+
+# study parameters
+studyName, studyNumber, studyUuid, studyDescription
+
+# experiment parameters
+experimentName, experimentNumber, experimentUuid, experimentDescription,
+experimentSubject, experimentIsSimulation, experimentIsCalibration,
+experimentHasMeasurement, experimentHasReconstruction
+
+# tracer parameters
+tracerName, tracerBatch, tracerVolume, tracerConcentration, tracerSolute,
+tracerInjectionTime, tracerVendor
+
+# scanner parameters
+scannerFacility, scannerOperator, scannerManufacturer, scannerName, scannerTopology
+
+# acquisition parameters
+acqStartTime, acqNumFrames, acqNumAverages, acqGradient, acqOffsetField,
+acqNumPeriodsPerFrame, acqSize
+
+# drive-field parameters
+dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform, dfDivider,
+dfWaveform, dfCycle
+
+# receiver parameters
+rxNumChannels, rxBandwidth, rxNumSamplingPoints, rxTransferFunction, rxUnit,
+rxDataConversionFactor, rxInductionFactor
+
+# measurements
+measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
+measIsBGCorrected, measIsTransposed, measIsFramePermutation, measIsFrequencySelection,
+measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation
+
+# calibrations
+calibSNR, calibFov, calibFovCenter, calibSize, calibOrder, calibPositions,
+calibOffsetField, calibDeltaSampleSize, calibMethod, calibIsMeanderingGrid
+
+# reconstruction results
+recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions
+
+# additional functions that should be implemented by an MPIFile
+filepath, systemMatrixWithBG, systemMatrix, selectedChannels
 ```
-The composite type consists of the imaging sequence, the k-space data,
-several parameters describing the dimension of the data and some additional
-index vectors.
+The interface is structured in a similar way as the parameters within the [MDF](https://github.com/MagneticParticleImaging/MDF). Basically, there is a direct mapping between the MDF parameters
+and the MPIFiles interface. For instance the parameter `acqNumAvarages` maps to the MDF parameter `/acquisition/numAverages`. Also the dimensionality of the parameters described in the [MDF](https://github.com/MagneticParticleImaging/MDF) is preserved. Thus, the MDF specification can be used as
+a documentation of the low level interface of MPIFiles.
 
-The k-space data `kdata` is flattened into a 1D vector but it represents data
-from a 4D space with dimensions
-1. kspace nodes
-2. echo times
-3. coils
-4. slices / repetitions
-The reason to use a flattened 1D data is that the number k-space nodes needs not
-to be constant for different echo times. The entry point to the data is stored
-in the index vector `samplePointer`. It has length
-```julia
-numEchoes * numCoils * numSlices
-```
-and gives for each combination of echo, coil and slice the corresponding index,
-where the k-space data starts. The end-point can be obtained by incrementing the index
-by one.
-
-In case of undersampled data, the subsampling indices are stored in `subsampleIndices`.
-One check if the data is undersampled by checking if `isempty(subsampleIndices)`.
-
-The encoded space is stored in the field `encodingSize`. It is especially relevant
-for non-Cartesian trajectories where it is not clear upfront, how large the grid
-size for reconstruction can be chosen. Finally `fov` describes the physical lengths
-of the encoding grid.
+!!! note
+    Note that the dimensions in the MDF documentation are flipped compared to the dimensions in
+    Julia. This is because Julia stores the data in column major order, while HDF5 considers row
+    major order

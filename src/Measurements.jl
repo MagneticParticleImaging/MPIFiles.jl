@@ -158,7 +158,8 @@ end
 
 function getMeasurements(f::MPIFile, neglectBGFrames=true;
       frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
-      bgCorrection=false, interpolateBG=false, tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
+      bgCorrection=false, interpolateBG=false, tfCorrection=measIsTFCorrected(f),
+      sortFrames=false, kargs...)
 
   if neglectBGFrames
     idx = measFGFrameIdx(f)

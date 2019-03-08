@@ -12,8 +12,9 @@ makedocs(
         "Conversion" => "conversion.md",
         "Measurements" => "measurements.md",
         "System Matrix" => "systemmatrix.md",
-        "Images" => "images.md",
-        "Positions" => "positions.md"
+        "Frequency Filter" => "frequencyFilter.md",
+        "Reconstructions" => "images.md"
+      #  "Positions" => "positions.md"
     ],
     html_prettyurls = false, #!("local" in ARGS),
 )

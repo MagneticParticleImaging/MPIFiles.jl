@@ -1,63 +1,46 @@
 # Getting Started
 
-We will start with a very simple example and perform simple simulation and
-reconstruction based on a shepp logan phantom. The program looks like this
+An MPI data file consists of a collection of parameters that can be
+divided into metadata and measurement data. Let us now consider that
+the string `filename` contains the path to an MPI file (e.g. an MDF file).
+Then be can open the file by calling
 ```julia
-# image
-N = 256
-I = shepp_logan(N)
-
-# simulation parameters
-params = Dict{Symbol, Any}()
-params[:simulation] = "fast"
-params[:trajName] = "Radial"
-params[:numProfiles] = floor(Int64, pi/2*N)
-params[:numSamplingPerProfile] = 2*N
-
-# do simulation
-acqData = simulation(I, params)
-
-# reco parameters
-params = Dict{Symbol, Any}()
-params[:reco] = "direct"
-params[:shape] = (N,N)
-Ireco = reconstruction(acqData, params)
+julia> f = MPIFile(filename)
 ```
-We will go through the program step by step. First we create a 2D shepp logan
-phantom of size `N=256`. Then we setup a dictionary that defines the simulation
-parameters. Here, we chose a simple radial trajectory with 402 spokes and 512
-samples per profile. We use a gridding-based simulator by setting `params[:simulation] = "fast"`
+`f` can be considered to be a handle to the file. The file will be automatically
+be closed when `f` is garbage collected. The philosophy of MPIFiles.jl is that
+the content of the file is only loaded on demand. Hence, opening an MPI file
+is a cheap operations. This design allows it, to handle system matrices, which
+are larger than the main memory of the computer.
 
-After setting up the parameter dictionary `params`, the simulation is performed
-by calling
+Using the file handle it is possible now to read out different metadata. For instance
+we can determine the number of frames measured:
 ```julia
-acqData = simulation(I, params)
+julia> acqNumFrames(f)
+500
 ```
-The result `simulation` function outputs an acquisition object that is discussed
-in more detail in the section [Acquisition Data](@ref).
-The acquisition data can also be stored to or loaded from a file, which will be discussed
-in section [File Handling](@ref).
-
-Using the acquisition data we can perform a reconstruction. To this end,
-again a parameter dictionary is setup and some basic configuration is done.
-In this case, for instance we specify that we want to apply a simple NFFT-based
-gridding reconstruction. The reconstruction is invoked by calling
+Or we can access the drive field strength
 ```julia
-Ireco = reconstruction(acqData, params)
+julia> dfStrength(f)
+1×3×1 Array{Float64,3}:
+[:, :, 1] =
+ 0.014  0.014  0.0
 ```
-The resulting image is of type `AxisArray` and has 5 dimensions. One can
-display the image object by calling
+Now let us load some measurement data. This can be done by calling
 ```julia
-using ImageView
-imshow(abs.(Ireco[:,:,1,1,1]))
+u = getMeasurementsFD(f, frames=1:100, numAverages=100)
 ```
-Alternatively one can store the image into a file, which will be discussed in
-the section on [Images](@ref).
+Then we can display the data using the PyPlot package
+```julia
+using PyPlot
+figure(6, figsize=(6,4))
+semilogy(abs.(u[1:400,1,1,1]))
+```
+![Spectrum](./assets/spectrum1.png)
 
-The original phantom and the reconstructed image are shown below
+This shows a typical spectrum for a 2D Lissajous sampling pattern. The
+`getMeasurementsFD` is a high level interface for loading MPI data, which has
+several parameters that allow to customize the loading process. Details on
+loading measurement data are outlined in [Measurements](@ref).
 
-![Phantom](./assets/phantom.png)
-![Reconstruction](./assets/simpleReco.png)
-
-We will discuss reconstruction in more detail in the [Reconstruction](@ref) section.
-Simulation will be discussed in more detail in the [Simulation](@ref) section.
+In the following we will first discuss the low level interface.

@@ -6,7 +6,7 @@
 
 MPIFiles.jl is a Julia package for handling files that are related to the tomographic imaging method magnetic particle imaging. It supports different file formats:
 * Brukerfiles, i.e. files stored using the preclinical MPI scanner from Bruker
-* [Magnetic Particle Imaging Data Format (MDF) files ](https://github.com/MagneticParticleImaging/MDF)
+* [Magnetic Particle Imaging Data Format (MDF) files](https://github.com/MagneticParticleImaging/MDF)
 * IMT files, i.e. files created at the Institute of Medical Engineering in Lübeck
 
 For all of these formats there is full support for reading the files. Write support is currently
@@ -19,14 +19,14 @@ MPI files can be divided into three different categories
 * [Measurements](@ref)
 * [System Matrices](@ref)
 * [Reconstruction Results](@ref)
-Each of these file types is supported and discussed in the referenced pages. 
+Each of these file types is supported and discussed in the referenced pages.
 
 
 ## Installation
 
 Start julia and open the package mode by entering `]`. Then enter
 ```julia
-add https://github.com/MagneticParticleImaging/MPIFiles.jl
+add MPIFiles
 ```
 This will install the packages `MPIFiles.jl` and all its dependencies.
 
