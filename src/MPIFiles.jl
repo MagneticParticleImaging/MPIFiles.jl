@@ -214,7 +214,6 @@ function MPIFile(filenames::Vector)
 end
 
 include("MultiMPIFile.jl")
-include("MultiPatchMPIFile.jl")
 include("Measurements.jl")
 include("SystemMatrix.jl")
 include("FrequencyFilter.jl")
