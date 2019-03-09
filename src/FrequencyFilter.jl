@@ -1,5 +1,19 @@
 export filterFrequencies
 
+"""
+  filterFrequencies(f; kargs...) => Vector{Int64}
+
+Supported keyword arguments:
+* SNRThresh
+* minFreq
+* maxFreq
+* recChannels
+* sortBySNR
+* numUsedFreqs
+* stepsize
+* maxMixingOrder
+* sortByMixFactors
+"""
 function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
                maxFreq=rxBandwidth(f), recChannels=1:rxNumChannels(f),
                sortBySNR=false, numUsedFreqs=-1, stepsize=1, maxMixingOrder=-1,

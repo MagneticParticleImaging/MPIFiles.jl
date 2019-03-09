@@ -283,7 +283,4 @@ function saveasMDF(file::HDF5File, params::Dict)
   end
 
   writeIfAvailable(file, "/custom/auxiliaryData", params, "auxiliaryData")
-
-
-
 end

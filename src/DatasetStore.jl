@@ -11,7 +11,6 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
 
 # The following are base types describing
 # the dataset store at a certain level
-
 struct Study
   path::String
   name::String
@@ -83,7 +82,6 @@ end
 const MDFStore = MDFDatasetStore("/opt/data")
 
 ### generic functions ###
-
 function ishidden(filename::AbstractString)
   @static if Sys.isunix()
     s = basename(filename)
@@ -628,20 +626,7 @@ end
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ####### Visualization Store #######
-
 
 function getVisu(d::MDFDatasetStore, study::Study, exp::Experiment, reco::Reconstruction, numVisu)
 

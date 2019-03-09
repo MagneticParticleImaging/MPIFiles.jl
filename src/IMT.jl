@@ -181,13 +181,6 @@ function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
   return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (div(size(data,1),2)*size(data,2),size(data,3)))
 end
 
-#function measIsFourierTransformed(f::IMTFile)
-#  if !experimentIsCalibration(f)
-#    return false
-#  else
-#    return true
-#  end
-#end
 
 measIsFourierTransformed(f::IMTFileMeas) = false
 measIsFourierTransformed(f::IMTFileCalib) = true

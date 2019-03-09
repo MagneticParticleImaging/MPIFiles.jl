@@ -156,6 +156,21 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
   end
 end
 
+
+"""
+  getMeasurements(f, [neglectBGFrames]; kargs...) => Array{Float32,4}
+
+Load the measurement data in time domain
+
+Supported keyword arguments:
+* frames
+* bgCorrection
+* interpolateBG
+* tfCorrection
+* sortFrames
+* numAverages
+* spectralLeakageCorrection
+"""
 function getMeasurements(f::MPIFile, neglectBGFrames=true;
       frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
       bgCorrection=false, interpolateBG=false, tfCorrection=measIsTFCorrected(f),
@@ -235,7 +250,23 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 end
 
 
+"""
+  getMeasurementsFD(f, [neglectBGFrames]; kargs...) => Array{ComplexF32,4}
 
+Load the measurement data in frequency domain
+
+Supported keyword arguments:
+* frames
+* bgCorrection
+* interpolateBG
+* tfCorrection
+* sortFrames
+* numAverages
+* spectralLeakageCorrection
+* loadasreal
+* transposed
+* frequencies
+"""
 function getMeasurementsFD(f::MPIFile, args...;
       loadasreal=false, transposed=false, frequencies=nothing,
       tfCorrection=measIsTFCorrected(f),  kargs...)

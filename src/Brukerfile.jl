@@ -467,8 +467,6 @@ filepath(b::BrukerFile) = b.path
 
 
 # special additional methods
-
-
 function sfPath(b::BrukerFile)
   tmp = b["PVM_MPI_FilenameSystemMatrix",1]
   m = match(r"^(.+)\/pdata",tmp)
