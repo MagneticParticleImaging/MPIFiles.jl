@@ -205,7 +205,6 @@ function acqNumPeriodsPerFrame(b::BrukerFile)
   N = acqNumPatches(b)
   return (M == "") ? N : N*parse(Int64,M)
 end
-acqNumPeriodsPerPatch(b::BrukerFile) = div(acqNumPeriodsPerFrame(b),acqNumPatches(b))
 
 acqNumAverages(b::BrukerFileMeas) = parse(Int,b["NA"])
 acqNumAverages(b::BrukerFileCalib) = parse(Int,b["NA"])*numSubPeriods(b)

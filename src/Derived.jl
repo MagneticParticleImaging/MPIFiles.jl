@@ -95,7 +95,7 @@ end
 function acqNumPatches(f::MPIFile)
   # not valid for varying gradients / multi gradient
   shifts = acqOffsetFieldShift(f)
-  return size(unique(shifts,dims=2),2)
+  return size(unique(shifts,dims=3),3)
 end
 
 function acqNumPeriodsPerPatch(f::MPIFile)
