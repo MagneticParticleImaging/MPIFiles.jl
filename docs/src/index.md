@@ -21,7 +21,6 @@ MPI files can be divided into three different categories
 * [Reconstruction Results](@ref)
 Each of these file types is supported and discussed in the referenced pages.
 
-
 ## Installation
 
 Start julia and open the package mode by entering `]`. Then enter
