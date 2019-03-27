@@ -127,8 +127,10 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     nFrames = length(frames)
     nBlocks = ceil(Int, nFrames / numAverages)
 
-    rem(nFrames, numAverages) != 0 && (warn("numAverages no integer divisor of nFrames.
-              Last Block will be averaged over less than $numAverages Frames."))
+    if rem(nFrames, numAverages) != 0 
+      @warn "numAverages no integer divisor of nFrames.
+              Last Block will be averaged over less than $numAverages Frames."
+    end
 
     data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
 
