@@ -1,4 +1,4 @@
-export acqNumFGFrames, acqNumBGFrames, acqOffsetFieldShift, acqFramePeriod, 
+export acqNumFGFrames, acqNumBGFrames, acqOffsetFieldShift, acqFramePeriod,
        acqNumPeriods, acqNumPatches, acqNumPeriodsPerPatch, acqFov,
        acqGradientDiag,
        rxNumFrequencies, rxFrequencies, rxTimePoints,
@@ -104,22 +104,21 @@ end
 
 export unflattenOffsetFieldShift
 
-unflattenOffsetFieldShift(f::MPIFile) = analyseFFPos(acqOffsetFieldShift(f))
+unflattenOffsetFieldShift(f::MPIFile) = unflattenOffsetFieldShift(acqOffsetFieldShift(f))
 function unflattenOffsetFieldShift(shifts::Array)
   # not valid for varying gradients / multi gradient
   uniqueShifts = unique(shifts, dims=2)
   numPeriodsPerFrame = size(shifts,2)
-  numPatches = size(uniqueShifts,2)
-  numPeriodsPerPatch = div(numPeriodsPerFrame, numPatches)
+  numUniquePatch = size(uniqueShifts,2)
 
   allPeriods = 1:numPeriodsPerFrame
 
-  flatIndices = zeros(Int64,numPatches,numPeriodsPerPatch)
+  flatIndices = Vector{Vector{Int64}}()
 
-  for i=1:numPatches
-    flatIndices[i,:] = allPeriods[vec(sum(shifts .== uniqueShifts[:,i],dims=1)).==3]
+  for i=1:numUniquePatch
+    temp = allPeriods[vec(sum(shifts .== uniqueShifts[:,i],dims=1)).==3]
+    push!(flatIndices, temp)
   end
-
   return flatIndices
 end
 
