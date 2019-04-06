@@ -102,10 +102,10 @@ function getindex(b::BrukerFile, parameter)#::String
   end
 end
 
-function getindex(b::BrukerFile, parameter, procno::Int64)::String
+function getindex(b::BrukerFile, parameter, procno::Int64)#::String
   if !b.recoRead && lowercase( parameter[1:4] ) == "reco"
     recopath = joinpath(b.path, "pdata", string(procno), "reco")
-    read(b.paramsProc, acqppath, maxEntries=13)
+    read(b.paramsProc, recopath, maxEntries=13)
     b.recoRead = true
   elseif !b.methrecoRead && parameter[1:3] == "PVM"
     methrecopath = joinpath(b.path, "pdata", string(procno), "methreco")
@@ -503,7 +503,25 @@ function numSubPeriods(f::BrukerFile)
   floor(Int,(lcm(dfDivider(f)[selected_channels]) / lcm(active_divider)))
 end
 
+##### Reco
 
+
+
+
+
+function recoData(f::BrukerFile)
+  recoFilename = joinpath(f.path,"pdata", "1", "2dseq")
+  N = recoSize(f)
+  I = open(recoFilename,"r") do fd
+    read!(fd,Array{Int16,3}(undef,N[1],N[2],N[3]))
+  end
+end
+
+#recoFov(f::BrukerFile) = f["/reconstruction/fieldOfView"]
+#recoFovCenter(f::BrukerFile) = f["/reconstruction/fieldOfViewCenter"]
+recoSize(f::BrukerFile) = push!(parse.(Int,f["RECO_size",1]),parse(Int,f["RecoObjectsPerRepetition",1]))
+#recoOrder(f::BrukerFile) = f["/reconstruction/order"]
+#recoPositions(f::BrukerFile) = f["/reconstruction/positions"]
 
 ###############################
 # delta sample functions
