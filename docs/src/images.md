@@ -14,12 +14,12 @@ Instead one can also combine these data into an `ImageMetadata` object from the
 [Images.jl](https://github.com/JuliaImages/Images.jl) package by calling the
 functions
 ```julia
-function loadRecoDataMDF(filename::AbstractString)
+function loadRecoData(filename::AbstractString)
 ```
 The `ImageMetadata` object does also pull all relevant metadata from an MDF
 such that the file can be also be stored using
 ```julia
-function saveRecoDataMDF(filename, image::ImageMeta)
+function saveRecoData(filename, image::ImageMeta)
 ```
 These two functions are especially relevant when using the package  
 [MPIReco.jl](https://github.com/MagneticParticleImaging/MPIReco.jl)

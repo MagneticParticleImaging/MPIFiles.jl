@@ -20,9 +20,9 @@ saveasMDF(fnRecoV2, fnRecoV1)
 mdfv2 = MPIFile(fnRecoV2)
 @test typeof(mdfv2) == MDFFileV2
 
-c1 = loadRecoDataMDF(fnRecoV1)
-c2 = loadRecoDataMDF(fnRecoV2)
-saveRecoDataMDF(fnRecoV2b,c1)
+c1 = loadRecoData(fnRecoV1)
+c2 = loadRecoData(fnRecoV2)
+saveRecoData(fnRecoV2b,c1)
 
 mdfv2b = MPIFile(fnRecoV2b)
 @test typeof(mdfv2b) == MDFFileV2

@@ -545,7 +545,7 @@ function addReco(d::MDFDatasetStore, study::Study, exp::Experiment, image)
 
   filepath = joinpath(outputpath, string(recoNum))
 
-  saveRecoDataMDF(filepath*".mdf", image)
+  saveRecoData(filepath*".mdf", image)
   #save(filepath*".jld","recoParams",recoParams)
 end
 

@@ -512,14 +512,22 @@ end
 function recoData(f::BrukerFile)
   recoFilename = joinpath(f.path,"pdata", "1", "2dseq")
   N = recoSize(f)
+
+  #if f["RECO_wordtype",1] != "_16BIT_SGN_INT"
+  #  @error "Not yet implemented!"
+  #end
+
   I = open(recoFilename,"r") do fd
-    read!(fd,Array{Int16,3}(undef,N[1],N[2],N[3]))
+    read!(fd,Array{Int16,3}(undef,1,prod(N),1))
   end
+  return map(Float32,I)
 end
 
-#recoFov(f::BrukerFile) = f["/reconstruction/fieldOfView"]
-#recoFovCenter(f::BrukerFile) = f["/reconstruction/fieldOfViewCenter"]
-recoSize(f::BrukerFile) = push!(parse.(Int,f["RECO_size",1]),parse(Int,f["RecoObjectsPerRepetition",1]))
+recoFov(f::BrukerFile) = push!(parse.(Float64,f["RECO_fov",1])./1000,
+                                parse(Float64,f["ACQ_slice_sepn"][1])./1000)
+recoFovCenter(f::BrukerFile) = zeros(3)
+recoSize(f::BrukerFile) = push!(parse.(Int,f["RECO_size",1]),
+                                parse(Int,f["RecoObjectsPerRepetition",1]))
 #recoOrder(f::BrukerFile) = f["/reconstruction/order"]
 #recoPositions(f::BrukerFile) = f["/reconstruction/positions"]
 
