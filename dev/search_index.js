@@ -165,7 +165,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Reconstructions",
     "title": "Reconstruction Results",
     "category": "section",
-    "text": "MDF files can also contain reconstruction results instead of measurement data. The low level results can be retrieved using the Low Level Interfacefunction recoData(f::MPIFile)\nfunction recoFov(f::MPIFile)\nfunction recoFovCenter(f::MPIFile)\nfunction recoSize(f::MPIFile)\nfunction recoOrder(f::MPIFile)\nfunction recoPositions(f::MPIFile)Instead one can also combine these data into an ImageMetadata object from the Images.jl package by calling the functionsfunction loadRecoDataMDF(filename::AbstractString)The ImageMetadata object does also pull all relevant metadata from an MDF such that the file can be also be stored usingfunction saveRecoDataMDF(filename, image::ImageMeta)These two functions are especially relevant when using the package   MPIReco.jl"
+    "text": "MDF files can also contain reconstruction results instead of measurement data. The low level results can be retrieved using the Low Level Interfacefunction recoData(f::MPIFile)\nfunction recoFov(f::MPIFile)\nfunction recoFovCenter(f::MPIFile)\nfunction recoSize(f::MPIFile)\nfunction recoOrder(f::MPIFile)\nfunction recoPositions(f::MPIFile)Instead one can also combine these data into an ImageMetadata object from the Images.jl package by calling the functionsfunction loadRecoData(filename::AbstractString)The ImageMetadata object does also pull all relevant metadata from an MDF such that the file can be also be stored usingfunction saveRecoData(filename, image::ImageMeta)These two functions are especially relevant when using the package   MPIReco.jl"
 },
 
 ]}
