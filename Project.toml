@@ -1,7 +1,7 @@
 name = "MPIFiles"
-uuid = "a5edc15b-39e9-55dc-ae45-4d55e961169a"
+uuid = "371237a9-e6c1-5201-9adb-3d8cfa78fa9f"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
-version = "0.0.0"
+version = "0.5.3"
 
 [deps]
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
