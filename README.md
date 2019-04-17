@@ -7,3 +7,5 @@ MPIFiles.jl is a Julia package for loading and storing magnetic particle imaging
 [![Build Status](https://travis-ci.org/MagneticParticleImaging/MPIFiles.jl.svg?branch=master)](https://travis-ci.org/MagneticParticleImaging/MPIFiles.jl)
 
 [![codecov.io](http://codecov.io/github/MagneticParticleImaging/MPIFiles.jl/coverage.svg?branch=master)](http://codecov.io/github/MagneticParticleImaging/MPIFiles.jl?branch=master)
+
+[![Build status](https://ci.appveyor.com/api/projects/status/mvkx2xoi21jssbin/branch/master?svg=true)](https://ci.appveyor.com/project/tknopp/mpifiles-jl/branch/master)
