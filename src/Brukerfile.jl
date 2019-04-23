@@ -523,8 +523,11 @@ function recoData(f::BrukerFile)
   return map(Float32,I)
 end
 
-recoFov(f::BrukerFile) = push!(parse.(Float64,f["RECO_fov",1])./100,
-                                parse(Float64,f["ACQ_slice_sepn"][1])./100)
+recoResolution(f::BrukerFile) = push!(parse.(Float64,f["PVM_SpatResol"])./1000,
+                                parse(Float64,f["ACQ_slice_thick"])./1000)
+
+recoFov(f::BrukerFile) = recoResolution(f).*recoSize(f) 
+
 recoFovCenter(f::BrukerFile) = zeros(3)
 recoSize(f::BrukerFile) = push!(parse.(Int,f["RECO_size",1]),
                                 parse(Int,f["RecoObjectsPerRepetition",1]))
