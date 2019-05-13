@@ -14,3 +14,5 @@ test/measurement_Bruker/
 test/systemMatrix_Bruker/
 test/systemMatrix1D_Bruker/
 test/Positions.h5
+
+Manifest.toml

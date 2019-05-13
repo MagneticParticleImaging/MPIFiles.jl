@@ -1,5 +1,19 @@
 export filterFrequencies
 
+"""
+  filterFrequencies(f; kargs...) => Vector{Int64}
+
+Supported keyword arguments:
+* SNRThresh
+* minFreq
+* maxFreq
+* recChannels
+* sortBySNR
+* numUsedFreqs
+* stepsize
+* maxMixingOrder
+* sortByMixFactors
+"""
 function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
                maxFreq=rxBandwidth(f), recChannels=1:rxNumChannels(f),
                sortBySNR=false, numUsedFreqs=-1, stepsize=1, maxMixingOrder=-1,
@@ -9,18 +23,18 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   nReceivers = rxNumChannels(f)
   nPeriods = 1 #acqNumPeriodsPerFrame(f)
 
-  minIdx = round(Int, minFreq / rxBandwidth(f) * nFreq )
-  maxIdx = round(Int, maxFreq / rxBandwidth(f) * nFreq )
+  minIdx = floor(Int, minFreq / rxBandwidth(f) * (nFreq-1) ) + 1
+  maxIdx = ceil(Int, maxFreq / rxBandwidth(f) * (nFreq-1) ) + 1
 
   freqMask = zeros(Bool,nFreq,nReceivers,nPeriods)
 
   freqMask[:,recChannels,:] .= true
 
-  if minIdx > 0
-    freqMask[1:(minIdx-1),:,:] .= false
+  if minFreq > 0
+    freqMask[1:(minIdx),:,:] .= false
   end
-  if maxIdx < nFreq
-    freqMask[(maxIdx+1):end,:,:] .= false
+  if maxFreq < nFreq
+    freqMask[(maxIdx):end,:,:] .= false
   end
 
   if maxMixingOrder > 0

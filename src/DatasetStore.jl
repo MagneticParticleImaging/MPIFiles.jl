@@ -11,7 +11,6 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
 
 # The following are base types describing
 # the dataset store at a certain level
-
 struct Study
   path::String
   name::String
@@ -83,7 +82,6 @@ end
 const MDFStore = MDFDatasetStore("/opt/data")
 
 ### generic functions ###
-
 function ishidden(filename::AbstractString)
   @static if Sys.isunix()
     s = basename(filename)
@@ -286,6 +284,10 @@ function findSFFiles(d::BrukerDatasetStore)
       end
     end
   end
+  BrukerMDFSFs = readdir(joinpath(d.path,"MDF_SFs/"))
+  for BrukerMDFSF in BrukerMDFSFs
+    push!(bfiles,joinpath(d.path,"MDF_SFs/",BrukerMDFSF)) 
+  end
   bfiles
 end
 
@@ -299,7 +301,7 @@ function findSFFiles(d::MDFDatasetStore)
   for file in files
     prefix, ext = splitext(file)
     if !isdir(file) && tryparse(Int64,prefix) != nothing &&
-       (ext == ".mdf" || ext == ".hdf" || ext == ".h5")
+       (ext == ".mdf" || ext == ".hdf" || ext == ".h5") && !occursin("td.mdf",file)
       try
         push!(bfiles, joinpath(path,file))
       catch e
@@ -415,7 +417,7 @@ end
 function loadSFDatabase(d::MDFDatasetStore)
   files = readdir(calibdir(d))
   @debug "system function database" files
-  mdffiles = files[endswith.(files,".mdf")]
+  mdffiles = files[endswith.(files,".mdf") .& .!endswith.(files,"td.mdf")]
   fileList = calibdir(d).*"/".*mdffiles
   A = generateSFDatabase(fileList)
   return A
@@ -547,7 +549,7 @@ function addReco(d::MDFDatasetStore, study::Study, exp::Experiment, image)
 
   filepath = joinpath(outputpath, string(recoNum))
 
-  saveRecoDataMDF(filepath*".mdf", image)
+  saveRecoData(filepath*".mdf", image)
   #save(filepath*".jld","recoParams",recoParams)
 end
 
@@ -628,20 +630,7 @@ end
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ####### Visualization Store #######
-
 
 function getVisu(d::MDFDatasetStore, study::Study, exp::Experiment, reco::Reconstruction, numVisu)
 

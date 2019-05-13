@@ -1,6 +1,6 @@
 ####### Mixing factor functions #########
 
-export cheb2D,mixFactorToFreq, mixFactorToFreqIdx, MixingOrder, mixingFactors
+export mixFactorToFreq, mixFactorToFreqIdx, mixingFactors
 
 
 """
