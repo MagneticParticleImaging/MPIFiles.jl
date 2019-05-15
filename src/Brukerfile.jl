@@ -182,9 +182,15 @@ scannerTopology(b::BrukerFile) = "FFP"
 
 # acquisition parameters
 function acqStartTime(b::BrukerFile)
-  m = match(r"<(.+)\+",b["ACQ_time"])
-  timeString = replace(m.captures[1],"," => ".")
-  return DateTime( timeString )
+  if b["ACQ_time"]==""
+    m = match(r"<(.+)\+","<0000-01-01T00:00:00,000+000>")
+    timeString = replace(m.captures[1],"," => ".")
+    return DateTime( timeString )
+  else
+    m = match(r"<(.+)\+",b["ACQ_time"])
+    timeString = replace(m.captures[1],"," => ".")
+    return DateTime( timeString )
+  end
 end
 function acqNumFrames(b::BrukerFileMeas)
   M = Int64(b["ACQ_jobs"][1][8])
