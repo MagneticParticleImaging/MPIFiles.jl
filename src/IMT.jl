@@ -177,8 +177,8 @@ function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
     f.mmap_measData = readmmap(f.file["/systemResponseFrequencies"])
   end
 
-  data = reshape(f.mmap_measData,Val(3))[:, :, rows]
-  return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (div(size(data,1),2)*size(data,2),size(data,3)))
+  data = f.mmap_measData[:, :, :, rows]
+  return reshape(reinterpret(Complex{eltype(data)}, vec(data)), :, size(data,4))
 end
 
 
