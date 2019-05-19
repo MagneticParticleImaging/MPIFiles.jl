@@ -41,11 +41,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "index.html#Contact-1",
+    "location": "index.html#Community-Guidelines-1",
     "page": "Home",
-    "title": "Contact",
+    "title": "Community Guidelines",
     "category": "section",
-    "text": "If you have problems using the software, find mistakes, or have general questions please use the issue tracker to contact us."
+    "text": "If you have problems using the software, find bugs, or have feature requests please use the issue tracker to contact us. For general questions we prefer that you contact the current maintainer directly by email.We welcome community contributions to MPIFiles.jl. Simply create a pull request with your proposed changes."
 },
 
 {
@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "Contributors",
     "category": "section",
-    "text": "Tobias Knopp\nMartin Möddel\nPatryk Szwargulski\nFlorian Griese\nFranziska Werner\nNadine Gdaniec\nMarija Boberg"
+    "text": "Tobias Knopp (maintainer)\nMartin Möddel\nPatryk Szwargulski\nFlorian Griese\nFranziska Werner\nNadine Gdaniec\nMarija Boberg"
 },
 
 {
