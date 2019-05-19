@@ -62,9 +62,11 @@ generic code for different file types. In addition to read support, the package 
 has conversion routines for creating MDF files from Brukerfiles.
 
 ``MPIFiles.jl`` supports the following types of MPI data
+
 * measurements
 * calibration data, i.e. system matrices
 * reconstruction results
+
 In addition to a low level access to the data, the package also features
 high level routines that provide various post-processing methods such as
 frequency filtering, spectral leakage correction, block-averaging, and
