@@ -44,7 +44,7 @@ In 2015 [@Gleich2005], Bernhard Gleich and Jürgen Weizenecker introduced a new 
 imaging method named Magnetic Particle Imaging (MPI) that allows to image
 the 3D distribution of magnetic nanoparticles (MNP) in realtime [@knopp2012magnetic; @knopp2017magnetic].
 The MNP can be injected intravenously and allow to image the vessel tree as well
-as organ perfusion. The MNPs are harmless for the human body and are degraded in the
+as organ perfusion [@graser2019human]. The MNPs are harmless for the human body and are degraded in the
 liver.
 
 When working with an MPI scanner different datasets are involved. In addition to the raw data, which consist of the induced voltage signals, a calibration dataset is required to reconstruct the particle concentration. The latter describes the physical relationship between the particle concentration and the measurement signal and is usually recorded in MPI with a delta-shaped point sample.
