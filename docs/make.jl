@@ -11,9 +11,9 @@ makedocs(
         "Low Level Interface" => "lowlevel.md",
         "Conversion" => "conversion.md",
         "Measurements" => "measurements.md",
-        "System Matrix" => "systemmatrix.md",
+        "System Matrices" => "systemmatrix.md",
         "Frequency Filter" => "frequencyFilter.md",
-        "Reconstructions" => "images.md"
+        "Reconstruction Results" => "reconstruction.md"
       #  "Positions" => "positions.md"
     ],
     html_prettyurls = false, #!("local" in ARGS),

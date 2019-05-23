@@ -8,7 +8,7 @@ saveasMDF(filenameOut, filenameIn)
 ```
 The second argument can alternatively also be an `MPIFile` handle.
 
-There is also a more low level interface which gives the user the control to
+Alternatively, there is also a more low level interface which gives the user the control to
 change parameters before storing. This look like this
 ```julia
 params = loadDataset(f)
@@ -16,7 +16,7 @@ params = loadDataset(f)
 saveasMDF(filenameOut, params)
 ```
 Here, `f` is an `MPIFile` handle and the command `loadDataset` loads the entire
-dataset including all parameters into a Julia `Dict` that can be modified by the
+dataset including all parameters into a Julia `Dict`, which can be modified by the
 user. After modification one can store the data by passing the `Dict` as the
 second argument to the `saveasMDF` function.
 

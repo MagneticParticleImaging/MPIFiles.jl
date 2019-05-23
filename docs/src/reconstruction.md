@@ -10,7 +10,7 @@ function recoSize(f::MPIFile)
 function recoOrder(f::MPIFile)
 function recoPositions(f::MPIFile)
 ```
-Instead one can also combine these data into an `ImageMetadata` object from the
+Instead, one can also combine these data into an `ImageMetadata` object from the
 [Images.jl](https://github.com/JuliaImages/Images.jl) package by calling the
 functions
 ```julia
