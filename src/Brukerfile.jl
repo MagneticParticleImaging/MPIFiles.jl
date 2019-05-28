@@ -374,7 +374,7 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
     for k=1:length(rows)
       freq = mod1(rows[k][1],NFreq)
       rec = div(rows[k][1],NFreq)
-      rows_[k][1] = (freq-1)*stepsize+1 + rec*nFreq
+      rows_[k] = CartesianIndex((freq-1)*stepsize+1 + rec*nFreq,1)
     end
   else
     rows_ = rows
