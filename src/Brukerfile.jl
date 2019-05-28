@@ -372,8 +372,8 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
     NRx = rxNumChannels(b)
     stepsize = numSubPeriods(b)
     for k=1:length(rows)
-      freq = mod1(rows[k],NFreq)
-      rec = div(rows[k],NFreq)
+      freq = mod1(rows[k][1],NFreq)
+      rec = div(rows[k][1],NFreq)
       rows_[k] = (freq-1)*stepsize+1 + rec*nFreq
     end
   else
