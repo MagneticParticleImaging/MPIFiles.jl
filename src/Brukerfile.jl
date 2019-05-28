@@ -372,9 +372,9 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
     NRx = rxNumChannels(b)
     stepsize = numSubPeriods(b)
     for k=1:length(rows)
-      freq = mod1(rows[k][1],NFreq)
-      rec = div(rows[k][1],NFreq)
-      rows_[k] = CartesianIndex((freq-1)*stepsize+1 + rec*nFreq,1)
+      freq = mod1(rows[k],NFreq)
+      rec = div(rows[k],NFreq)
+      rows_[k] = (freq-1)*stepsize+1 + rec*nFreq
     end
   else
     rows_ = rows
@@ -532,7 +532,7 @@ end
 recoResolution(f::BrukerFile) = push!(parse.(Float64,f["PVM_SpatResol"])./1000,
                                 parse(Float64,f["ACQ_slice_thick"])./1000)
 
-recoFov(f::BrukerFile) = recoResolution(f).*recoSize(f) 
+recoFov(f::BrukerFile) = recoResolution(f).*recoSize(f)
 
 recoFovCenter(f::BrukerFile) = zeros(3)
 recoSize(f::BrukerFile) = push!(parse.(Int,f["RECO_size",1]),
