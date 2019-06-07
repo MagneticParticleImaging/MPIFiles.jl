@@ -1,27 +1,35 @@
 # Getting Started
 
-An MPI data file consists of a collection of parameters that can be
-divided into metadata and measurement data. Let us now consider that
-the string `filename` contains the path to an MPI file (e.g. an MDF file).
-Then be can open the file by calling
+In order to get started with MPIFiles we first need some example datasets.
+These can be obtained by calling
 ```julia
-julia> f = MPIFile(filename)
+download("https://media.tuhh.de/ibi/mdfv2/measurement_V2.mdf", "measurements.mdf")
+download("https://media.tuhh.de/ibi/mdfv2/systemMatrix_V2.mdf", "systemMatrix.mdf")
+```
+which will download an MPI system matrix and an MPI measurement dataset into
+the current directory.
+
+An MPI data file consists of a collection of parameters that can be
+divided into metadata and measurement data. We can open the downloaded MPI
+measurement data by calling
+```julia
+f = MPIFile("measurements.mdf")
 ```
 `f` can be considered to be a handle to the file. The file will be automatically
-be closed when `f` is garbage collected. The philosophy of MPIFiles.jl is that
+ closed when `f` is garbage collected. The philosophy of MPIFiles.jl is that
 the content of the file is only loaded on demand. Hence, opening an MPI file
-is a cheap operations. This design allows it, to handle system matrices, which
+is a cheap operation. This design allows it, to handle system matrices, which
 are larger than the main memory of the computer.
 
-Using the file handle it is possible now to read out different metadata. For instance
+Using the file handle it is possible now to read out different metadata. For instance,
 we can determine the number of frames measured:
 ```julia
-julia> acqNumFrames(f)
+println( acqNumFrames(f) )
 500
 ```
 Or we can access the drive field strength
 ```julia
-julia> dfStrength(f)
+println( dfStrength(f) )
 1×3×1 Array{Float64,3}:
 [:, :, 1] =
  0.014  0.014  0.0

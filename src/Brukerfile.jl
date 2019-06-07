@@ -532,7 +532,7 @@ end
 recoResolution(f::BrukerFile) = push!(parse.(Float64,f["PVM_SpatResol"])./1000,
                                 parse(Float64,f["ACQ_slice_thick"])./1000)
 
-recoFov(f::BrukerFile) = recoResolution(f).*recoSize(f) 
+recoFov(f::BrukerFile) = recoResolution(f).*recoSize(f)
 
 recoFovCenter(f::BrukerFile) = zeros(3)
 recoSize(f::BrukerFile) = push!(parse.(Int,f["RECO_size",1]),

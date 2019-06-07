@@ -41,7 +41,7 @@ function getMeasurementsFD(f::MPIFile, neglectBGFrames=true;
                   tfCorrection=measIsTFCorrected(f),
                   kargs...)
 ```
-The function has basically the same parameters as `getMeasurements` but additionally
+The function has basically the same parameters as `getMeasurements` but, additionally,
 it is possible to load the data in real form (useful when using a solver that cannot
 handle complex numbers), it is possible to specify the frequencies (specified by
 the indices) that should be loaded, and it is possible to transpose the data

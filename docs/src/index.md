@@ -34,14 +34,15 @@ This will install the packages `MPIFiles.jl` and all its dependencies.
 The source code of this project is licensed under the MIT license. This implies that
 you are free to use, share, and adapt it. However, please give appropriate credit by citing the project.
 
-## Contact
+## Community Guidelines
 
-If you have problems using the software, find mistakes, or have general questions please use
-the [issue tracker](https://github.com/MagneticParticleImaging/MPIFiles.jl/issues) to contact us.
+If you have problems using the software, find bugs, or have feature requests please use the [issue tracker](https://github.com/MagneticParticleImaging/MPIFiles.jl/issues) to contact us. For general questions we prefer that you contact the current maintainer directly by email.
+
+We welcome community contributions to `MPIFiles.jl`. Simply create a [pull request](https://github.com/MagneticParticleImaging/MPIFiles.jl/pulls) with your proposed changes.
 
 ## Contributors
 
-* [Tobias Knopp](https://www.tuhh.de/ibi/people/tobias-knopp-head-of-institute.html)
+* [Tobias Knopp](https://www.tuhh.de/ibi/people/tobias-knopp-head-of-institute.html) (maintainer)
 * [Martin Möddel](https://www.tuhh.de/ibi/people/martin-moeddel.html)
 * [Patryk Szwargulski](https://www.tuhh.de/ibi/people/patryk-szwargulski.html)
 * [Florian Griese](https://www.tuhh.de/ibi/people/florian-griese.html)
