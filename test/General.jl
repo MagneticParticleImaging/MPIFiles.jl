@@ -184,7 +184,6 @@ S_loadedfromproc = systemMatrix(smBruker)
 
 # Compression of calib files
 
-
 compressCalibMDF(fnSMV4, smv2, 0.0)
 smv4 = MPIFile(fnSMV4)
 @test size(calibSNR(smv4), 1) == 817
@@ -198,13 +197,21 @@ smv4 = MPIFile(fnSMV4)
 
 @test size(measData(smv4)) == (1959, 110, 3, 1)
 
-
 freq = filterFrequencies(smv4, SNRThresh=4.0)
 S1 = getSystemMatrix(smv4, freq)
 @test size(S1)  == (1936,194)
 
 S2 = getSystemMatrix(smv2, freq)
 @test S1  == S2
+
+# now with basis transformation
+compressCalibMDF(fnSMV4, smv2, 4.0, basisTrafoRedFactor=0.2)
+smv4 = MPIFile(fnSMV4)
+S1 = getSystemMatrix(smv4, freq)
+
+@test norm(S1.-S2) / norm(S2) < 0.05 #less than 5% error
+
+
 
 # Calibration file 1D
 

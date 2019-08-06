@@ -161,21 +161,55 @@ function compressCalibMDF(filenamesOut::Vector{String}, f::MultiMPIFile, SNRThre
     end
   end
 
-  for (i,f_) in enumerate(f) 
+  for (i,f_) in enumerate(f)
     compressCalibMDF(filenamesOut[i], f_, idx; kargs...)
   end
 end
 
-function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64}; kargs...)
+function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
+                          basisTrafoRedFactor=1.0, basisTrafo="DCT-IV", kargs...)
   params = loadDataset(f;kargs...)
 
   params["calibSNR"] = params["calibSNR"][idx,:,:]
   if haskey(params, "rxTransferFunction")
     params["rxTransferFunction"] = params["rxTransferFunction"][idx,:]
   end
-  params["measData"] = params["measData"][:,idx,:,:]
   params["measIsFrequencySelection"] = true
   params["measFrequencySelection"] = idx
+
+  if basisTrafoRedFactor == 1.0
+    params["measData"] = params["measData"][:,idx,:,:]
+  else
+    B = linearOperator(basisTrafo, calibSize(f))
+    N = prod(calibSize(f))
+    NBG = size(params["measData"],1) - N
+    D = size(params["measData"],3)
+    P = size(params["measData"],4)
+    NRed = max(1, floor(Int, basisTrafoRedFactor*N))
+    data = similar(params["measData"], NBG+NRed, length(idx), D, P)
+    basisIndices = zeros(Int32, NRed, length(idx), D, P)
+
+    fgdata = params["measData"][measFGFrameIdx(f),idx,:,:]
+    bgdata = params["measData"][measBGFrameIdx(f),idx,:,:]
+
+    data[(NRed+1):end,:,:,:] = bgdata
+
+    for k=1:length(idx), d=1:D, p=1:P
+      I = B * fgdata[:,k,d,p]
+      basisIndices[:,k,d,p] = round.(Int32,reverse(sortperm(abs.(I)),dims=1)[1:NRed])
+      data[1:NRed,k,d,p] = I[vec(basisIndices[:,k,d,p])]
+    end
+
+    params["measData"] = data
+    params["measIsBasisTransformed"] = true
+    params["measBasisTransformation"] = basisTrafo
+    params["measBasisIndices"] = basisIndices
+
+    bgFrame = zeros(Bool, NRed+NBG)
+    bgFrame[(NRed+1):end] .= true
+    params["measIsBGFrame"] = bgFrame
+    params["acqNumFrames"] = NRed+NBG
+  end
 
   saveasMDF(filenameOut, params)
 end
@@ -295,6 +329,11 @@ function saveasMDF(file::HDF5File, params::Dict)
     end
     if hasKeyAndValue(params, "measIsBGFrame")
       write(file, "/measurement/isBackgroundFrame", convert(Array{Int8}, params["measIsBGFrame"]) )
+    end
+    if hasKeyAndValue(params, "measIsBasisTransformed")
+      write(file, "/measurement/isBasisTransformed", params["measIsBasisTransformed"] )
+      write(file, "/measurement/basisIndices", params["measBasisIndices"] )
+      write(file, "/measurement/basisTransformation", params["measBasisTransformation"] )
     end
   end
 

@@ -19,6 +19,7 @@ using Interpolations
 @reexport using Dates
 @reexport using DelimitedFiles
 using HDF5
+using RegularizedLeastSquares
 
 
 import Base: ndims, time, show, getindex
@@ -63,7 +64,7 @@ export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
        measIsBGCorrected, measIsTransposed,
        measIsFramePermutation, measIsFrequencySelection,
        measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation,
-       measFrequencySelection
+       measFrequencySelection, measIsBasisTransformed
 
 # calibrations
 export calibSNR, calibFov, calibFovCenter, calibSize,
@@ -158,6 +159,7 @@ abstract type MPIFile end
 @mustimplement measIsFramePermutation(f::MPIFile)
 @mustimplement measIsBGFrame(f::MPIFile)
 @mustimplement measFramePermutation(f::MPIFile)
+@mustimplement measIsBasisTransformed(f::MPIFile)
 
 # calibrations
 @mustimplement calibSNR(f::MPIFile)

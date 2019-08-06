@@ -386,6 +386,25 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
   data = reshape(data_, Val(2))
 
   fgdata = data[measFGFrameIdx(f),:]
+
+  if measIsBasisTransformed(f)
+    dataBackTrafo = similar(fgdata, prod(calibSize(f)), size(fgdata,2))
+    B = linearOperator(f["/measurement/basisTransformation"], calibSize(f))
+
+    tmp = f["/measurement/basisIndices"]
+    basisIndices_ = reshape(tmp, size(tmp,1),
+                                     size(tmp,2)*size(tmp,3),
+                                     size(tmp,4))[:, rows_, :]
+    basisIndices = reshape(basisIndices_, Val(2))
+
+    for l=1:size(fgdata,2)
+      dataBackTrafo[:,l] .= 0.0
+      dataBackTrafo[basisIndices[:,l],l] .= fgdata[:,l]
+      dataBackTrafo[:,l] .= adjoint(B) * vec(dataBackTrafo[:,l])
+    end
+    fgdata = dataBackTrafo
+  end
+
   if bgCorrection # this assumes equidistent bg frames
     @debug "Applying bg correction on system matrix (MDF)"
     bgdata = data[measBGFrameIdx(f),:]
@@ -451,6 +470,15 @@ measIsBGCorrected(f::MDFFileV2) = Bool(f["/measurement/isBackgroundCorrected"])
 measIsFrequencySelection(f::MDFFileV1) = false
 measIsFrequencySelection(f::MDFFileV2) = Bool(f["/measurement/isFrequencySelection"])
 measFrequencySelection(f::MDFFileV2) = f["/measurement/frequencySelection"]
+
+measIsBasisTransformed(f::MDFFileV1) = false
+function measIsBasisTransformed(f::MDFFileV2)
+  if exists(f.file, "/measurement/isBasisTransformed")
+    Bool(f["/measurement/isBasisTransformed"])
+  else
+    return false
+  end
+end
 
 function measIsTransposed(f::MDFFileV1)
   if !experimentIsCalibration(f)
