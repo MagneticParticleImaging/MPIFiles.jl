@@ -62,7 +62,8 @@ export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
 export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
        measIsBGCorrected, measIsTransposed,
        measIsFramePermutation, measIsFrequencySelection,
-       measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation
+       measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation,
+       measFrequencySelection
 
 # calibrations
 export calibSNR, calibFov, calibFovCenter, calibSize,

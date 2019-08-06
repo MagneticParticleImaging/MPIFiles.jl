@@ -1,5 +1,5 @@
 # This file contains routines to generate MDF files
-export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!
+export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!, compressCalibMDF
 export saveasMDFHacking # temporary Hack
 
 function setparam!(params::Dict, parameter, value)
@@ -137,6 +137,30 @@ function saveasMDF(filename::String, params::Dict)
   end
 end
 
+function compressCalibMDF(filenameOut::String, f::MPIFile, SNRThresh=2.0; kargs...)
+  params = loadDataset(f;kargs...)
+
+  idx = Int64[]
+
+  SNR = params["calibSNR"][:,:,1]
+  for k=1:size(SNR,1)
+    if maximum(SNR[k,:]) > SNRThresh
+      push!(idx, k)
+    end
+  end
+
+  params["calibSNR"] = params["calibSNR"][idx,:,:]
+  if haskey(params, "rxTransferFunction")
+    params["rxTransferFunction"] = params["rxTransferFunction"][idx,:]
+  end
+  params["measData"] = params["measData"][:,idx,:,:]
+  params["measIsFrequencySelection"] = true
+  params["measFrequencySelection"] = idx
+
+  saveasMDF(filenameOut, params)
+end
+
+
 hasKeyAndValue(paramDict,param) = haskey(paramDict, param) && paramDict[param] != nothing
 
 function writeIfAvailable(file, paramOut, paramDict, paramIn )
@@ -245,6 +269,7 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/measurement/isBackgroundCorrected",  Int8(params["measIsBGCorrected"]))
     write(file, "/measurement/isFastFrameAxis",  Int8(params["measIsTransposed"]))
     write(file, "/measurement/isFramePermutation",  Int8(params["measIsFramePermutation"]))
+    writeIfAvailable(file, "/measurement/frequencySelection",  params, "measFrequencySelection")
 
     if hasKeyAndValue(params, "measFramePermutation")
       write(file, "/measurement/framePermutation", params["measFramePermutation"] )

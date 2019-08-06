@@ -8,6 +8,7 @@ fnMeasV2 = "measurement_V2.mdf"
 fnSMV1 = "systemMatrix_V1.mdf"
 fnSMV2 = "systemMatrix_V2.mdf"
 fnSMV3 = "systemMatrix_V3.mdf"
+fnSMV4 = "systemMatrix_V4.mdf"
 fnSM1DV1 = "systemMatrix1D_V1.mdf"
 fnSM1DV2 = "systemMatrix1D_V2.mdf"
 
@@ -181,6 +182,29 @@ S_loadedfromproc = systemMatrix(smBruker)
 
 @test norm(vec(S_loadedfromraw-S_loadedfromproc)) / norm(vec(S_loadedfromproc)) < 1e-6
 
+# Compression of calib files
+
+
+compressCalibMDF(fnSMV4, smv2, 0.0)
+smv4 = MPIFile(fnSMV4)
+@test size(calibSNR(smv4), 1) == 817
+@test length(filterFrequencies(smv4)) == 817*3
+
+compressCalibMDF(fnSMV4, smv2, 4.0)
+smv4 = MPIFile(fnSMV4)
+@test size(calibSNR(smv4), 1) == 110
+@test length(filterFrequencies(smv4)) == 110*3
+@test length(filterFrequencies(smv4, SNRThresh=4.0)) == 194
+
+@test size(measData(smv4)) == (1959, 110, 3, 1)
+
+
+freq = filterFrequencies(smv4, SNRThresh=4.0)
+S1 = getSystemMatrix(smv4, freq)
+@test size(S1)  == (1936,194)
+
+S2 = getSystemMatrix(smv2, freq)
+@test S1  == S2
 
 # Calibration file 1D
 
