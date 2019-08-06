@@ -138,16 +138,36 @@ function saveasMDF(filename::String, params::Dict)
 end
 
 function compressCalibMDF(filenameOut::String, f::MPIFile, SNRThresh=2.0; kargs...)
-  params = loadDataset(f;kargs...)
-
   idx = Int64[]
 
-  SNR = params["calibSNR"][:,:,1]
+  SNR = calibSNR(f)[:,:,1]
   for k=1:size(SNR,1)
     if maximum(SNR[k,:]) > SNRThresh
       push!(idx, k)
     end
   end
+
+  compressCalibMDF(filenameOut, f, idx; kargs...)
+end
+
+function compressCalibMDF(filenamesOut::Vector{String}, f::MultiMPIFile, SNRThresh=2.0; kargs...)
+  idx = Int64[]
+
+  # We take the SNR from the first SF
+  SNR = calibSNR(f[1])[:,:,1]
+  for k=1:size(SNR,1)
+    if maximum(SNR[k,:]) > SNRThresh
+      push!(idx, k)
+    end
+  end
+
+  for (i,f_) in enumerate(f) 
+    compressCalibMDF(filenamesOut[i], f_, idx; kargs...)
+  end
+end
+
+function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64}; kargs...)
+  params = loadDataset(f;kargs...)
 
   params["calibSNR"] = params["calibSNR"][idx,:,:]
   if haskey(params, "rxTransferFunction")
@@ -159,7 +179,6 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, SNRThresh=2.0; kargs.
 
   saveasMDF(filenameOut, params)
 end
-
 
 hasKeyAndValue(paramDict,param) = haskey(paramDict, param) && paramDict[param] != nothing
 
