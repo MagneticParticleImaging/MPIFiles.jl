@@ -442,6 +442,16 @@ function systemMatrixWithBG(f::MDFFileV2)
   return data
 end
 
+# This is a special variant used for matrix compression
+function systemMatrixWithBG(f::MDFFileV2, freq)
+  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
+    !measIsFourierTransformed(f)
+    return nothing
+  end
+
+  data = f.mmap_measData[:, freq, :, :]
+  return data
+end
 
 function measIsFourierTransformed(f::MDFFileV1)
   if !experimentIsCalibration(f)

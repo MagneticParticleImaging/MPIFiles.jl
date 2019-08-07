@@ -360,6 +360,34 @@ end
 
 systemMatrixWithBG(b::BrukerFileCalib) = measData(b)
 
+# This is a special variant used for matrix compression
+function systemMatrixWithBG(b::BrukerFileCalib, freq)
+  sfFilename = joinpath(b.path,"pdata", "1", "systemMatrix")
+  nFreq = div(rxNumSamplingPoints(b)*numSubPeriods(b),2)+1
+
+  s = open(sfFilename)
+  data = Mmap.mmap(s, Array{ComplexF64,4}, (prod(calibSize(b)),nFreq,rxNumChannels(b),1))
+  #S = data[:,:,:,:]
+  S = map(ComplexF32, data[:,freq,:,:])
+  close(s)
+  rmul!(S,1.0/acqNumAverages(b))
+
+  bgFilename = joinpath(b.path,"pdata", "1", "background")
+
+  s = open(bgFilename)
+  data = Mmap.mmap(s, Array{ComplexF64,4}, (acqNumBGFrames(b),nFreq,rxNumChannels(b),1))
+  #bgdata = data[:,:,:,:]
+  bgdata = map(ComplexF32, data[:,freq,:,:])
+  close(s)
+  rmul!(bgdata,1.0/acqNumAverages(b))
+  S_ = cat(S,bgdata,dims=1)
+  if numSubPeriods(b) == 1
+    return S_
+  else
+    return S_[:,1:numSubPeriods(b):end,:,:]
+  end
+end
+
 function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
 
   localSFFilename = bgCorrection ? "systemMatrixBG" : "systemMatrix"

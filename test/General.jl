@@ -9,6 +9,7 @@ fnSMV1 = "systemMatrix_V1.mdf"
 fnSMV2 = "systemMatrix_V2.mdf"
 fnSMV3 = "systemMatrix_V3.mdf"
 fnSMV4 = "systemMatrix_V4.mdf"
+fnSMV5 = "systemMatrix_V5.mdf"
 fnSM1DV1 = "systemMatrix1D_V1.mdf"
 fnSM1DV2 = "systemMatrix1D_V2.mdf"
 
@@ -184,12 +185,9 @@ S_loadedfromproc = systemMatrix(smBruker)
 
 # Compression of calib files
 
-compressCalibMDF(fnSMV4, smv2, 0.0)
-smv4 = MPIFile(fnSMV4)
-@test size(calibSNR(smv4), 1) == 817
-@test length(filterFrequencies(smv4)) == 817*3
+# We are toggeling between smBruker and smv2 to check that both MDF and BrukerFile work
 
-compressCalibMDF(fnSMV4, smv2, 4.0)
+compressCalibMDF(fnSMV4, smv2, SNRThresh=4.0)
 smv4 = MPIFile(fnSMV4)
 @test size(calibSNR(smv4), 1) == 110
 @test length(filterFrequencies(smv4)) == 110*3
@@ -205,9 +203,9 @@ S2 = getSystemMatrix(smv2, freq)
 @test S1  == S2
 
 # now with basis transformation
-compressCalibMDF(fnSMV4, smv2, 4.0, basisTrafoRedFactor=0.2)
-smv4 = MPIFile(fnSMV4)
-S1 = getSystemMatrix(smv4, freq)
+compressCalibMDF(fnSMV5, smBruker, SNRThresh=4.0, basisTrafoRedFactor=0.2)
+smv5 = MPIFile(fnSMV5)
+S1 = getSystemMatrix(smv5, freq)
 
 @test norm(S1.-S2) / norm(S2) < 0.05 #less than 5% error
 

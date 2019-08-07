@@ -14,13 +14,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
 
   # call API function and store result in a parameter Dict
   if experimentHasMeasurement(f)
-    for op in [:measIsFourierTransformed, :measIsTFCorrected,
-               :measIsBGCorrected,
-               :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
-               :measIsSpectralLeakageCorrected,
-               :measFramePermutation, :measIsBGFrame]
-        setparam!(params, string(op), eval(op)(f))
-    end
+    loadMeasParams(f, params, skipMeasData = true)
     if !applyCalibPostprocessing
       if frames!=1:acqNumFrames(f)
         setparam!(params, "measData", measData(f,frames))
@@ -45,20 +39,8 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
     end
   end
 
-  if experimentIsCalibration(f)
-    for op in [:calibSNR, :calibFov, :calibFovCenter,
-               :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
-               :calibDeltaSampleSize, :calibMethod]
-      setparam!(params, string(op), eval(op)(f))
-    end
-  end
-
-  if experimentHasReconstruction(f)
-    for op in [:recoData, :recoSize, :recoFov, :recoFovCenter, :recoOrder,
-               :recoPositions, :recoParameters]
-      setparam!(params, string(op), eval(op)(f))
-    end
-  end
+  loadCalibParams(f, params)
+  loadRecoParams(f, params)
 
   return params
 end
@@ -85,6 +67,47 @@ function loadMetadata(f, inputParams = MPIFiles.defaultParams)
   end
   return params
 end
+
+function loadRecoParams(f, params = Dict{String,Any}())
+  if experimentHasReconstruction(f)
+    for op in [:recoData, :recoSize, :recoFov, :recoFovCenter, :recoOrder,
+           :recoPositions, :recoParameters]
+      setparam!(params, string(op), eval(op)(f))
+    end
+  end
+
+  return params
+end
+
+function loadCalibParams(f, params = Dict{String,Any}())
+  if experimentIsCalibration(f)
+    for op in [:calibSNR, :calibFov, :calibFovCenter,
+               :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
+             :calibDeltaSampleSize, :calibMethod]
+      setparam!(params, string(op), eval(op)(f))
+    end
+  end
+  return params
+end
+
+function loadMeasParams(f, params = Dict{String,Any}(); skipMeasData = false)
+  if experimentHasMeasurement(f)
+    for op in [:measIsFourierTransformed, :measIsTFCorrected,
+                 :measIsBGCorrected,
+                 :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
+                 :measIsSpectralLeakageCorrected,
+                 :measFramePermutation, :measIsBGFrame]
+      setparam!(params, string(op), eval(op)(f))
+    end
+  end
+
+  if !skipMeasData
+    setparam!(params, "measData", measData(f))
+  end
+
+  return params
+end
+
 
 
 function appendBGDataset(params::Dict, filenameBG::String; kargs...)
@@ -137,7 +160,7 @@ function saveasMDF(filename::String, params::Dict)
   end
 end
 
-function compressCalibMDF(filenameOut::String, f::MPIFile, SNRThresh=2.0; kargs...)
+function compressCalibMDF(filenameOut::String, f::MPIFile; SNRThresh=2.0, kargs...)
   idx = Int64[]
 
   SNR = calibSNR(f)[:,:,1]
@@ -150,7 +173,7 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, SNRThresh=2.0; kargs.
   compressCalibMDF(filenameOut, f, idx; kargs...)
 end
 
-function compressCalibMDF(filenamesOut::Vector{String}, f::MultiMPIFile, SNRThresh=2.0; kargs...)
+function compressCalibMDF(filenamesOut::Vector{String}, f::MultiMPIFile; SNRThresh=2.0, kargs...)
   idx = Int64[]
 
   # We take the SNR from the first SF
@@ -167,8 +190,13 @@ function compressCalibMDF(filenamesOut::Vector{String}, f::MultiMPIFile, SNRThre
 end
 
 function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
-                          basisTrafoRedFactor=1.0, basisTrafo="DCT-IV", kargs...)
-  params = loadDataset(f;kargs...)
+                          basisTrafoRedFactor=1.0, basisTrafo="DCT-IV")
+  params = loadMetadata(f)
+  loadMeasParams(f, params, skipMeasData = true)
+  loadCalibParams(f, params)
+  loadRecoParams(f, params)
+
+  data = systemMatrixWithBG(f, idx)
 
   params["calibSNR"] = params["calibSNR"][idx,:,:]
   if haskey(params, "rxTransferFunction")
@@ -178,29 +206,29 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
   params["measFrequencySelection"] = idx
 
   if basisTrafoRedFactor == 1.0
-    params["measData"] = params["measData"][:,idx,:,:]
+    params["measData"] = data
   else
     B = linearOperator(basisTrafo, calibSize(f))
     N = prod(calibSize(f))
-    NBG = size(params["measData"],1) - N
-    D = size(params["measData"],3)
-    P = size(params["measData"],4)
+    NBG = size(data,1) - N
+    D = size(data,3)
+    P = size(data,4)
     NRed = max(1, floor(Int, basisTrafoRedFactor*N))
-    data = similar(params["measData"], NBG+NRed, length(idx), D, P)
+    dataOut = similar(data, NBG+NRed, length(idx), D, P)
     basisIndices = zeros(Int32, NRed, length(idx), D, P)
 
-    fgdata = params["measData"][measFGFrameIdx(f),idx,:,:]
-    bgdata = params["measData"][measBGFrameIdx(f),idx,:,:]
+    fgdata = data[measFGFrameIdx(f),:,:,:]
+    bgdata = data[measBGFrameIdx(f),:,:,:]
 
-    data[(NRed+1):end,:,:,:] = bgdata
+    dataOut[(NRed+1):end,:,:,:] = bgdata
 
     for k=1:length(idx), d=1:D, p=1:P
       I = B * fgdata[:,k,d,p]
       basisIndices[:,k,d,p] = round.(Int32,reverse(sortperm(abs.(I)),dims=1)[1:NRed])
-      data[1:NRed,k,d,p] = I[vec(basisIndices[:,k,d,p])]
+      dataOut[1:NRed,k,d,p] = I[vec(basisIndices[:,k,d,p])]
     end
 
-    params["measData"] = data
+    params["measData"] = dataOut
     params["measIsBasisTransformed"] = true
     params["measBasisTransformation"] = basisTrafo
     params["measBasisIndices"] = basisIndices
