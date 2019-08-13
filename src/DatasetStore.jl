@@ -183,7 +183,7 @@ function getStudy(d::BrukerDatasetStore, studyfolder::String)
   studypath = joinpath(d.path,studyfolder)
   if !ishidden(studypath) && isdir(studypath)
     w = split(studyfolder,'_')
-    if length(w) >= 5 # only these can be study folders
+    if length(w) >= 5 && length(w[1])==8 # only these can be study folders
       w_ = w[1:end-2]
       date = w[1]
       date = string(date[1:4],"/",date[5:6],"/",date[7:8])
