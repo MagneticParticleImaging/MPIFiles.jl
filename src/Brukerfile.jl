@@ -44,7 +44,21 @@ mutable struct BrukerFileCalib <: BrukerFile
   maxEntriesAcqp
 end
 
-_iscalib(path::String) = isfile(joinpath(path,"pdata", "1", "systemMatrix"))
+function _iscalib(path::AbstractString)
+    calib = false
+    acqpPath = joinpath(path,"acqp")
+    if isfile(acqpPath)
+        open(acqpPath, "r") do io
+            for line in eachline(io)
+                if !isnothing(findfirst("MPICalibration",line))
+                    calib = true
+                    break
+                end
+            end
+        end
+    end
+    return calib
+end
 
 function BrukerFile(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000)
   params = JcampdxFile()
