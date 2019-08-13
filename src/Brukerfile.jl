@@ -210,10 +210,15 @@ function acqNumFrames(b::BrukerFileMeas)
   M = Int64(b["ACQ_jobs"][1][8])
   return div(M,acqNumPeriodsPerFrame(b))
 end
+
 function acqNumFrames(b::BrukerFileCalib)
   M = parse(Int64,b["PVM_MPI_NrCalibrationScans"])
-  A = parse(Int64,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])
-  return div(M-A,acqNumPeriodsPerFrame(b))
+  #A = parse(Int64,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])
+  #return div(M-A,acqNumPeriodsPerFrame(b))
+  # There are older BrukerFile data, where the AdditionalScans parameter does not exist.
+
+  #M = parse(Int64,b["PVM_MPI_NrSystemMatrixCalibrationScans"])
+  return div(M,acqNumPeriodsPerFrame(b))
 end
 
 function acqNumPatches(b::BrukerFile)
