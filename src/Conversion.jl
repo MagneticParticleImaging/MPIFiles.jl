@@ -35,7 +35,11 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
         setparam!(params, "measIsBGFrame",
           cat(zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f)), dims=1))
 
-        setparam!(params, "calibSNR", calculateSystemMatrixSNR(f, data))
+        try
+          setparam!(params, "calibSNR", calibSNR(f))
+        catch
+          setparam!(params, "calibSNR", calculateSystemMatrixSNR(f, data))
+        end
     end
   end
 
@@ -81,7 +85,7 @@ end
 
 function loadCalibParams(f, params = Dict{String,Any}())
   if experimentIsCalibration(f)
-    for op in [:calibSNR, :calibFov, :calibFovCenter,
+    for op in [:calibFov, :calibFovCenter,
                :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
              :calibDeltaSampleSize, :calibMethod]
       setparam!(params, string(op), eval(op)(f))
