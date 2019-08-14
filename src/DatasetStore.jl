@@ -278,19 +278,16 @@ end
 
 function findSFFiles(d::BrukerDatasetStore)
   studies = readdir(d.path)
-
   bfiles = String[]
 
   for study in studies
     studypath = joinpath(d.path,study)
-    if isdir(studypath) && study[1] != '.'
+    if isdir(studypath)
       experiments = readdir(studypath)
       for exp in experiments
         path = joinpath(d.path,study,exp)
-        if isdir(path) && exp[1] != '.'
-          if isfile(joinpath(path,"pdata","1","systemMatrix"))
-            push!(bfiles, path)
-          end
+        if _iscalib(path)
+          push!(bfiles, path)
         end
       end
     end
@@ -299,7 +296,7 @@ function findSFFiles(d::BrukerDatasetStore)
   for BrukerMDFSF in BrukerMDFSFs
     push!(bfiles,joinpath(d.path,"MDF_SFs/",BrukerMDFSF)) 
   end
-  bfiles
+  return bfiles
 end
 
 function findSFFiles(d::MDFDatasetStore)
