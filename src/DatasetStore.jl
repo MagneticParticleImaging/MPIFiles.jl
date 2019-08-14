@@ -145,10 +145,11 @@ function remove(exp::Experiment)
 end
 
 function exportToMDFStore(d::BrukerDatasetStore,path::String, mdf::MDFDatasetStore)
-  b = BrukerFile(path)
+  # pretend to be a measurement to enforce loading data from time domain in case post processed data is not availible
+  b = BrukerFile(path,isCalib=false)
   exportpath = ""
 
-  if experimentIsCalibration(b)
+  if MPIFiles._iscalib(path)
     calibNum = getNewCalibNum(mdf)
     exportpath = joinpath(calibdir(mdf),string(calibNum)*".mdf")
     saveasMDF(exportpath,b,applyCalibPostprocessing=true)
