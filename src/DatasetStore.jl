@@ -144,30 +144,32 @@ function remove(exp::Experiment)
   end
 end
 
-function exportToMDFStore(d::BrukerDatasetStore, s::Study, e::Experiment, mdf::MDFDatasetStore, freqSpace=false)
-
-  name = s.name*"_MDF"
-  path = joinpath( studydir(mdf), name)
-  subject = s.subject
-  date = ""
-
-  newStudy = Study(path,name,subject,date)
-
-  addStudy(mdf, newStudy)
-  expNum = getNewExperimentNum(mdf, newStudy)
-
-  b = BrukerFile(e.path)
+function exportToMDFStore(d::BrukerDatasetStore,path::String, mdf::MDFDatasetStore)
+  b = BrukerFile(path)
+  exportpath = ""
 
   if experimentIsCalibration(b)
     calibNum = getNewCalibNum(mdf)
-    #saveasMDF( joinpath(calibdir(mdf),string(calibNum)*".mdf"), b, deltaSampleSize=[0.002,0.002,0.001]) #Fixme
-    saveasMDF( joinpath(calibdir(mdf),string(calibNum)*".mdf"),
-               b, deltaSampleSize=[0.0,0.0,0.0], bgcorrection=true ) #Fixme
+    exportpath = joinpath(calibdir(mdf),string(calibNum)*".mdf")
+    saveasMDF(exportpath,b,applyCalibPostprocessing=true)
   else
-    saveasMDF( joinpath(studydir(mdf),newStudy.name,string(expNum)*".mdf"), b)
+    s = getStudy(d,string(split(path,"/")[end-1]))
+    name = s.name*"_MDF"
+    mdfPath = joinpath( studydir(mdf), name)
+    subject = s.subject
+    date = ""
+    mdfStudy = Study(mdfPath,name,subject,date)
+    addStudy(mdf,mdfStudy)
+    expNum = getNewExperimentNum(mdf, mdfStudy)
+    exportpath = joinpath(studydir(mdf),mdfStudy.name,string(expNum)*".mdf")
+    saveasMDF(exportpath, b)
   end
-
+    
+  return exportpath
 end
+
+exportToMDFStore(d::BrukerDatasetStore, s::Study, e::Experiment, mdf::MDFDatasetStore) = exportToMDFStore(d,BrukerFile(e.path),mdf)
+
 
 ###  Implementations of abstract interfaces ###
 
