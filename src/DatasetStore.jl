@@ -241,28 +241,39 @@ function addStudy(d::MDFDatasetStore, study::Study)
   nothing
 end
 
-function findBrukerFiles(path::AbstractString)
-  files = readdir(path)
-
-  bfiles = String[]
-
-  for file in files
-    if isdir(joinpath(path,file))
-     try
-      if isfile(joinpath(path,file,"acqp"))
-        push!(bfiles, joinpath(path,file))
-      else
-        rfiles = findBrukerFiles(joinpath(path,file))
-        if rfiles != nothing && length(rfiles) > 0
-          push!(bfiles, rfiles...)
-        end
+@static if Sys.isunix()
+  function findBrukerFiles(path::AbstractString, mindepth::Int=2, maxdepth::Int=2)
+    candidatePaths = split(read(`find $path -maxdepth $maxdepth -mindepth $mindepth -type d`,String),"\n")[1:end-1]
+    mask = zeros(Bool,length(candidatePaths))
+    for (i,candidatePath) in enumerate(candidatePaths)
+      if isfile(joinpath(candidatePath,"acqp"))
+        mask[i] = true
       end
-     catch
-      continue
-     end
-    end
+    end  
+    return candidatePaths[mask]
   end
-  bfiles
+else
+  function findBrukerFiles(path::AbstractString)
+    files = readdir(path)
+    bfiles = String[]
+    for file in files
+      if isdir(joinpath(path,file))
+       try
+        if isfile(joinpath(path,file,"acqp"))
+          push!(bfiles, joinpath(path,file))
+        else
+          rfiles = findBrukerFiles(joinpath(path,file))
+          if rfiles != nothing && length(rfiles) > 0
+            push!(bfiles, rfiles...)
+          end
+        end
+       catch
+        continue
+       end
+      end
+    end
+  return bfiles
+  end
 end
 
 function findSFFiles(d::BrukerDatasetStore)
