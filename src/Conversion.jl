@@ -90,6 +90,9 @@ function loadCalibParams(f, params = Dict{String,Any}())
              :calibDeltaSampleSize, :calibMethod]
       setparam!(params, string(op), eval(op)(f))
     end
+    if !haskey(params, "calibSNR")
+      setparam!(params, "calibSNR", calibSNR(f))
+    end
   end
   return params
 end
@@ -198,6 +201,7 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
   params = loadMetadata(f)
   loadMeasParams(f, params, skipMeasData = true)
   loadCalibParams(f, params)
+  params["calibSNR"] = calibSNR(f)
   loadRecoParams(f, params)
 
   data = systemMatrixWithBG(f, idx)
