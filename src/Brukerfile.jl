@@ -213,12 +213,9 @@ end
 
 function acqNumFrames(b::BrukerFileCalib)
   M = parse(Int64,b["PVM_MPI_NrCalibrationScans"])
-  #A = parse(Int64,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])
-  #return div(M-A,acqNumPeriodsPerFrame(b))
-  # There are older BrukerFile data, where the AdditionalScans parameter does not exist.
-
-  #M = parse(Int64,b["PVM_MPI_NrSystemMatrixCalibrationScans"])
-  return div(M,acqNumPeriodsPerFrame(b))
+  A_ = b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"]
+  A = (A_ == "") ? 0 : parse(Int64, A_)
+  return div(M-A,acqNumPeriodsPerFrame(b))
 end
 
 function acqNumPatches(b::BrukerFile)
@@ -239,11 +236,15 @@ function acqNumBGFrames(b::BrukerFile)
   n = b["PVM_MPI_NrBackgroundMeasurementCalibrationAllScans"]
   a = b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"]
   if n == ""
-    return 0
-  else
-    return parse(Int64,n)-parse(Int64,a)
+    n = "0"
   end
+  if a == ""
+    a = "0"
+  end
+    
+  return parse(Int64,n)-parse(Int64,a)
 end
+
 function acqGradient(b::BrukerFile)
   G1::Float64 = parse(Float64,b["ACQ_MPI_selection_field_gradient"])
   G2 = Matrix(Diagonal([-0.5;-0.5;1.0])) .* G1
