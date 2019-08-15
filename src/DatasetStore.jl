@@ -11,7 +11,6 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
 
 # The following are base types describing
 # the dataset store at a certain level
-
 struct Study
   path::String
   name::String
@@ -83,7 +82,6 @@ end
 const MDFStore = MDFDatasetStore("/opt/data")
 
 ### generic functions ###
-
 function ishidden(filename::AbstractString)
   @static if Sys.isunix()
     s = basename(filename)
@@ -146,30 +144,33 @@ function remove(exp::Experiment)
   end
 end
 
-function exportToMDFStore(d::BrukerDatasetStore, s::Study, e::Experiment, mdf::MDFDatasetStore, freqSpace=false)
+function exportToMDFStore(d::BrukerDatasetStore,path::String, mdf::MDFDatasetStore)
+  # pretend to be a measurement to enforce loading data from time domain in case post processed data is not availible
+  b = BrukerFile(path,isCalib=false)
+  exportpath = ""
 
-  name = s.name*"_MDF"
-  path = joinpath( studydir(mdf), name)
-  subject = s.subject
-  date = ""
-
-  newStudy = Study(path,name,subject,date)
-
-  addStudy(mdf, newStudy)
-  expNum = getNewExperimentNum(mdf, newStudy)
-
-  b = BrukerFile(e.path)
-
-  if experimentIsCalibration(b)
+  if MPIFiles._iscalib(path)
     calibNum = getNewCalibNum(mdf)
-    #saveasMDF( joinpath(calibdir(mdf),string(calibNum)*".mdf"), b, deltaSampleSize=[0.002,0.002,0.001]) #Fixme
-    saveasMDF( joinpath(calibdir(mdf),string(calibNum)*".mdf"),
-               b, deltaSampleSize=[0.0,0.0,0.0], bgcorrection=true ) #Fixme
+    exportpath = joinpath(calibdir(mdf),string(calibNum)*".mdf")
+    saveasMDF(exportpath,b,applyCalibPostprocessing=true)
   else
-    saveasMDF( joinpath(studydir(mdf),newStudy.name,string(expNum)*".mdf"), b)
+    s = getStudy(d,string(split(path,"/")[end-1]))
+    name = s.name*"_MDF"
+    mdfPath = joinpath( studydir(mdf), name)
+    subject = s.subject
+    date = ""
+    mdfStudy = Study(mdfPath,name,subject,date)
+    addStudy(mdf,mdfStudy)
+    expNum = getNewExperimentNum(mdf, mdfStudy)
+    exportpath = joinpath(studydir(mdf),mdfStudy.name,string(expNum)*".mdf")
+    saveasMDF(exportpath, b)
   end
-
+    
+  return exportpath
 end
+
+exportToMDFStore(d::BrukerDatasetStore, s::Study, e::Experiment, mdf::MDFDatasetStore) = exportToMDFStore(d,BrukerFile(e.path),mdf)
+
 
 ###  Implementations of abstract interfaces ###
 
@@ -185,7 +186,7 @@ function getStudy(d::BrukerDatasetStore, studyfolder::String)
   studypath = joinpath(d.path,studyfolder)
   if !ishidden(studypath) && isdir(studypath)
     w = split(studyfolder,'_')
-    if length(w) >= 5 # only these can be study folders
+    if length(w) >= 5 && length(w[1])==8 # only these can be study folders
       w_ = w[1:end-2]
       date = w[1]
       date = string(date[1:4],"/",date[5:6],"/",date[7:8])
@@ -243,50 +244,62 @@ function addStudy(d::MDFDatasetStore, study::Study)
   nothing
 end
 
-function findBrukerFiles(path::AbstractString)
-  files = readdir(path)
-
-  bfiles = String[]
-
-  for file in files
-    if isdir(joinpath(path,file))
-     try
-      if isfile(joinpath(path,file,"acqp"))
-        push!(bfiles, joinpath(path,file))
-      else
-        rfiles = findBrukerFiles(joinpath(path,file))
-        if rfiles != nothing && length(rfiles) > 0
-          push!(bfiles, rfiles...)
-        end
+@static if false #Sys.isunix()
+  function findBrukerFiles(path::AbstractString, mindepth::Int=2, maxdepth::Int=2)
+    candidatePaths = split(read(`find $path -maxdepth $maxdepth -mindepth $mindepth -type d`,String),"\n")[1:end-1]
+    mask = zeros(Bool,length(candidatePaths))
+    for (i,candidatePath) in enumerate(candidatePaths)
+      if isfile(joinpath(candidatePath,"acqp"))
+        mask[i] = true
       end
-     catch
-      continue
-     end
-    end
+    end  
+    return candidatePaths[mask]
   end
-  bfiles
+else
+  function findBrukerFiles(path::AbstractString)
+    files = readdir(path)
+    bfiles = String[]
+    for file in files
+      if isdir(joinpath(path,file))
+       try
+        if isfile(joinpath(path,file,"acqp"))
+          push!(bfiles, joinpath(path,file))
+        else
+          rfiles = findBrukerFiles(joinpath(path,file))
+          if rfiles != nothing && length(rfiles) > 0
+            push!(bfiles, rfiles...)
+          end
+        end
+       catch
+        continue
+       end
+      end
+    end
+  return bfiles
+  end
 end
 
 function findSFFiles(d::BrukerDatasetStore)
   studies = readdir(d.path)
-
   bfiles = String[]
 
   for study in studies
     studypath = joinpath(d.path,study)
-    if isdir(studypath) && study[1] != '.'
+    if isdir(studypath)
       experiments = readdir(studypath)
       for exp in experiments
         path = joinpath(d.path,study,exp)
-        if isdir(path) && exp[1] != '.'
-          if isfile(joinpath(path,"pdata","1","systemMatrix"))
-            push!(bfiles, path)
-          end
+        if _iscalib(path)
+          push!(bfiles, path)
         end
       end
     end
   end
-  bfiles
+  BrukerMDFSFs = readdir(joinpath(d.path,"MDF_SFs/"))
+  for BrukerMDFSF in BrukerMDFSFs
+    push!(bfiles,joinpath(d.path,"MDF_SFs/",BrukerMDFSF)) 
+  end
+  return bfiles
 end
 
 function findSFFiles(d::MDFDatasetStore)
@@ -299,7 +312,7 @@ function findSFFiles(d::MDFDatasetStore)
   for file in files
     prefix, ext = splitext(file)
     if !isdir(file) && tryparse(Int64,prefix) != nothing &&
-       (ext == ".mdf" || ext == ".hdf" || ext == ".h5")
+       (ext == ".mdf" || ext == ".hdf" || ext == ".h5") && !occursin("td.mdf",file)
       try
         push!(bfiles, joinpath(path,file))
       catch e
@@ -318,7 +331,7 @@ end
 function generateSFDatabase(d::DatasetStore, filename::AbstractString)
   fileList = findSFFiles(d)
   A = generateSFDatabase(fileList)
-  writedlm(filename, A)
+  writedlm(filename, A, ',')
 end
 
 function generateSFDatabase(fileList::Vector)
@@ -402,7 +415,11 @@ end
 
 function loadSFDatabase(d::BrukerDatasetStore)
   if isfile("/opt/data/SF_Database.csv")
-    return readdlm("/opt/data/SF_Database.csv",',')
+    A = readdlm("/opt/data/SF_Database.csv",',')
+    if size(A,2) != 16
+      A = readdlm("/opt/data/SF_Database.csv",'\t')
+    end
+    return A
   else
     return nothing
   end
@@ -411,7 +428,7 @@ end
 function loadSFDatabase(d::MDFDatasetStore)
   files = readdir(calibdir(d))
   @debug "system function database" files
-  mdffiles = files[endswith.(files,".mdf")]
+  mdffiles = files[endswith.(files,".mdf") .& .!endswith.(files,"td.mdf")]
   fileList = calibdir(d).*"/".*mdffiles
   A = generateSFDatabase(fileList)
   return A
@@ -543,7 +560,7 @@ function addReco(d::MDFDatasetStore, study::Study, exp::Experiment, image)
 
   filepath = joinpath(outputpath, string(recoNum))
 
-  saveRecoDataMDF(filepath*".mdf", image)
+  saveRecoData(filepath*".mdf", image)
   #save(filepath*".jld","recoParams",recoParams)
 end
 
@@ -624,20 +641,7 @@ end
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 ####### Visualization Store #######
-
 
 function getVisu(d::MDFDatasetStore, study::Study, exp::Experiment, reco::Reconstruction, numVisu)
 

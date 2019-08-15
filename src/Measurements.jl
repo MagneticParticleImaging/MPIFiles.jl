@@ -127,8 +127,10 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     nFrames = length(frames)
     nBlocks = ceil(Int, nFrames / numAverages)
 
-    rem(nFrames, numAverages) != 0 && (warn("numAverages no integer divisor of nFrames.
-              Last Block will be averaged over less than $numAverages Frames."))
+    if rem(nFrames, numAverages) != 0 
+      @warn "numAverages no integer divisor of nFrames.
+              Last Block will be averaged over less than $numAverages Frames."
+    end
 
     data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
 
@@ -156,9 +158,25 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
   end
 end
 
+
+"""
+  getMeasurements(f, [neglectBGFrames]; kargs...) => Array{Float32,4}
+
+Load the measurement data in time domain
+
+Supported keyword arguments:
+* frames
+* bgCorrection
+* interpolateBG
+* tfCorrection
+* sortFrames
+* numAverages
+* spectralLeakageCorrection
+"""
 function getMeasurements(f::MPIFile, neglectBGFrames=true;
       frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
-      bgCorrection=false, interpolateBG=false, tfCorrection=measIsTFCorrected(f), sortFrames=false, kargs...)
+      bgCorrection=false, interpolateBG=false, tfCorrection=measIsTFCorrected(f),
+      sortFrames=false, kargs...)
 
   if neglectBGFrames
     idx = measFGFrameIdx(f)
@@ -196,7 +214,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
           end
         end
       else
-        data[:,:,:,:] .-= mean(dataBG,4)
+        data[:,:,:,:] .-= mean(dataBG, dims=4)
       end
     end
 
@@ -217,7 +235,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
       idxBG = measBGFrameIdx(f)
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
 
-      data[:,:,:,:] .-= mean(dataBG,4)
+      data[:,:,:,:] .-= mean(dataBG, dims=4)
     end
   end
 
@@ -234,7 +252,23 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 end
 
 
+"""
+  getMeasurementsFD(f, [neglectBGFrames]; kargs...) => Array{ComplexF32,4}
 
+Load the measurement data in frequency domain
+
+Supported keyword arguments:
+* frames
+* bgCorrection
+* interpolateBG
+* tfCorrection
+* sortFrames
+* numAverages
+* spectralLeakageCorrection
+* loadasreal
+* transposed
+* frequencies
+"""
 function getMeasurementsFD(f::MPIFile, args...;
       loadasreal=false, transposed=false, frequencies=nothing,
       tfCorrection=measIsTFCorrected(f),  kargs...)

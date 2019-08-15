@@ -365,12 +365,46 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
     return nothing
   end
 
-  data_ = reshape(f.mmap_measData,size(f.mmap_measData,1),
-                                  size(f.mmap_measData,2)*size(f.mmap_measData,3),
-                                  size(f.mmap_measData,4))[:, rows, :]
+  if measIsFrequencySelection(f)
+    # In this case we need to convert indices
+    tmp = zeros(Int64, rxNumFrequencies(f), rxNumChannels(f) )
+    idxAvailable = measFrequencySelection(f)
+    for d=1:rxNumChannels(f)
+      tmp[idxAvailable, d] = (1:length(idxAvailable)) .+ (d-1)*length(idxAvailable)
+    end
+    rows_ = vec(tmp)[rows]
+    if findfirst(x -> x == 0, rows_) != nothing
+      @error "Indices applied to systemMatrix are not available in the file"
+    end
+  else
+    rows_ = rows
+  end
+
+  data_ = reshape(f.mmap_measData, size(f.mmap_measData,1),
+                                   size(f.mmap_measData,2)*size(f.mmap_measData,3),
+                                   size(f.mmap_measData,4))[:, rows_, :]
   data = reshape(data_, Val(2))
 
   fgdata = data[measFGFrameIdx(f),:]
+
+  if measIsBasisTransformed(f)
+    dataBackTrafo = similar(fgdata, prod(calibSize(f)), size(fgdata,2))
+    B = linearOperator(f["/measurement/basisTransformation"], calibSize(f))
+
+    tmp = f["/measurement/basisIndices"]
+    basisIndices_ = reshape(tmp, size(tmp,1),
+                                     size(tmp,2)*size(tmp,3),
+                                     size(tmp,4))[:, rows_, :]
+    basisIndices = reshape(basisIndices_, Val(2))
+
+    for l=1:size(fgdata,2)
+      dataBackTrafo[:,l] .= 0.0
+      dataBackTrafo[basisIndices[:,l],l] .= fgdata[:,l]
+      dataBackTrafo[:,l] .= adjoint(B) * vec(dataBackTrafo[:,l])
+    end
+    fgdata = dataBackTrafo
+  end
+
   if bgCorrection # this assumes equidistent bg frames
     @debug "Applying bg correction on system matrix (MDF)"
     bgdata = data[measBGFrameIdx(f),:]
@@ -408,6 +442,16 @@ function systemMatrixWithBG(f::MDFFileV2)
   return data
 end
 
+# This is a special variant used for matrix compression
+function systemMatrixWithBG(f::MDFFileV2, freq)
+  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
+    !measIsFourierTransformed(f)
+    return nothing
+  end
+
+  data = f.mmap_measData[:, freq, :, :]
+  return data
+end
 
 function measIsFourierTransformed(f::MDFFileV1)
   if !experimentIsCalibration(f)
@@ -435,6 +479,16 @@ measIsBGCorrected(f::MDFFileV2) = Bool(f["/measurement/isBackgroundCorrected"])
 
 measIsFrequencySelection(f::MDFFileV1) = false
 measIsFrequencySelection(f::MDFFileV2) = Bool(f["/measurement/isFrequencySelection"])
+measFrequencySelection(f::MDFFileV2) = f["/measurement/frequencySelection"]
+
+measIsBasisTransformed(f::MDFFileV1) = false
+function measIsBasisTransformed(f::MDFFileV2)
+  if exists(f.file, "/measurement/isBasisTransformed")
+    Bool(f["/measurement/isBasisTransformed"])
+  else
+    return false
+  end
+end
 
 function measIsTransposed(f::MDFFileV1)
   if !experimentIsCalibration(f)

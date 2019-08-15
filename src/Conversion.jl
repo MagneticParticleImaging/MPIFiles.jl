@@ -1,5 +1,5 @@
 # This file contains routines to generate MDF files
-export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!
+export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!, compressCalibMDF
 export saveasMDFHacking # temporary Hack
 
 function setparam!(params::Dict, parameter, value)
@@ -14,13 +14,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
 
   # call API function and store result in a parameter Dict
   if experimentHasMeasurement(f)
-    for op in [:measIsFourierTransformed, :measIsTFCorrected,
-               :measIsBGCorrected,
-               :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
-               :measIsSpectralLeakageCorrected,
-               :measFramePermutation, :measIsBGFrame]
-        setparam!(params, string(op), eval(op)(f))
-    end
+    loadMeasParams(f, params, skipMeasData = true)
     if !applyCalibPostprocessing
       if frames!=1:acqNumFrames(f)
         setparam!(params, "measData", measData(f,frames))
@@ -41,24 +35,16 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
         setparam!(params, "measIsBGFrame",
           cat(zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f)), dims=1))
 
-        setparam!(params, "calibSNR", calculateSystemMatrixSNR(f, data))
+        try
+          setparam!(params, "calibSNR", calibSNR(f))
+        catch
+          setparam!(params, "calibSNR", calculateSystemMatrixSNR(f, data))
+        end
     end
   end
 
-  if experimentIsCalibration(f)
-    for op in [:calibSNR, :calibFov, :calibFovCenter,
-               :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
-               :calibDeltaSampleSize, :calibMethod]
-      setparam!(params, string(op), eval(op)(f))
-    end
-  end
-
-  if experimentHasReconstruction(f)
-    for op in [:recoData, :recoSize, :recoFov, :recoFovCenter, :recoOrder,
-               :recoPositions, :recoParameters]
-      setparam!(params, string(op), eval(op)(f))
-    end
-  end
+  loadCalibParams(f, params)
+  loadRecoParams(f, params)
 
   return params
 end
@@ -85,6 +71,50 @@ function loadMetadata(f, inputParams = MPIFiles.defaultParams)
   end
   return params
 end
+
+function loadRecoParams(f, params = Dict{String,Any}())
+  if experimentHasReconstruction(f)
+    for op in [:recoData, :recoSize, :recoFov, :recoFovCenter, :recoOrder,
+           :recoPositions, :recoParameters]
+      setparam!(params, string(op), eval(op)(f))
+    end
+  end
+
+  return params
+end
+
+function loadCalibParams(f, params = Dict{String,Any}())
+  if experimentIsCalibration(f)
+    for op in [:calibFov, :calibFovCenter,
+               :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
+             :calibDeltaSampleSize, :calibMethod]
+      setparam!(params, string(op), eval(op)(f))
+    end
+    if !haskey(params, "calibSNR")
+      setparam!(params, "calibSNR", calibSNR(f))
+    end
+  end
+  return params
+end
+
+function loadMeasParams(f, params = Dict{String,Any}(); skipMeasData = false)
+  if experimentHasMeasurement(f)
+    for op in [:measIsFourierTransformed, :measIsTFCorrected,
+                 :measIsBGCorrected,
+                 :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
+                 :measIsSpectralLeakageCorrected,
+                 :measFramePermutation, :measIsBGFrame]
+      setparam!(params, string(op), eval(op)(f))
+    end
+  end
+
+  if !skipMeasData
+    setparam!(params, "measData", measData(f))
+  end
+
+  return params
+end
+
 
 
 function appendBGDataset(params::Dict, filenameBG::String; kargs...)
@@ -122,7 +152,7 @@ function saveasMDFHacking(filenameOut::String, f::MPIFile)
     dataSet["acqNumPeriodsPerFrame"]=1
     dataSet["measData"]=reshape(dataSet["measData"],size(dataSet["measData"],1),size(dataSet["measData"],2),1,size(dataSet["measData"],3)*size(dataSet["measData"],4))
     dataSet["dfStrength"]=dataSet["dfStrength"][:,:,1:1]
-    dataSet["acqOffsetField"]=dataSet["acqOffsetField"][:,1:1]
+    dataSet["acqOffsetField"]=dataSet["acqOffsetField"]
     #dataSet["acqOffsetFieldShift"]=dataSet["acqOffsetFieldShift"][:,1:1]
     dataSet["dfPhase"]=dataSet["dfPhase"][:,:,1:1]
     saveasMDF(filenameOut, dataSet)
@@ -135,6 +165,89 @@ function saveasMDF(filename::String, params::Dict)
   h5open(filename, "w") do file
     saveasMDF(file, params)
   end
+end
+
+function compressCalibMDF(filenameOut::String, f::MPIFile; SNRThresh=2.0, kargs...)
+  idx = Int64[]
+
+  SNR = calibSNR(f)[:,:,1]
+  for k=1:size(SNR,1)
+    if maximum(SNR[k,:]) > SNRThresh
+      push!(idx, k)
+    end
+  end
+
+  compressCalibMDF(filenameOut, f, idx; kargs...)
+end
+
+function compressCalibMDF(filenamesOut::Vector{String}, f::MultiMPIFile; SNRThresh=2.0, kargs...)
+  idx = Int64[]
+
+  # We take the SNR from the first SF
+  SNR = calibSNR(f[1])[:,:,1]
+  for k=1:size(SNR,1)
+    if maximum(SNR[k,:]) > SNRThresh
+      push!(idx, k)
+    end
+  end
+
+  for (i,f_) in enumerate(f)
+    compressCalibMDF(filenamesOut[i], f_, idx; kargs...)
+  end
+end
+
+function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
+                          basisTrafoRedFactor=1.0, basisTrafo="DCT-IV")
+  params = loadMetadata(f)
+  loadMeasParams(f, params, skipMeasData = true)
+  loadCalibParams(f, params)
+  params["calibSNR"] = calibSNR(f)
+  loadRecoParams(f, params)
+
+  data = systemMatrixWithBG(f, idx)
+
+  params["calibSNR"] = params["calibSNR"][idx,:,:]
+  if haskey(params, "rxTransferFunction")
+    params["rxTransferFunction"] = params["rxTransferFunction"][idx,:]
+  end
+  params["measIsFrequencySelection"] = true
+  params["measFrequencySelection"] = idx
+
+  if basisTrafoRedFactor == 1.0
+    params["measData"] = data
+  else
+    B = linearOperator(basisTrafo, calibSize(f))
+    N = prod(calibSize(f))
+    NBG = size(data,1) - N
+    D = size(data,3)
+    P = size(data,4)
+    NRed = max(1, floor(Int, basisTrafoRedFactor*N))
+    dataOut = similar(data, NBG+NRed, length(idx), D, P)
+    basisIndices = zeros(Int32, NRed, length(idx), D, P)
+
+    fgdata = data[measFGFrameIdx(f),:,:,:]
+    bgdata = data[measBGFrameIdx(f),:,:,:]
+
+    dataOut[(NRed+1):end,:,:,:] = bgdata
+
+    for k=1:length(idx), d=1:D, p=1:P
+      I = B * fgdata[:,k,d,p]
+      basisIndices[:,k,d,p] = round.(Int32,reverse(sortperm(abs.(I)),dims=1)[1:NRed])
+      dataOut[1:NRed,k,d,p] = I[vec(basisIndices[:,k,d,p])]
+    end
+
+    params["measData"] = dataOut
+    params["measIsBasisTransformed"] = true
+    params["measBasisTransformation"] = basisTrafo
+    params["measBasisIndices"] = basisIndices
+
+    bgFrame = zeros(Bool, NRed+NBG)
+    bgFrame[(NRed+1):end] .= true
+    params["measIsBGFrame"] = bgFrame
+    params["acqNumFrames"] = NRed+NBG
+  end
+
+  saveasMDF(filenameOut, params)
 end
 
 hasKeyAndValue(paramDict,param) = haskey(paramDict, param) && paramDict[param] != nothing
@@ -245,12 +358,18 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/measurement/isBackgroundCorrected",  Int8(params["measIsBGCorrected"]))
     write(file, "/measurement/isFastFrameAxis",  Int8(params["measIsTransposed"]))
     write(file, "/measurement/isFramePermutation",  Int8(params["measIsFramePermutation"]))
+    writeIfAvailable(file, "/measurement/frequencySelection",  params, "measFrequencySelection")
 
     if hasKeyAndValue(params, "measFramePermutation")
       write(file, "/measurement/framePermutation", params["measFramePermutation"] )
     end
     if hasKeyAndValue(params, "measIsBGFrame")
       write(file, "/measurement/isBackgroundFrame", convert(Array{Int8}, params["measIsBGFrame"]) )
+    end
+    if hasKeyAndValue(params, "measIsBasisTransformed")
+      write(file, "/measurement/isBasisTransformed", params["measIsBasisTransformed"] )
+      write(file, "/measurement/basisIndices", params["measBasisIndices"] )
+      write(file, "/measurement/basisTransformation", params["measBasisTransformation"] )
     end
   end
 
@@ -282,4 +401,5 @@ function saveasMDF(file::HDF5File, params::Dict)
     end
   end
 
+  writeIfAvailable(file, "/custom/auxiliaryData", params, "auxiliaryData")
 end

@@ -44,7 +44,21 @@ mutable struct BrukerFileCalib <: BrukerFile
   maxEntriesAcqp
 end
 
-_iscalib(path::String) = isfile(joinpath(path,"pdata", "1", "systemMatrix"))
+function _iscalib(path::AbstractString)
+    calib = false
+    acqpPath = joinpath(path,"acqp")
+    if isfile(acqpPath)
+        open(acqpPath, "r") do io
+            for line in eachline(io)
+                if !isnothing(findfirst("MPICalibration",line))
+                    calib = true
+                    break
+                end
+            end
+        end
+    end
+    return calib
+end
 
 function BrukerFile(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000)
   params = JcampdxFile()
@@ -102,10 +116,10 @@ function getindex(b::BrukerFile, parameter)#::String
   end
 end
 
-function getindex(b::BrukerFile, parameter, procno::Int64)::String
+function getindex(b::BrukerFile, parameter, procno::Int64)#::String
   if !b.recoRead && lowercase( parameter[1:4] ) == "reco"
     recopath = joinpath(b.path, "pdata", string(procno), "reco")
-    read(b.paramsProc, acqppath, maxEntries=13)
+    read(b.paramsProc, recopath, maxEntries=13)
     b.recoRead = true
   elseif !b.methrecoRead && parameter[1:3] == "PVM"
     methrecopath = joinpath(b.path, "pdata", string(procno), "methreco")
@@ -182,17 +196,25 @@ scannerTopology(b::BrukerFile) = "FFP"
 
 # acquisition parameters
 function acqStartTime(b::BrukerFile)
-  m = match(r"<(.+)\+",b["ACQ_time"])
-  timeString = replace(m.captures[1],"," => ".")
-  return DateTime( timeString )
+  if b["ACQ_time"]==""
+    m = match(r"<(.+)\+","<0000-01-01T00:00:00,000+000>")
+    timeString = replace(m.captures[1],"," => ".")
+    return DateTime( timeString )
+  else
+    m = match(r"<(.+)\+",b["ACQ_time"])
+    timeString = replace(m.captures[1],"," => ".")
+    return DateTime( timeString )
+  end
 end
 function acqNumFrames(b::BrukerFileMeas)
   M = Int64(b["ACQ_jobs"][1][8])
   return div(M,acqNumPeriodsPerFrame(b))
 end
+
 function acqNumFrames(b::BrukerFileCalib)
   M = parse(Int64,b["PVM_MPI_NrCalibrationScans"])
-  A = parse(Int64,b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"])
+  A_ = b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"]
+  A = (A_ == "") ? 0 : parse(Int64, A_)
   return div(M-A,acqNumPeriodsPerFrame(b))
 end
 
@@ -205,7 +227,6 @@ function acqNumPeriodsPerFrame(b::BrukerFile)
   N = acqNumPatches(b)
   return (M == "") ? N : N*parse(Int64,M)
 end
-acqNumPeriodsPerPatch(b::BrukerFile) = div(acqNumPeriodsPerFrame(b),acqNumPatches(b))
 
 acqNumAverages(b::BrukerFileMeas) = parse(Int,b["NA"])
 acqNumAverages(b::BrukerFileCalib) = parse(Int,b["NA"])*numSubPeriods(b)
@@ -215,11 +236,15 @@ function acqNumBGFrames(b::BrukerFile)
   n = b["PVM_MPI_NrBackgroundMeasurementCalibrationAllScans"]
   a = b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"]
   if n == ""
-    return 0
-  else
-    return parse(Int64,n)-parse(Int64,a)
+    n = "0"
   end
+  if a == ""
+    a = "0"
+  end
+    
+  return parse(Int64,n)-parse(Int64,a)
 end
+
 function acqGradient(b::BrukerFile)
   G1::Float64 = parse(Float64,b["ACQ_MPI_selection_field_gradient"])
   G2 = Matrix(Diagonal([-0.5;-0.5;1.0])) .* G1
@@ -355,6 +380,34 @@ end
 
 systemMatrixWithBG(b::BrukerFileCalib) = measData(b)
 
+# This is a special variant used for matrix compression
+function systemMatrixWithBG(b::BrukerFileCalib, freq)
+  sfFilename = joinpath(b.path,"pdata", "1", "systemMatrix")
+  nFreq = div(rxNumSamplingPoints(b)*numSubPeriods(b),2)+1
+
+  s = open(sfFilename)
+  data = Mmap.mmap(s, Array{ComplexF64,4}, (prod(calibSize(b)),nFreq,rxNumChannels(b),1))
+  #S = data[:,:,:,:]
+  S = map(ComplexF32, data[:,freq,:,:])
+  close(s)
+  rmul!(S,1.0/acqNumAverages(b))
+
+  bgFilename = joinpath(b.path,"pdata", "1", "background")
+
+  s = open(bgFilename)
+  data = Mmap.mmap(s, Array{ComplexF64,4}, (acqNumBGFrames(b),nFreq,rxNumChannels(b),1))
+  #bgdata = data[:,:,:,:]
+  bgdata = map(ComplexF32, data[:,freq,:,:])
+  close(s)
+  rmul!(bgdata,1.0/acqNumAverages(b))
+  S_ = cat(S,bgdata,dims=1)
+  if numSubPeriods(b) == 1
+    return S_
+  else
+    return S_[:,1:numSubPeriods(b):end,:,:]
+  end
+end
+
 function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
 
   localSFFilename = bgCorrection ? "systemMatrixBG" : "systemMatrix"
@@ -368,7 +421,7 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
     stepsize = numSubPeriods(b)
     for k=1:length(rows)
       freq = mod1(rows[k],NFreq)
-      rec = div(rows[k],NFreq)
+      rec = div(rows[k]-1,NFreq)
       rows_[k] = (freq-1)*stepsize+1 + rec*nFreq
     end
   else
@@ -377,7 +430,7 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
 
   s = open(sfFilename)
   data = Mmap.mmap(s, Array{ComplexF64,2}, (prod(calibSize(b)),nFreq*rxNumChannels(b)))
-  S = data[:,rows]
+  S = data[:,rows_]
   close(s)
   rmul!(S, 1.0/acqNumAverages(b))
   return S
@@ -433,6 +486,7 @@ fullFramePermutation(f::BrukerFile) = fullFramePermutation(f, true)
 
 measIsSpectralLeakageCorrected(b::BrukerFile) = get(b.params, "ACQ_MPI_spectral_cleaningl", "No") != "No"
 measIsFrequencySelection(b::BrukerFile) = false
+measIsBasisTransformed(b::BrukerFile) = false
 
 # calibrations
 function calibSNR(b::BrukerFile)
@@ -467,8 +521,6 @@ filepath(b::BrukerFile) = b.path
 
 
 # special additional methods
-
-
 function sfPath(b::BrukerFile)
   tmp = b["PVM_MPI_FilenameSystemMatrix",1]
   m = match(r"^(.+)\/pdata",tmp)
@@ -506,7 +558,36 @@ function numSubPeriods(f::BrukerFile)
   floor(Int,(lcm(dfDivider(f)[selected_channels]) / lcm(active_divider)))
 end
 
+##### Reco
 
+
+
+
+
+function recoData(f::BrukerFile)
+  recoFilename = joinpath(f.path,"pdata", "1", "2dseq")
+  N = recoSize(f)
+
+  #if f["RECO_wordtype",1] != "_16BIT_SGN_INT"
+  #  @error "Not yet implemented!"
+  #end
+
+  I = open(recoFilename,"r") do fd
+    read!(fd,Array{Int16,3}(undef,1,prod(N),1))
+  end
+  return map(Float32,I)
+end
+
+recoResolution(f::BrukerFile) = push!(parse.(Float64,f["PVM_SpatResol"])./1000,
+                                parse(Float64,f["ACQ_slice_thick"])./1000)
+
+recoFov(f::BrukerFile) = recoResolution(f).*recoSize(f)
+
+recoFovCenter(f::BrukerFile) = zeros(3)
+recoSize(f::BrukerFile) = push!(parse.(Int,f["RECO_size",1]),
+                                parse(Int,f["RecoObjectsPerRepetition",1]))
+#recoOrder(f::BrukerFile) = f["/reconstruction/order"]
+#recoPositions(f::BrukerFile) = f["/reconstruction/positions"]
 
 ###############################
 # delta sample functions

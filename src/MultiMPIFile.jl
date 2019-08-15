@@ -107,8 +107,8 @@ end
 
 experimentHasReconstruction(f::MultiMPIFile) = false
 
-##Achtung hack in der Schleife acqNumFrames(fi) statt acqNumFrames(f)
-#notwendig, da hier Sprung zwischen MultiMPIFile und MPIFile
+## Achtung hack in der Schleife acqNumFrames(fi) statt acqNumFrames(f)
+# notwendig, da hier Sprung zwischen MultiMPIFile und MPIFile
 function measData(f::MultiMPIFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
   data = zeros(Float32, rxNumSamplingPoints(f), length(receivers),
