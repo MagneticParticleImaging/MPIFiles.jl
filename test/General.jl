@@ -142,7 +142,6 @@ smv3 = MPIFile(fnSMV3)
 @test typeof(smv3) == MDFFileV2
 
 
-
 for sm in (smBruker,smv2,smv3)
   @info "Test $sm"
 
@@ -169,6 +168,17 @@ for sm in (smBruker,smv2,smv3)
   @test size(getSystemMatrix(sm,1:10)) == (1936,10)
   @test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (1936,20)
   @test size(getSystemMatrix(sm,1:10,bgCorrection=true)) == (1936,10)
+  # test on the data level if the conversion was successfull
+  SNRThresh = 2
+  freq = filterFrequencies(smBruker,SNRThresh=SNRThresh)
+  SBruker = getSystemMatrix(smBruker,frequencies=freq)
+  S = getSystemMatrix(sm,frequencies=freq)
+  relativeDeviation = zeros(Float32,length(freq))
+  for f in 1:length(freq)
+    relativeDeviation[f] = norm(SBruker[:,f]-S[:,f])/norm(SBruker[:,f])
+  end
+  # test if relative deviation for most of the frequency components is below 0.003
+  @test quantile(relativeDeviation,0.95)<0.003
 end
 
 # Next test checks if the cached system matrix is the same as the one loaded
