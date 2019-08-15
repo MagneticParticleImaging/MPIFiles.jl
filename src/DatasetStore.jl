@@ -244,8 +244,8 @@ function addStudy(d::MDFDatasetStore, study::Study)
   nothing
 end
 
-@static if false #Sys.isunix()
-  function findBrukerFiles(path::AbstractString, mindepth::Int=2, maxdepth::Int=2)
+@static if Sys.isunix()
+  function findBrukerFiles(path::AbstractString, mindepth::Int=1, maxdepth::Int=2)
     candidatePaths = split(read(`find $path -maxdepth $maxdepth -mindepth $mindepth -type d`,String),"\n")[1:end-1]
     mask = zeros(Bool,length(candidatePaths))
     for (i,candidatePath) in enumerate(candidatePaths)
@@ -253,7 +253,7 @@ end
         mask[i] = true
       end
     end  
-    return candidatePaths[mask]
+    return String.(candidatePaths[mask])
   end
 else
   function findBrukerFiles(path::AbstractString)
