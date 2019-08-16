@@ -79,7 +79,7 @@ struct MDFDatasetStore <: DatasetStore
   end
 end
 
-const MDFStore = MDFDatasetStore("/opt/data")
+const MDFStore = MDFDatasetStore("/opt/data/Bruker")
 
 ### generic functions ###
 function ishidden(filename::AbstractString)
@@ -165,7 +165,7 @@ function exportToMDFStore(d::BrukerDatasetStore,path::String, mdf::MDFDatasetSto
     exportpath = joinpath(studydir(mdf),mdfStudy.name,string(expNum)*".mdf")
     saveasMDF(exportpath, b)
   end
-    
+
   return exportpath
 end
 
@@ -252,7 +252,7 @@ end
       if isfile(joinpath(candidatePath,"acqp"))
         mask[i] = true
       end
-    end  
+    end
     return String.(candidatePaths[mask])
   end
 else
@@ -297,7 +297,7 @@ function findSFFiles(d::BrukerDatasetStore)
   end
   BrukerMDFSFs = readdir(joinpath(d.path,"MDF_SFs/"))
   for BrukerMDFSF in BrukerMDFSFs
-    push!(bfiles,joinpath(d.path,"MDF_SFs/",BrukerMDFSF)) 
+    push!(bfiles,joinpath(d.path,"MDF_SFs/",BrukerMDFSF))
   end
   return bfiles
 end
