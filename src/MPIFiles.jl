@@ -207,7 +207,12 @@ function MPIFile(filename::AbstractString; kargs...)
       return IMTFile(filename, file; kargs...)
     end
   else
-    return BrukerFile(filename; kargs...)
+    if isfile(joinpath(filename,"mdf"))
+      filenameMDF = readline(joinpath(filename,"mdf"))
+      return MDFFile(filenameMDF)
+    else
+      return BrukerFile(filename; kargs...)
+    end
   end
 end
 
