@@ -2,12 +2,11 @@ module MPIFiles
 
 using Reexport
 
-using Compat
 @reexport using LinearAlgebra
 @reexport using Statistics
 @reexport using FFTW
 @reexport using Random
-using Compat.UUIDs
+using UUIDs
 using Graphics: @mustimplement
 @reexport using ImageAxes
 using AxisArrays

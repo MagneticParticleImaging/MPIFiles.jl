@@ -1,7 +1,6 @@
 using MPIFiles
-using Compat
 using Test
-using Compat.UUIDs
+using UUIDs
 using HTTP
 using Unitful
 using HDF5

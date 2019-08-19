@@ -96,7 +96,7 @@ function getindex(b::BrukerFile, parameter)#::String
          parameter[1:4] == "Visu"
     visupath = joinpath(b.path, "visu_pars")
     if isfile(visupath)
-      keylist = ["VisuStudyId","VisuStudyNumber","VisuExperimentNumber","VisuSubjectName","VisuStudyDate"]
+      keylist = ["VisuStudyId","VisuStudyNumber","VisuExperimentNumber","VisuSubjectName","VisuStudyDate","VisuUid","VisuStudyUid"]
       read(b.params, visupath,keylist)
       b.visupars_globalRead = true
     end
@@ -147,7 +147,7 @@ selectedReceivers(b::BrukerFile) = b["ACQ_ReceiverSelect"] .== "Yes"
 
 # general parameters
 version(b::BrukerFile) = nothing
-uuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
+uuid(b::BrukerFile) = nothing
 time(b::BrukerFile) = nothing
 
 # study parameters
@@ -155,7 +155,10 @@ studyName(b::BrukerFile) = string(experimentSubject(b),"_",
                                   latin1toutf8(b["VisuStudyId"]),"_",
                                   b["VisuStudyNumber"])
 studyNumber(b::BrukerFile) = parse(Int64,b["VisuStudyNumber"])
-studyUuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
+function studyUuid(b::BrukerFile)
+  rng = MersenneTwister(hash(b["VisuStudyUid"])) # use VisuStudyUid as seed to generate uuid4
+  return uuid4(rng)	
+end
 studyDescription(b::BrukerFile) = "n.a."
 function studyTime(b::BrukerFile)
   m = match(r"<(.+)\+",b["VisuStudyDate"])
@@ -166,7 +169,10 @@ end
 # study parameters
 experimentName(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentNumber(b::BrukerFile) = parse(Int64,b["VisuExperimentNumber"])
-experimentUuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
+function experimentUuid(b::BrukerFile)
+  rng = MersenneTwister(hash(b["VisuUid"])) # use VisuUid as seed to generate uuid4
+  return uuid4(rng)	
+end
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
 experimentIsSimulation(b::BrukerFile) = false
