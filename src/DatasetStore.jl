@@ -532,7 +532,7 @@ end
 ####### Reconstruction Store MDF ###################
 
 function getReco(d::MDFDatasetStore, study::Study, exp::Experiment, recoNum::Int64)
-  path = joinpath(d.path, "reconstructions", id(study), string(exp.num), string(recoNum))
+  path = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), string(exp.num), string(recoNum))
   filename = path*".mdf"
   if !isfile(filename)
     filename = path*".hdf"
@@ -574,7 +574,7 @@ end
 # The following function is certainly not ideal when considering a "getReco" scenario
 function addReco(d::MDFDatasetStore, study::Study, exp::Experiment, image)
 
-  outputpath = joinpath(d.path, "reconstructions", id(study), string(exp.num))
+  outputpath = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), string(exp.num))
   # create data directory
   mkpath(outputpath)
   try_chmod(outputpath, 0o777, recursive=true)
@@ -634,7 +634,7 @@ function getRecons(d::MDFDatasetStore, study::Study, exp::Experiment)
 
   recons = Reconstruction[]
 
-  datadir = joinpath(d.path, "reconstructions", id(study), string(exp.num))
+  datadir = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), string(exp.num))
 
   if isdir(datadir)
     files = readdir(datadir)
@@ -668,7 +668,8 @@ end
 
 function getVisu(d::MDFDatasetStore, study::Study, exp::Experiment, reco::Reconstruction, numVisu)
 
-  filename = joinpath(d.path, "reconstructions", id(study), string(exp.num), string(reco.num)*".visu")
+  filename = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), 
+			       string(exp.num), string(reco.num)*".visu")
 
   if isfile(filename)
 
@@ -687,7 +688,8 @@ function getVisus(d::MDFDatasetStore, study::Study, exp::Experiment, reco::Recon
 
   visus = Visualization[]
 
-  filename = joinpath(d.path, "reconstructions", id(study), string(exp.num), string(reco.num)*".visu")
+  filename = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), string(exp.num), 
+			      string(reco.num)*".visu")
 
   if isfile(filename)
 
@@ -728,7 +730,8 @@ end
 
 function addVisu(d::MDFDatasetStore, study::Study, exp::Experiment, reco::Reconstruction, visuParams)
 
-  filename = joinpath(d.path, "reconstructions", id(study), string(exp.num), string(reco.num)*".visu" )
+  filename = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), string(exp.num), 
+			      string(reco.num)*".visu" )
 
   visus = getVisus(d, study, exp, reco)
 
