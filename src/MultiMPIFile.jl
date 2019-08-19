@@ -1,5 +1,4 @@
 export MultiMPIFile
-import Base: getindex, length, iterate
 
 mutable struct MultiMPIFile <: MPIFile
   files::Vector{MPIFile}

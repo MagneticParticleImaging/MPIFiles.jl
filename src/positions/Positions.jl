@@ -1,7 +1,3 @@
-using Unitful, HDF5
-
-import Base: getindex, length, convert, iterate, write, range
-
 export Positions, GridPositions, RegularGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions,
        SphericalTDesign, BreakpointGridPositions

@@ -1,5 +1,3 @@
-import Base: read, getindex, get, haskey
-
 export JcampdxFile, findfirst_
 
 findfirst_(A, v) = something(findfirst(isequal(v), A), 0)

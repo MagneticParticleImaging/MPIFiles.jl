@@ -1,7 +1,3 @@
-using HDF5
-
-import HDF5: h5read
-
 export IMTFile, IMTFileCalib, IMTFileMeas, addTrailingSingleton
 
 abstract type IMTFile <: MPIFile end
