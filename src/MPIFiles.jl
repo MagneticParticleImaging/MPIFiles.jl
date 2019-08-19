@@ -32,7 +32,7 @@ export MPIFile
 export version, uuid
 
 # study parameters
-export studyName, studyNumber, studyUuid, studyDescription
+export studyName, studyNumber, studyUuid, studyDescription, studyTime
 
 # experiment parameters
 export experimentName, experimentNumber, experimentUuid, experimentDescription, experimentSubject,
@@ -92,6 +92,7 @@ abstract type MPIFile end
 @mustimplement studyNumber(f::MPIFile)
 @mustimplement studyUuid(f::MPIFile)
 @mustimplement studyDescription(f::MPIFile)
+@mustimplement studyTime(f::MPIFile)
 
 # experiment parameters
 @mustimplement experimentName(f::MPIFile)

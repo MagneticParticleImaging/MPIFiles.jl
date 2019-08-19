@@ -49,7 +49,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
   return params
 end
 
-const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyName, :studyNumber, :studyUuid, :studyDescription,
+const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyName, :studyNumber, :studyUuid, :studyTime, :studyDescription,
           :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
           :experimentSubject,
           :experimentIsSimulation, :experimentIsCalibration,
@@ -274,6 +274,9 @@ function saveasMDF(file::HDF5File, params::Dict)
   end
   write(file, "/study/uuid", string(studyUuid))
   write(file, "/study/description", get(params,"studyDescription","n.a."))
+  if hasKeyAndValue(params,"studyTime")
+    write(file, "/study/time", string(params["studyTime"]))
+  end
 
   # experiment parameters
   write(file, "/experiment/name", get(params,"experimentName","default") )

@@ -96,7 +96,7 @@ function getindex(b::BrukerFile, parameter)#::String
          parameter[1:4] == "Visu"
     visupath = joinpath(b.path, "visu_pars")
     if isfile(visupath)
-      keylist = ["VisuStudyId","VisuStudyNumber","VisuExperimentNumber","VisuSubjectName"]
+      keylist = ["VisuStudyId","VisuStudyNumber","VisuExperimentNumber","VisuSubjectName","VisuStudyDate"]
       read(b.params, visupath,keylist)
       b.visupars_globalRead = true
     end
@@ -157,6 +157,11 @@ studyName(b::BrukerFile) = string(experimentSubject(b),"_",
 studyNumber(b::BrukerFile) = parse(Int64,b["VisuStudyNumber"])
 studyUuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
 studyDescription(b::BrukerFile) = "n.a."
+function studyTime(b::BrukerFile)
+  m = match(r"<(.+)\+",b["VisuStudyDate"])
+  timeString = replace(m.captures[1],"," => ".")
+  return DateTime( timeString )
+end
 
 # study parameters
 experimentName(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])

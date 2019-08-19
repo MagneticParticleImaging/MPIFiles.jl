@@ -31,7 +31,7 @@ end
 acqNumPeriodsPerFrame(f::MultiMPIFile) = length(f.files)*acqNumFrames(f.files[1])
 acqNumFrames(f::MultiMPIFile) = 1
 
-for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyUuid, :studyDescription,
+for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyTime, :studyUuid, :studyDescription,
             :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
             :experimentSubject, :experimentHasMeasurement,
             :experimentIsSimulation, :experimentIsCalibration, :experimentHasProcessing,

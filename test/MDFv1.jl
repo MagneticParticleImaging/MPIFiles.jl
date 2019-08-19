@@ -45,6 +45,7 @@ for mdf in (mdfv1,mdfv2)
   @test studyName(mdf) == "Wuerfelphantom"
   @test studyNumber(mdf) == 0
   @test studyDescription(mdf) == "n.a."
+  @test studyTime(mdf) == nothing
 
   @test experimentName(mdf) == "n.a."
   @test experimentNumber(mdf) == 18

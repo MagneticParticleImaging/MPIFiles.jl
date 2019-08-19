@@ -31,6 +31,7 @@ for imt in (measIMT, calibIMT)
   @test studyName(imt) == "n.a."
   @test studyNumber(imt) == 0
   @test studyDescription(imt) == "n.a."
+  @test studyTime(imt) == nothing
 
   @test experimentName(imt) == "n.a."
   @test experimentNumber(imt) == 0

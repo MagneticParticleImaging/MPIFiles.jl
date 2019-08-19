@@ -81,6 +81,7 @@ studyName(f::IMTFile) = "n.a."
 studyNumber(f::IMTFile) = 0
 studyUuid(f::IMTFile) = uuid4()
 studyDescription(f::IMTFile) = "n.a."
+studyTime(f::IMTFile) = nothing
 
 # experiment parameters
 experimentName(f::IMTFile) = "n.a."
