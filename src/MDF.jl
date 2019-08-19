@@ -1,7 +1,3 @@
-using HDF5
-
-import HDF5: h5read
-
 export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton
 
 abstract type MDFFile <: MPIFile end

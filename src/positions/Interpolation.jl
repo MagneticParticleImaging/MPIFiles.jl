@@ -1,5 +1,3 @@
-import Interpolations: interpolate
-
 function getInterpolator(A::AbstractArray{T,3}, grid::RegularGridPositions) where T
 
   tmp = ( size(A,1)==1 ? NoInterp() : BSpline(Linear()),
