@@ -5,7 +5,7 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
        findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum,
        exportToMDFStore, generateSFDatabase, loadSFDatabase, addVisu, readonly, getNewCalibNum,
-       calibdir, try_chmod
+       calibdir, try_chmod, getMDFStudyFolderName
 
 ########################################
 
@@ -15,7 +15,7 @@ struct Study
   path::String
   name::String
   subject::String
-  date::String
+  date::DateTime
 end
 
 id(s::Study) = s.name
@@ -158,7 +158,7 @@ function exportToMDFStore(d::BrukerDatasetStore,path::String, mdf::MDFDatasetSto
     name = s.name*"_MDF"
     mdfPath = joinpath( studydir(mdf), name)
     subject = s.subject
-    date = ""
+    date = s.date
     mdfStudy = Study(mdfPath,name,subject,date)
     addStudy(mdf,mdfStudy)
     expNum = getNewExperimentNum(mdf, mdfStudy)
@@ -187,19 +187,25 @@ function getStudy(d::BrukerDatasetStore, studyfolder::String)
   if !ishidden(studypath) && isdir(studypath)
     w = split(studyfolder,'_')
     if length(w) >= 5 && length(w[1])==8 # only these can be study folders
-      w_ = w[1:end-2]
-      date = w[1]
-      date = string(date[1:4],"/",date[5:6],"/",date[7:8])
+      # w_ = w[1:end-2]
+      # date = w[1]
+      # date = string(date[1:4],"/",date[5:6],"/",date[7:8])
 
+      w = split(studyfolder,'_')
+      dateStr = w[1]
+      timeStr = w[2]
+      date = DateTime(string(dateStr[1:4],"-",dateStr[5:6],"-",dateStr[7:8],"T",
+			   timeStr[1:2],":",timeStr[3:4],":",timeStr[5:6]))
 
       j = JcampdxFile()
       subjfile = string(studypath,"/subject")
       if isfile(subjfile)
         read(j,string(studypath,"/subject"),maxEntries=14) #magic number...
-        name = string(latin1toutf8(j["SUBJECT_name_string"]),
-                      "_",latin1toutf8(j["SUBJECT_study_name"]),
-                      "_",latin1toutf8(j["SUBJECT_study_nr"]))
-        subject = latin1toutf8(j["SUBJECT_name_string"])
+        name = latin1toutf8(j["SUBJECT_study_name"])
+        # name = string(latin1toutf8(j["SUBJECT_name_string"]),
+        #              "_",latin1toutf8(j["SUBJECT_study_name"]),
+        #              "_",latin1toutf8(j["SUBJECT_study_nr"]))
+        subject = latin1toutf8(j["SUBJECT_id"])*latin1toutf8(j["SUBJECT_name_string"])
       else
         # Workaround if no subject file is present => use first dataset
         # and derive the study from the Brukerfile
@@ -229,15 +235,34 @@ end
 function getStudy(d::MDFDatasetStore, studyfolder::String)
   study = nothing
   studypath = joinpath( studydir(d), studyfolder)
-  name = studyfolder
+  if length(studyfolder) >= 15 &&
+     isascii(studyfolder[1:15]) &&
+     all([tryparse(Int,studyfolder[l:l])!=nothing for l=union(1:8,10:15)])
+
+    w = split(studyfolder,'_')
+    dateStr = w[1]
+    timeStr = w[2]
+    date = DateTime(string(dateStr[1:4],"-",dateStr[5:6],"-",dateStr[7:8],"T",
+			   timeStr[1:2],":",timeStr[3:4],":",timeStr[5:6]))
+    name = join(w[3:end])
+  else
+    date = Dates.unix2datetime(stat(studypath).mtime)
+    name = studyfolder
+  end
+  
   subject = ""
-  date = string(split(string(Dates.unix2datetime(stat(studypath).mtime)),"T")[1])
   study = Study(studypath, name, subject, date )
   return study
 end
 
+function getMDFStudyFolderName(study::Study)
+  return string(split(string(study.date),"T")[1][union(1:4,6:7,9:10)],"_",
+                split(string(study.date),"T")[2][union(1:2,4:5,7:8)],"_",
+		study.name)
+end
+
 function addStudy(d::MDFDatasetStore, study::Study)
-  studypath = joinpath( studydir(d), study.name)
+  studypath = joinpath( studydir(d), getMDFStudyFolderName(study))
   mkpath(studypath)
   try_chmod(studypath, 0o777, recursive=true)
 

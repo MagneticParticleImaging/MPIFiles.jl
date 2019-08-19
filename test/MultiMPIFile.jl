@@ -13,7 +13,7 @@ mdfv2 = MPIFile(fnMeasMultiV2)
 
 for mdf in (measBruker,mdfv2)
   @info "Test $mdf"
-  @test studyName(mdf) == "Wuerfelphantom_Wuerfelphantom_1"
+  @test studyName(mdf) == "Wuerfelphantom"
   @test studyNumber(mdf) == 1
   @test studyDescription(mdf) == "n.a."
   @test studyTime(mdf) == DateTime( "2015-09-15T10:21:10.992" )
@@ -21,7 +21,7 @@ for mdf in (measBruker,mdfv2)
   @test experimentName(mdf) == "fuenf (E18)"
   @test experimentNumber(mdf) == 18
   @test experimentDescription(mdf) == "fuenf (E18)"
-  @test experimentSubject(mdf) == "Wuerfelphantom"
+  @test experimentSubject(mdf) == "WuerfelphantomWuerfelphantom"
   @test experimentIsSimulation(mdf) == false
   @test experimentIsCalibration(mdf) == false
 

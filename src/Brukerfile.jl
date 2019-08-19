@@ -96,7 +96,8 @@ function getindex(b::BrukerFile, parameter)#::String
          parameter[1:4] == "Visu"
     visupath = joinpath(b.path, "visu_pars")
     if isfile(visupath)
-      keylist = ["VisuStudyId","VisuStudyNumber","VisuExperimentNumber","VisuSubjectName","VisuStudyDate"]
+      keylist = ["VisuStudyId","VisuStudyNumber","VisuExperimentNumber",
+		 "VisuSubjectId","VisuSubjectName","VisuStudyDate"]
       read(b.params, visupath,keylist)
       b.visupars_globalRead = true
     end
@@ -151,7 +152,9 @@ uuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
 time(b::BrukerFile) = nothing
 
 # study parameters
-studyName(b::BrukerFile) = string(experimentSubject(b),"_",
+studyName(b::BrukerFile) = latin1toutf8(b["VisuStudyId"])
+# old study name
+studyNameOld(b::BrukerFile) = string(experimentSubject(b),"_",
                                   latin1toutf8(b["VisuStudyId"]),"_",
                                   b["VisuStudyNumber"])
 studyNumber(b::BrukerFile) = parse(Int64,b["VisuStudyNumber"])
@@ -168,7 +171,7 @@ experimentName(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentNumber(b::BrukerFile) = parse(Int64,b["VisuExperimentNumber"])
 experimentUuid(b::BrukerFile) = nothing #str2uuid(b["VisuUid"])
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
-experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectName"])
+experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectId"])*latin1toutf8(b["VisuSubjectName"])
 experimentIsSimulation(b::BrukerFile) = false
 experimentIsCalibration(b::BrukerFile) = _iscalib(b.path)
 experimentHasProcessing(b::BrukerFile) = experimentIsCalibration(b)
