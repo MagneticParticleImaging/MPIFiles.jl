@@ -54,6 +54,7 @@ for mdf in (measBruker,mdfv2)
   @test studyNumber(mdf) == 1
   @test studyDescription(mdf) == "n.a."
   @test studyTime(mdf) == DateTime( "2015-09-15T10:21:10.992" )
+  @test studyUuid(mdf) == UUID("fe9635e0-7cfc-44eb-9f5a-585013a2cb51")
 
   @test experimentName(mdf) == "fuenf (E18)"
   @test experimentNumber(mdf) == 18
@@ -61,6 +62,7 @@ for mdf in (measBruker,mdfv2)
   @test experimentSubject(mdf) == "Wuerfelphantom"
   @test experimentIsSimulation(mdf) == false
   @test experimentIsCalibration(mdf) == false
+  @test experimentUuid(mdf) == UUID("ef2110b5-cce8-4ca6-b041-38ea01254c47")
 
   @test scannerFacility(mdf) == "Universitätsklinikum Hamburg Eppendorf"
   @test scannerOperator(mdf) == "nmrsu"
