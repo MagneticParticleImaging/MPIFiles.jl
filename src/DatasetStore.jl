@@ -16,6 +16,7 @@ struct Study
   date::DateTime
 end
 
+
 id(s::Study) = s.name
 
 # might not be so clever to use explicity type fields here
@@ -247,16 +248,17 @@ function getStudy(d::MDFDatasetStore, studyfolder::String)
     date = Dates.unix2datetime(stat(studypath).mtime)
     name = studyfolder
   end
-  
+
   subject = ""
   study = Study(studypath, name, subject, date )
   return study
 end
 
-function getMDFStudyFolderName(study::Study)
-  return string(split(string(study.date),"T")[1][union(1:4,6:7,9:10)],"_",
-                split(string(study.date),"T")[2][union(1:2,4:5,7:8)],"_",
-		study.name)
+getMDFStudyFolderName(study::Study) = getMDFStudyFolderName(study.name, study.date)
+
+function getMDFStudyFolderName(name::String, date::DateTime)
+  return string(split(string(date),"T")[1][union(1:4,6:7,9:10)],"_",
+                split(string(date),"T")[2][union(1:2,4:5,7:8)],"_",name)
 end
 
 function addStudy(d::MDFDatasetStore, study::Study)
@@ -668,7 +670,7 @@ end
 
 function getVisu(d::MDFDatasetStore, study::Study, exp::Experiment, reco::Reconstruction, numVisu)
 
-  filename = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), 
+  filename = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study),
 			       string(exp.num), string(reco.num)*".visu")
 
   if isfile(filename)
@@ -688,7 +690,7 @@ function getVisus(d::MDFDatasetStore, study::Study, exp::Experiment, reco::Recon
 
   visus = Visualization[]
 
-  filename = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), string(exp.num), 
+  filename = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), string(exp.num),
 			      string(reco.num)*".visu")
 
   if isfile(filename)
@@ -730,7 +732,7 @@ end
 
 function addVisu(d::MDFDatasetStore, study::Study, exp::Experiment, reco::Reconstruction, visuParams)
 
-  filename = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), string(exp.num), 
+  filename = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), string(exp.num),
 			      string(reco.num)*".visu" )
 
   visus = getVisus(d, study, exp, reco)
