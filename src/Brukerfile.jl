@@ -1,6 +1,7 @@
 include("Jcampdx.jl")
 
-export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8, sfPath
+export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8, 
+       sfPath, rawDataLengthConsistent
 
 function latin1toutf8(str::AbstractString)
   buff = Char[]
@@ -318,6 +319,25 @@ rxDataConversionFactor(b::BrukerFileMeas) =
                  repeat([1.0/acqNumAverages(b), 0.0], outer=(1,rxNumChannels(b)))
 rxDataConversionFactor(b::BrukerFileCalib) =
                  repeat([1.0, 0.0], outer=(1,rxNumChannels(b)))
+
+function rawDataLengthConsistent(b::BrukerFile)
+  dataFilename = joinpath(b.path,"rawdata.job0")
+  dType = acqNumAverages(b) == 1 ? Int16 : Int32
+
+  # We derive numFrames from ACQ_jobs, since calibration files
+  # are a bit longer than our acqNumFrames function reports
+  # Bruker is padding the file for later processing
+  numFrames = Int64(b["ACQ_jobs"][1][8])
+
+  N = rxNumSamplingPoints(b)*numSubPeriods(b)*rxNumChannels(b)*
+      acqNumPeriodsPerFrame(b)*numFrames*sizeof(dType)
+
+  M = filesize(dataFilename)
+  if N != M
+    @show N M
+  end
+  return N == M
+end
 
 function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumPeriodsPerFrame(b),
                   receivers=1:rxNumChannels(b))

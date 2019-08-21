@@ -144,6 +144,8 @@ saveasMDF(fnSMV3, smBrukerPretendToBeMeas, applyCalibPostprocessing=true)
 smv3 = MPIFile(fnSMV3)
 @test typeof(smv3) == MDFFileV2
 
+# Bruker specific test
+@test rawDataLengthConsistent(smBruker)
 
 for sm in (smBruker,smv2,smv3)
   @info "Test $sm"
