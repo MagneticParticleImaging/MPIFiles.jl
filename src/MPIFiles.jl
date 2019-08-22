@@ -20,6 +20,10 @@ using UUIDs
 @reexport using Statistics
 @reexport using Unitful
 
+if VERSION < v"1.1"
+  isnothing(x) = x == nothing
+end
+
 ### global import list ###
 
 import Base: convert, get, getindex, haskey, iterate, length, ndims, range, read, show, time, write
