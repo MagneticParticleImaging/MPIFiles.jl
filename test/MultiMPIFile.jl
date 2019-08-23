@@ -21,7 +21,7 @@ for mdf in (measBruker,mdfv2)
   @test experimentName(mdf) == "fuenf (E18)"
   @test experimentNumber(mdf) == 18
   @test experimentDescription(mdf) == "fuenf (E18)"
-  @test experimentSubject(mdf) == "WuerfelphantomWuerfelphantom"
+  @test experimentSubject(mdf) == "Wuerfelphantom"
   @test experimentIsSimulation(mdf) == false
   @test experimentIsCalibration(mdf) == false
 
