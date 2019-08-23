@@ -155,7 +155,7 @@ time(b::BrukerFile) = nothing
 # study parameters
 studyName(b::BrukerFile) = latin1toutf8(b["VisuStudyId"])
 # old study name
-studyNameOld(b::BrukerFile) = string(experimentSubject(b),"_",
+studyNameOld(b::BrukerFile) = string(latin1toutf8(b["VisuSubjectId"])*latin1toutf8(b["VisuSubjectName"]),"_",
                                   latin1toutf8(b["VisuStudyId"]),"_",
                                   b["VisuStudyNumber"])
 studyNumber(b::BrukerFile) = parse(Int64,b["VisuStudyNumber"])
@@ -178,7 +178,15 @@ function experimentUuid(b::BrukerFile)
   return uuid4(rng)	
 end
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
-experimentSubject(b::BrukerFile) = latin1toutf8(b["VisuSubjectId"])*latin1toutf8(b["VisuSubjectName"])
+function experimentSubject(b::BrukerFile) 
+  id = latin1toutf8(b["VisuSubjectId"])
+  name = latin1toutf8(b["VisuSubjectName"])
+  if id == name
+    return id
+  else
+    return id*name
+  end
+end
 experimentIsSimulation(b::BrukerFile) = false
 experimentIsCalibration(b::BrukerFile) = _iscalib(b.path)
 experimentHasProcessing(b::BrukerFile) = experimentIsCalibration(b)
