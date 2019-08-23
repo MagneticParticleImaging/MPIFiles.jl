@@ -26,6 +26,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
 julia = "0.7, 1"
+HDF5 = "<0.12.2"
 
 [extras]
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
