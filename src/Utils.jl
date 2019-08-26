@@ -21,10 +21,15 @@ function writeComplexArray(file, dataset, A::AbstractArray{Complex{T},D}) where 
 end
 
 function isComplexArray(file, dataset)
+  if eltype(file[dataset]) <: Complex
+    return true
+  end
+
+  # If complex number support in HDF5 is disabled (or version < 0.12.2)
   if eltype(file[dataset]) <: HDF5.HDF5Compound{2}
     if HDF5.h5t_get_member_name(datatype(file[dataset]).id,0) == "r" &&
       HDF5.h5t_get_member_name(datatype(file[dataset]).id,1) == "i"
-        return true
+      return true
     end
   end
   return false
