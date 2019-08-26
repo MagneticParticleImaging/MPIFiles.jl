@@ -250,6 +250,43 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
   saveasMDF(filenameOut, params)
 end
 
+
+
+function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile)
+
+  params = loadMetadata(f)
+  loadMeasParams(f, params, skipMeasData = true)
+  loadCalibParams(f, params)
+
+
+  #params["calibFoV"] = ???
+
+#  data = systemMatrixWithBG(f, idx)
+
+#  params["calibSNR"] = params["calibSNR"][idx,:,:]
+#  if haskey(params, "rxTransferFunction")
+#    params["rxTransferFunction"] = params["rxTransferFunction"][idx,:]
+#  end
+#  params["measIsFrequencySelection"] = true
+#  params["measFrequencySelection"] = idx
+
+#  params["measData"] = data
+
+
+#  params["measData"] = dataOut
+#  params["measIsBasisTransformed"] = true
+#    params["measBasisTransformation"] = basisTrafo
+#    params["measBasisIndices"] = basisIndices
+
+#    bgFrame = zeros(Bool, NRed+NBG)
+#    bgFrame[(NRed+1):end] .= true
+#    params["measIsBGFrame"] = bgFrame
+#    params["acqNumFrames"] = NRed+NBG
+
+  saveasMDF(filenameOut, params)
+end
+
+
 hasKeyAndValue(paramDict,param) = haskey(paramDict, param) && paramDict[param] != nothing
 
 function writeIfAvailable(file, paramOut, paramDict, paramIn )
