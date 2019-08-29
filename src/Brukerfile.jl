@@ -1,6 +1,6 @@
 include("Jcampdx.jl")
 
-export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8, 
+export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8,
        sfPath, rawDataLengthConsistent
 
 function latin1toutf8(str::AbstractString)
@@ -161,7 +161,7 @@ studyNameOld(b::BrukerFile) = string(latin1toutf8(b["VisuSubjectId"])*latin1tout
 studyNumber(b::BrukerFile) = parse(Int64,b["VisuStudyNumber"])
 function studyUuid(b::BrukerFile)
   rng = MersenneTwister(hash(b["VisuStudyUid"])) # use VisuStudyUid as seed to generate uuid4
-  return uuid4(rng)	
+  return uuid4(rng)
 end
 studyDescription(b::BrukerFile) = "n.a."
 function studyTime(b::BrukerFile)
@@ -175,10 +175,10 @@ experimentName(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentNumber(b::BrukerFile) = parse(Int64,b["VisuExperimentNumber"])
 function experimentUuid(b::BrukerFile)
   rng = MersenneTwister(hash(b["VisuUid"])) # use VisuUid as seed to generate uuid4
-  return uuid4(rng)	
+  return uuid4(rng)
 end
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
-function experimentSubject(b::BrukerFile) 
+function experimentSubject(b::BrukerFile)
   id = latin1toutf8(b["VisuSubjectId"])
   name = latin1toutf8(b["VisuSubjectName"])
   if id == name
@@ -264,7 +264,7 @@ function acqNumBGFrames(b::BrukerFile)
   if a == ""
     a = "0"
   end
-    
+
   return parse(Int64,n)-parse(Int64,a)
 end
 
@@ -353,15 +353,19 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
   dataFilename = joinpath(b.path,"rawdata.job0")
   dType = acqNumAverages(b) == 1 ? Int16 : Int32
 
-  s = open(dataFilename)
+  s = open(dataFilename, "r")
 
   if numSubPeriods(b) == 1
-    raw = Mmap.mmap(s, Array{dType,4},
-             (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+    #raw = Mmap.mmap(s, Array{dType,4},
+    #         (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+    raw = RawFile(s, dType, [rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),maximum(frames)])
   else
-    raw = Mmap.mmap(s, Array{dType,5},
-             (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
-    raw = dropdims(sum(raw,dims=2),dims=2)
+    #raw = Mmap.mmap(s, Array{dType,5},
+    #         (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+    rawF = RawFile(s, dType,
+       [rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),maximum(frames)])
+    rawR = rawF[:,1:numSubPeriods(b),1:rxNumChannels(b),1:acqNumPeriodsPerFrame(b),1:maximum(frames)]
+    raw = dropdims(sum(rawR,dims=2),dims=2)
   end
   data = raw[:,receivers,periods,frames]
   close(s)
