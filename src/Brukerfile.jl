@@ -21,28 +21,32 @@ mutable struct BrukerFileMeas <: BrukerFile
   path::String
   params::JcampdxFile
   paramsProc::JcampdxFile
-  methodRead
-  acqpRead
-  visupars_globalRead
-  recoRead
-  methrecoRead
-  visuparsRead
-  mpiParRead
-  maxEntriesAcqp
+  methodRead::Bool
+  acqpRead::Bool
+  visupars_globalRead::Bool
+  recoRead::Bool
+  methrecoRead::Bool
+  visuparsRead::Bool
+  mpiParRead::Bool
+  maxEntriesAcqp::Int
+  keylistAcqp::Vector{String}
+  keylistMethod::Vector{String}
 end
 
 mutable struct BrukerFileCalib <: BrukerFile
   path::String
   params::JcampdxFile
   paramsProc::JcampdxFile
-  methodRead
-  acqpRead
-  visupars_globalRead
-  recoRead
-  methrecoRead
-  visuparsRead
-  mpiParRead
-  maxEntriesAcqp
+  methodRead::Bool
+  acqpRead::Bool
+  visupars_globalRead::Bool
+  recoRead::Bool
+  methrecoRead::Bool
+  visuparsRead::Bool
+  mpiParRead::Bool
+  maxEntriesAcqp::Int
+  keylistAcqp::Vector{String}
+  keylistMethod::Vector{String}
 end
 
 function _iscalib(path::AbstractString)
@@ -66,16 +70,17 @@ function _iscalib(path::AbstractString)
     return calib
 end
 
-function BrukerFile(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000)
+function BrukerFile(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000,
+				  keylistAcqp=String[], keylistMethod=String[])
   params = JcampdxFile()
   paramsProc = JcampdxFile()
 
   if isCalib
     return BrukerFileCalib(path, params, paramsProc, false, false, false,
-               false, false, false, false, maxEntriesAcqp)
+               false, false, false, false, maxEntriesAcqp, keylistAcqp, keylistMethod)
   else
     return BrukerFileMeas(path, params, paramsProc, false, false, false,
-               false, false, false, false, maxEntriesAcqp)
+               false, false, false, false, maxEntriesAcqp, keylistAcqp, keylistMethod)
   end
 end
 
@@ -83,20 +88,26 @@ function BrukerFile()
   params = JcampdxFile()
   paramsProc = JcampdxFile()
   return BrukerFileMeas("", params, paramsProc, false, false, false,
-             false, false, false, false, 1)
+             false, false, false, false, 1, String[], String[])
 end
 
-BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400)
+BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400, keylistAcqp=
+				["ACQ_scan_name", "ACQ_jobs","ACQ_MPI_drive_field_strength",
+				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator", 
+				 "ACQ_time"], keylistMethod=["MPI_RepetitionsPerStep",
+				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
+				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
+				 "PVM_MPI_ChannelSelect"])
 
 function getindex(b::BrukerFile, parameter)#::String
   if !b.acqpRead && ( parameter=="NA" || parameter[1:3] == "ACQ" )
     acqppath = joinpath(b.path, "acqp")
-    read(b.params, acqppath, maxEntries=b.maxEntriesAcqp)
+    read(b.params, acqppath, b.keylistAcqp, maxEntries=b.maxEntriesAcqp)
     b.acqpRead = true
   elseif !b.methodRead && length(parameter) >= 3 &&
          (parameter[1:3] == "PVM" || parameter[1:3] == "MPI")
     methodpath = joinpath(b.path, "method")
-    read(b.params, methodpath)
+    read(b.params, methodpath, b.keylistMethod)
     b.methodRead = true
   elseif !b.visupars_globalRead && length(parameter) >= 4 &&
          parameter[1:4] == "Visu"

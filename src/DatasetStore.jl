@@ -118,7 +118,6 @@ end
 function getExperiment(path::String)
 
   prefix, ext = splitext(path)
-
   if isdir(path) #Ugly
     p = path
     b = MPIFiles.BrukerFileFast(path) #use fast path for BrukerFiles
@@ -472,13 +471,13 @@ function getExperiments(d::BrukerDatasetStore, s::Study)
   experiments = Experiment[]
 
   for file in files
-    #try
+    try
       exp = getExperiment(file)
 
       push!(experiments, exp)
-    #catch e
-    #  @debug "" e
-    #end
+    catch e
+      @debug "" e
+    end
   end
   return experiments
 end
