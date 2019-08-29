@@ -48,6 +48,11 @@ end
 function _iscalib(path::AbstractString)
     calib = false
     acqpPath = joinpath(path,"acqp")
+    # if there is a file ismeasurement in path treat data in path as measurement
+    if isfile(joinpath(path,"ismeasurement"))
+        return calib
+    end
+    # else use the information provided within the acqp file
     if isfile(acqpPath)
         open(acqpPath, "r") do io
             for line in eachline(io)
