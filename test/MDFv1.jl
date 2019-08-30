@@ -30,10 +30,10 @@ saveasMDF(fnSMV2, fnSMV1)
 # Measurement File V1
 
 mdfv1 = MPIFile(fnMeasV1)
-@test typeof(mdfv1) == MDFFileV1
+@test typeof(mdfv1) <: MDFFileV1
 
 mdfv2 = MPIFile(fnMeasV2)
-@test typeof(mdfv2) == MDFFileV2
+@test typeof(mdfv2) <: MDFFileV2
 
 # only test this for v1
 @test uuid(mdfv1) == UUID("4b0ffb84-29f5-f388-49f2-92a206bba885")
@@ -116,10 +116,10 @@ end
 # Calibration File V1
 
 smv1 = MPIFile(fnSMV1)
-@test typeof(smv1) == MDFFileV1
+@test typeof(smv1) <: MDFFileV1
 
 smv2 = MPIFile(fnSMV2)
-@test typeof(smv2) == MDFFileV2
+@test typeof(smv2) <: MDFFileV2
 
 for sm in (smv1,smv2)
   @info "Test $sm"

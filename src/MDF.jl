@@ -4,32 +4,47 @@ abstract type MDFFile <: MPIFile end
 
 # We use a dedicated type for v1 and v2. If both versions
 # are the same we use the abstract type MDFFile
-mutable struct MDFFileV1 <: MDFFile
+mutable struct MDFFileV1{T} <: MDFFile
   filename::String
   file::HDF5File
-  mmap_measData
+  mmap_measData::T
 end
 
-MDFFileV1(filename::String, file=h5open(filename,"r")) =
-   MDFFileV1(filename, file, nothing)
+function MDFFileV1(filename::String, file=h5open(filename,"r"))
+  tdExists = exists(file, "/measurement/dataTD")
+  if exists(file, "/measurement/dataTD")
+    mmap_measData = readmmap(file["/measurement/dataTD"])
+  elseif exists(file, "/measurement/dataFD")
+    mmap_measData = readmmap(file["/measurement/dataFD"])
+  elseif exists(file, "/calibration/dataFD")
+    mmap_measData = readmmap(file["/calibration/dataFD"])
+  else
+    mmap_measData = nothing
+  end
 
-mutable struct MDFFileV2 <: MDFFile
+  f = MDFFileV1(filename, file, mmap_measData)
+end
+
+mutable struct MDFFileV2{T} <: MDFFile
   filename::String
   file::HDF5File
-  mmap_measData
+  mmap_measData::T
 end
 
 function MDFFileV2(filename::String, file=h5open(filename,"r"))
-  f = MDFFileV2(filename, file, nothing)
-
   parameter = "/measurement/data"
-  if exists(f.file, "/measurement/data")
-    if !isComplexArray(f.file, parameter)
-      f.mmap_measData = readmmap(f.file[parameter])
+  if exists(file, "/measurement/data")
+    if !isComplexArray(file, parameter)
+      mmap_measData = readmmap(file[parameter])
     else
-      f.mmap_measData = readmmap(f.file[parameter], Array{getComplexType(f.file,parameter)} )
+      mmap_measData = readmmap(file[parameter], Array{getComplexType(file,parameter)} )
     end
+  else
+    mmap_measData = nothing
   end
+
+  f = MDFFileV2(filename, file, mmap_measData)
+
   return f
 end
 
@@ -123,7 +138,7 @@ function studyTime(f::MDFFile)
    return nothing
   end
 end
-  
+
 # experiment parameters
 experimentName(f::MDFFileV1) = "n.a."
 experimentName(f::MDFFileV2) = f["/experiment/name"]
@@ -158,7 +173,7 @@ tracerConcentration(f::MDFFileV2)::Vector{Float64} = [f["/tracer/concentration"]
 tracerSolute(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/solute"])
 tracerSolute(f::MDFFileV1)::Vector{String} = ["Fe"]
 function tracerInjectionTime(f::MDFFile)::Vector{DateTime}
-  p = typeof(f) == MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
+  p = typeof(f) <: MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
   if f[p] == nothing
     return nothing
   end
@@ -188,11 +203,6 @@ acqNumAverages(f::MDFFileV1)::Int = f["/acquisition/drivefield/averages"]
 acqNumAverages(f::MDFFileV2)::Int = f["/acquisition/numAverages",1]
 function acqNumFrames(f::MDFFileV1)::Int
   if experimentIsCalibration(f)
-    if f.mmap_measData == nothing
-      h5open(f.filename,"r") do file
-        f.mmap_measData = readmmap(file["/calibration/dataFD"])
-      end
-    end
     return size(f.mmap_measData,2)
   else
     return f["/acquisition/numFrames"]
@@ -280,18 +290,12 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
   tdExists = exists(f.file, "/measurement/dataTD")
 
   if tdExists
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataTD"])
-    end
     data = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
       data[:,:,:,i] = f.mmap_measData[:, receivers, fr]
     end
     return reshape(data,size(data,1),size(data,2),1,size(data,3))
   else
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataFD"])
-    end
     data = zeros(Float64, 2, rxNumFrequencies(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
       data[:,:,:,i] = f.mmap_measData[:,:,receivers, fr]
@@ -322,15 +326,9 @@ function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
   tdExists = exists(f.file, "/measurement/dataTD")
 
   if tdExists
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataTD"])
-    end
     data = f.mmap_measData[:, receivers, periods]
     return data
   else
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataFD"])
-    end
     data = f.mmap_measData[:, :, receivers, periods]
 
     dataFD = reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4)))
@@ -354,9 +352,6 @@ end
 function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
   if !experimentIsCalibration(f)
     return nothing
-  end
-  if f.mmap_measData == nothing
-    f.mmap_measData = readmmap(f.file["/calibration/dataFD"])
   end
 
   data = reshape(f.mmap_measData,Val(3))[:, :, rows]
