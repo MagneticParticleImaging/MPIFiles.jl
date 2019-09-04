@@ -323,9 +323,9 @@ function findSFFiles(d::BrukerDatasetStore)
       end
     end
   end
-  BrukerMDFSFs = readdir(joinpath(d.path,"MDF_SFs/"))
+  BrukerMDFSFs = readdir("/opt/data/MDF_SFs/")
   for BrukerMDFSF in BrukerMDFSFs
-    push!(bfiles,joinpath(d.path,"MDF_SFs/",BrukerMDFSF))
+    push!(bfiles,joinpath("/opt/data/MDF_SFs/",BrukerMDFSF))
   end
   return bfiles
 end
