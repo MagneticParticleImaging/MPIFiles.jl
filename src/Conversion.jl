@@ -24,7 +24,8 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
         setparam!(params, "measData", measData(f))
       end
     else
-        data = getMeasurementsFD(f, false, frames=1:acqNumFrames(f),sortFrames=true,
+        @info "load measurement data"
+        data = getMeasurementsFD(f, false, frames=1:acqNumFrames(f), sortFrames=true,
               spectralLeakageCorrection=false,transposed=true)
         setparam!(params, "measData", data)
         setparam!(params, "measIsFourierTransformed", true)
@@ -35,11 +36,12 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
         setparam!(params, "measIsBGFrame",
           cat(zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f)), dims=1))
 
-        try
-          setparam!(params, "calibSNR", calibSNR(f))
-        catch
-          setparam!(params, "calibSNR", calculateSystemMatrixSNR(f, data))
+        snr = calibSNR(f)
+	if snr == nothing
+          @info "calculate SNR"
+          snr = calculateSystemMatrixSNR(f, data)
         end
+        setparam!(params, "calibSNR", snr)
     end
   end
 

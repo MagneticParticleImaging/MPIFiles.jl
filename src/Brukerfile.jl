@@ -553,6 +553,11 @@ measIsBasisTransformed(b::BrukerFile) = false
 # calibrations
 function calibSNR(b::BrukerFile)
   snrFilename = joinpath(b.path,"pdata", "1", "snr")
+  
+  if !isfile(snrFilename)
+    return nothing
+  end
+  
   nFreq = div(rxNumSamplingPoints(b)*numSubPeriods(b),2)+1
   s = open(snrFilename)
   data = Mmap.mmap(s, Array{Float64,3}, (nFreq,rxNumChannels(b),1))
