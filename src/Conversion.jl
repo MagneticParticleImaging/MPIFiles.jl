@@ -309,13 +309,13 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
   params["calibSize"] = [length(union(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)] 
   numFGFrames = prod(params["calibSize"])
 
-  params["acqGradient"] = params["acqGradient"][:,:,1,1]
-  params["dfPhase"] =  params["dfPhase"][:,:,1]
+  params["acqGradient"] = reshape(params["acqGradient"][:,:,1,1],3,3,1,1)
+  params["dfPhase"] =  reshape(params["dfPhase"][:,:,1],1,3,1)
   params["calibDeltaSampleSize"] = [0.0, 0.0, 0.0] #Todo
   #params["time"] = now()
   params["calibMethod"] = "BrukerCustom"
   #params["version"] = v"2.0.0"
-  params["dfStrength"] = params["dfStrength"][:,:,1,1]
+  params["dfStrength"] = reshape(params["dfStrength"][:,:,1,1],1,3,1)
   params["experimentIsCalibration"] = true
   #params["uuid"] = uuid4() 
   params["measIsFourierTransformed"] = true
