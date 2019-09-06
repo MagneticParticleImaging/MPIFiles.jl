@@ -203,7 +203,9 @@ function getStudy(d::BrukerDatasetStore, studyfolder::String)
         # name = string(latin1toutf8(j["SUBJECT_name_string"]),
         #              "_",latin1toutf8(j["SUBJECT_study_name"]),
         #              "_",latin1toutf8(j["SUBJECT_study_nr"]))
-        subject = latin1toutf8(j["SUBJECT_id"])*latin1toutf8(j["SUBJECT_name_string"])
+        s1 = latin1toutf8(j["SUBJECT_id"])
+	s2 = latin1toutf8(j["SUBJECT_name_string"])
+        subject = (s1 == s2) ? s1 : s1*s2
       else
         # Workaround if no subject file is present => use first dataset
         # and derive the study from the Brukerfile
