@@ -9,7 +9,7 @@ measBruker = MultiMPIFile([fnMeasBruker,fnMeasBruker,fnMeasBruker])
 saveasMDF(fnMeasMultiV2, measBruker)
 
 mdfv2 = MPIFile(fnMeasMultiV2)
-@test typeof(mdfv2) == MDFFileV2
+@test typeof(mdfv2) <: MDFFileV2
 
 for mdf in (measBruker,mdfv2)
   @info "Test $mdf"

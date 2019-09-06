@@ -1,4 +1,4 @@
-export makeAxisArray
+export makeAxisArray, RawFile
 
 
 # Support for handling complex datatypes in HDF5 files
@@ -82,4 +82,63 @@ function makeAxisArray(array::Array{T,5}, pixelspacing, offset, dt) where T
 		 Axis{:z}(range(offset[3],step=pixelspacing[3],length=N[4])),
 		 Axis{:time}(range(0*unit(dt),step=dt,length=N[5])))
   return im
+end
+
+struct RawFile
+  file::IOStream
+  dtype::DataType
+  size::Vector{Int}
+end
+
+function Base.getindex(f::RawFile, x::Colon, rest...)
+  return Base.getindex(f, 1:f.size[1], rest...)
+end
+
+function Base.getindex(f::RawFile, x::UnitRange, y)
+  data = zeros(f.dtype, (length(x),length(y)))
+  for l=1:length(y)
+    seek(f.file, ((y[l]-1)*f.size[1] + x[1] - 1 )*sizeof(f.dtype))
+    data[:,l] = read!(f.file, Vector{f.dtype}(undef, length(x)))
+  end
+  return data
+end
+
+function Base.getindex(f::RawFile, x::UnitRange, y, z)
+  data = zeros(f.dtype, (length(x),length(y),length(z)))
+  for r=1:length(z)
+    for l=1:length(y)
+      seek(f.file, (((z[r]-1)*f.size[2] + (y[l]-1))*f.size[1] + x[1] - 1 )*sizeof(f.dtype))
+      data[:,l,r] = read!(f.file, Vector{f.dtype}(undef, length(x)))
+    end
+  end
+  close(fd)
+  return data
+end
+
+function Base.getindex(f::RawFile, x::UnitRange, y, z, u)
+  data = zeros(f.dtype, (length(x),length(y),length(z),length(u)))
+  for ui=1:length(u)
+    for r=1:length(z)
+      for l=1:length(y)
+        seek(f.file, ((((u[ui]-1)*f.size[3] + (z[r]-1))*f.size[2] + (y[l]-1))*f.size[1] + x[1] - 1 )*sizeof(f.dtype))
+        data[:,l,r,ui] = read!(f.file, Vector{f.dtype}(undef, length(x)))
+      end
+    end
+  end
+  return data
+end
+
+function Base.getindex(f::RawFile, x::UnitRange, y, z, u, v)
+  data = zeros(f.dtype, (length(x),length(y),length(z),length(u),length(v)))
+  for vi=1:length(v)
+    for ui=1:length(u)
+      for r=1:length(z)
+        for l=1:length(y)
+          seek(f.file, (((((v[vi]-1)*f.size[4] + (u[ui]-1))*f.size[3] + (z[r]-1))*f.size[2] + (y[l]-1))*f.size[1] + x[1] - 1 )*sizeof(f.dtype))
+          data[:,l,r,ui,vi] = read!(f.file, Vector{f.dtype}(undef, length(x)))
+        end
+      end
+    end
+  end
+  return data
 end

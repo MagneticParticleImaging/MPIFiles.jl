@@ -46,7 +46,7 @@ measBruker = MPIFile(fnMeasBruker)
 saveasMDF(fnMeasV2, measBruker)#, frames=1:100) <- TODO test this
 
 mdfv2 = MPIFile(fnMeasV2)
-@test typeof(mdfv2) == MDFFileV2
+@test typeof(mdfv2) <: MDFFileV2
 
 for mdf in (measBruker,mdfv2)
   @info "Test $mdf"
@@ -136,13 +136,13 @@ smBruker = MPIFile(fnSMBruker)
 saveasMDF(fnSMV2, smBruker)
 
 smv2 = MPIFile(fnSMV2)
-@test typeof(smv2) == MDFFileV2
+@test typeof(smv2) <: MDFFileV2
 
 smBrukerPretendToBeMeas = MPIFile(fnSMBruker, isCalib=false)
 saveasMDF(fnSMV3, smBrukerPretendToBeMeas, applyCalibPostprocessing=true)
 
 smv3 = MPIFile(fnSMV3)
-@test typeof(smv3) == MDFFileV2
+@test typeof(smv3) <: MDFFileV2
 
 # Bruker specific test
 @test rawDataLengthConsistent(smBruker)
@@ -207,7 +207,7 @@ sm1DBruker = MPIFile(fnSM1DBruker)
 saveasMDF(fnSM1DV1, sm1DBruker)
 
 sm1D = MPIFile(fnSM1DV1)
-@test typeof(sm1D) == MDFFileV2
+@test typeof(sm1D) <: MDFFileV2
 
 
 for sm in (sm1DBruker,sm1D)
@@ -228,7 +228,7 @@ sm1DBrukerMeas = MPIFile(fnSM1DBruker, isCalib=false)
 saveasMDF(fnSM1DV2, sm1DBrukerMeas)
 
 sm1DMeas = MPIFile(fnSM1DV2)
-@test typeof(sm1DMeas) == MDFFileV2
+@test typeof(sm1DMeas) <: MDFFileV2
 
 for sm in (sm1DBrukerMeas,sm1DMeas)
   @info "Test $sm"

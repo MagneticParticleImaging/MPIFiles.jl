@@ -13,19 +13,19 @@ if !isfile(fnRecoV1)
 end
 
 mdfv1 = MPIFile(fnRecoV1)
-@test typeof(mdfv1) == MDFFileV1
+@test typeof(mdfv1) <: MDFFileV1
 
 saveasMDF(fnRecoV2, fnRecoV1)
 
 mdfv2 = MPIFile(fnRecoV2)
-@test typeof(mdfv2) == MDFFileV2
+@test typeof(mdfv2) <: MDFFileV2
 
 c1 = loadRecoData(fnRecoV1)
 c2 = loadRecoData(fnRecoV2)
 saveRecoData(fnRecoV2b,c1)
 
 mdfv2b = MPIFile(fnRecoV2b)
-@test typeof(mdfv2b) == MDFFileV2
+@test typeof(mdfv2b) <: MDFFileV2
 
 for mdf in (mdfv1,mdfv2,mdfv2b)
   @info "Test $mdf"

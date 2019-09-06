@@ -1,6 +1,6 @@
 include("Jcampdx.jl")
 
-export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8, 
+export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8,
        sfPath, rawDataLengthConsistent
 
 function latin1toutf8(str::AbstractString)
@@ -21,33 +21,42 @@ mutable struct BrukerFileMeas <: BrukerFile
   path::String
   params::JcampdxFile
   paramsProc::JcampdxFile
-  methodRead
-  acqpRead
-  visupars_globalRead
-  recoRead
-  methrecoRead
-  visuparsRead
-  mpiParRead
-  maxEntriesAcqp
+  methodRead::Bool
+  acqpRead::Bool
+  visupars_globalRead::Bool
+  recoRead::Bool
+  methrecoRead::Bool
+  visuparsRead::Bool
+  mpiParRead::Bool
+  maxEntriesAcqp::Int
+  keylistAcqp::Vector{String}
+  keylistMethod::Vector{String}
 end
 
 mutable struct BrukerFileCalib <: BrukerFile
   path::String
   params::JcampdxFile
   paramsProc::JcampdxFile
-  methodRead
-  acqpRead
-  visupars_globalRead
-  recoRead
-  methrecoRead
-  visuparsRead
-  mpiParRead
-  maxEntriesAcqp
+  methodRead::Bool
+  acqpRead::Bool
+  visupars_globalRead::Bool
+  recoRead::Bool
+  methrecoRead::Bool
+  visuparsRead::Bool
+  mpiParRead::Bool
+  maxEntriesAcqp::Int
+  keylistAcqp::Vector{String}
+  keylistMethod::Vector{String}
 end
 
 function _iscalib(path::AbstractString)
     calib = false
     acqpPath = joinpath(path,"acqp")
+    # if there is a file ismeasurement in path treat data in path as measurement
+    if isfile(joinpath(path,"ismeasurement"))
+        return calib
+    end
+    # else use the information provided within the acqp file
     if isfile(acqpPath)
         open(acqpPath, "r") do io
             for line in eachline(io)
@@ -61,16 +70,17 @@ function _iscalib(path::AbstractString)
     return calib
 end
 
-function BrukerFile(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000)
+function BrukerFile(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000,
+				  keylistAcqp=String[], keylistMethod=String[])
   params = JcampdxFile()
   paramsProc = JcampdxFile()
 
   if isCalib
     return BrukerFileCalib(path, params, paramsProc, false, false, false,
-               false, false, false, false, maxEntriesAcqp)
+               false, false, false, false, maxEntriesAcqp, keylistAcqp, keylistMethod)
   else
     return BrukerFileMeas(path, params, paramsProc, false, false, false,
-               false, false, false, false, maxEntriesAcqp)
+               false, false, false, false, maxEntriesAcqp, keylistAcqp, keylistMethod)
   end
 end
 
@@ -78,20 +88,26 @@ function BrukerFile()
   params = JcampdxFile()
   paramsProc = JcampdxFile()
   return BrukerFileMeas("", params, paramsProc, false, false, false,
-             false, false, false, false, 1)
+             false, false, false, false, 1, String[], String[])
 end
 
-BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400)
+BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400, keylistAcqp=
+				["ACQ_scan_name", "ACQ_jobs","ACQ_MPI_drive_field_strength",
+				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator", 
+				 "ACQ_time"], keylistMethod=["MPI_RepetitionsPerStep",
+				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
+				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
+				 "PVM_MPI_ChannelSelect"])
 
 function getindex(b::BrukerFile, parameter)#::String
   if !b.acqpRead && ( parameter=="NA" || parameter[1:3] == "ACQ" )
     acqppath = joinpath(b.path, "acqp")
-    read(b.params, acqppath, maxEntries=b.maxEntriesAcqp)
+    read(b.params, acqppath, b.keylistAcqp, maxEntries=b.maxEntriesAcqp)
     b.acqpRead = true
   elseif !b.methodRead && length(parameter) >= 3 &&
          (parameter[1:3] == "PVM" || parameter[1:3] == "MPI")
     methodpath = joinpath(b.path, "method")
-    read(b.params, methodpath)
+    read(b.params, methodpath, b.keylistMethod)
     b.methodRead = true
   elseif !b.visupars_globalRead && length(parameter) >= 4 &&
          parameter[1:4] == "Visu"
@@ -161,7 +177,7 @@ studyNameOld(b::BrukerFile) = string(latin1toutf8(b["VisuSubjectId"])*latin1tout
 studyNumber(b::BrukerFile) = parse(Int64,b["VisuStudyNumber"])
 function studyUuid(b::BrukerFile)
   rng = MersenneTwister(hash(b["VisuStudyUid"])) # use VisuStudyUid as seed to generate uuid4
-  return uuid4(rng)	
+  return uuid4(rng)
 end
 studyDescription(b::BrukerFile) = "n.a."
 function studyTime(b::BrukerFile)
@@ -175,10 +191,10 @@ experimentName(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
 experimentNumber(b::BrukerFile) = parse(Int64,b["VisuExperimentNumber"])
 function experimentUuid(b::BrukerFile)
   rng = MersenneTwister(hash(b["VisuUid"])) # use VisuUid as seed to generate uuid4
-  return uuid4(rng)	
+  return uuid4(rng)
 end
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
-function experimentSubject(b::BrukerFile) 
+function experimentSubject(b::BrukerFile)
   id = latin1toutf8(b["VisuSubjectId"])
   name = latin1toutf8(b["VisuSubjectName"])
   if id == name
@@ -264,7 +280,7 @@ function acqNumBGFrames(b::BrukerFile)
   if a == ""
     a = "0"
   end
-    
+
   return parse(Int64,n)-parse(Int64,a)
 end
 
@@ -353,15 +369,19 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
   dataFilename = joinpath(b.path,"rawdata.job0")
   dType = acqNumAverages(b) == 1 ? Int16 : Int32
 
-  s = open(dataFilename)
+  s = open(dataFilename, "r")
 
   if numSubPeriods(b) == 1
-    raw = Mmap.mmap(s, Array{dType,4},
-             (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+    #raw = Mmap.mmap(s, Array{dType,4},
+    #         (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+    raw = RawFile(s, dType, [rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),maximum(frames)])
   else
-    raw = Mmap.mmap(s, Array{dType,5},
-             (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
-    raw = dropdims(sum(raw,dims=2),dims=2)
+    #raw = Mmap.mmap(s, Array{dType,5},
+    #         (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+    rawF = RawFile(s, dType,
+       [rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),maximum(frames)])
+    rawR = rawF[:,1:numSubPeriods(b),1:rxNumChannels(b),1:acqNumPeriodsPerFrame(b),1:maximum(frames)]
+    raw = dropdims(sum(rawR,dims=2),dims=2)
   end
   data = raw[:,receivers,periods,frames]
   close(s)

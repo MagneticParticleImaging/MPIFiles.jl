@@ -4,32 +4,47 @@ abstract type MDFFile <: MPIFile end
 
 # We use a dedicated type for v1 and v2. If both versions
 # are the same we use the abstract type MDFFile
-mutable struct MDFFileV1 <: MDFFile
+mutable struct MDFFileV1{T} <: MDFFile
   filename::String
   file::HDF5File
-  mmap_measData
+  mmap_measData::T
 end
 
-MDFFileV1(filename::String, file=h5open(filename,"r")) =
-   MDFFileV1(filename, file, nothing)
+function MDFFileV1(filename::String, file=h5open(filename,"r"))
+  tdExists = exists(file, "/measurement/dataTD")
+  if exists(file, "/measurement/dataTD")
+    mmap_measData = readmmap(file["/measurement/dataTD"])
+  elseif exists(file, "/measurement/dataFD")
+    mmap_measData = readmmap(file["/measurement/dataFD"])
+  elseif exists(file, "/calibration/dataFD")
+    mmap_measData = readmmap(file["/calibration/dataFD"])
+  else
+    mmap_measData = nothing
+  end
 
-mutable struct MDFFileV2 <: MDFFile
+  f = MDFFileV1(filename, file, mmap_measData)
+end
+
+mutable struct MDFFileV2{T} <: MDFFile
   filename::String
   file::HDF5File
-  mmap_measData
+  mmap_measData::T
 end
 
 function MDFFileV2(filename::String, file=h5open(filename,"r"))
-  f = MDFFileV2(filename, file, nothing)
-
   parameter = "/measurement/data"
-  if exists(f.file, "/measurement/data")
-    if !isComplexArray(f.file, parameter)
-      f.mmap_measData = readmmap(f.file[parameter])
+  if exists(file, "/measurement/data")
+    if !isComplexArray(file, parameter)
+      mmap_measData = readmmap(file[parameter])
     else
-      f.mmap_measData = readmmap(f.file[parameter], Array{getComplexType(f.file,parameter)} )
+      mmap_measData = readmmap(file[parameter], Array{getComplexType(file,parameter)} )
     end
+  else
+    mmap_measData = nothing
   end
+
+  f = MDFFileV2(filename, file, mmap_measData)
+
   return f
 end
 
@@ -58,28 +73,7 @@ function h5exists(filename, parameter)
   end
 end
 
-#function h5readornull(filename, parameter)
-#  if h5exists(filename, parameter)
-#    return h5read(filename, parameter)
-#  else
-#    return nothing
-#  end
-#end
-
-#function h5read_(filename, parameter, default)
-#  if h5exists(filename, parameter)
-#    return h5read(filename, parameter)
-#  else
-#    return default
-#  end
-#end
-
 function getindex(f::MDFFile, parameter)
-  #if !haskey(f.param_cache,parameter)
-  #  f.param_cache[parameter] = h5readornull(f.filename, parameter)
-  #end
-  #return f.param_cache[parameter]
-  #return read(f.file[parameter])
   if exists(f.file, parameter)
     return read(f.file, parameter)
   else
@@ -102,19 +96,19 @@ end
 
 
 # general parameters
-version(f::MDFFile) = VersionNumber( f["/version"] )
-uuid(f::MDFFile) = str2uuid(f["/uuid"])
-time(f::MDFFileV1) = DateTime( f["/date"] )
-time(f::MDFFileV2) = DateTime( f["/time"] )
+version(f::MDFFile)::VersionNumber = VersionNumber( f["/version"] )
+uuid(f::MDFFile)::UUID = str2uuid(f["/uuid"])
+time(f::MDFFileV1)::DateTime = DateTime( f["/date"] )
+time(f::MDFFileV2)::DateTime = DateTime( f["/time"] )
 
 # study parameters
-studyName(f::MDFFile) = f["/study/name"]
-studyNumber(f::MDFFileV1) = 0
-studyNumber(f::MDFFileV2) = f["/study/number"]
+studyName(f::MDFFile)::String = f["/study/name"]
+studyNumber(f::MDFFileV1)::Int = 0
+studyNumber(f::MDFFileV2)::Int = f["/study/number"]
 studyUuid(f::MDFFileV1) = nothing
 studyUuid(f::MDFFileV2) = str2uuid(f["/study/uuid"])
-studyDescription(f::MDFFileV1) = "n.a."
-studyDescription(f::MDFFileV2) = f["/study/description"]
+studyDescription(f::MDFFileV1)::String = "n.a."
+studyDescription(f::MDFFileV2)::String = f["/study/description"]
 function studyTime(f::MDFFile)
   t = f["/study/time"]
   if typeof(t)==String
@@ -123,25 +117,25 @@ function studyTime(f::MDFFile)
    return nothing
   end
 end
-  
+
 # experiment parameters
-experimentName(f::MDFFileV1) = "n.a."
-experimentName(f::MDFFileV2) = f["/experiment/name"]
-experimentNumber(f::MDFFileV1) = parse(Int64, f["/study/experiment"])
-experimentNumber(f::MDFFileV2) = f["/experiment/number"]
+experimentName(f::MDFFileV1)::String = "n.a."
+experimentName(f::MDFFileV2)::String = f["/experiment/name"]
+experimentNumber(f::MDFFileV1)::Int64 = parse(Int64, f["/study/experiment"])
+experimentNumber(f::MDFFileV2)::Int64 = f["/experiment/number"]
 experimentUuid(f::MDFFileV1) = nothing
 experimentUuid(f::MDFFileV2) = str2uuid(f["/experiment/uuid"])
-experimentDescription(f::MDFFileV1) = f["/study/description"]
-experimentDescription(f::MDFFileV2) = f["/experiment/description"]
-experimentSubject(f::MDFFileV1) = f["/study/subject"]
-experimentSubject(f::MDFFileV2) = f["/experiment/subject"]
-experimentIsSimulation(f::MDFFileV2) = Bool( f["/experiment/isSimulation"] )
-experimentIsSimulation(f::MDFFileV1) = Bool( f["/study/simulation"] )
-experimentIsCalibration(f::MDFFile) = exists(f.file, "/calibration")
-experimentHasReconstruction(f::MDFFile) = exists(f.file, "/reconstruction")
-experimentHasMeasurement(f::MDFFileV1) = exists(f.file, "/measurement") ||
+experimentDescription(f::MDFFileV1)::String = f["/study/description"]
+experimentDescription(f::MDFFileV2)::String = f["/experiment/description"]
+experimentSubject(f::MDFFileV1)::String = f["/study/subject"]
+experimentSubject(f::MDFFileV2)::String = f["/experiment/subject"]
+experimentIsSimulation(f::MDFFileV2)::Bool = Bool( f["/experiment/isSimulation"] )
+experimentIsSimulation(f::MDFFileV1)::Bool = Bool( f["/study/simulation"] )
+experimentIsCalibration(f::MDFFile)::Bool = exists(f.file, "/calibration")
+experimentHasReconstruction(f::MDFFile)::Bool = exists(f.file, "/reconstruction")
+experimentHasMeasurement(f::MDFFileV1)::Bool = exists(f.file, "/measurement") ||
                                          exists(f.file, "/calibration")
-experimentHasMeasurement(f::MDFFileV2) = exists(f.file, "/measurement")
+experimentHasMeasurement(f::MDFFileV2)::Bool = exists(f.file, "/measurement")
 
 _makeStringArray(s::String) = [s]
 _makeStringArray(s::Vector{T}) where {T<:AbstractString} = s
@@ -158,7 +152,7 @@ tracerConcentration(f::MDFFileV2)::Vector{Float64} = [f["/tracer/concentration"]
 tracerSolute(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/solute"])
 tracerSolute(f::MDFFileV1)::Vector{String} = ["Fe"]
 function tracerInjectionTime(f::MDFFile)::Vector{DateTime}
-  p = typeof(f) == MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
+  p = typeof(f) <: MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
   if f[p] == nothing
     return nothing
   end
@@ -188,11 +182,6 @@ acqNumAverages(f::MDFFileV1)::Int = f["/acquisition/drivefield/averages"]
 acqNumAverages(f::MDFFileV2)::Int = f["/acquisition/numAverages",1]
 function acqNumFrames(f::MDFFileV1)::Int
   if experimentIsCalibration(f)
-    if f.mmap_measData == nothing
-      h5open(f.filename,"r") do file
-        f.mmap_measData = readmmap(file["/calibration/dataFD"])
-      end
-    end
     return size(f.mmap_measData,2)
   else
     return f["/acquisition/numFrames"]
@@ -228,16 +217,16 @@ dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]
 dfStrength(f::MDFFileV1)::Array{Float64,3} = addTrailingSingleton( addLeadingSingleton(
          f["/acquisition/drivefield/strength"], 2), 3)
 dfStrength(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/drivefield/strength"]
-dfPhase(f::MDFFileV1) = dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
-dfPhase(f::MDFFileV2) = f["/acquisition/drivefield/phase"]
-dfBaseFrequency(f::MDFFile) = f["/acquisition/drivefield/baseFrequency"]
-dfCustomWaveform(f::MDFFileV2) = f["/acquisition/drivefield/customWaveform"]
+dfPhase(f::MDFFileV1)::Array{Float64,3} = dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
+dfPhase(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/drivefield/phase"]
+dfBaseFrequency(f::MDFFile)::Float64 = f["/acquisition/drivefield/baseFrequency"]
+dfCustomWaveform(f::MDFFileV2)::String = f["/acquisition/drivefield/customWaveform"]
 dfDivider(f::MDFFileV1) = addTrailingSingleton(
                 f["/acquisition/drivefield/divider"],2)
 dfDivider(f::MDFFileV2) = f["/acquisition/drivefield/divider"]
-dfWaveform(f::MDFFileV1) = "sine"
-dfWaveform(f::MDFFileV2) = f["/acquisition/drivefield/waveform"]
-function dfCycle(f::MDFFile)
+dfWaveform(f::MDFFileV1)::String = "sine"
+dfWaveform(f::MDFFileV2)::String = f["/acquisition/drivefield/waveform"]
+function dfCycle(f::MDFFile)::Float64
   if exists(f.file, "/acquisition/drivefield/cycle")
     return f["/acquisition/drivefield/cycle"]
   else  # pre V2 version
@@ -246,9 +235,9 @@ function dfCycle(f::MDFFile)
 end
 
 # receiver parameters
-rxNumChannels(f::MDFFile) = f["/acquisition/receiver/numChannels"]
-rxBandwidth(f::MDFFile) = f["/acquisition/receiver/bandwidth"]
-rxNumSamplingPoints(f::MDFFile) = f["/acquisition/receiver/numSamplingPoints"]
+rxNumChannels(f::MDFFile)::Int64 = f["/acquisition/receiver/numChannels"]
+rxBandwidth(f::MDFFile)::Float64 = f["/acquisition/receiver/bandwidth"]
+rxNumSamplingPoints(f::MDFFile)::Int64 = f["/acquisition/receiver/numSamplingPoints"]
 function rxTransferFunction(f::MDFFile)
   parameter = "/acquisition/receiver/transferFunction"
   if exists(f.file, parameter)
@@ -260,8 +249,8 @@ end
 rxInductionFactor(f::MDFFileV1) = nothing
 rxInductionFactor(f::MDFFileV2) = f["/acquisition/receiver/inductionFactor"]
 
-rxUnit(f::MDFFileV1) = "a.u."
-rxUnit(f::MDFFileV2) = f["/acquisition/receiver/unit"]
+rxUnit(f::MDFFileV1)::String = "a.u."
+rxUnit(f::MDFFileV2)::String = f["/acquisition/receiver/unit"]
 rxDataConversionFactor(f::MDFFileV1) = repeat([1.0, 0.0], outer=(1,rxNumChannels(f)))
 rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFactor"]
 
@@ -280,18 +269,12 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
   tdExists = exists(f.file, "/measurement/dataTD")
 
   if tdExists
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataTD"])
-    end
     data = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
       data[:,:,:,i] = f.mmap_measData[:, receivers, fr]
     end
     return reshape(data,size(data,1),size(data,2),1,size(data,3))
   else
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataFD"])
-    end
     data = zeros(Float64, 2, rxNumFrequencies(f), length(receivers), length(frames))
     for (i,fr) in enumerate(frames)
       data[:,:,:,i] = f.mmap_measData[:,:,receivers, fr]
@@ -322,15 +305,9 @@ function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
   tdExists = exists(f.file, "/measurement/dataTD")
 
   if tdExists
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataTD"])
-    end
     data = f.mmap_measData[:, receivers, periods]
     return data
   else
-    if f.mmap_measData == nothing
-      f.mmap_measData = readmmap(f.file["/measurement/dataFD"])
-    end
     data = f.mmap_measData[:, :, receivers, periods]
 
     dataFD = reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4)))
@@ -354,9 +331,6 @@ end
 function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
   if !experimentIsCalibration(f)
     return nothing
-  end
-  if f.mmap_measData == nothing
-    f.mmap_measData = readmmap(f.file["/calibration/dataFD"])
   end
 
   data = reshape(f.mmap_measData,Val(3))[:, :, rows]
@@ -541,9 +515,9 @@ calibPositions(f::MDFFile) = f["/calibration/positions"]
 recoData(f::MDFFileV1) = addLeadingSingleton(
          f[ "/reconstruction/data"], 3)
 recoData(f::MDFFileV2) = f["/reconstruction/data"]
-recoFov(f::MDFFile) = f["/reconstruction/fieldOfView"]
-recoFovCenter(f::MDFFile) = f["/reconstruction/fieldOfViewCenter"]
-recoSize(f::MDFFile) = f["/reconstruction/size"]
+recoFov(f::MDFFile)::Vector{Float64} = f["/reconstruction/fieldOfView"]
+recoFovCenter(f::MDFFile)::Vector{Float64} = f["/reconstruction/fieldOfViewCenter"]
+recoSize(f::MDFFile)::Vector{Int64} = f["/reconstruction/size"]
 recoOrder(f::MDFFile) = f["/reconstruction/order"]
 recoPositions(f::MDFFile) = f["/reconstruction/positions"]
 
