@@ -294,7 +294,7 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
   close(ds)
 
   data = reshape(data_,:,rxNumFrequencies(f),rxNumChannels(f),1)
-  return data # allPos x freq x channel x 1
+  return convert(Array{Complex{Float32},4},data); # allPos x freq x channel x 1
 end
 
 function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAverages::Int64,skipSwitchingFrames::Int64; nAveragesBG = nAverages,skipSwitchingFramesBG=skipSwitchingFrames)
@@ -319,6 +319,7 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
   params["experimentIsCalibration"] = true
   #params["uuid"] = uuid4() 
   params["measIsFourierTransformed"] = true
+  params["measIsTransposed"] = true
   params["calibFovCenter"] = [mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
   params["acqNumPeriodsPerFrame"] = 1  
 
@@ -327,7 +328,7 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
   params["calibFov"] = [sum(abs.(extrema(params["acqOffsetField"][ll,1,:])))./abs.(params["acqGradient"][ll,ll]) for ll in collect(1:3)]
   params["calibOrder"] = "xyz"
 
-  params["acqOffsetField"] = [mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
+  params["acqOffsetField"] = reshape([mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)],3,1,1)
   params["acqNumAverages"] = nAverages
 
 println("Part1")
@@ -358,7 +359,8 @@ println("Part1")
 
   params["measFramePermutation"] =  vcat(idxFGFrames,idxBGFrames)
   params["measIsBGFrame"] = vcat(zeros(numFGFrames),ones(length(idxBGFrames)))
-  params["measData"] = vcat(fgFrames,reshape(bgFramesFullInterp,:,size(bgFullReshaped)[4:5]...,1))  #size(params["measData"])(22621, 26929, 3, 1) 
+  dataTemp_ = vcat(fgFrames,reshape(bgFramesFullInterp,:,size(bgFullReshaped)[4:5]...,1))  #size(params["measData"])(22621, 26929, 3, 1) 
+  params["measData"] = convert(Array{Complex{Float32},4},dataTemp_);  #size(params["measData"])(22621, 26929, 3, 1) 
   saveasMDF(filenameOut, params)
 end
 
