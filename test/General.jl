@@ -95,8 +95,9 @@ for mdf in (measBruker,mdfv2)
   @test rxBandwidth(mdf) == 1250000.0
   @test rxNumSamplingPoints(mdf) == 1632
   @test rxDataConversionFactor(mdf) == repeat([1.0, 0.0], outer=(1,rxNumChannels(mdf)))
-  @test acqNumAverages(mdf) == 1
+  @test size(rxTransferFunction(mdf)) == (817, 3)
 
+  @test acqNumAverages(mdf) == 1
   @test acqNumFrames(mdf) == 500
   @test acqNumPeriodsPerFrame(mdf) == 1
   @test acqNumPeriods(mdf) == 500
@@ -152,6 +153,8 @@ for sm in (smBruker,smv2,smv3)
 
   @test size( systemMatrixWithBG(sm) ) == (1959,817,3,1)
   @test size( systemMatrix(sm,1:10) ) == (1936,10)
+
+  @test size(rxTransferFunction(sm)) == (817, 3)
 
   @test measIsFourierTransformed(sm) == true
   @test measIsTFCorrected(sm) == false

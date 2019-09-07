@@ -14,5 +14,6 @@ include("MDFv1.jl")
 include("MultiMPIFile.jl")
 include("Reco.jl")
 include("IMT.jl")
+include("TransferFunction/TransferFunction.jl")
 
 @info "The unit tests are done!"

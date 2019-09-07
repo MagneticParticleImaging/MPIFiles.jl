@@ -93,7 +93,7 @@ end
 
 BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400, keylistAcqp=
 				["ACQ_scan_name", "ACQ_jobs","ACQ_MPI_drive_field_strength",
-				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator", 
+				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator",
 				 "ACQ_time"], keylistMethod=["MPI_RepetitionsPerStep",
 				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
 				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
@@ -336,7 +336,14 @@ dfCycle(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000 / nu
 rxNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
 rxBandwidth(b::BrukerFile) = parse(Float64,b["PVM_MPI_Bandwidth"])*1e6
 rxNumSamplingPoints(b::BrukerFile) = div(parse(Int64,b["ACQ_size"][1]),numSubPeriods(b))
-rxTransferFunction(b::BrukerFile) = nothing
+function rxTransferFunction(b::BrukerFile)
+  filename = b["ACQ_comment"]
+  if isfile(filename)
+    return sampleTF(TransferFunction(filename), b)
+  else
+    return nothing
+  end
+end
 rxInductionFactor(b::BrukerFile) = nothing
 rxUnit(b::BrukerFile) = "a.u."
 rxDataConversionFactor(b::BrukerFileMeas) =
@@ -553,11 +560,11 @@ measIsBasisTransformed(b::BrukerFile) = false
 # calibrations
 function calibSNR(b::BrukerFile)
   snrFilename = joinpath(b.path,"pdata", "1", "snr")
-  
+
   if !isfile(snrFilename)
     return nothing
   end
-  
+
   nFreq = div(rxNumSamplingPoints(b)*numSubPeriods(b),2)+1
   s = open(snrFilename)
   data = Mmap.mmap(s, Array{Float64,3}, (nFreq,rxNumChannels(b),1))

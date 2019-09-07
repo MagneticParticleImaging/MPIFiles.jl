@@ -229,6 +229,7 @@ function MPIFile(filenames::Vector)
   return map(x->MPIFile(x),filenames)
 end
 
+include("TransferFunction.jl")
 include("MultiMPIFile.jl")
 include("Measurements.jl")
 include("SystemMatrix.jl")
