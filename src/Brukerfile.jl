@@ -344,6 +344,10 @@ function rxTransferFunction(b::BrukerFile)
     return nothing
   end
 end
+function rxHasTransferFunction(b::BrukerFile)
+  filename = b["ACQ_comment"]
+  return isfile(filename)
+end
 rxInductionFactor(b::BrukerFile) = nothing
 rxUnit(b::BrukerFile) = "a.u."
 rxDataConversionFactor(b::BrukerFileMeas) =
