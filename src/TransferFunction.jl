@@ -72,7 +72,7 @@ function save(filename::String, tf::TransferFunction)
   return nothing
 end
 
-function load_tf_fromVNA(filename::String)
+function load_tf_fromVNA(filename::String, frequencyWeighting=false)
   R = 50.0 #Ω
   N=10 #5# Turns
   A=7.4894*10.0^-4 #m^2 #1.3e-3^2*pi;
@@ -114,8 +114,10 @@ function load_tf_fromVNA(filename::String)
       push!(freq, f)
   end
   close(file)
-  #apdata .*= (freq.*2*pi)
-  #apdata[1] = 1
+  if frequencyWeighting
+  	apdata ./= (freq.*2*pi) # As TF is defined as u_ADC = u_coil *TF the derivative from magnetic moment is applied as the division of the TF by w
+    apdata[1] = 1
+  end
   return TransferFunction(freq, apdata, aϕdata)
 end
 
