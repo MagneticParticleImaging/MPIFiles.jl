@@ -246,6 +246,9 @@ function rxTransferFunction(f::MDFFile)
     return nothing
   end
 end
+function rxHasTransferFunction(f::MDFFile)
+  exists(f.file, "/acquisition/receiver/transferFunction")
+end
 rxInductionFactor(f::MDFFileV1) = nothing
 rxInductionFactor(f::MDFFileV2) = f["/acquisition/receiver/inductionFactor"]
 

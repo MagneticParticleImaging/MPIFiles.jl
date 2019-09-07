@@ -175,7 +175,7 @@ Supported keyword arguments:
 """
 function getMeasurements(f::MPIFile, neglectBGFrames=true;
       frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
-      bgCorrection=false, interpolateBG=false, tfCorrection=measIsTFCorrected(f),
+      bgCorrection=false, interpolateBG=false, tfCorrection=rxHasTransferFunction(f),
       sortFrames=false, kargs...)
 
   if neglectBGFrames
@@ -271,7 +271,7 @@ Supported keyword arguments:
 """
 function getMeasurementsFD(f::MPIFile, args...;
       loadasreal=false, transposed=false, frequencies=nothing,
-      tfCorrection=measIsTFCorrected(f),  kargs...)
+      tfCorrection=rxHasTransferFunction(f),  kargs...)
 
   data = getMeasurements(f, args..., tfCorrection=false; kargs...)
 

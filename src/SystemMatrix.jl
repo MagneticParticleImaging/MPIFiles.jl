@@ -13,16 +13,31 @@ Supported keyword arguments:
 function getSystemMatrix(f::MPIFile,
            frequencies=1:rxNumFrequencies(f)*rxNumChannels(f);
                          bgCorrection=false, loadasreal=false,
-                         kargs...)
+                         tfCorrection=rxHasTransferFunction(f), kargs...)
 
   data = systemMatrix(f, frequencies, bgCorrection)
 
   S = map(ComplexF32, data)
 
+  if tfCorrection && !measIsTFCorrected(f)
+    tf = rxTransferFunction(f)
+    if tf != nothing
+      _corrTFSF(S,tf[frequencies])
+    else
+      error("TF not available")
+    end
+  end
+
   if loadasreal
     return converttoreal(S)
   else
     return S
+  end
+end
+
+function _corrTFSF(S,tf)
+  for l=1:size(S,2)
+    S[:,l] ./= tf[l]
   end
 end
 
