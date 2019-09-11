@@ -154,10 +154,6 @@ function getindex(b::BrukerFile, parameter, procno::Int64)#::String
   return b.paramsProc[parameter]
 end
 
-function Base.show(io::IO, b::BrukerFile)
-  print(io, "BrukerFile: ", b.path)
-end
-
 # Helper
 activeChannels(b::BrukerFile) = [parse(Int64,s) for s=b["PVM_MPI_ActiveChannels"]]
 selectedChannels(b::BrukerFile) = b["PVM_MPI_ChannelSelect"] .== "Yes"
@@ -369,7 +365,7 @@ function rawDataLengthConsistent(b::BrukerFile)
 
   M = filesize(dataFilename)
   if N != M
-    @show N M
+    @warn "N!=M" N M
   end
   return N == M
 end

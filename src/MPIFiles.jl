@@ -226,6 +226,20 @@ function MPIFile(filename::AbstractString; kargs...)
   end
 end
 
+function show(io::IO, f::MPIFile)
+  print(io,typeof(f))
+  print(io,"\n")
+  print(io, "\tStudy: ")
+  show(io, studyName(f))
+  print(io,", ")
+  show(io,studyTime(f))
+  print(io,"\n")
+  print(io, "\tExperiment: ")
+  show(io,experimentName(f))
+  print(io,", ")
+  show(io,acqStartTime(f))
+end
+
 # Opens a set of MPIFiles
 function MPIFile(filenames::Vector)
   return map(x->MPIFile(x),filenames)

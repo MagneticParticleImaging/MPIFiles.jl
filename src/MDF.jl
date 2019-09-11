@@ -59,14 +59,6 @@ function MDFFile(filename::String, file = h5open(filename,"r"))
   end
 end
 
-function Base.show(io::IO, f::MDFFileV1)
-  print(io, "MDF v1: ", f.filename)
-end
-
-function Base.show(io::IO, f::MDFFileV2)
-  print(io, "MDF v2: ", f.filename)
-end
-
 function h5exists(filename, parameter)
   return h5open(filename) do file
     exists(file, parameter)
