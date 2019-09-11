@@ -377,7 +377,7 @@ end
 
 function saveasMDF(file::HDF5File, params::Dict)
   # general parameters
-  write(file, "/version", "2.0")
+  write(file, "/version", "2.0.1")
   write(file, "/uuid", string(get(params,"uuid",uuid4() )))
   write(file, "/time", "$( get(params,"time", Dates.unix2datetime(time())) )")
 
