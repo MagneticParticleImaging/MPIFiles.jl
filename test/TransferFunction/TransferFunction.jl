@@ -5,7 +5,7 @@ using Test
 
 dir = @__DIR__
 
-a = TransferFunction(dir*"/example.s1p")
+a = TransferFunction(dir*"/example.s1p", frequencyWeighting=true)
 if isfile(dir*"/example.h5")
   rm(dir*"/example.h5")
 end

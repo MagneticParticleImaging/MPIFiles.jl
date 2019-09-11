@@ -17,12 +17,12 @@ function TransferFunction(freq_, ampdata, phasedata, args...)
   return TransferFunction(freq_, data, args...)
 end
 
-function TransferFunction(filename::String)
+function TransferFunction(filename::String; kargs...)
     filenamebase, ext = splitext(filename)
     if  ext == ".h5"
       tf = load_tf(filename)
     else #if ext == "s1p" || ext == "s2p"
-      tf = load_tf_fromVNA(filename)
+      tf = load_tf_fromVNA(filename; kargs...)
     end
     return tf
 end
@@ -72,10 +72,12 @@ function save(filename::String, tf::TransferFunction)
   return nothing
 end
 
-function load_tf_fromVNA(filename::String)
-  R = 50.0 #Ω
-  N=10 #5# Turns
-  A=7.4894*10.0^-4 #m^2 #1.3e-3^2*pi;
+function load_tf_fromVNA(filename::String;
+    frequencyWeighting=false,
+    R = 50.0, #Ω
+    N = 10, #5# Turns
+    A = 7.4894*10.0^-4) #m^2 #1.3e-3^2*pi;)
+
   file = open(filename)
   lines = readlines(file)
   apdata = Float64[]
@@ -114,8 +116,9 @@ function load_tf_fromVNA(filename::String)
       push!(freq, f)
   end
   close(file)
-  #apdata .*= (freq.*2*pi)
-  #apdata[1] = 1
+  if frequencyWeighting
+  	apdata ./= (freq.*2*pi) # As TF is defined as u_ADC = u_coil *TF the derivative from magnetic moment is applied as the division of the TF by w
+  end
   return TransferFunction(freq, apdata, aϕdata)
 end
 

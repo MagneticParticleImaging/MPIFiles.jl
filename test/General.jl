@@ -155,6 +155,7 @@ for sm in (smBruker,smv2,smv3)
   @test size( systemMatrix(sm,1:10) ) == (1936,10)
 
   @test size(rxTransferFunction(sm)) == (817, 3)
+  @test rxHasTransferFunction(sm) == true
 
   @test measIsFourierTransformed(sm) == true
   @test measIsTFCorrected(sm) == false
@@ -193,7 +194,7 @@ end
 # from the raw data
 S_loadedfromraw = getMeasurementsFD(smBrukerPretendToBeMeas,
       frames=1:acqNumFGFrames(smBrukerPretendToBeMeas),sortFrames=true,
-      spectralLeakageCorrection=false,transposed=true)
+      spectralLeakageCorrection=false,transposed=true,tfCorrection=false)
 
 S_loadedfromproc = systemMatrix(smBruker)
 

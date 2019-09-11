@@ -41,7 +41,8 @@ for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyTi
             :acqStartTime,
             :dfNumChannels, :dfBaseFrequency, :dfDivider,
             :dfCycle, :dfWaveform, :rxNumChannels, :acqNumAverages, :rxBandwidth,
-            :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor, :rxUnit, :rxDataConversionFactor]
+            :rxNumSamplingPoints, :rxTransferFunction, :rxHasTransferFunction, 
+            :rxInductionFactor, :rxUnit, :rxDataConversionFactor]
   @eval $op(f::MultiMPIFile) = $op(f.files[1])
 end
 
