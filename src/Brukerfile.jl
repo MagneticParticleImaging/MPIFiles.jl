@@ -73,13 +73,13 @@ end
 function BrukerFile(path::String; isCalib=_iscalib(path), fastMode=false)
   if fastMode
     maxEntriesAcqp = 400
-	  keylistAcqp = ["ACQ_scan_name", "ACQ_jobs","ACQ_MPI_drive_field_strength",
+	  keylistAcqp = ["ACQ_scan_name", "ACQ_size", "ACQ_jobs","ACQ_MPI_drive_field_strength",
 				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator",
-				 "ACQ_time"]
-	  keylistMethod = ["MPI_RepetitionsPerStep",
+				 "ACQ_time", "ACQ_ReceiverSelect"]
+	  keylistMethod = ["PVM_MPI_Bandwidth", "MPI_RepetitionsPerStep",
 				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
 				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
-				 "PVM_MPI_ChannelSelect", "PVM_MPI_Tracer"]   
+				 "PVM_MPI_ChannelSelect", "PVM_MPI_Tracer", "PVM_MPI_DriveFieldCycle", "PVM_Matrix", "PVM_Fov"]   
   else
     maxEntriesAcqp = 2000
 	  keylistAcqp = String[]
