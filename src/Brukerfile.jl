@@ -70,8 +70,21 @@ function _iscalib(path::AbstractString)
     return calib
 end
 
-function BrukerFile(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000,
-				  keylistAcqp=String[], keylistMethod=String[])
+function BrukerFile(path::String; isCalib=_iscalib(path), fastMode=false)
+  if fastMode
+    maxEntriesAcqp = 400
+	  keylistAcqp = ["ACQ_scan_name", "ACQ_jobs","ACQ_MPI_drive_field_strength",
+				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator",
+				 "ACQ_time"]
+	  keylistMethod = ["MPI_RepetitionsPerStep",
+				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
+				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
+				 "PVM_MPI_ChannelSelect", "PVM_MPI_Tracer"]   
+  else
+    maxEntriesAcqp = 2000
+	  keylistAcqp = String[]
+	  keylistMethod = String[]
+	end
   params = JcampdxFile()
   paramsProc = JcampdxFile()
 
@@ -91,13 +104,7 @@ function BrukerFile()
              false, false, false, false, 1, String[], String[])
 end
 
-BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400, keylistAcqp=
-				["ACQ_scan_name", "ACQ_jobs","ACQ_MPI_drive_field_strength",
-				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator",
-				 "ACQ_time"], keylistMethod=["MPI_RepetitionsPerStep",
-				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
-				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
-				 "PVM_MPI_ChannelSelect"])
+BrukerFileFast(path) = BrukerFile(path, fastMode=true)
 
 function getindex(b::BrukerFile, parameter)#::String
   if !b.acqpRead && ( parameter=="NA" || parameter[1:3] == "ACQ" )
