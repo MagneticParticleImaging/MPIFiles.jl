@@ -257,7 +257,8 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
   dataFilename = joinpath(f.path,"rawdata.job0")
   #FileSize = stat(dataFilename).size
   #AllFrames = convert(Int,round(Int,FileSize/26928/4/3))
-  AllFrames = acqNumPeriodsPerPatch(f)*acqNumPeriodsPerFrame(f)
+  #AllFrames = acqNumPeriodsPerPatch(f)*acqNumPeriodsPerFrame(f)
+  AllFrames = acqNumPeriodsPerFrame(f)
   (Nx,Ny,Nz) = [length(union(acqOffsetField(f)[ll,1,:])) for ll in collect(1:3)]
 
   data_ = zeros(ComplexF64,Nx,Ny,Nz,rxNumFrequencies(f),rxNumChannels(f));
@@ -289,7 +290,8 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
     y = collect(Ny:-1:1)[PosNy.==union(Pos[2,1,ind])]
     z = collect(Nz:-1:1)[PosNz.==union(Pos[3,1,ind])]
     for ch =1:3
-      data_[x,y,z,:,ch] = rfft(vec(mean(raw[:,1,ch,ind],dims=2)));
+      dataSC = spectralLeakageCorrectedData(raw[:,1,ch,ind]);
+      data_[x,y,z,:,ch] = rfft(vec(mean(dataSC,dims=2)));
     end
   end
 

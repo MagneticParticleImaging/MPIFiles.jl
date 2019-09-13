@@ -302,3 +302,41 @@ function getMeasurementsFD(f::MPIFile, args...;
 
   return data
 end
+
+
+
+
+
+
+
+function spectralLeakageCorrectedData(dataIn)
+  @debug "Apply Spectral Cleaning"
+
+  numTimePoints = size(dataIn,1)
+  numFrames = size(dataIn,2)
+
+  dataOut = zeros(Float32, numTimePoints, numFrames)
+
+  window3 = hannWindow(numTimePoints*3)
+  window2 = hannWindow(numTimePoints*2)
+
+  for (i,fr) in enumerate(collect(1:numFrames))
+      if fr==1
+        dataOut[:,i] = 1/2 * (dataIn[:,fr] .* window2[1:numTimePoints]
+                          +  dataIn[:,fr+1] .* window2[1+numTimePoints:2*numTimePoints]
+                          );
+      elseif fr==numFrames
+        dataOut[:,i] = 1/2 * (dataIn[:,fr-1] .* window2[1:numTimePoints]
+                          +    dataIn[:,fr] .* window2[1+numTimePoints:2*numTimePoints]
+                          );
+      else
+        dataOut[:,i] = 1/3 * (dataIn[:,fr-1] .* window3[1:numTimePoints]
+                          +  dataIn[:,fr] .* window3[1+numTimePoints:2*numTimePoints]
+                          +  dataIn[:,fr+1] .* window3[1+2*numTimePoints:3*numTimePoints]
+                          );
+      end
+    end
+  return dataOut
+end
+
+
