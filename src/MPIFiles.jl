@@ -72,7 +72,7 @@ export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
        measIsBGCorrected, measIsTransposed,
        measIsFramePermutation, measIsFrequencySelection,
        measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation,
-       measFrequencySelection, measIsBasisTransformed
+       measFrequencySelection, measIsBasisTransformed, measIsCalibProcessed
 
 # calibrations
 export calibSNR, calibFov, calibFovCenter, calibSize,
@@ -170,6 +170,7 @@ abstract type MPIFile end
 @mustimplement measIsBGFrame(f::MPIFile)
 @mustimplement measFramePermutation(f::MPIFile)
 @mustimplement measIsBasisTransformed(f::MPIFile)
+@mustimplement measIsCalibProcessed(b::MPIFile)
 
 # calibrations
 @mustimplement calibSNR(f::MPIFile)

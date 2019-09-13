@@ -494,12 +494,16 @@ function measIsFramePermutation(f::MDFFileV1)
     return true
   end
 end
-measIsFramePermutation(f::MDFFileV2) = f["/measurement/isFramePermutation"]
+measIsFramePermutation(f::MDFFileV2) = Bool(f["/measurement/isFramePermutation"])
 measIsBGFrame(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
 measIsBGFrame(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundFrame"])
 measFramePermutation(f::MDFFileV1) = nothing
 measFramePermutation(f::MDFFileV2) = f["/measurement/framePermutation"]
 fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
+
+measIsCalibProcessed(f::MDFFile) = measIsFramePermutation(f) && 
+                                   measIsFourierTransformed(f) &&
+                                   measIsTransposed(f)
 
 #calibrations
 calibSNR(f::MDFFileV1) = addTrailingSingleton(f["/calibration/snrFD"],3)
