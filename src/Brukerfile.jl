@@ -516,18 +516,20 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
   return S
 end
 
+measIsCalibProcessed(b::BrukerFile) = isfile(joinpath(b.path,"pdata", "1", "systemMatrix"))
+
 measIsFourierTransformed(b::BrukerFileMeas) = false
-measIsFourierTransformed(b::BrukerFileCalib) = true
+measIsFourierTransformed(b::BrukerFileCalib) = measIsCalibProcessed(b)
 measIsTFCorrected(b::BrukerFile) = false
 measIsBGCorrected(b::BrukerFileMeas) = false
 # We have it, but by default we pretend that it is not applied
 measIsBGCorrected(b::BrukerFileCalib) = false
 
 measIsTransposed(b::BrukerFileMeas) = false
-measIsTransposed(b::BrukerFileCalib) = true
+measIsTransposed(b::BrukerFileCalib) = measIsCalibProcessed(b)
 
 measIsFramePermutation(b::BrukerFileMeas) = false
-measIsFramePermutation(b::BrukerFileCalib) = true
+measIsFramePermutation(b::BrukerFileCalib) = measIsCalibProcessed(b)
 
 function measIsBGFrame(b::BrukerFileMeas)
   if !experimentIsCalibration(b)
@@ -548,18 +550,31 @@ end
 # If the file is considered to be a calibration file, we will load
 # the measurement in a processed form. In that case the BG measurements
 # will be put at the end of the frame dimension.
-measIsBGFrame(b::BrukerFileCalib) =
-   cat(zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)),dims=1)
+function measIsBGFrame(b::BrukerFileCalib)
+  if measIsCalibProcessed(b)
+    return cat(zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)),dims=1)
+  else
+    isBG = zeros(Bool, acqNumFrames(b))
+    increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
+    isBG[1:increment:end] .= true
+
+    return isBG  
+  end
+end
 
 # measurements are not permuted
 measFramePermutation(b::BrukerFileMeas) = nothing
 # calibration scans are permuted
 function measFramePermutation(b::BrukerFileCalib)
-  # The following is a trick to obtain the permutation applied to the measurements
-  # in a calibration measurement.
-  bMeas = BrukerFile(b.path, isCalib=false)
+  if measIsCalibProcessed(b)
+    # The following is a trick to obtain the permutation applied to the measurements
+    # in a calibration measurement.
+    bMeas = BrukerFile(b.path, isCalib=false)
 
-  return fullFramePermutation(bMeas)
+    return fullFramePermutation(bMeas)
+  else
+    return nothing
+  end
 end
 
 fullFramePermutation(f::BrukerFile) = fullFramePermutation(f, true)

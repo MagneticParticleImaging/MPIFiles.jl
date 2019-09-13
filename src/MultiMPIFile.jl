@@ -97,7 +97,7 @@ function acqGradient(f::MultiMPIFile)
 end
 
 for op in [:measIsFourierTransformed, :measIsTFCorrected,
-           :measIsBGCorrected,
+           :measIsBGCorrected, :measIsCalibProcessed,
            :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
            :measIsSpectralLeakageCorrected,
            :measFramePermutation, :measIsBGFrame]
