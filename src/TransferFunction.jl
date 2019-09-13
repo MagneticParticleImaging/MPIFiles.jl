@@ -1,4 +1,4 @@
-export TransferFunction, sampleTF, tf_receive_chain
+export TransferFunction, sampleTF, setTF
 
 mutable struct TransferFunction
   freq::Vector{Float64}
@@ -129,3 +129,48 @@ function sampleTF(tmf::TransferFunction, f::MPIFile)
   numFreq = length(freq)
   return tmf[freq,1:numChan]
 end
+
+
+function setTF(b::BrukerFile, filenameTF::AbstractString)
+  A = readlines(joinpath(filepath(b),"acqp"))
+  l = findfirst( s->occursin("ACQ_comment", s), A)
+  
+  if l == nothing
+   ll = findfirst( s->occursin("ACQ_experiment_mode", s), A)
+   insert!(A, ll, "##\$ACQ_comment=( 2048 )")
+   insert!(A, ll+1, "<$(filenameTF)>")
+  else
+    A[l+1] = "<$(filenameTF)>"
+  end
+  
+  mv(joinpath(filepath(b),"acqp"), joinpath(filepath(b),"acqp_bac"), force=true )
+  
+  open(joinpath(filepath(b),"acqp"),"w") do fd
+   for u in A
+     println(fd,u)
+   end
+  end
+  
+  if isfile(joinpath(filepath(b),"mdf"))
+    setTF(MPIFile(filepath(b)), filenameTF)
+  end
+  return  
+end
+
+
+function setTF(f::MDFFile, filenameTF::AbstractString)
+  tmf = TransferFunction(filenameTF)
+  tf = sampleTF(tmf, f)
+  
+  # We need to close the HDF5 file handle before we can write to it
+  close(f.file)
+  
+  h5open(filepath(f), "r+") do file
+    if exists(file, "/acquisition/receiver/transferFunction")
+      o_delete(file, "/acquisition/receiver/transferFunction")
+    end
+    write(file, "/acquisition/receiver/transferFunction", tf)
+  end  
+  return
+end
+
