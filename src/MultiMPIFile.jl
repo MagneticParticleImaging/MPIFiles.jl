@@ -23,8 +23,11 @@ done_(f::MultiMPIFile,state) = state > length(f.files)
 iterate(f::MultiMPIFile, s=start_(f)) = done_(f, s) ? nothing : next_(f, s)
 
 
-function Base.show(io::IO, f::MultiMPIFile)
-  print(io, "Multi MPI File: ", f.files)
+function show(io::IO, f::MultiMPIFile)
+  print(io, "Multi MPI File:\n")
+  for (i,file) in enumerate(f.files)
+    print(io,"$i. ", file)
+  end
 end
 
 acqNumPeriodsPerFrame(f::MultiMPIFile) = length(f.files)*acqNumFrames(f.files[1])

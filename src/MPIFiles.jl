@@ -227,17 +227,16 @@ function MPIFile(filename::AbstractString; kargs...)
 end
 
 function show(io::IO, f::MPIFile)
-  print(io,typeof(f))
-  print(io,"\n")
-  print(io, "\tStudy: ")
+  print(io,supertype(typeof(f)))
+  print(io,"\n\tStudy: ")
   show(io, studyName(f))
   print(io,", ")
   show(io,studyTime(f))
-  print(io,"\n")
-  print(io, "\tExperiment: ")
+  print(io,"\n\tExperiment: ")
   show(io,experimentName(f))
   print(io,", ")
   show(io,acqStartTime(f))
+  print(io,"\n")
 end
 
 # Opens a set of MPIFiles
