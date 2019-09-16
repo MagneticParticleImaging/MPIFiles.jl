@@ -136,16 +136,36 @@ function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
 end
 
 
+isConvertibleToMDF(f::MPIFile) = true
+function isConvertibleToMDF(f::BrukerFile)
+  # check if raw data is consistent
+  if !rawDataLengthConsistent(f::BrukerFile)
+    return false
+  end
+  # check if conversion of method is supported
+  #TODO use regex matching if list grows too large
+  whitelist = ["User:ukeMPI337", "User:mkaul_MPI", "User:ukeMPINew", "User:ukeMPI335", "User:uke_mpi", "Bruker:MPICalibration", "Bruker:MPI"]
+  if !(f["ACQ_method"] in whitelist)
+    @warn "conversion of method not supported" f["ACQ_method"]
+    return false
+  end
+  return true
+end
+
 function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
   saveasMDF(filenameOut, MPIFile(filenameIn); kargs...)
 end
 
 function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, kargs...)
-  params = loadDataset(f;kargs...)
-  if filenameBG != nothing
-    appendBGDataset(params, filenameBG)
+  if isConvertibleToMDF(f)
+    params = loadDataset(f;kargs...)
+    if filenameBG != nothing
+      appendBGDataset(params, filenameBG)
+    end
+    saveasMDF(filenameOut, params)
+  else
+    error("File not Convertible")
   end
-  saveasMDF(filenameOut, params)
 end
 
 function saveasMDFHacking(filenameOut::String, f::MPIFile)

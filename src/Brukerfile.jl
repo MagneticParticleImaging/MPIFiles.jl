@@ -365,7 +365,7 @@ function rawDataLengthConsistent(b::BrukerFile)
 
   M = filesize(dataFilename)
   if N != M
-    @warn "N!=M" N M
+    @warn "raw data length inconsistent N != M" N M
   end
   return N == M
 end
