@@ -18,17 +18,17 @@ if !isdir(fnSMBruker)
         write(file, http)
     end
   end
-  run(`unzip $(fnSMBruker).zip`)
+  run(`unzip -oq $(fnSMBruker).zip`)
   rm(fnSMBruker*".zip")
 end
-if !isdir(fnMeasBruker*".zip")
+if !isdir(fnMeasBruker) || !isfile("tf.h5")
   @info "download $fnMeasBruker"
   HTTP.open("GET", "http://media.tuhh.de/ibi/"*fnMeasBruker*".zip") do http
     open(fnMeasBruker*".zip", "w") do file
         write(file, http)
     end
   end
-  run(`unzip $(fnMeasBruker).zip`)
+  run(`unzip -oq $(fnMeasBruker).zip`)
   rm(fnMeasBruker*".zip")
 end
 if !isdir(fnSM1DBruker)
@@ -38,7 +38,7 @@ if !isdir(fnSM1DBruker)
         write(file, http)
     end
   end
-  run(`unzip $(fnSM1DBruker).zip`)
+  run(`unzip -oq $(fnSM1DBruker).zip`)
   rm(fnSM1DBruker*".zip")
 end
 
