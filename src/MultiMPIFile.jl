@@ -101,7 +101,7 @@ end
 
 for op in [:measIsFourierTransformed, :measIsTFCorrected,
            :measIsBGCorrected,
-           :isFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
+           :measIsFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
            :measIsSpectralLeakageCorrected,
            :measFramePermutation, :measIsBGFrame]
   @eval $op(f::MultiMPIFile) = $op(f.files[1])

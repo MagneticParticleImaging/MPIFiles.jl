@@ -29,7 +29,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
               spectralLeakageCorrection=false, transposed=true, tfCorrection=false)
         setparam!(params, "measData", data)
         setparam!(params, "measIsFourierTransformed", true)
-        setparam!(params, "isFastFrameAxis", true)
+        setparam!(params, "measIsFastFrameAxis", true)
         setparam!(params, "measIsFramePermutation", true)
         setparam!(params, "measFramePermutation", fullFramePermutation(f))
 
@@ -103,7 +103,7 @@ function loadMeasParams(f, params = Dict{String,Any}(); skipMeasData = false)
   if experimentHasMeasurement(f)
     for op in [:measIsFourierTransformed, :measIsTFCorrected,
                  :measIsBGCorrected,
-                 :isFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
+                 :measIsFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
                  :measIsSpectralLeakageCorrected,
                  :measFramePermutation, :measIsBGFrame]
       setparam!(params, string(op), eval(op)(f))
@@ -277,7 +277,8 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
   dataFilename = joinpath(f.path,"rawdata.job0")
   #FileSize = stat(dataFilename).size
   #AllFrames = convert(Int,round(Int,FileSize/26928/4/3))
-  AllFrames = acqNumPeriodsPerPatch(f)*acqNumPeriodsPerFrame(f)
+  #AllFrames = acqNumPeriodsPerPatch(f)*acqNumPeriodsPerFrame(f)
+  AllFrames = acqNumPeriodsPerFrame(f)
   (Nx,Ny,Nz) = [length(union(acqOffsetField(f)[ll,1,:])) for ll in collect(1:3)]
 
   data_ = zeros(ComplexF64,Nx,Ny,Nz,rxNumFrequencies(f),rxNumChannels(f));
@@ -309,7 +310,8 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
     y = collect(Ny:-1:1)[PosNy.==union(Pos[2,1,ind])]
     z = collect(Nz:-1:1)[PosNz.==union(Pos[3,1,ind])]
     for ch =1:3
-      data_[x,y,z,:,ch] = rfft(vec(mean(raw[:,1,ch,ind],dims=2)));
+      dataSC = spectralLeakageCorrectedData(raw[:,1,ch,ind]);
+      data_[x,y,z,:,ch] = rfft(vec(mean(dataSC,dims=2)));
     end
   end
 
@@ -341,7 +343,7 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
   params["experimentIsCalibration"] = true
   #params["uuid"] = uuid4()
   params["measIsFourierTransformed"] = true
-  params["isFastFrameAxis"] = true
+  params["measIsFastFrameAxis"] = true
   params["calibFovCenter"] = [mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
   params["acqNumPeriodsPerFrame"] = 1
 
@@ -496,7 +498,7 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/measurement/isTransferFunctionCorrected", Int8(params["measIsTFCorrected"]))
     write(file, "/measurement/isFrequencySelection", Int8(params["measIsFrequencySelection"]))
     write(file, "/measurement/isBackgroundCorrected",  Int8(params["measIsBGCorrected"]))
-    write(file, "/measurement/isFastFrameAxis",  Int8(params["isFastFrameAxis"]))
+    write(file, "/measurement/isFastFrameAxis",  Int8(params["measIsFastFrameAxis"]))
     write(file, "/measurement/isFramePermutation",  Int8(params["measIsFramePermutation"]))
     writeIfAvailable(file, "/measurement/frequencySelection",  params, "measFrequencySelection")
 

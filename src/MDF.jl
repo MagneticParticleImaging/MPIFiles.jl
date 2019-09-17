@@ -284,7 +284,7 @@ end
 function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
 
-  if isFastFrameAxis(f)
+  if measIsFastFrameAxis(f)
     data = f.mmap_measData[frames, :, receivers, periods]
     data = reshape(data, length(frames), size(f.mmap_measData,2), length(receivers), length(periods))
   else
@@ -314,7 +314,7 @@ end
 
 function measDataTDPeriods(f::MDFFileV2, periods=1:acqNumPeriods(f),
                   receivers=1:rxNumChannels(f))
-  if isFastFrameAxis(f)
+  if measIsFastFrameAxis(f)
     error("measDataTDPeriods can currently not handle transposed data!")
   end
 
@@ -333,7 +333,7 @@ function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
 end
 
 function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
-  if !exists(f.file, "/measurement") || !isFastFrameAxis(f) ||
+  if !exists(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
     !measIsFourierTransformed(f)
     return nothing
   end
@@ -406,7 +406,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
 end
 
 function systemMatrixWithBG(f::MDFFileV2)
-  if !exists(f.file, "/measurement") || !isFastFrameAxis(f) ||
+  if !exists(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
       !measIsFourierTransformed(f)
       return nothing
   end
@@ -417,7 +417,7 @@ end
 
 # This is a special variant used for matrix compression
 function systemMatrixWithBG(f::MDFFileV2, freq)
-  if !exists(f.file, "/measurement") || !isFastFrameAxis(f) ||
+  if !exists(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
     !measIsFourierTransformed(f)
     return nothing
   end
@@ -463,7 +463,7 @@ function measIsBasisTransformed(f::MDFFileV2)
   end
 end
 
-function isFastFrameAxis(f::MDFFileV1)
+function measIsFastFrameAxis(f::MDFFileV1)
   if !experimentIsCalibration(f)
     return false
   else
@@ -471,11 +471,11 @@ function isFastFrameAxis(f::MDFFileV1)
   end
 end
 
-function isFastFrameAxis(f::MDFFileV2)
+function measIsFastFrameAxis(f::MDFFileV2)
   if exists(f.file, "/measurement/isFastFrameAxis")
     return Bool(f["/measurement/isFastFrameAxis"])
   else
-    @warn "/measurement/isFastFrameAxis missing in MDF data set. `isFastFrameAxis` returning false per default."
+    @warn "/measurement/isFastFrameAxis missing in MDF data set. `measIsFastFrameAxis` returning false per default."
     return false
   end
 end
@@ -487,12 +487,16 @@ function measIsFramePermutation(f::MDFFileV1)
     return true
   end
 end
-measIsFramePermutation(f::MDFFileV2) = f["/measurement/isFramePermutation"]
+measIsFramePermutation(f::MDFFileV2) = Bool(f["/measurement/isFramePermutation"])
 measIsBGFrame(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
 measIsBGFrame(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundFrame"])
 measFramePermutation(f::MDFFileV1) = nothing
 measFramePermutation(f::MDFFileV2) = f["/measurement/framePermutation"]
 fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
+
+measIsCalibProcessed(f::MDFFile) = measIsFramePermutation(f) && 
+                                   measIsFourierTransformed(f) &&
+                                   measIsTransposed(f)
 
 #calibrations
 calibSNR(f::MDFFileV1) = addTrailingSingleton(f["/calibration/snrFD"],3)

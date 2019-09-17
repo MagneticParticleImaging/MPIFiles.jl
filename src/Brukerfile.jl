@@ -70,8 +70,21 @@ function _iscalib(path::AbstractString)
     return calib
 end
 
-function BrukerFile(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000,
-				  keylistAcqp=String[], keylistMethod=String[])
+function BrukerFile(path::String; isCalib=_iscalib(path), fastMode=false)
+  if fastMode
+    maxEntriesAcqp = 400
+	  keylistAcqp = ["ACQ_scan_name", "ACQ_size", "ACQ_jobs","ACQ_MPI_drive_field_strength",
+				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator",
+				 "ACQ_time", "ACQ_ReceiverSelect"]
+	  keylistMethod = ["PVM_MPI_Bandwidth", "MPI_RepetitionsPerStep",
+				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
+				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
+				 "PVM_MPI_ChannelSelect", "PVM_MPI_Tracer", "PVM_MPI_DriveFieldCycle", "PVM_Matrix", "PVM_Fov"]   
+  else
+    maxEntriesAcqp = 2000
+	  keylistAcqp = String[]
+	  keylistMethod = String[]
+	end
   params = JcampdxFile()
   paramsProc = JcampdxFile()
 
@@ -91,13 +104,7 @@ function BrukerFile()
              false, false, false, false, 1, String[], String[])
 end
 
-BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400, keylistAcqp=
-				["ACQ_scan_name", "ACQ_jobs","ACQ_MPI_drive_field_strength",
-				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator",
-				 "ACQ_time"], keylistMethod=["MPI_RepetitionsPerStep",
-				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
-				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
-				 "PVM_MPI_ChannelSelect"])
+BrukerFileFast(path) = BrukerFile(path, fastMode=true)
 
 function getindex(b::BrukerFile, parameter)#::String
   if !b.acqpRead && ( parameter=="NA" || parameter[1:3] == "ACQ" )
@@ -505,18 +512,20 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
   return S
 end
 
+measIsCalibProcessed(b::BrukerFile) = isfile(joinpath(b.path,"pdata", "1", "systemMatrix"))
+
 measIsFourierTransformed(b::BrukerFileMeas) = false
-measIsFourierTransformed(b::BrukerFileCalib) = true
+measIsFourierTransformed(b::BrukerFileCalib) = measIsCalibProcessed(b)
 measIsTFCorrected(b::BrukerFile) = false
 measIsBGCorrected(b::BrukerFileMeas) = false
 # We have it, but by default we pretend that it is not applied
 measIsBGCorrected(b::BrukerFileCalib) = false
 
-isFastFrameAxis(b::BrukerFileMeas) = false
-isFastFrameAxis(b::BrukerFileCalib) = true
+measIsFastFrameAxis(b::BrukerFileMeas) = false
+measIsFastFrameAxis(b::BrukerFileCalib) = true
 
 measIsFramePermutation(b::BrukerFileMeas) = false
-measIsFramePermutation(b::BrukerFileCalib) = true
+measIsFramePermutation(b::BrukerFileCalib) = measIsCalibProcessed(b)
 
 function measIsBGFrame(b::BrukerFileMeas)
   if !experimentIsCalibration(b)
@@ -537,18 +546,31 @@ end
 # If the file is considered to be a calibration file, we will load
 # the measurement in a processed form. In that case the BG measurements
 # will be put at the end of the frame dimension.
-measIsBGFrame(b::BrukerFileCalib) =
-   cat(zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)),dims=1)
+function measIsBGFrame(b::BrukerFileCalib)
+  if measIsCalibProcessed(b)
+    return cat(zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)),dims=1)
+  else
+    isBG = zeros(Bool, acqNumFrames(b))
+    increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
+    isBG[1:increment:end] .= true
+
+    return isBG  
+  end
+end
 
 # measurements are not permuted
 measFramePermutation(b::BrukerFileMeas) = nothing
 # calibration scans are permuted
 function measFramePermutation(b::BrukerFileCalib)
-  # The following is a trick to obtain the permutation applied to the measurements
-  # in a calibration measurement.
-  bMeas = BrukerFile(b.path, isCalib=false)
+  if measIsCalibProcessed(b)
+    # The following is a trick to obtain the permutation applied to the measurements
+    # in a calibration measurement.
+    bMeas = BrukerFile(b.path, isCalib=false)
 
-  return fullFramePermutation(bMeas)
+    return fullFramePermutation(bMeas)
+  else
+    return nothing
+  end
 end
 
 fullFramePermutation(f::BrukerFile) = fullFramePermutation(f, true)

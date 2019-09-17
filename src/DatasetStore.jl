@@ -98,9 +98,13 @@ function getStudies(d::DatasetStore)
   for file in files
     fullpath = joinpath(studydir(d),file)
     if isdir(fullpath) && !ishidden(fullpath)
+      try
       study = getStudy(d, file)
       if study != nothing
         push!(s, study)
+      end
+      catch e
+        @warn e
       end
     end
   end

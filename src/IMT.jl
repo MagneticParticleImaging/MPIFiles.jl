@@ -179,8 +179,8 @@ measIsBGCorrected(f::IMTFile) = false
 
 measIsFrequencySelection(f::IMTFile) = false
 
-isFastFrameAxis(f::IMTFileCalib) = true
-isFastFrameAxis(f::IMTFileMeas) = false
+measIsFastFrameAxis(f::IMTFileCalib) = true
+measIsFastFrameAxis(f::IMTFileMeas) = false
 
 measIsFramePermutation(f::IMTFileCalib) = false
 measIsFramePermutation(f::IMTFileMeas) = false

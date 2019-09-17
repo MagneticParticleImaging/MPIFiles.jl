@@ -69,10 +69,10 @@ export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
 
 # measurements
 export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
-       measIsBGCorrected, isFastFrameAxis,
+       measIsBGCorrected, measIsFastFrameAxis,
        measIsFramePermutation, measIsFrequencySelection,
        measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation,
-       measFrequencySelection, measIsBasisTransformed
+       measFrequencySelection, measIsBasisTransformed, measIsCalibProcessed
 
 # calibrations
 export calibSNR, calibFov, calibFovCenter, calibSize,
@@ -165,11 +165,12 @@ abstract type MPIFile end
 @mustimplement measIsTFCorrected(f::MPIFile)
 @mustimplement measIsFrequencySelecton(f::MPIFile)
 @mustimplement measIsBGCorrected(f::MPIFile)
-@mustimplement isFastFrameAxis(f::MPIFile)
+@mustimplement measIsFastFrameAxis(f::MPIFile)
 @mustimplement measIsFramePermutation(f::MPIFile)
 @mustimplement measIsBGFrame(f::MPIFile)
 @mustimplement measFramePermutation(f::MPIFile)
 @mustimplement measIsBasisTransformed(f::MPIFile)
+@mustimplement measIsCalibProcessed(b::MPIFile)
 
 # calibrations
 @mustimplement calibSNR(f::MPIFile)
