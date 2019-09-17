@@ -629,10 +629,10 @@ end
 
 function save(reco::Reconstruction)
   h5open(reco.path, "r+") do file
-    if exists(file, "/reconstruction/parameters")
-      o_delete(file, "/reconstruction/parameters")
+    if exists(file, "/reconstruction/_parameters")
+      o_delete(file, "/reconstruction/_parameters")
     end
-    saveParams(file, "/reconstruction/parameters", reco.params)
+    saveParams(file, "/reconstruction/_parameters", reco.params)
   end
 end
 
@@ -642,7 +642,7 @@ function loadParams(reco::Reconstruction)
    h5open(reco.path, "r") do file
     g = file["/reconstruction"]
     if exists(g, "parameters") #new world order
-      reco.params = loadParams(reco.path, "/reconstruction/parameters")
+      reco.params = loadParams(reco.path, "/reconstruction/_parameters")
     else #this needs to go
       @debug "opening legacy file"
       prefix, ext = splitext(reco.path)

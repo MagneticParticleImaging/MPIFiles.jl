@@ -537,7 +537,7 @@ function saveasMDF(file::HDF5File, params::Dict)
       write(file, "/reconstruction/positions", params["recoPositions"])
     end
     if hasKeyAndValue(params,"recoParameters")
-      saveParams(file, "/reconstruction/parameters", params["recoParameters"])
+      saveParams(file, "/reconstruction/_parameters", params["recoParameters"])
     end
   end
 

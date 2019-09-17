@@ -519,10 +519,11 @@ recoPositions(f::MDFFile) = f["/reconstruction/positions"]
 
 # this is non-standard
 function recoParameters(f::MDFFile)
-  if !exists(f.file, "/reconstruction/parameters")
+  if !exists(f.file, "/reconstruction/_parameters")
     return nothing
+  else
+    return loadParams(f.file, "/reconstruction/_parameters")
   end
-  return loadParams(f.file, "/reconstruction/parameters")
 end
 
 # additional functions that should be implemented by an MPIFile
