@@ -127,7 +127,7 @@ for sm in (smv1,smv2)
   @test size( measData(sm) ) == (1936,817,3,1)
   @test measIsFourierTransformed(sm) == true
   @test measIsTFCorrected(sm) == false
-  @test measIsTransposed(sm) == true
+  @test isFastFrameAxis(sm) == true
   @test measIsBGCorrected(sm) == true
 
   @test size( calibSNR(sm) ) == (817,3,1)

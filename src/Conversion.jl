@@ -29,7 +29,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
               spectralLeakageCorrection=false, transposed=true, tfCorrection=false)
         setparam!(params, "measData", data)
         setparam!(params, "measIsFourierTransformed", true)
-        setparam!(params, "measIsTransposed", true)
+        setparam!(params, "isFastFrameAxis", true)
         setparam!(params, "measIsFramePermutation", true)
         setparam!(params, "measFramePermutation", fullFramePermutation(f))
 
@@ -103,7 +103,7 @@ function loadMeasParams(f, params = Dict{String,Any}(); skipMeasData = false)
   if experimentHasMeasurement(f)
     for op in [:measIsFourierTransformed, :measIsTFCorrected,
                  :measIsBGCorrected,
-                 :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
+                 :isFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
                  :measIsSpectralLeakageCorrected,
                  :measFramePermutation, :measIsBGFrame]
       setparam!(params, string(op), eval(op)(f))
@@ -341,7 +341,7 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
   params["experimentIsCalibration"] = true
   #params["uuid"] = uuid4()
   params["measIsFourierTransformed"] = true
-  params["measIsTransposed"] = true
+  params["isFastFrameAxis"] = true
   params["calibFovCenter"] = [mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
   params["acqNumPeriodsPerFrame"] = 1
 
@@ -496,7 +496,7 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/measurement/isTransferFunctionCorrected", Int8(params["measIsTFCorrected"]))
     write(file, "/measurement/isFrequencySelection", Int8(params["measIsFrequencySelection"]))
     write(file, "/measurement/isBackgroundCorrected",  Int8(params["measIsBGCorrected"]))
-    write(file, "/measurement/isFastFrameAxis",  Int8(params["measIsTransposed"]))
+    write(file, "/measurement/isFastFrameAxis",  Int8(params["isFastFrameAxis"]))
     write(file, "/measurement/isFramePermutation",  Int8(params["measIsFramePermutation"]))
     writeIfAvailable(file, "/measurement/frequencySelection",  params, "measFrequencySelection")
 

@@ -512,8 +512,8 @@ measIsBGCorrected(b::BrukerFileMeas) = false
 # We have it, but by default we pretend that it is not applied
 measIsBGCorrected(b::BrukerFileCalib) = false
 
-measIsTransposed(b::BrukerFileMeas) = false
-measIsTransposed(b::BrukerFileCalib) = true
+isFastFrameAxis(b::BrukerFileMeas) = false
+isFastFrameAxis(b::BrukerFileCalib) = true
 
 measIsFramePermutation(b::BrukerFileMeas) = false
 measIsFramePermutation(b::BrukerFileCalib) = true

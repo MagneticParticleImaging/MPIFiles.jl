@@ -69,7 +69,7 @@ export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
 
 # measurements
 export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
-       measIsBGCorrected, measIsTransposed,
+       measIsBGCorrected, isFastFrameAxis,
        measIsFramePermutation, measIsFrequencySelection,
        measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation,
        measFrequencySelection, measIsBasisTransformed
@@ -165,7 +165,7 @@ abstract type MPIFile end
 @mustimplement measIsTFCorrected(f::MPIFile)
 @mustimplement measIsFrequencySelecton(f::MPIFile)
 @mustimplement measIsBGCorrected(f::MPIFile)
-@mustimplement measIsTransposed(f::MPIFile)
+@mustimplement isFastFrameAxis(f::MPIFile)
 @mustimplement measIsFramePermutation(f::MPIFile)
 @mustimplement measIsBGFrame(f::MPIFile)
 @mustimplement measFramePermutation(f::MPIFile)

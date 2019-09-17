@@ -99,7 +99,7 @@ end
   @test size( measData(calibIMT) ) == (400, 817, 2, 1)
   @test measIsFourierTransformed(calibIMT) == true
   @test measIsTFCorrected(calibIMT) == false
-  @test measIsTransposed(calibIMT) == true
+  @test isFastFrameAxis(calibIMT) == true
   @test measIsBGCorrected(calibIMT) == false
 
   @test size( calibSNR(calibIMT) ) == (817, 2, 1)
