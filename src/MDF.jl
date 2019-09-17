@@ -496,7 +496,7 @@ fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid
 
 measIsCalibProcessed(f::MDFFile) = measIsFramePermutation(f) && 
                                    measIsFourierTransformed(f) &&
-                                   measIsTransposed(f)
+                                   measIsFastFrameAxis(f)
 
 #calibrations
 calibSNR(f::MDFFileV1) = addTrailingSingleton(f["/calibration/snrFD"],3)
