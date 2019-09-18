@@ -184,25 +184,9 @@ acqNumPeriodsPerFrame(f::MDFFileV1)::Int = 1
 acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods",1]
 
 acqGradient(f::MDFFileV1)::Array{Float64,4} = reshape(Matrix(Diagonal(f["/acquisition/gradient"])), 3,3,1,1)
-function acqGradient(f::MDFFileV2)::Array{Float64,4}
-  g = f["/acquisition/gradient"]
-  if ndims(g) == 2 # compatibility with V2 pre versions
-    g_ = zeros(3,3,1,size(g,2))
-    g_[1,1,1,:] .= g[1,:]
-    return g_
-  else
-    return g
-  end
-end
+acqGradient(f::MDFFileV2)::Array{Float64,4} = f["/acquisition/gradient"]
 acqOffsetField(f::MDFFileV1)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
-function acqOffsetField(f::MDFFileV2)::Array{Float64,3}
-  off = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
-  if ndims(off) == 2 # compatibility with V2 pre versions
-    return reshape(off,3,1,:)
-  else
-    return off
-  end
-end
+acqOffsetField(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
 
 # drive-field parameters
 dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]
@@ -218,13 +202,8 @@ dfDivider(f::MDFFileV1) = addTrailingSingleton(
 dfDivider(f::MDFFileV2) = f["/acquisition/drivefield/divider"]
 dfWaveform(f::MDFFileV1)::String = "sine"
 dfWaveform(f::MDFFileV2)::String = f["/acquisition/drivefield/waveform"]
-function dfCycle(f::MDFFile)::Float64
-  if exists(f.file, "/acquisition/drivefield/cycle")
-    return f["/acquisition/drivefield/cycle"]
-  else  # pre V2 version
-    return f["/acquisition/drivefield/period"]
-  end
-end
+dfCycle(f::MDFFile)::Float64 = f["/acquisition/drivefield/cycle"]
+dfCycle(f::MDFFileV1)::Float64 = f["/acquisition/drivefield/period"]
 
 # receiver parameters
 rxNumChannels(f::MDFFile)::Int64 = f["/acquisition/receiver/numChannels"]
