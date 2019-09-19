@@ -29,7 +29,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
               spectralLeakageCorrection=false, transposed=true, tfCorrection=false)
         setparam!(params, "measData", data)
         setparam!(params, "measIsFourierTransformed", true)
-        setparam!(params, "measIsTransposed", true)
+        setparam!(params, "measIsFastFrameAxis", true)
         setparam!(params, "measIsFramePermutation", true)
         setparam!(params, "measFramePermutation", fullFramePermutation(f))
 
@@ -103,7 +103,7 @@ function loadMeasParams(f, params = Dict{String,Any}(); skipMeasData = false)
   if experimentHasMeasurement(f)
     for op in [:measIsFourierTransformed, :measIsTFCorrected,
                  :measIsBGCorrected,
-                 :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
+                 :measIsFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
                  :measIsSpectralLeakageCorrected,
                  :measFramePermutation, :measIsBGFrame]
       setparam!(params, string(op), eval(op)(f))
@@ -136,16 +136,36 @@ function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
 end
 
 
+isConvertibleToMDF(f::MPIFile) = true
+function isConvertibleToMDF(f::BrukerFile)
+  # check if raw data is consistent
+  if !rawDataLengthConsistent(f::BrukerFile)
+    return false
+  end
+  # check if conversion of method is supported
+  #TODO use regex matching if list grows too large
+  whitelist = ["User:ukeMPI337", "User:mkaul_MPI", "User:ukeMPINew", "User:ukeMPI335", "User:uke_mpi", "Bruker:MPICalibration", "Bruker:MPI"]
+  if !(f["ACQ_method"] in whitelist)
+    @warn "conversion of method not supported" f["ACQ_method"]
+    return false
+  end
+  return true
+end
+
 function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
   saveasMDF(filenameOut, MPIFile(filenameIn); kargs...)
 end
 
 function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, kargs...)
-  params = loadDataset(f;kargs...)
-  if filenameBG != nothing
-    appendBGDataset(params, filenameBG)
+  if isConvertibleToMDF(f)
+    params = loadDataset(f;kargs...)
+    if filenameBG != nothing
+      appendBGDataset(params, filenameBG)
+    end
+    saveasMDF(filenameOut, params)
+  else
+    error("File not Convertible")
   end
-  saveasMDF(filenameOut, params)
 end
 
 function saveasMDFHacking(filenameOut::String, f::MPIFile)
@@ -257,7 +277,8 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
   dataFilename = joinpath(f.path,"rawdata.job0")
   #FileSize = stat(dataFilename).size
   #AllFrames = convert(Int,round(Int,FileSize/26928/4/3))
-  AllFrames = acqNumPeriodsPerPatch(f)*acqNumPeriodsPerFrame(f)
+  #AllFrames = acqNumPeriodsPerPatch(f)*acqNumPeriodsPerFrame(f)
+  AllFrames = acqNumPeriodsPerFrame(f)
   (Nx,Ny,Nz) = [length(union(acqOffsetField(f)[ll,1,:])) for ll in collect(1:3)]
 
   data_ = zeros(ComplexF64,Nx,Ny,Nz,rxNumFrequencies(f),rxNumChannels(f));
@@ -289,7 +310,8 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
     y = collect(Ny:-1:1)[PosNy.==union(Pos[2,1,ind])]
     z = collect(Nz:-1:1)[PosNz.==union(Pos[3,1,ind])]
     for ch =1:3
-      data_[x,y,z,:,ch] = rfft(vec(mean(raw[:,1,ch,ind],dims=2)));
+      dataSC = spectralLeakageCorrectedData(raw[:,1,ch,ind]);
+      data_[x,y,z,:,ch] = rfft(vec(mean(dataSC,dims=2)));
     end
   end
 
@@ -321,7 +343,7 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
   params["experimentIsCalibration"] = true
   #params["uuid"] = uuid4()
   params["measIsFourierTransformed"] = true
-  params["measIsTransposed"] = true
+  params["measIsFastFrameAxis"] = true
   params["calibFovCenter"] = [mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
   params["acqNumPeriodsPerFrame"] = 1
 
@@ -377,7 +399,7 @@ end
 
 function saveasMDF(file::HDF5File, params::Dict)
   # general parameters
-  write(file, "/version", "2.0")
+  write(file, "/version", "2.0.1")
   write(file, "/uuid", string(get(params,"uuid",uuid4() )))
   write(file, "/time", "$( get(params,"time", Dates.unix2datetime(time())) )")
 
@@ -476,7 +498,7 @@ function saveasMDF(file::HDF5File, params::Dict)
     write(file, "/measurement/isTransferFunctionCorrected", Int8(params["measIsTFCorrected"]))
     write(file, "/measurement/isFrequencySelection", Int8(params["measIsFrequencySelection"]))
     write(file, "/measurement/isBackgroundCorrected",  Int8(params["measIsBGCorrected"]))
-    write(file, "/measurement/isFastFrameAxis",  Int8(params["measIsTransposed"]))
+    write(file, "/measurement/isFastFrameAxis",  Int8(params["measIsFastFrameAxis"]))
     write(file, "/measurement/isFramePermutation",  Int8(params["measIsFramePermutation"]))
     writeIfAvailable(file, "/measurement/frequencySelection",  params, "measFrequencySelection")
 
@@ -517,7 +539,7 @@ function saveasMDF(file::HDF5File, params::Dict)
       write(file, "/reconstruction/positions", params["recoPositions"])
     end
     if hasKeyAndValue(params,"recoParameters")
-      saveParams(file, "/reconstruction/parameters", params["recoParameters"])
+      saveParams(file, "/reconstruction/_parameters", params["recoParameters"])
     end
   end
 

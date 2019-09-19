@@ -59,14 +59,6 @@ function MDFFile(filename::String, file = h5open(filename,"r"))
   end
 end
 
-function Base.show(io::IO, f::MDFFileV1)
-  print(io, "MDF v1: ", f.filename)
-end
-
-function Base.show(io::IO, f::MDFFileV2)
-  print(io, "MDF v2: ", f.filename)
-end
-
 function h5exists(filename, parameter)
   return h5open(filename) do file
     exists(file, parameter)
@@ -192,25 +184,9 @@ acqNumPeriodsPerFrame(f::MDFFileV1)::Int = 1
 acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods",1]
 
 acqGradient(f::MDFFileV1)::Array{Float64,4} = reshape(Matrix(Diagonal(f["/acquisition/gradient"])), 3,3,1,1)
-function acqGradient(f::MDFFileV2)::Array{Float64,4}
-  g = f["/acquisition/gradient"]
-  if ndims(g) == 2 # compatibility with V2 pre versions
-    g_ = zeros(3,3,1,size(g,2))
-    g_[1,1,1,:] .= g[1,:]
-    return g_
-  else
-    return g
-  end
-end
+acqGradient(f::MDFFileV2)::Array{Float64,4} = f["/acquisition/gradient"]
 acqOffsetField(f::MDFFileV1)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
-function acqOffsetField(f::MDFFileV2)::Array{Float64,3}
-  off = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
-  if ndims(off) == 2 # compatibility with V2 pre versions
-    return reshape(off,3,1,:)
-  else
-    return off
-  end
-end
+acqOffsetField(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
 
 # drive-field parameters
 dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]
@@ -226,13 +202,8 @@ dfDivider(f::MDFFileV1) = addTrailingSingleton(
 dfDivider(f::MDFFileV2) = f["/acquisition/drivefield/divider"]
 dfWaveform(f::MDFFileV1)::String = "sine"
 dfWaveform(f::MDFFileV2)::String = f["/acquisition/drivefield/waveform"]
-function dfCycle(f::MDFFile)::Float64
-  if exists(f.file, "/acquisition/drivefield/cycle")
-    return f["/acquisition/drivefield/cycle"]
-  else  # pre V2 version
-    return f["/acquisition/drivefield/period"]
-  end
-end
+dfCycle(f::MDFFile)::Float64 = f["/acquisition/drivefield/cycle"]
+dfCycle(f::MDFFileV1)::Float64 = f["/acquisition/drivefield/period"]
 
 # receiver parameters
 rxNumChannels(f::MDFFile)::Int64 = f["/acquisition/receiver/numChannels"]
@@ -292,7 +263,7 @@ end
 function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
 
-  if measIsTransposed(f)
+  if measIsFastFrameAxis(f)
     data = f.mmap_measData[frames, :, receivers, periods]
     data = reshape(data, length(frames), size(f.mmap_measData,2), length(receivers), length(periods))
   else
@@ -322,7 +293,7 @@ end
 
 function measDataTDPeriods(f::MDFFileV2, periods=1:acqNumPeriods(f),
                   receivers=1:rxNumChannels(f))
-  if measIsTransposed(f)
+  if measIsFastFrameAxis(f)
     error("measDataTDPeriods can currently not handle transposed data!")
   end
 
@@ -341,7 +312,7 @@ function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
 end
 
 function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
-  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
+  if !exists(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
     !measIsFourierTransformed(f)
     return nothing
   end
@@ -414,7 +385,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
 end
 
 function systemMatrixWithBG(f::MDFFileV2)
-  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
+  if !exists(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
       !measIsFourierTransformed(f)
       return nothing
   end
@@ -425,7 +396,7 @@ end
 
 # This is a special variant used for matrix compression
 function systemMatrixWithBG(f::MDFFileV2, freq)
-  if !exists(f.file, "/measurement") || !measIsTransposed(f) ||
+  if !exists(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
     !measIsFourierTransformed(f)
     return nothing
   end
@@ -471,7 +442,7 @@ function measIsBasisTransformed(f::MDFFileV2)
   end
 end
 
-function measIsTransposed(f::MDFFileV1)
+function measIsFastFrameAxis(f::MDFFileV1)
   if !experimentIsCalibration(f)
     return false
   else
@@ -479,11 +450,12 @@ function measIsTransposed(f::MDFFileV1)
   end
 end
 
-function measIsTransposed(f::MDFFileV2)
+function measIsFastFrameAxis(f::MDFFileV2)
   if exists(f.file, "/measurement/isFastFrameAxis")
     return Bool(f["/measurement/isFastFrameAxis"])
   else
-    return Bool(f["/measurement/isTransposed"])
+    @warn "/measurement/isFastFrameAxis missing in MDF data set. `measIsFastFrameAxis` returning false per default."
+    return false
   end
 end
 
@@ -503,7 +475,7 @@ fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid
 
 measIsCalibProcessed(f::MDFFile) = measIsFramePermutation(f) && 
                                    measIsFourierTransformed(f) &&
-                                   measIsTransposed(f)
+                                   measIsFastFrameAxis(f)
 
 #calibrations
 calibSNR(f::MDFFileV1) = addTrailingSingleton(f["/calibration/snrFD"],3)
@@ -530,10 +502,11 @@ recoPositions(f::MDFFile) = f["/reconstruction/positions"]
 
 # this is non-standard
 function recoParameters(f::MDFFile)
-  if !exists(f.file, "/reconstruction/parameters")
+  if !exists(f.file, "/reconstruction/_parameters")
     return nothing
+  else
+    return loadParams(f.file, "/reconstruction/_parameters")
   end
-  return loadParams(f.file, "/reconstruction/parameters")
 end
 
 # additional functions that should be implemented by an MPIFile

@@ -146,32 +146,36 @@ function remove(exp::Experiment)
   end
 end
 
-function exportToMDFStore(d::BrukerDatasetStore,path::String, mdf::MDFDatasetStore)
+function exportToMDFStore(path::String, mdf::MDFDatasetStore)
   # pretend to be a measurement to enforce loading data from time domain in case post processed data is not availible
   b = BrukerFile(path,isCalib=false)
   exportpath = ""
 
-  if MPIFiles._iscalib(path)
-    calibNum = getNewCalibNum(mdf)
-    exportpath = joinpath(calibdir(mdf),string(calibNum)*".mdf")
+  if _iscalib(path)
+    exportpath = getNewCalibPath(mdf)
     saveasMDF(exportpath,b,applyCalibPostprocessing=true)
+    @info "Calibration data from $path sucessfully exported to $exportpath." 
   else
-    s = getStudy(d,string(split(path,"/")[end-1]))
-    name = s.name*"_MDF"
-    mdfPath = joinpath( studydir(mdf), name)
-    subject = s.subject
-    date = s.date
-    mdfStudy = Study(mdfPath,name,subject,date)
-    addStudy(mdf,mdfStudy)
-    expNum = getNewExperimentNum(mdf, mdfStudy)
-    exportpath = joinpath(studydir(mdf),mdfStudy.name,string(expNum)*".mdf")
+    name = studyName(b)
+    subject = experimentSubject(b)
+    date = studyTime(b)
+    mdfPath = joinpath(studydir(mdf),name)
+    s = Study(mdfPath,name,subject,date)
+    exportpath = getNewExperimentPath(mdf,s)
     saveasMDF(exportpath, b)
+    @info "Measurment data from $path sucessfully exported to $exportpath." 
+  end
+  # Store export path in Bruker directory
+  open(joinpath(path,"mdf"),write=true) do io
+    write(io, exportpath)
+  end        
+  # log action
+  open("/opt/DataArchiveOptmpidata/convertBrukerToMDF/log.csv", append=true) do io
+    write(io,"$path, $exportpath\n")
   end
 
   return exportpath
 end
-
-exportToMDFStore(d::BrukerDatasetStore, s::Study, e::Experiment, mdf::MDFDatasetStore) = exportToMDFStore(d,BrukerFile(e.path),mdf)
 
 
 ###  Implementations of abstract interfaces ###
@@ -269,7 +273,7 @@ end
 function addStudy(d::MDFDatasetStore, study::Study)
   studypath = joinpath( studydir(d), getMDFStudyFolderName(study))
   mkpath(studypath)
-  try_chmod(studypath, 0o777, recursive=true)
+  try_chmod(studypath, 0o770, recursive=true)
 
   nothing
 end
@@ -535,8 +539,27 @@ function getNewExperimentNum(d::MDFDatasetStore, s::Study)
   return getNewNumInFolder(d, s.path)
 end
 
+function getNewExperimentPath(d::MDFDatasetStore, s::Study)
+  addStudy(d,s)
+  expNum = getNewExperimentNum(d,s)
+  path = joinpath(studydir(d),s.name,string(expNum)*".mdf")
+  # touch new mdf file
+  touch(path)
+  try_chmod(path, 0o660)
+  return path
+end
+
 function getNewCalibNum(d::MDFDatasetStore)
   return getNewNumInFolder(d, calibdir(d))
+end
+
+function getNewCalibPath(d::MDFDatasetStore)
+    calibNum = getNewCalibNum(d)
+    path = joinpath(calibdir(d),string(calibNum)*".mdf")
+    # touch new mdf file
+    touch(path)
+    try_chmod(path, 0o660)
+    return path
 end
 
 ####### Reconstruction Store MDF ###################
@@ -610,10 +633,10 @@ end
 
 function save(reco::Reconstruction)
   h5open(reco.path, "r+") do file
-    if exists(file, "/reconstruction/parameters")
-      o_delete(file, "/reconstruction/parameters")
+    if exists(file, "/reconstruction/_parameters")
+      o_delete(file, "/reconstruction/_parameters")
     end
-    saveParams(file, "/reconstruction/parameters", reco.params)
+    saveParams(file, "/reconstruction/_parameters", reco.params)
   end
 end
 
@@ -622,8 +645,8 @@ function loadParams(reco::Reconstruction)
   if isfile(reco.path)
    h5open(reco.path, "r") do file
     g = file["/reconstruction"]
-    if exists(g, "parameters") #new world order
-      reco.params = loadParams(reco.path, "/reconstruction/parameters")
+    if exists(g, "_parameters") #new world order
+      reco.params = loadParams(reco.path, "/reconstruction/_parameters")
     else #this needs to go
       @debug "opening legacy file"
       prefix, ext = splitext(reco.path)

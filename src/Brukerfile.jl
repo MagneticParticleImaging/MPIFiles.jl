@@ -161,10 +161,6 @@ function getindex(b::BrukerFile, parameter, procno::Int64)#::String
   return b.paramsProc[parameter]
 end
 
-function Base.show(io::IO, b::BrukerFile)
-  print(io, "BrukerFile: ", b.path)
-end
-
 # Helper
 activeChannels(b::BrukerFile) = [parse(Int64,s) for s=b["PVM_MPI_ActiveChannels"]]
 selectedChannels(b::BrukerFile) = b["PVM_MPI_ChannelSelect"] .== "Yes"
@@ -376,7 +372,7 @@ function rawDataLengthConsistent(b::BrukerFile)
 
   M = filesize(dataFilename)
   if N != M
-    @show N M
+    @warn "raw data length inconsistent N != M" N M
   end
   return N == M
 end
@@ -525,8 +521,8 @@ measIsBGCorrected(b::BrukerFileMeas) = false
 # We have it, but by default we pretend that it is not applied
 measIsBGCorrected(b::BrukerFileCalib) = false
 
-measIsTransposed(b::BrukerFileMeas) = false
-measIsTransposed(b::BrukerFileCalib) = measIsCalibProcessed(b)
+measIsFastFrameAxis(b::BrukerFileMeas) = false
+measIsFastFrameAxis(b::BrukerFileCalib) = true
 
 measIsFramePermutation(b::BrukerFileMeas) = false
 measIsFramePermutation(b::BrukerFileCalib) = measIsCalibProcessed(b)

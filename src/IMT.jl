@@ -40,16 +40,6 @@ function (::Type{IMTFile})(filename::String, file = h5open(filename,"r"))
  end
 end
 
-
-function Base.show(io::IO, f::IMTFileCalib)
-  print(io, "IMT calib: ", f.filename)
-end
-
-function Base.show(io::IO, f::IMTFileMeas)
-  print(io, "IMT meas: ", f.filename)
-end
-
-
 function getindex(f::IMTFile, parameter)
   if exists(f.file, parameter)
     return read(f.file, parameter)
@@ -189,8 +179,8 @@ measIsBGCorrected(f::IMTFile) = false
 
 measIsFrequencySelection(f::IMTFile) = false
 
-measIsTransposed(f::IMTFileCalib) = true
-measIsTransposed(f::IMTFileMeas) = false
+measIsFastFrameAxis(f::IMTFileCalib) = true
+measIsFastFrameAxis(f::IMTFileMeas) = false
 
 measIsFramePermutation(f::IMTFileCalib) = false
 measIsFramePermutation(f::IMTFileMeas) = false

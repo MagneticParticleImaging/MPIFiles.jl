@@ -131,7 +131,7 @@ function measDataTD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
 
   data1 = measData(f,frames,periods,receivers)
 
-  if measIsTransposed(f)
+  if measIsFastFrameAxis(f)
     data2 = permutedims(data1, invperm([4,1,2,3]))
   else
     data2 = data1
