@@ -645,7 +645,7 @@ function loadParams(reco::Reconstruction)
   if isfile(reco.path)
    h5open(reco.path, "r") do file
     g = file["/reconstruction"]
-    if exists(g, "parameters") #new world order
+    if exists(g, "_parameters") #new world order
       reco.params = loadParams(reco.path, "/reconstruction/_parameters")
     else #this needs to go
       @debug "opening legacy file"
