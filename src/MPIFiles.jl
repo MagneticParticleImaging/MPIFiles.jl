@@ -232,6 +232,8 @@ function MPIFile(filenames::Vector)
   return map(x->MPIFile(x),filenames)
 end
 
+Base.length(f::MPIFile) = 1
+
 include("TransferFunction.jl")
 include("MultiMPIFile.jl")
 include("Measurements.jl")
