@@ -1,16 +1,8 @@
 @testset "Testing Reco submodule" begin
 
-fnRecoV1 = "reco_V1.mdf"
-fnRecoV2 = "reco_V2.mdf"
-fnRecoV2b = "reco_V2b.mdf"
-
-if !isfile(fnRecoV1)
-  HTTP.open("GET", "http://media.tuhh.de/ibi/mdf/reco_V1.mdf") do http
-    open(fnRecoV1, "w") do file
-        write(file, http)
-    end
-  end
-end
+fnRecoV1 = "./data/mdf/reco_V1.mdf"
+fnRecoV2 = "./data/mdf/reco_V2.mdf"
+fnRecoV2b = "./data/mdf/reco_V2b.mdf"
 
 mdfv1 = MPIFile(fnRecoV1)
 @test typeof(mdfv1) <: MDFFileV1

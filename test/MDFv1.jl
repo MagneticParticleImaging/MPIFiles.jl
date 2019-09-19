@@ -2,25 +2,10 @@
 
 # Download test files
 
-fnMeasV1 = "measurement_V1.mdf"
-fnMeasV2 = "measurement_V2c.mdf"
-fnSMV1 = "systemMatrix_V1.mdf"
-fnSMV2 = "systemMatrix_V2c.mdf"
-
-if !isfile(fnSMV1)
-  HTTP.open("GET", "http://media.tuhh.de/ibi/mdf/systemMatrix.h5") do http
-    open(fnSMV1, "w") do file
-        write(file, http)
-    end
-  end
-end
-if !isfile(fnMeasV1)
-  HTTP.open("GET", "http://media.tuhh.de/ibi/mdf/measurement_5.h5") do http
-    open(fnMeasV1, "w") do file
-        write(file, http)
-    end
-  end
-end
+fnMeasV1 = "./data/mdf/measurement_V1.mdf"
+fnMeasV2 = "./data/mdf/measurement_V2c.mdf"
+fnSMV1 = "./data/mdf/systemMatrix_V1.mdf"
+fnSMV2 = "./data/mdf/systemMatrix_V2c.mdf"
 
 saveasMDF(fnMeasV2, fnMeasV1)
 saveasMDF(fnSMV2, fnSMV1)

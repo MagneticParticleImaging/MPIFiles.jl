@@ -1,7 +1,7 @@
 @testset "MultiMPIFile submodule" begin
 
-fnMeasBruker = "measurement_Bruker"
-fnMeasMultiV2 = "measurement_multi_V2.mdf"
+fnMeasBruker = "./data/measurement"
+fnMeasMultiV2 = "./data/mdf/measurement_multi_V2.mdf"
 
 
 measBruker = MultiMPIFile([fnMeasBruker,fnMeasBruker,fnMeasBruker])

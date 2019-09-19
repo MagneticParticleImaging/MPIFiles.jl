@@ -1,3 +1,5 @@
+pospath = "./data/positions/Positions.h5"
+
 @testset "Testing Positions submodule" begin
   shp = [3,3,3]
   fov = [3.0,3.0,3.0]Unitful.mm
@@ -13,10 +15,10 @@
   @test caG[3] == [1,-1,-1]Unitful.mm
   @test caG[4] == [-1,0,-1]Unitful.mm
   @test caG[27] == [1,1,1]Unitful.mm
-  h5open("Positions.h5", "w") do file
+  h5open(pospath, "w") do file
     write(file, caG)
   end
-  h5open("Positions.h5", "r") do file
+  h5open(pospath, "r") do file
     caG1 = Positions(file)
     @test typeof(caG1) <: RegularGridPositions
     @test shape(caG1) == shp
@@ -38,10 +40,10 @@
   @test chG[3] ≈ cos(π/6)*3/2*caG[3]
   @test chG[4] ≈ cos(π/6)*3/2*caG[4]
   @test chG[27] ≈ cos(π/6)*3/2*caG[27]
-  h5open("Positions.h5", "w") do file
+  h5open(pospath, "w") do file
     write(file, chG)
   end
-  h5open("Positions.h5", "r") do file
+  h5open(pospath, "r") do file
     chG1 = Positions(file)
     @test typeof(chG1) <: ChebyshevGridPositions
     @test shape(chG1) == shp
@@ -66,10 +68,10 @@
     @test mG[19] == grid[19]
     @test mG[27] == grid[27]
     @test getPermutation(mG) == [1, 2, 3, 6, 5, 4, 7, 8, 9, 18, 17, 16, 13, 14, 15, 12, 11, 10, 19, 20, 21, 24, 23, 22, 25, 26, 27]
-    h5open("Positions.h5", "w") do file
+    h5open(pospath, "w") do file
       write(file, mG)
     end
-    h5open("Positions.h5", "r") do file
+    h5open(pospath, "r") do file
       mG1 = Positions(file)
       @test mG1[1] ≈ grid[1]
       @test shape(mG1) == shp
@@ -124,10 +126,10 @@
     @test bG[36] == grid[27]
     @test bG[37] == bgPos
 
-    h5open("Positions.h5", "w") do file
+    h5open(pospath, "w") do file
       write(file, bG)
     end
-    h5open("Positions.h5", "r") do file
+    h5open(pospath, "r") do file
       bG1 = Positions(file)
       @test bG1[1] ≈ grid[1]
       @test shape(bG1) == shp
@@ -184,10 +186,10 @@
     @test bG[36] == grid[27]
     @test bG[37] == bgPos
 
-    h5open("Positions.h5", "w") do file
+    h5open(pospath, "w") do file
       write(file, bG)
     end
-    h5open("Positions.h5", "r") do file
+    h5open(pospath, "r") do file
       bG1 = Positions(file)
       @test bG1[1] ≈ grid[1]
       @test shape(bG1) == shp
@@ -206,10 +208,10 @@
   @test aG2[1] == caG[1]
   @test aG2[2] == caG[2]
   @test aG2[27] == caG[27]
-  h5open("Positions.h5", "w") do file
+  h5open(pospath, "w") do file
     write(file, aG2)
   end
-  h5open("Positions.h5", "r") do file
+  h5open(pospath, "r") do file
     aG3 = Positions(file)
     @test typeof(aG3) <: ArbitraryPositions
     @test aG3.positions == aG2.positions
@@ -227,10 +229,10 @@
   @test rP1[3] == [-0.5883911667396526,-0.9692742011014337,1.3707474722677764]Unitful.mm
   @test_throws BoundsError rP1[0]
   @test_throws BoundsError rP1[4]
-  h5open("Positions.h5", "w") do file
+  h5open(pospath, "w") do file
     write(file, rP1)
   end
-  h5open("Positions.h5", "r") do file
+  h5open(pospath, "r") do file
     rP2 = Positions(file)
     @test typeof(rP2) <: UniformRandomPositions{AxisAlignedBox}
     @test rP2.N == N
@@ -246,10 +248,10 @@
   @test rP3[1] == [-6.715713750009747,0.4103832286623821,-4.525933276650638]Unitful.mm
   @test_throws BoundsError rP3[0]
   @test_throws BoundsError rP3[4]
-  h5open("Positions.h5", "w") do file
+  h5open(pospath, "w") do file
     write(file, rP3)
   end
-  h5open("Positions.h5", "r") do file
+  h5open(pospath, "r") do file
     rP4 = Positions(file)
     @test typeof(rP4) <: UniformRandomPositions{Ball}
     @test rP4.N == N
@@ -273,10 +275,10 @@
   @test any(tDesign.positions .== [1 -1; 0 0; 0 0])
   @test tDesign[1] == [5,0,0]Unitful.mm
   @test tDesign[2] == [-5,0,0]Unitful.mm
-  h5open("Positions.h5", "w") do file
+  h5open(pospath, "w") do file
     write(file, tDesign)
   end
-  h5open("Positions.h5", "r") do file
+  h5open(pospath, "r") do file
     tDesign1 = Positions(file)
     @test typeof(tDesign1) <: SphericalTDesign
     @test tDesign1.radius == tDesign.radius

@@ -1,51 +1,18 @@
 @testset "Testing General submodule" begin
 
-fnMeasBruker = "measurement_Bruker"
-fnSMBruker = "systemMatrix_Bruker"
-fnSM1DBruker = "systemMatrix1D_Bruker"
-fnMeasV1 = "measurement_V1.mdf"
-fnMeasV2 = "measurement_V2.mdf"
-fnSMV1 = "systemMatrix_V1.mdf"
-fnSMV2 = "systemMatrix_V2.mdf"
-fnSMV3 = "systemMatrix_V3.mdf"
-fnSM1DV1 = "systemMatrix1D_V1.mdf"
-fnSM1DV2 = "systemMatrix1D_V2.mdf"
-
-if !isdir(fnSMBruker)
-  @info "download $fnSMBruker"
-  HTTP.open("GET", "http://media.tuhh.de/ibi/"*fnSMBruker*".zip") do http
-    open(fnSMBruker*".zip", "w") do file
-        write(file, http)
-    end
-  end
-  run(`unzip -oq $(fnSMBruker).zip`)
-  rm(fnSMBruker*".zip")
-end
-if !isdir(fnMeasBruker) || !isfile("tf.h5")
-  @info "download $fnMeasBruker"
-  HTTP.open("GET", "http://media.tuhh.de/ibi/"*fnMeasBruker*".zip") do http
-    open(fnMeasBruker*".zip", "w") do file
-        write(file, http)
-    end
-  end
-  run(`unzip -oq $(fnMeasBruker).zip`)
-  rm(fnMeasBruker*".zip")
-end
-if !isdir(fnSM1DBruker)
-  @info "download $fnSM1DBruker"
-  HTTP.open("GET", "http://media.tuhh.de/ibi/"*fnSM1DBruker*".zip") do http
-    open(fnSM1DBruker*".zip", "w") do file
-        write(file, http)
-    end
-  end
-  run(`unzip -oq $(fnSM1DBruker).zip`)
-  rm(fnSM1DBruker*".zip")
-end
-
+fnMeasBruker = "./data/measurement"
+fnSMBruker = "./data/systemMatrix"
+fnSM1DBruker = "./data/systemMatrix1D"
+fnMeasV1 = "./data/mdf/measurement_V1.mdf"
+fnMeasV2 = "./data/mdf/measurement_V2.mdf"
+fnSMV1 = "./data/mdf/systemMatrix_V1.mdf"
+fnSMV2 = "./data/mdf/systemMatrix_V2.mdf"
+fnSMV3 = "./data/mdf/systemMatrix_V3.mdf"
+fnSM1DV1 = "./data/mdf/systemMatrix1D_V1.mdf"
+fnSM1DV2 = "./data/mdf/systemMatrix1D_V2.mdf"
 
 measBruker = MPIFile(fnMeasBruker)
 @test typeof(measBruker) == BrukerFileMeas
-
 saveasMDF(fnMeasV2, measBruker)#, frames=1:100) <- TODO test this
 
 mdfv2 = MPIFile(fnMeasV2)
@@ -136,7 +103,6 @@ end
 
 smBruker = MPIFile(fnSMBruker)
 @test typeof(smBruker) == BrukerFileCalib
-
 saveasMDF(fnSMV2, smBruker)
 
 smv2 = MPIFile(fnSMV2)
@@ -210,7 +176,6 @@ S_loadedfromproc = systemMatrix(smBruker)
 
 sm1DBruker = MPIFile(fnSM1DBruker)
 @test typeof(sm1DBruker) == BrukerFileCalib
-
 saveasMDF(fnSM1DV1, sm1DBruker)
 
 sm1D = MPIFile(fnSM1DV1)
