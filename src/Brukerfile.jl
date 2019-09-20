@@ -105,7 +105,7 @@ function BrukerFile()
   params = JcampdxFile()
   paramsProc = JcampdxFile()
   return BrukerFileMeas("", params, paramsProc, false, false, false,
-             false, false, false, false, 1, String[], String[])
+             false, false, false, false, 1, String[], String[], false)
 end
 
 BrukerFileFast(path) = BrukerFile(path, fastMode=true)
