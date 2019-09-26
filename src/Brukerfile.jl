@@ -395,19 +395,15 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
   dataFilename = joinpath(b.path,"rawdata.job0")
   dType = acqNumAverages(b) == 1 ? Int16 : Int32
 
-  s = open(dataFilename, "r")
+  s = open(dataFilename)
 
   if numSubPeriods(b) == 1
-    #raw = Mmap.mmap(s, Array{dType,4},
-    #         (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
-    raw = RawFile(s, dType, [rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),maximum(frames)])
+    raw = Mmap.mmap(s, Array{dType,4},
+             (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
   else
-    #raw = Mmap.mmap(s, Array{dType,5},
-    #         (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
-    rawF = RawFile(s, dType,
-       [rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),maximum(frames)])
-    rawR = rawF[:,1:numSubPeriods(b),1:rxNumChannels(b),1:acqNumPeriodsPerFrame(b),1:maximum(frames)]
-    raw = dropdims(sum(rawR,dims=2),dims=2)
+    raw = Mmap.mmap(s, Array{dType,5},
+             (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+    raw = dropdims(sum(raw,dims=2),dims=2)
   end
   data = raw[:,receivers,periods,frames]
   close(s)
