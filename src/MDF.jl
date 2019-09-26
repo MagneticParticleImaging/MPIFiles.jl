@@ -89,7 +89,7 @@ end
 
 # general parameters
 version(f::MDFFile)::VersionNumber = VersionNumber( f["/version"] )
-uuid(f::MDFFile)::UUID = str2uuid(f["/uuid"])
+uuid(f::MDFFile)::UUID = UUID(f["/uuid"])
 time(f::MDFFileV1)::DateTime = DateTime( f["/date"] )
 time(f::MDFFileV2)::DateTime = DateTime( f["/time"] )
 
@@ -98,7 +98,7 @@ studyName(f::MDFFile)::String = f["/study/name"]
 studyNumber(f::MDFFileV1)::Int = 0
 studyNumber(f::MDFFileV2)::Int = f["/study/number"]
 studyUuid(f::MDFFileV1) = nothing
-studyUuid(f::MDFFileV2) = str2uuid(f["/study/uuid"])
+studyUuid(f::MDFFileV2) = UUID(f["/study/uuid"])
 studyDescription(f::MDFFileV1)::String = "n.a."
 studyDescription(f::MDFFileV2)::String = f["/study/description"]
 function studyTime(f::MDFFile)
@@ -116,7 +116,7 @@ experimentName(f::MDFFileV2)::String = f["/experiment/name"]
 experimentNumber(f::MDFFileV1)::Int64 = parse(Int64, f["/study/experiment"])
 experimentNumber(f::MDFFileV2)::Int64 = f["/experiment/number"]
 experimentUuid(f::MDFFileV1) = nothing
-experimentUuid(f::MDFFileV2) = str2uuid(f["/experiment/uuid"])
+experimentUuid(f::MDFFileV2) = UUID(f["/experiment/uuid"])
 experimentDescription(f::MDFFileV1)::String = f["/study/description"]
 experimentDescription(f::MDFFileV2)::String = f["/experiment/description"]
 experimentSubject(f::MDFFileV1)::String = f["/study/subject"]

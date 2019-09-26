@@ -57,23 +57,6 @@ function readComplexArray(filename::String, dataset)
 end
 
 
-function str2uuid(str::String)
-  if occursin("-", str)
-    str_ = str
-  else
-    str_ = string(str[1:8],"-",str[9:12],"-",str[13:16],"-",str[17:20],"-",str[21:end])
-  end
-  try
-    u = UUID(str_)
-    return u
-  catch
-    @warn "could not convert to UUID." str_ str
-    u = uuid4()
-    return u
-  end
-end
-str2uuid(str::Nothing) = str
-
 function makeAxisArray(array::Array{T,5}, pixelspacing, offset, dt) where T
   N = size(array)
   im = AxisArray(array, Axis{:color}(1:N[1]),
