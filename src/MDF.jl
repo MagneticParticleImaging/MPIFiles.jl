@@ -317,20 +317,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
     return nothing
   end
 
-  if measIsFrequencySelection(f)
-    # In this case we need to convert indices
-    tmp = zeros(Int64, rxNumFrequencies(f), rxNumChannels(f) )
-    idxAvailable = measFrequencySelection(f)
-    for d=1:rxNumChannels(f)
-      tmp[idxAvailable, d] = (1:length(idxAvailable)) .+ (d-1)*length(idxAvailable)
-    end
-    rows_ = vec(tmp)[rows]
-    if findfirst(x -> x == 0, rows_) != nothing
-      @error "Indices applied to systemMatrix are not available in the file"
-    end
-  else
-    rows_ = rows
-  end
+  rows_ = rowsToSubsampledRows(f, rows)
 
   data_ = reshape(f.mmap_measData, size(f.mmap_measData,1),
                                    size(f.mmap_measData,2)*size(f.mmap_measData,3),

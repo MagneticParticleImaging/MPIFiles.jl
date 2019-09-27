@@ -8,6 +8,7 @@ fnMeasV2 = "./data/mdf/measurement_V2.mdf"
 fnSMV1 = "./data/mdf/systemMatrix_V1.mdf"
 fnSMV2 = "./data/mdf/systemMatrix_V2.mdf"
 fnSMV3 = "./data/mdf/systemMatrix_V3.mdf"
+fnSMV4 = "./data/mdf/systemMatrix_V4.mdf"
 fnSM1DV1 = "./data/mdf/systemMatrix1D_V1.mdf"
 fnSM1DV2 = "./data/mdf/systemMatrix1D_V2.mdf"
 
@@ -170,6 +171,45 @@ S_loadedfromraw = getMeasurementsFD(smBrukerPretendToBeMeas,
 S_loadedfromproc = systemMatrix(smBruker)
 
 @test norm(vec(S_loadedfromraw-S_loadedfromproc)) / norm(vec(S_loadedfromproc)) < 1e-6
+
+# Compression of calib files
+
+
+compressCalibMDF(fnSMV4, smv2, SNRThresh=0.0)
+smv4 = MPIFile(fnSMV4)
+@test size(calibSNR(smv4), 1) == 817
+@test length(filterFrequencies(smv4)) == 817*3
+
+
+
+compressCalibMDF(fnSMV4, smv2, SNRThresh=4.0)
+smv4 = MPIFile(fnSMV4)
+@test size(calibSNR(smv4), 1) == 110
+@test length(filterFrequencies(smv4)) == 110*3
+@test length(filterFrequencies(smv4, SNRThresh=4.0)) == 194
+
+@test size(measData(smv4)) == (1959, 110, 3, 1)
+
+
+freq = filterFrequencies(smv4, SNRThresh=4.0)
+S1 = getSystemMatrix(smv4, freq)
+@test size(S1)  == (1936,194)
+
+S2 = getSystemMatrix(smv2, freq)
+@test S1  == S2
+
+compressCalibMDF(fnSMV4, smv2, SNRThresh=4.0, sparsityTrafoRedFactor=0.2)
+smv4 = MPIFile(fnSMV4)
+
+S2 = getSystemMatrix(smv2, freq)
+@test S1  == S2
+  
+relativeDeviation = zeros(Float32,length(freq))
+for f in 1:length(freq)
+  relativeDeviation[f] = norm(S1[:,f]-S2[:,f])/norm(S1[:,f])
+end
+# test if relative deviation for most of the frequency components is below 0.003
+@test quantile(relativeDeviation,0.95)<0.003
 
 
 # Calibration file 1D

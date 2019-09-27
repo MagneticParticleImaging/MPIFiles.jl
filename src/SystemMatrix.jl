@@ -22,7 +22,7 @@ function getSystemMatrix(f::MPIFile,
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     if tf != nothing
-      _corrTFSF(S,tf[frequencies])
+      _corrTFSF(S,tf[rowsToSubsampledRows(f,frequencies)])
     else
       error("TF not available")
     end
