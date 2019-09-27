@@ -42,7 +42,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
     freqMask[1:(minIdx),:,:] .= false
   end
 
-  if maxFreq < nFreq
+  if maxIdx < nFreq
     freqMask[(maxIdx):end,:,:] .= false
   end
 
