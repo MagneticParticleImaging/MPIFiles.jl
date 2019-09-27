@@ -339,19 +339,19 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
 
   fgdata = data[measFGFrameIdx(f),:]
 
-  if measIsBasisTransformed(f)
+  if measIsSparsityTransformed(f)
     dataBackTrafo = similar(fgdata, prod(calibSize(f)), size(fgdata,2))
-    B = linearOperator(f["/measurement/basisTransformation"], calibSize(f))
+    B = linearOperator(f["/measurement/sparsityTransformation"], calibSize(f))
 
-    tmp = f["/measurement/basisIndices"]
-    basisIndices_ = reshape(tmp, size(tmp,1),
+    tmp = f["/measurement/subsamplingIndices"]
+    subsamplingIndices_ = reshape(tmp, size(tmp,1),
                                      size(tmp,2)*size(tmp,3),
                                      size(tmp,4))[:, rows_, :]
-    basisIndices = reshape(basisIndices_, Val(2))
+    subsamplingIndices = reshape(subsamplingIndices_, Val(2))
 
     for l=1:size(fgdata,2)
       dataBackTrafo[:,l] .= 0.0
-      dataBackTrafo[basisIndices[:,l],l] .= fgdata[:,l]
+      dataBackTrafo[subsamplingIndices[:,l],l] .= fgdata[:,l]
       dataBackTrafo[:,l] .= adjoint(B) * vec(dataBackTrafo[:,l])
     end
     fgdata = dataBackTrafo
@@ -433,10 +433,10 @@ measIsFrequencySelection(f::MDFFileV1) = false
 measIsFrequencySelection(f::MDFFileV2) = Bool(f["/measurement/isFrequencySelection"])
 measFrequencySelection(f::MDFFileV2) = f["/measurement/frequencySelection"]
 
-measIsBasisTransformed(f::MDFFileV1) = false
-function measIsBasisTransformed(f::MDFFileV2)
-  if exists(f.file, "/measurement/isBasisTransformed")
-    Bool(f["/measurement/isBasisTransformed"])
+measIsSparsityTransformed(f::MDFFileV1) = false
+function measIsSparsityTransformed(f::MDFFileV2)
+  if exists(f.file, "/measurement/isSparsityTransformed")
+    Bool(f["/measurement/isSparsityTransformed"])
   else
     return false
   end

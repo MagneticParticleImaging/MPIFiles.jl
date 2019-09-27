@@ -219,7 +219,7 @@ function compressCalibMDF(filenamesOut::Vector{String}, f::MultiMPIFile; SNRThre
 end
 
 function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
-                          basisTrafoRedFactor=1.0, basisTrafo="DCT-IV")
+                          sparsityTrafoRedFactor=1.0, sparsityTrafo="DCT-IV")
   params = loadMetadata(f)
   loadMeasParams(f, params, skipMeasData = true)
   loadCalibParams(f, params)
@@ -235,17 +235,17 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
   params["measIsFrequencySelection"] = true
   params["measFrequencySelection"] = idx
 
-  if basisTrafoRedFactor == 1.0
+  if sparsityTrafoRedFactor == 1.0
     params["measData"] = data
   else
-    B = linearOperator(basisTrafo, calibSize(f))
+    B = linearOperator(sparsityTrafo, calibSize(f))
     N = prod(calibSize(f))
     NBG = size(data,1) - N
     D = size(data,3)
     P = size(data,4)
-    NRed = max(1, floor(Int, basisTrafoRedFactor*N))
+    NRed = max(1, floor(Int, sparsityTrafoRedFactor*N))
     dataOut = similar(data, NBG+NRed, length(idx), D, P)
-    basisIndices = zeros(Int32, NRed, length(idx), D, P)
+    subsamplingIndices = zeros(Int32, NRed, length(idx), D, P)
 
     fgdata = data[measFGFrameIdx(f),:,:,:]
     bgdata = data[measBGFrameIdx(f),:,:,:]
@@ -254,14 +254,14 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
 
     for k=1:length(idx), d=1:D, p=1:P
       I = B * fgdata[:,k,d,p]
-      basisIndices[:,k,d,p] = round.(Int32,reverse(sortperm(abs.(I)),dims=1)[1:NRed])
-      dataOut[1:NRed,k,d,p] = I[vec(basisIndices[:,k,d,p])]
+      subsamplingIndices[:,k,d,p] = round.(Int32,reverse(sortperm(abs.(I)),dims=1)[1:NRed])
+      dataOut[1:NRed,k,d,p] = I[vec(subsamplingIndices[:,k,d,p])]
     end
 
     params["measData"] = dataOut
-    params["measIsBasisTransformed"] = true
-    params["measBasisTransformation"] = basisTrafo
-    params["measBasisIndices"] = basisIndices
+    params["measIsSparsityTransformed"] = true
+    params["measSparsityTransformation"] = sparsityTrafo
+    params["measSubsamplingIndices"] = subsamplingIndices
 
     bgFrame = zeros(Bool, NRed+NBG)
     bgFrame[(NRed+1):end] .= true
@@ -508,10 +508,10 @@ function saveasMDF(file::HDF5File, params::Dict)
     if hasKeyAndValue(params, "measIsBGFrame")
       write(file, "/measurement/isBackgroundFrame", convert(Array{Int8}, params["measIsBGFrame"]) )
     end
-    if hasKeyAndValue(params, "measIsBasisTransformed")
-      write(file, "/measurement/isBasisTransformed", params["measIsBasisTransformed"] )
-      write(file, "/measurement/basisIndices", params["measBasisIndices"] )
-      write(file, "/measurement/basisTransformation", params["measBasisTransformation"] )
+    if hasKeyAndValue(params, "measIsSparsityTransformed")
+      write(file, "/measurement/isSparsityTransformed", params["measIsSparsityTransformed"] )
+      write(file, "/measurement/subsamplingIndices", params["measSubsamplingIndices"] )
+      write(file, "/measurement/sparsityTransformation", params["measSparsityTransformation"] )
     end
   end
 
