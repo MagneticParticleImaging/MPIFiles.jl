@@ -9,6 +9,8 @@ fnSMV1 = "./data/mdf/systemMatrix_V1.mdf"
 fnSMV2 = "./data/mdf/systemMatrix_V2.mdf"
 fnSMV3 = "./data/mdf/systemMatrix_V3.mdf"
 fnSMV4 = "./data/mdf/systemMatrix_V4.mdf"
+fnSMV5 = "./data/mdf/systemMatrix_V5.mdf"
+fnSMV6 = "./data/mdf/systemMatrix_V6.mdf"
 fnSM1DV1 = "./data/mdf/systemMatrix1D_V1.mdf"
 fnSM1DV2 = "./data/mdf/systemMatrix1D_V2.mdf"
 
@@ -179,38 +181,35 @@ compressCalibMDF(fnSMV4, smv2, SNRThresh=0.0)
 smv4 = MPIFile(fnSMV4)
 @test size(calibSNR(smv4), 1) == 817
 @test length(filterFrequencies(smv4)) == 817*3
-close(smv4.file)
 
 
-compressCalibMDF(fnSMV4, smv2, SNRThresh=4.0)
-smv4 = MPIFile(fnSMV4)
-@test size(calibSNR(smv4), 1) == 110
-@test length(filterFrequencies(smv4)) == 110*3
-@test length(filterFrequencies(smv4, SNRThresh=4.0)) == 194
+compressCalibMDF(fnSMV5, smv2, SNRThresh=4.0)
+smv5 = MPIFile(fnSMV5)
+@test size(calibSNR(smv5), 1) == 110
+@test length(filterFrequencies(smv5)) == 110*3
+@test length(filterFrequencies(smv5, SNRThresh=4.0)) == 194
 
-@test size(measData(smv4)) == (1959, 110, 3, 1)
+@test size(measData(smv5)) == (1959, 110, 3, 1)
 
 
-freq = filterFrequencies(smv4, SNRThresh=4.0)
-S1 = getSystemMatrix(smv4, freq)
+freq = filterFrequencies(smv5, SNRThresh=4.0)
+S1 = getSystemMatrix(smv5, freq)
 @test size(S1)  == (1936,194)
 
 S2 = getSystemMatrix(smv2, freq)
 @test S1  == S2
-close(smv4.file)
 
-compressCalibMDF(fnSMV4, smv2, SNRThresh=4.0, sparsityTrafoRedFactor=0.2)
-smv4 = MPIFile(fnSMV4)
+compressCalibMDF(fnSMV6, smv2, SNRThresh=4.0, sparsityTrafoRedFactor=0.2)
+smv6 = MPIFile(fnSMV6)
 
-S2 = getSystemMatrix(smv2, freq)
-@test S1  == S2
+S1 = getSystemMatrix(smv6, freq)
   
 relativeDeviation = zeros(Float32,length(freq))
 for f in 1:length(freq)
-  relativeDeviation[f] = norm(S1[:,f]-S2[:,f])/norm(S1[:,f])
+  relativeDeviation[f] = norm(S1[:,f]-S2[:,f])/norm(S2[:,f])
 end
 # test if relative deviation for most of the frequency components is below 0.003
-@test quantile(relativeDeviation,0.95)<0.003
+@test quantile(relativeDeviation,0.95)<0.14
 
 
 # Calibration file 1D
