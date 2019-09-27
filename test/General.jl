@@ -179,7 +179,7 @@ compressCalibMDF(fnSMV4, smv2, SNRThresh=0.0)
 smv4 = MPIFile(fnSMV4)
 @test size(calibSNR(smv4), 1) == 817
 @test length(filterFrequencies(smv4)) == 817*3
-
+close(smv4.file)
 
 
 compressCalibMDF(fnSMV4, smv2, SNRThresh=4.0)
@@ -197,6 +197,7 @@ S1 = getSystemMatrix(smv4, freq)
 
 S2 = getSystemMatrix(smv2, freq)
 @test S1  == S2
+close(smv4.file)
 
 compressCalibMDF(fnSMV4, smv2, SNRThresh=4.0, sparsityTrafoRedFactor=0.2)
 smv4 = MPIFile(fnSMV4)
