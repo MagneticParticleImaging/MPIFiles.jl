@@ -1,5 +1,4 @@
-export makeAxisArray
-
+#export makeAxisArray
 
 # Support for handling complex datatypes in HDF5 files
 function writeComplexArray(file, dataset, A::AbstractArray{Complex{T},D}) where {T,D}
