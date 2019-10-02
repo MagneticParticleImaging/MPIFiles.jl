@@ -198,7 +198,14 @@ function acqGradient(f::MDFFileV2)::Array{Float64,4}
 end
 
 acqOffsetField(f::MDFFileV1)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
-acqOffsetField(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
+function acqOffsetField(f::MDFFileV2)::Array{Float64,3} 
+  H = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
+  if ndims(H) == 3
+   return H
+  else # for corrupt files
+   return reshape(H,:,1,1)
+  end
+end
 
 # drive-field parameters
 dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]
