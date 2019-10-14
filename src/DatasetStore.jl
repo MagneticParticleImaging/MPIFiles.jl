@@ -258,7 +258,7 @@ function getStudy(d::MDFDatasetStore, studyfolder::String)
     timeStr = w[2]
     date = DateTime(string(dateStr[1:4],"-",dateStr[5:6],"-",dateStr[7:8],"T",
 			   timeStr[1:2],":",timeStr[3:4],":",timeStr[5:6]))
-    name = join(w[3:end])
+    name = join(w[3:end],"_")
   else
     date = Dates.unix2datetime(stat(studypath).mtime)
     name = studyfolder
