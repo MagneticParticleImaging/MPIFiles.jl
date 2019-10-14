@@ -127,7 +127,11 @@ function getExperiment(path::String)
     b = MPIFiles.BrukerFileFast(path) #use fast path for BrukerFiles
   else
     p = string(prefix,".mdf")
-    b = MDFFile(p)
+    if isfile(p)
+      b = MDFFile(p)
+    else
+      return nothing
+    end
   end
 
   exp = Experiment(p, parse(Int64,last(splitdir(prefix))),
@@ -138,7 +142,9 @@ function getExperiment(path::String)
   return exp
 end
 
-getExperiment(s::Study, numExp::Integer) = getExperiment(joinpath(s.path,string(numExp)))
+function getExperiment(s::Study, numExp::Integer)
+   getExperiment(joinpath(s.path,string(numExp)))
+end
 
 function remove(exp::Experiment)
   if isfile(exp.path)
@@ -503,10 +509,8 @@ function getExperiments(d::MDFDatasetStore, s::Study)
     if !isdir(file) && tryparse(Int64,prefix) != nothing &&
        (ext == ".mdf" || ext == ".hdf" || ext == ".h5") &&
        isfile(joinpath(s.path,file))
-
-        exp = getExperiment(joinpath(s.path,file))
-
-        push!(experiments, exp)
+       exp = getExperiment(joinpath(s.path,file))
+       push!(experiments, exp)
     end
   end
   sort!(experiments,lt=(a,b)->(a.num < b.num))
