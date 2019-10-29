@@ -127,7 +127,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     nFrames = length(frames)
     nBlocks = ceil(Int, nFrames / numAverages)
 
-    if rem(nFrames, numAverages) != 0 
+    if rem(nFrames, numAverages) != 0
       @warn "numAverages no integer divisor of nFrames.
               Last Block will be averaged over less than $numAverages Frames."
     end
@@ -241,10 +241,14 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
+    inductionFactor = rxInductionFactor(f)
 
     J = size(data,1)
     dataF = rfft(data, 1)
     dataF ./= tf
+    if inductionFactor != nothing
+      dataF ./= inductionFactor
+    end
     data = irfft(dataF,J,1)
   end
 
@@ -338,5 +342,3 @@ function spectralLeakageCorrectedData(dataIn)
     end
   return dataOut
 end
-
-
