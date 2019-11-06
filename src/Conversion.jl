@@ -297,7 +297,9 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
 
   ds = open(dataFilename)
   raw = Mmap.mmap(ds, Array{dType,4},(rxNumSamplingPoints(f),1,rxNumChannels(f),AllFrames));
+  
   for p = collect(1:Nx*Ny*Nz)
+#    p = Nx*Ny*(pz-1)+pxy
     st = p*skipSwitchingFrames+(p-1)*(nAverages+addToEnd)+1
 
     ind = collect(st:st+nAverages-1)
@@ -309,14 +311,12 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
     x = collect(Nx:-1:1)[PosNx.==union(Pos[1,1,ind])]
     y = collect(Ny:-1:1)[PosNy.==union(Pos[2,1,ind])]
     z = collect(Nz:-1:1)[PosNz.==union(Pos[3,1,ind])]
-    for ch =1:3
-      dataSC = spectralLeakageCorrectedData(raw[:,1,ch,ind]);
-      data_[x,y,z,:,ch] = rfft(vec(mean(dataSC,dims=2)));
-    end
+    #for ch =1:3
+      #dataSC = spectralLeakageCorrectedData(raw[:,1,ch,ind]);
+      #data_[x,y,z,:,ch] = rfft(vec(mean(dataSC,dims=2)));
+      data_[x,y,z,:,:] = rfft(mean(raw[:,1,:,ind],dims=3),1);
+    #end
   end
-
-  close(ds)
-
   data = reshape(data_,:,rxNumFrequencies(f),rxNumChannels(f),1)
   return convert(Array{Complex{Float32},4},data); # allPos x freq x channel x 1
 end
@@ -349,6 +349,10 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
 
   params["measIsFramePermutation"] = 1
 
+  if rxHasTransferFunction(f) &&!measIsTFCorrected(f)
+    params["transferFunction"] = rxTransferFunction(f)
+  end
+
   params["calibFov"] = [sum(abs.(extrema(params["acqOffsetField"][ll,1,:])))./abs.(params["acqGradient"][ll,ll]) for ll in collect(1:3)]
   params["calibOrder"] = "xyz"
 
@@ -363,6 +367,103 @@ println("Part1")
 @time  bgFramesHalf = loadAndProcessFFData(fBG,div(nAveragesBG,2), skipSwitchingFramesBG+nAveragesBG-div(nAveragesBG,2)) # allePos x freqs x r x 1
 
   params["calibSNR"] = calculateSNRCustomSF(f,fgFrames,bgFramesFull,bgFramesHalf)
+
+  (xBG,yBG,zBG) = [length(union(paramsBG["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
+  (xFG,yFG,zFG) = params["calibSize"]
+
+  bgFullReshaped = reshape(bgFramesFull,xBG,yBG,zBG,rxNumFrequencies(fBG),rxNumChannels(fBG))
+
+  itp = interpolate(bgFullReshaped,(NoInterp(),BSpline(Linear()),BSpline(Linear()),NoInterp(),NoInterp())); #Interpolire bgFramesFull auf
+
+  bgFramesFullInterp = itp(collect(1:xBG),range(1,yBG,length=yFG),range(1,zBG,length=zFG),collect(1:size(bgFullReshaped,4)),collect(1:size(bgFullReshaped,5)))
+
+  params["acqNumFrames"] = numFGFrames + prod(size(bgFramesFullInterp)[1:3])
+
+  tt = [round.(Int,collect(range(1,xBG+xFG,length=xBG))).+(kk-1)*(xBG+xFG) for kk =1:yFG*yFG];
+  idxBGFrames = vcat(tt...);
+  idxAllFrames = collect(1:params["acqNumFrames"])
+  idxAllFrames[idxBGFrames] .= 0
+  idxFGFrames = idxAllFrames[idxAllFrames.!=0];
+
+  params["measFramePermutation"] =  vcat(idxFGFrames,idxBGFrames)
+  params["measIsBGFrame"] = vcat(zeros(numFGFrames),ones(length(idxBGFrames)))
+  dataTemp_ = vcat(fgFrames,reshape(bgFramesFullInterp,:,size(bgFullReshaped)[4:5]...,1))  #size(params["measData"])(22621, 26929, 3, 1)
+  params["measData"] = convert(Array{Complex{Float32},4},dataTemp_);  #size(params["measData"])(22621, 26929, 3, 1)
+  saveasMDF(filenameOut, params)
+end
+
+
+function convertCustomSF(filenameOut::String, f::Array{BrukerFileMeas}, fBG::BrukerFile,nAverages::Int64,skipSwitchingFrames::Int64; nAveragesBG = nAverages,skipSwitchingFramesBG=skipSwitchingFrames)
+
+  paramsArray =[];
+  paramsBG = loadMetadata(fBG)
+  
+  params = loadMetadata(f[1])
+  loadMeasParams(f[1], params, skipMeasData = true)
+  loadCalibParams(f[1], params)
+
+  for fi in f[1:end]
+
+  params_ = loadMetadata(fi)
+  loadMeasParams(fi, params_, skipMeasData = true)
+  loadCalibParams(fi, params_)
+  push!(paramsArray,params_);
+  end
+
+  for i =2:length(f)
+  params["acqOffsetField"] = cat(params["acqOffsetField"],paramsArray[i]["acqOffsetField"],dims=3)
+  end
+
+  params["calibSize"] = [length(union(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
+  numFGFrames = prod(params["calibSize"])
+
+  println(params["calibSize"])
+
+  params["acqGradient"] = reshape(params["acqGradient"][:,:,1,1],3,3,1,1)
+  params["dfPhase"] =  reshape(params["dfPhase"][:,:,1],1,3,1)
+  params["calibDeltaSampleSize"] = [0.0, 0.0, 0.0] #Todo
+  #params["time"] = now()
+  params["calibMethod"] = "BrukerCustom"
+  #params["version"] = v"2.0.0"
+  params["dfStrength"] = reshape(params["dfStrength"][:,:,1,1],1,3,1)
+  params["experimentIsCalibration"] = true
+  #params["uuid"] = uuid4()
+  params["measIsFourierTransformed"] = true
+  params["measIsFastFrameAxis"] = true
+  params["calibFovCenter"] = [mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
+  params["acqNumPeriodsPerFrame"] = 1
+
+  params["measIsFramePermutation"] = 1
+
+  if rxHasTransferFunction(f[1]) &&!measIsTFCorrected(f[1])
+    params["transferFunction"] = sampleTF(TransferFunction("/opt/data/TFs/TFHDF5/TF_3DMouse_NM0_07102019.h5"), f[1])
+#    params["transferFunction"] = rxTransferFunction(f[1])
+  end
+
+  params["calibFov"] = [sum(abs.(extrema(params["acqOffsetField"][ll,1,:])))./abs.(params["acqGradient"][ll,ll]) for ll in collect(1:3)]
+  params["calibOrder"] = "xyz"
+
+  params["acqOffsetField"] = reshape([mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)],3,1,1)
+  params["acqNumAverages"] = nAverages
+
+println("Part1")
+  # Daten Laden
+#fgFrames =zeros(ComplexF64,prod(Int64,params["calibSize"]),26929,3,1)
+@time global fgFrames =loadAndProcessFFData(f[1],nAverages, skipSwitchingFrames) 
+#global tmp =1
+for (ii,ffi)  in enumerate(f[2:end])
+println(ffi)
+#pos = prod(Int64,[length(union(paramsArray[ii]["acqOffsetField"][ll,1,:])) for ll in collect(1:3)])
+#@time fgFrames[tmp:tmp+pos-1,:,:,:] = loadAndProcessFFData(ffi,nAverages, skipSwitchingFrames) # allePos x freqs x r x 1
+@time global fgFrames = cat(fgFrames,loadAndProcessFFData(ffi,nAverages, skipSwitchingFrames),dims=1) # allePos x freqs x r x 1
+#global tmp = tmp+pos
+end
+
+@time  bgFramesFull = loadAndProcessFFData(fBG,nAveragesBG, skipSwitchingFramesBG) # allePos x freqs x r x 1
+  nAveragesBGHalf = nAveragesBG >1 ? div(nAveragesBG,2) : nAveragesBG
+@time  bgFramesHalf = loadAndProcessFFData(fBG,div(nAveragesBG,2), skipSwitchingFramesBG+nAveragesBG-div(nAveragesBG,2)) # allePos x freqs x r x 1
+
+  params["calibSNR"] = calculateSNRCustomSF(f[1],fgFrames,bgFramesFull,bgFramesHalf)
 
   (xBG,yBG,zBG) = [length(union(paramsBG["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
   (xFG,yFG,zFG) = params["calibSize"]

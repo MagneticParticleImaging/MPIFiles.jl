@@ -339,4 +339,3 @@ function spectralLeakageCorrectedData(dataIn)
   return dataOut
 end
 
-
