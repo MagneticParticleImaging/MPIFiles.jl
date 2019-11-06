@@ -5,7 +5,7 @@ const axes = Base.axes
 using Graphics: @mustimplement
 using HDF5
 using Interpolations
-using RegularizedLeastSquares
+using SparsityOperators
 using Reexport
 using UUIDs
 
@@ -64,7 +64,7 @@ export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
 
 # receiver parameters
 export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
-       rxTransferFunction, rxHasTransferFunction, rxUnit, 
+       rxTransferFunction, rxHasTransferFunction, rxUnit,
        rxDataConversionFactor, rxInductionFactor
 
 # measurements

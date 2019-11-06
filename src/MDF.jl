@@ -184,9 +184,28 @@ acqNumPeriodsPerFrame(f::MDFFileV1)::Int = 1
 acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods",1]
 
 acqGradient(f::MDFFileV1)::Array{Float64,4} = reshape(Matrix(Diagonal(f["/acquisition/gradient"])), 3,3,1,1)
-acqGradient(f::MDFFileV2)::Array{Float64,4} = f["/acquisition/gradient"]
+function acqGradient(f::MDFFileV2)::Array{Float64,4} 
+  G = f["/acquisition/gradient"]
+  if ndims(G) == 4
+   return G
+  elseif ndims(G) == 3 # for corrupt files
+   return reshape(G,3,3,1,size(G,3))
+  elseif ndims(G) == 2 && prod(size(G)) == 9  # for corrupt files
+   return reshape(G,3,3,1,1)
+  else # for corrupt files
+   return reshape(Matrix(Diagonal(vec(G))),3,3,1,1)
+  end
+end
+
 acqOffsetField(f::MDFFileV1)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
-acqOffsetField(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
+function acqOffsetField(f::MDFFileV2)::Array{Float64,3} 
+  H = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
+  if ndims(H) == 3
+   return H
+  else # for corrupt files
+   return reshape(H,:,1,1)
+  end
+end
 
 # drive-field parameters
 dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]

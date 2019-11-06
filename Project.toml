@@ -1,7 +1,7 @@
 name = "MPIFiles"
 uuid = "371237a9-e6c1-5201-9adb-3d8cfa78fa9f"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
-version = "0.7.0"
+version = "0.7.1"
 
 [deps]
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
@@ -18,7 +18,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Mmap = "a63ad114-7e13-5084-954f-fe012c677804"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
-RegularizedLeastSquares = "1e9c538a-f78c-5de5-8ffb-0b6dbe892d23"
+SparsityOperators = "a5ff1dd3-4e0a-50db-9022-6d011c1d5846"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
