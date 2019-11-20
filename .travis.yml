@@ -5,11 +5,9 @@ os:
   - windows
   - osx
 julia:
-  - 0.7
   - 1.0
-  - 1.1
   - 1.2
-#  - nightly
+  - nightly
 notifications:
   email: false
 branches:
@@ -20,15 +18,15 @@ addons:
     - hdf5-tools
 # uncomment the following lines to allow failures on nightly julia
 # (tests will run but not make your overall status red)
-# matrix:
-#  allow_failures:
-#  - julia: nightly
+matrix:
+  allow_failures:
+  - julia: nightly
 
 ## uncomment following lines to deploy documentation
 jobs:
    include:
      - stage: Documentation
-       julia: 1.1
+       julia: 1.2
        os: linux
        script:
          - julia --project=docs -e 'using Pkg; Pkg.instantiate(); Pkg.add(PackageSpec(path=pwd()))'

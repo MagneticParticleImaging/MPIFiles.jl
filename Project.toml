@@ -1,7 +1,7 @@
 name = "MPIFiles"
 uuid = "371237a9-e6c1-5201-9adb-3d8cfa78fa9f"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
-version = "0.7.1"
+version = "0.8"
 
 [deps]
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
@@ -22,7 +22,7 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
-julia = "0.7, 1"
+julia = "1.0"
 AxisArrays = "0.3"
 HDF5 = "0.12.2"
 FileIO = "1.0"
