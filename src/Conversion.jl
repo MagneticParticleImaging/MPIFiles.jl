@@ -308,9 +308,12 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
       error("Averaged data are not at the same FF-Position! Check Parameter Averages and/or skipSwitchingFrames (MPIFiles function loadAndProcessFFData)")
     end
     # sequence is not relevant
-    x = collect(Nx:-1:1)[PosNx.==union(Pos[1,1,ind])]
-    y = collect(Ny:-1:1)[PosNy.==union(Pos[2,1,ind])]
-    z = collect(Nz:-1:1)[PosNz.==union(Pos[3,1,ind])]
+    #x = collect(Nx:-1:1)[PosNx.==union(Pos[1,1,ind])]
+    #y = collect(Ny:-1:1)[PosNy.==union(Pos[2,1,ind])]
+    #z = collect(Nz:-1:1)[PosNz.==union(Pos[3,1,ind])]
+    x = collect(1:Nx)[PosNx.==union(Pos[1,1,ind])]
+    y = collect(1:Ny)[PosNy.==union(Pos[2,1,ind])]
+    z = collect(1:Nz)[PosNz.==union(Pos[3,1,ind])]
     #for ch =1:3
       #dataSC = spectralLeakageCorrectedData(raw[:,1,ch,ind]);
       #data_[x,y,z,:,ch] = rfft(vec(mean(dataSC,dims=2)));
