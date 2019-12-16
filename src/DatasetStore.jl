@@ -341,7 +341,10 @@ function findSFFiles(d::BrukerDatasetStore)
   end
   BrukerMDFSFs = readdir("/opt/data/MDF_SFs/")
   for BrukerMDFSF in BrukerMDFSFs
-    push!(bfiles,joinpath("/opt/data/MDF_SFs/",BrukerMDFSF))
+    prefix, ext = splitext(BrukerMDFSF)
+     if ext == ".mdf"
+      push!(bfiles,joinpath("/opt/data/MDF_SFs/",BrukerMDFSF))
+    end
   end
   return bfiles
 end
