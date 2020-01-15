@@ -308,7 +308,7 @@ function acqGradient(b::BrukerFile)
   return G
 end
 
-function acqOffsetField(b::BrukerFile) #TODO NOT correct
+function acqOffsetField(b::BrukerFile)
   if b["MPI_FocusFieldX"] != ""
     off = repeat(1e-3 * cat([parse(Float64,a) for a in b["MPI_FocusFieldX"]],
                  [parse(Float64,a) for a in b["MPI_FocusFieldY"]],
