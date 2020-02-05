@@ -38,7 +38,7 @@ acqFramePeriod(b::MPIFile) = dfCycle(b) * acqNumAverages(b) * acqNumPeriodsPerFr
 acqNumPeriods(f::MPIFile) = acqNumFrames(f)*acqNumPeriodsPerFrame(f)
 
 function acqOffsetFieldShift(f::MPIFile)
-    return acqOffsetField(f) ./ reshape( acqGradient(f),9,1,:)[[1,5,9],:,:]
+    return -acqOffsetField(f) ./ reshape( acqGradient(f),9,1,:)[[1,5,9],:,:]
 end
 
 acqNumFGFrames(f::MPIFile) = acqNumFrames(f) - acqNumBGFrames(f)

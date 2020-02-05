@@ -131,10 +131,21 @@ function sampleTF(tmf::TransferFunction, f::MPIFile)
 end
 
 
+function _writeBrukerParamFile(b::BrukerFile, A, filename)
+  mv(joinpath(filepath(b),filename), joinpath(filepath(b),filename*"_bac"), force=true )
+
+  open(joinpath(filepath(b),filename),"w") do fd
+    for u in A
+      println(fd,u)
+    end
+  end
+  return
+end
+
 function setTF(b::BrukerFile, filenameTF::AbstractString)
   A = readlines(joinpath(filepath(b),"acqp"))
   l = findfirst( s->occursin("ACQ_comment", s), A)
-  
+
   if l == nothing
    ll = findfirst( s->occursin("ACQ_experiment_mode", s), A)
    insert!(A, ll, "##\$ACQ_comment=( 2048 )")
@@ -142,35 +153,36 @@ function setTF(b::BrukerFile, filenameTF::AbstractString)
   else
     A[l+1] = "<$(filenameTF)>"
   end
-  
-  mv(joinpath(filepath(b),"acqp"), joinpath(filepath(b),"acqp_bac"), force=true )
-  
-  open(joinpath(filepath(b),"acqp"),"w") do fd
-   for u in A
-     println(fd,u)
-   end
+
+  _writeBrukerParamFile(b, A, "acqp")
+
+  # For some reason ACQ_comment is also in the method file -> also change that
+  B = readlines(joinpath(filepath(b),"method"))
+  g = findfirst( s->occursin("ACQ_comment", s), B)
+  if g != nothing
+    B[g+1] = "<$(filenameTF)>"
+    _writeBrukerParamFile(b, B, "method")
   end
-  
+
   if isfile(joinpath(filepath(b),"mdf"))
     setTF(MPIFile(filepath(b)), filenameTF)
   end
-  return  
+  return
 end
 
 
 function setTF(f::MDFFile, filenameTF::AbstractString)
   tmf = TransferFunction(filenameTF)
   tf = sampleTF(tmf, f)
-  
+
   # We need to close the HDF5 file handle before we can write to it
   close(f.file)
-  
+
   h5open(filepath(f), "r+") do file
     if exists(file, "/acquisition/receiver/transferFunction")
       o_delete(file, "/acquisition/receiver/transferFunction")
     end
     write(file, "/acquisition/receiver/transferFunction", tf)
-  end  
+  end
   return
 end
-
