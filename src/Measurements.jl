@@ -127,7 +127,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     nFrames = length(frames)
     nBlocks = ceil(Int, nFrames / numAverages)
 
-    if rem(nFrames, numAverages) != 0 
+    if rem(nFrames, numAverages) != 0
       @warn "numAverages no integer divisor of nFrames.
               Last Block will be averaged over less than $numAverages Frames."
     end
@@ -175,7 +175,7 @@ Supported keyword arguments:
 """
 function getMeasurements(f::MPIFile, neglectBGFrames=true;
       frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
-      bgCorrection=false, interpolateBG=false, tfCorrection=measIsTFCorrected(f),
+      bgCorrection=false, interpolateBG=false, tfCorrection=rxHasTransferFunction(f),
       sortFrames=false, kargs...)
 
   if neglectBGFrames
@@ -241,10 +241,14 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
+    inductionFactor = rxInductionFactor(f)
 
     J = size(data,1)
     dataF = rfft(data, 1)
     dataF ./= tf
+    if inductionFactor != nothing
+      dataF ./= inductionFactor
+    end
     data = irfft(dataF,J,1)
   end
 
@@ -271,7 +275,7 @@ Supported keyword arguments:
 """
 function getMeasurementsFD(f::MPIFile, args...;
       loadasreal=false, transposed=false, frequencies=nothing,
-      tfCorrection=measIsTFCorrected(f),  kargs...)
+      tfCorrection=rxHasTransferFunction(f),  kargs...)
 
   data = getMeasurements(f, args..., tfCorrection=false; kargs...)
 
@@ -301,4 +305,40 @@ function getMeasurementsFD(f::MPIFile, args...;
   end
 
   return data
+end
+
+
+
+
+
+
+
+function spectralLeakageCorrectedData(dataIn)
+  @debug "Apply Spectral Cleaning"
+
+  numTimePoints = size(dataIn,1)
+  numFrames = size(dataIn,2)
+
+  dataOut = zeros(Float32, numTimePoints, numFrames)
+
+  window3 = hannWindow(numTimePoints*3)
+  window2 = hannWindow(numTimePoints*2)
+
+  for (i,fr) in enumerate(collect(1:numFrames))
+      if fr==1
+        dataOut[:,i] = 1/2 * (dataIn[:,fr] .* window2[1:numTimePoints]
+                          +  dataIn[:,fr+1] .* window2[1+numTimePoints:2*numTimePoints]
+                          );
+      elseif fr==numFrames
+        dataOut[:,i] = 1/2 * (dataIn[:,fr-1] .* window2[1:numTimePoints]
+                          +    dataIn[:,fr] .* window2[1+numTimePoints:2*numTimePoints]
+                          );
+      else
+        dataOut[:,i] = 1/3 * (dataIn[:,fr-1] .* window3[1:numTimePoints]
+                          +  dataIn[:,fr] .* window3[1+numTimePoints:2*numTimePoints]
+                          +  dataIn[:,fr+1] .* window3[1+2*numTimePoints:3*numTimePoints]
+                          );
+      end
+    end
+  return dataOut
 end

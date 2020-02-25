@@ -1,19 +1,17 @@
 module MPIFiles
 
-using AxisArrays
-const axes = Base.axes
-using Graphics: @mustimplement
-using HDF5
-using Interpolations
-using RegularizedLeastSquares
-using Reexport
 using UUIDs
+using Graphics: @mustimplement
 
+using SparsityOperators
+@reexport using SparsityOperators
+@reexport using AxisArrays
+const axes = Base.axes
+@reexport using Interpolations
+@reexport using HDF5
 @reexport using Dates
 @reexport using DelimitedFiles
-@reexport using FFTW
-@reexport using ImageAxes
-@reexport using ImageMetadata
+@reexport using Images
 @reexport using LinearAlgebra
 @reexport using Random
 @reexport using Mmap
@@ -64,14 +62,15 @@ export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
 
 # receiver parameters
 export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
-       rxTransferFunction, rxUnit, rxDataConversionFactor, rxInductionFactor
+       rxTransferFunction, rxHasTransferFunction, rxUnit,
+       rxDataConversionFactor, rxInductionFactor
 
 # measurements
 export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
-       measIsBGCorrected, measIsTransposed,
+       measIsBGCorrected, measIsFastFrameAxis,
        measIsFramePermutation, measIsFrequencySelection,
        measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation,
-       measFrequencySelection, measIsBasisTransformed
+       measFrequencySelection, measIsSparsityTransformed, measIsCalibProcessed
 
 # calibrations
 export calibSNR, calibFov, calibFovCenter, calibSize,
@@ -150,6 +149,7 @@ abstract type MPIFile end
 @mustimplement rxBandwidth(f::MPIFile)
 @mustimplement rxNumSamplingPoints(f::MPIFile)
 @mustimplement rxTransferFunction(f::MPIFile)
+@mustimplement rxHasTransferFunction(f::MPIFile)
 @mustimplement rxInductionFactor(f::MPIFile)
 @mustimplement rxUnit(f::MPIFile)
 @mustimplement rxDataConversionFactor(f::MPIFile)
@@ -163,11 +163,12 @@ abstract type MPIFile end
 @mustimplement measIsTFCorrected(f::MPIFile)
 @mustimplement measIsFrequencySelecton(f::MPIFile)
 @mustimplement measIsBGCorrected(f::MPIFile)
-@mustimplement measIsTransposed(f::MPIFile)
+@mustimplement measIsFastFrameAxis(f::MPIFile)
 @mustimplement measIsFramePermutation(f::MPIFile)
 @mustimplement measIsBGFrame(f::MPIFile)
 @mustimplement measFramePermutation(f::MPIFile)
-@mustimplement measIsBasisTransformed(f::MPIFile)
+@mustimplement measIsSparsityTransformed(f::MPIFile)
+@mustimplement measIsCalibProcessed(b::MPIFile)
 
 # calibrations
 @mustimplement calibSNR(f::MPIFile)
@@ -224,11 +225,27 @@ function MPIFile(filename::AbstractString; kargs...)
   end
 end
 
+function show(io::IO, f::MPIFile)
+  print(io,supertype(typeof(f)))
+  print(io,"\n\tStudy: ")
+  show(io, studyName(f))
+  print(io,", ")
+  show(io,studyTime(f))
+  print(io,"\n\tExperiment: ")
+  show(io,experimentName(f))
+  print(io,", ")
+  show(io,acqStartTime(f))
+  print(io,"\n")
+end
+
 # Opens a set of MPIFiles
 function MPIFile(filenames::Vector)
   return map(x->MPIFile(x),filenames)
 end
 
+Base.length(f::MPIFile) = 1
+
+include("TransferFunction.jl")
 include("MultiMPIFile.jl")
 include("Measurements.jl")
 include("SystemMatrix.jl")

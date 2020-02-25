@@ -35,7 +35,7 @@ rxDataConversionFactor, rxInductionFactor
 
 # measurements
 measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
-measIsBGCorrected, measIsTransposed, measIsFramePermutation, measIsFrequencySelection,
+measIsBGCorrected, measIsFastFrameAxis, measIsFramePermutation, measIsFrequencySelection,
 measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation
 
 # calibrations

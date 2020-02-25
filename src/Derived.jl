@@ -38,7 +38,7 @@ acqFramePeriod(b::MPIFile) = dfCycle(b) * acqNumAverages(b) * acqNumPeriodsPerFr
 acqNumPeriods(f::MPIFile) = acqNumFrames(f)*acqNumPeriodsPerFrame(f)
 
 function acqOffsetFieldShift(f::MPIFile)
-    return acqOffsetField(f) ./ reshape( acqGradient(f),9,1,:)[[1,5,9],:,:]
+    return -acqOffsetField(f) ./ reshape( acqGradient(f),9,1,:)[[1,5,9],:,:]
 end
 
 acqNumFGFrames(f::MPIFile) = acqNumFrames(f) - acqNumBGFrames(f)
@@ -131,7 +131,7 @@ function measDataTD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
 
   data1 = measData(f,frames,periods,receivers)
 
-  if measIsTransposed(f)
+  if measIsFastFrameAxis(f)
     data2 = permutedims(data1, invperm([4,1,2,3]))
   else
     data2 = data1

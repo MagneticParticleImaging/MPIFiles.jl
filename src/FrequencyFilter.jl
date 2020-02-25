@@ -42,7 +42,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
     freqMask[1:(minIdx),:,:] .= false
   end
 
-  if maxFreq < nFreq
+  if maxIdx < nFreq
     freqMask[(maxIdx):end,:,:] .= false
   end
 
@@ -116,3 +116,24 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
 
   freq
 end
+
+
+function rowsToSubsampledRows(f::MPIFile, rows)
+  if measIsFrequencySelection(f)
+    # In this case we need to convert indices
+    tmp = zeros(Int64, rxNumFrequencies(f), rxNumChannels(f) )
+    idxAvailable = measFrequencySelection(f)
+    for d=1:rxNumChannels(f)
+      tmp[idxAvailable, d] = (1:length(idxAvailable)) .+ (d-1)*length(idxAvailable)
+    end
+    rows_ = vec(tmp)[rows]
+    if findfirst(x -> x == 0, rows_) != nothing
+      @error "Indices applied to systemMatrix are not available in the file"
+    end
+  else
+    rows_ = rows
+  end
+  return rows_
+end
+
+

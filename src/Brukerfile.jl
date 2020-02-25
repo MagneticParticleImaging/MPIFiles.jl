@@ -31,6 +31,7 @@ mutable struct BrukerFileMeas <: BrukerFile
   maxEntriesAcqp::Int
   keylistAcqp::Vector{String}
   keylistMethod::Vector{String}
+  pretendToBeSinglePatch::Bool
 end
 
 mutable struct BrukerFileCalib <: BrukerFile
@@ -47,6 +48,7 @@ mutable struct BrukerFileCalib <: BrukerFile
   maxEntriesAcqp::Int
   keylistAcqp::Vector{String}
   keylistMethod::Vector{String}
+  pretendToBeSinglePatch::Bool
 end
 
 function _iscalib(path::AbstractString)
@@ -70,17 +72,32 @@ function _iscalib(path::AbstractString)
     return calib
 end
 
-function BrukerFile(path::String; isCalib=_iscalib(path), maxEntriesAcqp=2000,
-				  keylistAcqp=String[], keylistMethod=String[])
+function BrukerFile(path::String; isCalib=_iscalib(path), fastMode=false, pretendToBeSinglePatch=false)
+  if fastMode
+    maxEntriesAcqp = 400
+	  keylistAcqp = ["ACQ_scan_name", "ACQ_size", "ACQ_jobs","ACQ_MPI_drive_field_strength",
+				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator",
+				 "ACQ_time", "ACQ_ReceiverSelect"]
+	  keylistMethod = ["PVM_MPI_Bandwidth", "MPI_RepetitionsPerStep",
+				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
+				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
+				 "PVM_MPI_ChannelSelect", "PVM_MPI_Tracer", "PVM_MPI_DriveFieldCycle", "PVM_Matrix", "PVM_Fov"]   
+  else
+    maxEntriesAcqp = 2000
+	  keylistAcqp = String[]
+	  keylistMethod = String[]
+	end
   params = JcampdxFile()
   paramsProc = JcampdxFile()
 
   if isCalib
     return BrukerFileCalib(path, params, paramsProc, false, false, false,
-               false, false, false, false, maxEntriesAcqp, keylistAcqp, keylistMethod)
+               false, false, false, false, maxEntriesAcqp, keylistAcqp, 
+               keylistMethod, pretendToBeSinglePatch)
   else
     return BrukerFileMeas(path, params, paramsProc, false, false, false,
-               false, false, false, false, maxEntriesAcqp, keylistAcqp, keylistMethod)
+               false, false, false, false, maxEntriesAcqp, keylistAcqp, 
+               keylistMethod, pretendToBeSinglePatch)
   end
 end
 
@@ -88,16 +105,10 @@ function BrukerFile()
   params = JcampdxFile()
   paramsProc = JcampdxFile()
   return BrukerFileMeas("", params, paramsProc, false, false, false,
-             false, false, false, false, 1, String[], String[])
+             false, false, false, false, 1, String[], String[], false)
 end
 
-BrukerFileFast(path) = BrukerFile(path, maxEntriesAcqp=400, keylistAcqp=
-				["ACQ_scan_name", "ACQ_jobs","ACQ_MPI_drive_field_strength",
-				 "ACQ_MPI_selection_field_gradient","NA", "ACQ_operator", 
-				 "ACQ_time"], keylistMethod=["MPI_RepetitionsPerStep",
-				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
-				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
-				 "PVM_MPI_ChannelSelect"])
+BrukerFileFast(path) = BrukerFile(path, fastMode=true)
 
 function getindex(b::BrukerFile, parameter)#::String
   if !b.acqpRead && ( parameter=="NA" || parameter[1:3] == "ACQ" )
@@ -152,10 +163,6 @@ function getindex(b::BrukerFile, parameter, procno::Int64)#::String
   end
 
   return b.paramsProc[parameter]
-end
-
-function Base.show(io::IO, b::BrukerFile)
-  print(io, "BrukerFile: ", b.path)
 end
 
 # Helper
@@ -258,13 +265,21 @@ function acqNumFrames(b::BrukerFileCalib)
 end
 
 function acqNumPatches(b::BrukerFile)
-  M = b["MPI_NSteps"]
-  return (M == "") ? 1 : parse(Int64,M)
+  if b.pretendToBeSinglePatch
+    return 1
+  else
+    M = b["MPI_NSteps"]
+    return (M == "") ? 1 : parse(Int64,M)
+  end
 end
 function acqNumPeriodsPerFrame(b::BrukerFile)
-  M = b["MPI_RepetitionsPerStep"]
-  N = acqNumPatches(b)
-  return (M == "") ? N : N*parse(Int64,M)
+  if b.pretendToBeSinglePatch
+    return 1
+  else
+    M = b["MPI_RepetitionsPerStep"]
+    N = acqNumPatches(b)
+    return (M == "") ? N : N*parse(Int64,M)
+  end
 end
 
 acqNumAverages(b::BrukerFileMeas) = parse(Int,b["NA"])
@@ -293,23 +308,23 @@ function acqGradient(b::BrukerFile)
   return G
 end
 
-function acqOffsetField(b::BrukerFile) #TODO NOT correct
+function acqOffsetField(b::BrukerFile)
   if b["MPI_FocusFieldX"] != ""
-    off = repeat(1e-3 * cat([parse(Float64,a) for a in b["MPI_FocusFieldX"]],
-                 [parse(Float64,a) for a in b["MPI_FocusFieldY"]],
+    off = repeat(1e-3 * cat([-parse(Float64,a) for a in b["MPI_FocusFieldX"]],
+                 [-parse(Float64,a) for a in b["MPI_FocusFieldY"]],
                  [parse(Float64,a) for a in b["MPI_FocusFieldZ"]],dims=2)',inner=(1,acqNumPeriodsPerPatch(b)))
   elseif b["CONFIG_MPI_FF_calibration"] != ""
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
     voltage = repeat(voltage,inner=(1,acqNumPeriodsPerPatch(b)))
     calibFac = 1.0 / 100000 ./ parse.(Float64,b["CONFIG_MPI_FF_calibration"])
-    off = Float64[voltage[d,j]*calibFac[d-1] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
+    off = [-1, -1, 1].*Float64[voltage[d,j]*calibFac[d-1] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
   else # legacy
     voltage = [parse(Float64,s) for s in b["ACQ_MPI_frame_list"]]
     voltage = reshape(voltage,4,:)
     voltage = repeat(voltage,inner=(1,acqNumPeriodsPerPatch(b)))
     calibFac = [2.5 / 49.45, 0.5 * (-2.5)*0.008/22.73, 0.5*2.5*0.008/22.73, -1.5*0.0094/13.2963]
-    off = Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
+    off = [-1, -1, 1].*Float64[voltage[d,j]*calibFac[d] for d=2:4, j=1:acqNumPeriodsPerFrame(b)]
   end
   return reshape(off, 3, 1, :)
 end
@@ -336,7 +351,18 @@ dfCycle(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000 / nu
 rxNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
 rxBandwidth(b::BrukerFile) = parse(Float64,b["PVM_MPI_Bandwidth"])*1e6
 rxNumSamplingPoints(b::BrukerFile) = div(parse(Int64,b["ACQ_size"][1]),numSubPeriods(b))
-rxTransferFunction(b::BrukerFile) = nothing
+function rxTransferFunction(b::BrukerFile)
+  filename = b["ACQ_comment"]
+  if isfile(filename)
+    return sampleTF(TransferFunction(filename), b)
+  else
+    return nothing
+  end
+end
+function rxHasTransferFunction(b::BrukerFile)
+  filename = b["ACQ_comment"]
+  return isfile(filename)
+end
 rxInductionFactor(b::BrukerFile) = nothing
 rxUnit(b::BrukerFile) = "a.u."
 rxDataConversionFactor(b::BrukerFileMeas) =
@@ -358,7 +384,7 @@ function rawDataLengthConsistent(b::BrukerFile)
 
   M = filesize(dataFilename)
   if N != M
-    @show N M
+    @warn "raw data length inconsistent N != M" N M
   end
   return N == M
 end
@@ -369,19 +395,15 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
   dataFilename = joinpath(b.path,"rawdata.job0")
   dType = acqNumAverages(b) == 1 ? Int16 : Int32
 
-  s = open(dataFilename, "r")
+  s = open(dataFilename)
 
   if numSubPeriods(b) == 1
-    #raw = Mmap.mmap(s, Array{dType,4},
-    #         (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
-    raw = RawFile(s, dType, [rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),maximum(frames)])
+    raw = Mmap.mmap(s, Array{dType,4},
+             (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
   else
-    #raw = Mmap.mmap(s, Array{dType,5},
-    #         (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
-    rawF = RawFile(s, dType,
-       [rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),maximum(frames)])
-    rawR = rawF[:,1:numSubPeriods(b),1:rxNumChannels(b),1:acqNumPeriodsPerFrame(b),1:maximum(frames)]
-    raw = dropdims(sum(rawR,dims=2),dims=2)
+    raw = Mmap.mmap(s, Array{dType,5},
+             (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+    raw = dropdims(sum(raw,dims=2),dims=2)
   end
   data = raw[:,receivers,periods,frames]
   close(s)
@@ -498,18 +520,20 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
   return S
 end
 
+measIsCalibProcessed(b::BrukerFile) = isfile(joinpath(b.path,"pdata", "1", "systemMatrix"))
+
 measIsFourierTransformed(b::BrukerFileMeas) = false
-measIsFourierTransformed(b::BrukerFileCalib) = true
+measIsFourierTransformed(b::BrukerFileCalib) = measIsCalibProcessed(b)
 measIsTFCorrected(b::BrukerFile) = false
 measIsBGCorrected(b::BrukerFileMeas) = false
 # We have it, but by default we pretend that it is not applied
 measIsBGCorrected(b::BrukerFileCalib) = false
 
-measIsTransposed(b::BrukerFileMeas) = false
-measIsTransposed(b::BrukerFileCalib) = true
+measIsFastFrameAxis(b::BrukerFileMeas) = false
+measIsFastFrameAxis(b::BrukerFileCalib) = true
 
 measIsFramePermutation(b::BrukerFileMeas) = false
-measIsFramePermutation(b::BrukerFileCalib) = true
+measIsFramePermutation(b::BrukerFileCalib) = measIsCalibProcessed(b)
 
 function measIsBGFrame(b::BrukerFileMeas)
   if !experimentIsCalibration(b)
@@ -530,34 +554,47 @@ end
 # If the file is considered to be a calibration file, we will load
 # the measurement in a processed form. In that case the BG measurements
 # will be put at the end of the frame dimension.
-measIsBGFrame(b::BrukerFileCalib) =
-   cat(zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)),dims=1)
+function measIsBGFrame(b::BrukerFileCalib)
+  if measIsCalibProcessed(b)
+    return cat(zeros(Bool,acqNumFGFrames(b)),ones(Bool,acqNumBGFrames(b)),dims=1)
+  else
+    isBG = zeros(Bool, acqNumFrames(b))
+    increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
+    isBG[1:increment:end] .= true
+
+    return isBG  
+  end
+end
 
 # measurements are not permuted
 measFramePermutation(b::BrukerFileMeas) = nothing
 # calibration scans are permuted
 function measFramePermutation(b::BrukerFileCalib)
-  # The following is a trick to obtain the permutation applied to the measurements
-  # in a calibration measurement.
-  bMeas = BrukerFile(b.path, isCalib=false)
+  if measIsCalibProcessed(b)
+    # The following is a trick to obtain the permutation applied to the measurements
+    # in a calibration measurement.
+    bMeas = BrukerFile(b.path, isCalib=false)
 
-  return fullFramePermutation(bMeas)
+    return fullFramePermutation(bMeas)
+  else
+    return nothing
+  end
 end
 
 fullFramePermutation(f::BrukerFile) = fullFramePermutation(f, true)
 
 measIsSpectralLeakageCorrected(b::BrukerFile) = get(b.params, "ACQ_MPI_spectral_cleaningl", "No") != "No"
 measIsFrequencySelection(b::BrukerFile) = false
-measIsBasisTransformed(b::BrukerFile) = false
+measIsSparsityTransformed(b::BrukerFile) = false
 
 # calibrations
 function calibSNR(b::BrukerFile)
   snrFilename = joinpath(b.path,"pdata", "1", "snr")
-  
+
   if !isfile(snrFilename)
     return nothing
   end
-  
+
   nFreq = div(rxNumSamplingPoints(b)*numSubPeriods(b),2)+1
   s = open(snrFilename)
   data = Mmap.mmap(s, Array{Float64,3}, (nFreq,rxNumChannels(b),1))

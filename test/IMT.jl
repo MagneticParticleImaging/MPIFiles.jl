@@ -1,22 +1,7 @@
 @testset "Testing IMT submodule" begin
 
-fnMeas = "measurementIMT2D.h5"
-fnCalib = "systemMatrixIMT2D.h5"
-
-if !isfile(fnCalib)
-  HTTP.open("GET", "http://media.tuhh.de/ibi/imt/systemMatrixIMT2D.h5") do http
-    open(fnCalib, "w") do file
-        write(file, http)
-    end
-  end
-end
-if !isfile(fnMeas)
-  HTTP.open("GET", "http://media.tuhh.de/ibi/imt/measurementIMT2D.h5") do http
-    open(fnMeas, "w") do file
-        write(file, http)
-    end
-  end
-end
+fnMeas = "./data/imt/measurementIMT2D.h5"
+fnCalib = "./data/imt/systemMatrixIMT2D.h5"
 
 measIMT = MPIFile(fnMeas)
 calibIMT = MPIFile(fnCalib)
@@ -99,7 +84,7 @@ end
   @test size( measData(calibIMT) ) == (400, 817, 2, 1)
   @test measIsFourierTransformed(calibIMT) == true
   @test measIsTFCorrected(calibIMT) == false
-  @test measIsTransposed(calibIMT) == true
+  @test measIsFastFrameAxis(calibIMT) == true
   @test measIsBGCorrected(calibIMT) == false
 
   @test size( calibSNR(calibIMT) ) == (817, 2, 1)

@@ -23,8 +23,11 @@ done_(f::MultiMPIFile,state) = state > length(f.files)
 iterate(f::MultiMPIFile, s=start_(f)) = done_(f, s) ? nothing : next_(f, s)
 
 
-function Base.show(io::IO, f::MultiMPIFile)
-  print(io, "Multi MPI File: ", f.files)
+function show(io::IO, f::MultiMPIFile)
+  print(io, "Multi MPI File:\n")
+  for (i,file) in enumerate(f.files)
+    print(io,"$i. ", file)
+  end
 end
 
 acqNumPeriodsPerFrame(f::MultiMPIFile) = length(f.files)*acqNumFrames(f.files[1])
@@ -41,7 +44,8 @@ for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyTi
             :acqStartTime,
             :dfNumChannels, :dfBaseFrequency, :dfDivider,
             :dfCycle, :dfWaveform, :rxNumChannels, :acqNumAverages, :rxBandwidth,
-            :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor, :rxUnit, :rxDataConversionFactor]
+            :rxNumSamplingPoints, :rxTransferFunction, :rxHasTransferFunction, 
+            :rxInductionFactor, :rxUnit, :rxDataConversionFactor]
   @eval $op(f::MultiMPIFile) = $op(f.files[1])
 end
 
@@ -97,7 +101,7 @@ end
 
 for op in [:measIsFourierTransformed, :measIsTFCorrected,
            :measIsBGCorrected,
-           :measIsTransposed, :measIsFramePermutation, :measIsFrequencySelection,
+           :measIsFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
            :measIsSpectralLeakageCorrected,
            :measFramePermutation, :measIsBGFrame]
   @eval $op(f::MultiMPIFile) = $op(f.files[1])

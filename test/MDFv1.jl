@@ -2,25 +2,10 @@
 
 # Download test files
 
-fnMeasV1 = "measurement_V1.mdf"
-fnMeasV2 = "measurement_V2c.mdf"
-fnSMV1 = "systemMatrix_V1.mdf"
-fnSMV2 = "systemMatrix_V2c.mdf"
-
-if !isfile(fnSMV1)
-  HTTP.open("GET", "http://media.tuhh.de/ibi/mdf/systemMatrix.h5") do http
-    open(fnSMV1, "w") do file
-        write(file, http)
-    end
-  end
-end
-if !isfile(fnMeasV1)
-  HTTP.open("GET", "http://media.tuhh.de/ibi/mdf/measurement_5.h5") do http
-    open(fnMeasV1, "w") do file
-        write(file, http)
-    end
-  end
-end
+fnMeasV1 = "./data/mdf/measurement_V1.mdf"
+fnMeasV2 = "./data/mdf/measurement_V2c.mdf"
+fnSMV1 = "./data/mdf/systemMatrix_V1.mdf"
+fnSMV2 = "./data/mdf/systemMatrix_V2c.mdf"
 
 saveasMDF(fnMeasV2, fnMeasV1)
 saveasMDF(fnSMV2, fnSMV1)
@@ -36,7 +21,7 @@ mdfv2 = MPIFile(fnMeasV2)
 @test typeof(mdfv2) <: MDFFileV2
 
 # only test this for v1
-@test uuid(mdfv1) == UUID("4b0ffb84-29f5-f388-49f2-92a206bba885")
+@test uuid(mdfv1) == UUID("ac1943b5-1784-484c-ba75-d112397b9d7e")
 @test version(mdfv1) == v"1.0.0"
 @test time(mdfv1) == DateTime("2016-02-08T14:28:34.673")
 
@@ -127,7 +112,7 @@ for sm in (smv1,smv2)
   @test size( measData(sm) ) == (1936,817,3,1)
   @test measIsFourierTransformed(sm) == true
   @test measIsTFCorrected(sm) == false
-  @test measIsTransposed(sm) == true
+  @test measIsFastFrameAxis(sm) == true
   @test measIsBGCorrected(sm) == true
 
   @test size( calibSNR(sm) ) == (817,3,1)

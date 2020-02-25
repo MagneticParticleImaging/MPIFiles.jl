@@ -1,6 +1,6 @@
 # loading and storing custom parameters
 
-export ColoringParams, loadParams, saveParams
+export ColoringParamsInt, loadParams, saveParams
 
 function saveParams(filename::AbstractString, path, params::Dict)
   h5open(filename, "w") do file
@@ -8,10 +8,10 @@ function saveParams(filename::AbstractString, path, params::Dict)
   end
 end
 
-mutable struct ColoringParams
-  cmin
-  cmax
-  cmap
+mutable struct ColoringParamsInt
+  cmin::Float64
+  cmax::Float64
+  cmap::Int64
 end
 
 function saveParams(file, path, params::Dict)
@@ -29,7 +29,7 @@ function saveParams(file, path, params::Dict)
       write(file, ppath, "")
       dset = file[ppath]
       attrs(dset)["isnothing"] = "true"
-    elseif typeof(value) <: ColoringParams
+    elseif typeof(value) <: ColoringParamsInt
       tmp = zeros(3)
       tmp[1] = value.cmin
       tmp[2] = value.cmax
@@ -38,7 +38,7 @@ function saveParams(file, path, params::Dict)
       write(file, ppath, tmp)
       dset = file[ppath]
       attrs(dset)["iscoloring"] = "true"
-    elseif typeof(value) <: Array{ColoringParams,1}
+    elseif typeof(value) <: Array{ColoringParamsInt,1}
       tmp = zeros(3,length(value))
       for i=1:length(value)
         tmp[1,i] = value[i].cmin
@@ -84,11 +84,11 @@ function loadParams(file, path)
     elseif exists(attr, "isnothing")
        params[Symbol(key)] = nothing
     elseif exists(attr, "iscoloring")
-       params[Symbol(key)] = ColoringParams(data[1], data[2],round(Int64,data[3]))
+       params[Symbol(key)] = ColoringParamsInt(data[1], data[2],round(Int64,data[3]))
     elseif exists(attr, "iscoloringarray")
-       coloring = ColoringParams[]
+       coloring = ColoringParamsInt[]
        for i=1:size(data,2)
-         push!(coloring, ColoringParams(data[1,i], data[2,i],round(Int64,data[3,i])))
+         push!(coloring, ColoringParamsInt(data[1,i], data[2,i],round(Int64,data[3,i])))
        end
        params[Symbol(key)] = coloring
     else

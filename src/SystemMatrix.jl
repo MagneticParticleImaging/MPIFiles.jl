@@ -13,16 +13,31 @@ Supported keyword arguments:
 function getSystemMatrix(f::MPIFile,
            frequencies=1:rxNumFrequencies(f)*rxNumChannels(f);
                          bgCorrection=false, loadasreal=false,
-                         kargs...)
+                         tfCorrection=rxHasTransferFunction(f), kargs...)
 
   data = systemMatrix(f, frequencies, bgCorrection)
 
   S = map(ComplexF32, data)
 
+  if tfCorrection && !measIsTFCorrected(f)
+    tf = rxTransferFunction(f)
+    if tf != nothing
+      _corrTFSF(S,tf[rowsToSubsampledRows(f,frequencies)])
+    else
+      error("TF not available")
+    end
+  end
+
   if loadasreal
     return converttoreal(S)
   else
     return S
+  end
+end
+
+function _corrTFSF(S,tf)
+  for l=1:size(S,2)
+    S[:,l] ./= tf[l]
   end
 end
 
@@ -38,23 +53,36 @@ function calculateSystemMatrixSNR(f::MPIFile)
 end
 
 function calculateSystemMatrixSNR(f::MPIFile, S::Array)
-  SNR = zeros(rxNumFrequencies(f),rxNumChannels(f),acqNumPeriodsPerFrame(f))
-  for j=1:acqNumPeriodsPerFrame(f)
-    for r=1:rxNumChannels(f)
-      for k=1:rxNumFrequencies(f)
-        diffBG = diff(S[(acqNumFGFrames(f)+1):end,k,r,j])
-        meanBG = mean(S[(acqNumFGFrames(f)+1):end,k,r,j])
-        signal = maximum(abs.(S[1:acqNumFGFrames(f),k,r,j].-meanBG))
-        #noise = mean(abs.(S[(acqNumFGFrames(f)+1):end,k,r,j].-meanBG))
+  J = acqNumPeriodsPerFrame(f)
+  R = rxNumChannels(f)
+  K = rxNumFrequencies(f)
+  N = acqNumFGFrames(f)
+
+  SNR = zeros(K, R, J)
+
+  calculateSystemMatrixSNRInner(S, SNR, J, R, K, N)
+  return SNR
+end
+
+function calculateSystemMatrixSNRInner(S, SNR, J, R, K, N)
+  for j=1:J
+    for r=1:R
+      for k=1:K
+        SBG = S[(N+1):end,k,r,j]
+        SFG = S[1:N,k,r,j]
+        diffBG = diff(SBG)
+        meanBG = mean(SBG)
+        signal = maximum(abs.(SFG.-meanBG))
+        #noise = mean(abs.(SFG.-meanBG))
         noise = mean(abs.(diffBG))
         SNR[k,r,j] = signal / noise
       end
     end
   end
   SNR[:,:,:] .= mean(SNR,dims=3)
-  return SNR
+  return
 end
-
+#=
 function calculateSNRCustomSF(f::BrukerFile,fgFrames::Array,bgFramesFull::Array,bgFramesHalf::Array)
   SNR = zeros(rxNumFrequencies(f),rxNumChannels(f),1)
   for j=1:1
@@ -64,6 +92,23 @@ function calculateSNRCustomSF(f::BrukerFile,fgFrames::Array,bgFramesFull::Array,
         signal = maximum(abs.(fgFrames[:,k,r,j].-meanBG))
 	meanBGHalf = mean(bgFramesHalf[:,k,r,j])
         noise = sqrt(var(bgFramesFull[:,k,r,j].-meanBGHalf))#[:,k,r,j]))
+        SNR[k,r,j] = signal / noise
+      end
+    end
+  end
+  SNR[:,:,:] .= mean(SNR,dims=3)
+  return SNR
+end
+=#
+function calculateSNRCustomSF(f::BrukerFile,fgFrames::Array,bgFramesFull::Array,bgFramesHalf::Array)
+  SNR = zeros(rxNumFrequencies(f),rxNumChannels(f),1)
+  for j=1:1
+    for r=1:rxNumChannels(f)
+      for k=1:rxNumFrequencies(f)
+        diffBG = diff(bgFramesFull[:,k,r,j])
+        meanBG = mean(bgFramesFull[:,k,r,j])
+        signal = maximum(abs.(fgFrames[:,k,r,j].-meanBG))
+        noise = mean(abs.(diffBG))
         SNR[k,r,j] = signal / noise
       end
     end
