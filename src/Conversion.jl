@@ -259,17 +259,17 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
   #AllFrames = convert(Int,round(Int,FileSize/26928/4/3))
   AllFrames = acqNumPeriodsPerPatch(f)*acqNumPeriodsPerFrame(f)
   (Nx,Ny,Nz) = [length(union(acqOffsetField(f)[ll,1,:])) for ll in collect(1:3)]
-  
+
   data_ = zeros(ComplexF64,Nx,Ny,Nz,rxNumFrequencies(f),rxNumChannels(f));
 
 #  Pos_=acqOffsetField(f).*[-1,-1,-1]; #Field to position
   Pos=acqOffsetField(f).*[-1,-1,-1]; #Field to position
 
-#  Pos = zeros(3,1,AllFrames); 
+#  Pos = zeros(3,1,AllFrames);
 #  Pos[1,1,:] = kron(vec(Pos_[1,1,:]),ones(2))
 #  Pos[2,1,:] = kron(vec(Pos_[2,1,:]),ones(2))
 #  Pos[3,1,:] = kron(vec(Pos_[3,1,:]),ones(2))
-  
+
   dType = Int16 #acqNumAverages(f) == 1 ? Int16 : Int32  # Data are not averaged
 
   (PosNx,PosNy,PosNz)=[union(Pos[ll,1,:]) for ll in collect(1:3)]
@@ -281,7 +281,7 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
 
     ind = collect(st:st+nAverages-1)
 
-    if any([length(union(Pos[ll,1,ind])) for ll in collect(1:3)].>1) 
+    if any([length(union(Pos[ll,1,ind])) for ll in collect(1:3)].>1)
       error("Averaged data are not at the same FF-Position! Check Parameter Averages and/or skipSwitchingFrames (MPIFiles function loadAndProcessFFData)")
     end
     # sequence is not relevant
@@ -289,7 +289,7 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
     y = collect(Ny:-1:1)[PosNy.==union(Pos[2,1,ind])]
     z = collect(Nz:-1:1)[PosNz.==union(Pos[3,1,ind])]
     for ch =1:3
-      data_[x,y,z,:,ch] = rfft(vec(mean(raw[:,1,ch,ind],dims=2)));  
+      data_[x,y,z,:,ch] = rfft(vec(mean(raw[:,1,ch,ind],dims=2)));
     end
   end
 
@@ -308,7 +308,7 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
   paramsBG = loadMetadata(fBG)
 
 
-  params["calibSize"] = [length(union(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)] 
+  params["calibSize"] = [length(union(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
   numFGFrames = prod(params["calibSize"])
 
   params["acqGradient"] = reshape(params["acqGradient"][:,:,1,1],3,3,1,1)
@@ -319,11 +319,11 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
   #params["version"] = v"2.0.0"
   params["dfStrength"] = reshape(params["dfStrength"][:,:,1,1],1,3,1)
   params["experimentIsCalibration"] = true
-  #params["uuid"] = uuid4() 
+  #params["uuid"] = uuid4()
   params["measIsFourierTransformed"] = true
   params["measIsTransposed"] = true
   params["calibFovCenter"] = [mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
-  params["acqNumPeriodsPerFrame"] = 1  
+  params["acqNumPeriodsPerFrame"] = 1
 
   params["measIsFramePermutation"] = 1
 
@@ -343,11 +343,11 @@ println("Part1")
   params["calibSNR"] = calculateSNRCustomSF(f,fgFrames,bgFramesFull,bgFramesHalf)
 
   (xBG,yBG,zBG) = [length(union(paramsBG["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
-  (xFG,yFG,zFG) = params["calibSize"] 
- 
+  (xFG,yFG,zFG) = params["calibSize"]
+
   bgFullReshaped = reshape(bgFramesFull,xBG,yBG,zBG,rxNumFrequencies(fBG),rxNumChannels(fBG))
 
-  itp = interpolate(bgFullReshaped,(NoInterp(),BSpline(Linear()),BSpline(Linear()),NoInterp(),NoInterp())); #Interpolire bgFramesFull auf 
+  itp = interpolate(bgFullReshaped,(NoInterp(),BSpline(Linear()),BSpline(Linear()),NoInterp(),NoInterp())); #Interpolire bgFramesFull auf
 
   bgFramesFullInterp = itp(collect(1:xBG),range(1,yBG,length=yFG),range(1,zBG,length=zFG),collect(1:size(bgFullReshaped,4)),collect(1:size(bgFullReshaped,5)))
 
@@ -361,8 +361,8 @@ println("Part1")
 
   params["measFramePermutation"] =  vcat(idxFGFrames,idxBGFrames)
   params["measIsBGFrame"] = vcat(zeros(numFGFrames),ones(length(idxBGFrames)))
-  dataTemp_ = vcat(fgFrames,reshape(bgFramesFullInterp,:,size(bgFullReshaped)[4:5]...,1))  #size(params["measData"])(22621, 26929, 3, 1) 
-  params["measData"] = convert(Array{Complex{Float32},4},dataTemp_);  #size(params["measData"])(22621, 26929, 3, 1) 
+  dataTemp_ = vcat(fgFrames,reshape(bgFramesFullInterp,:,size(bgFullReshaped)[4:5]...,1))  #size(params["measData"])(22621, 26929, 3, 1)
+  params["measData"] = convert(Array{Complex{Float32},4},dataTemp_);  #size(params["measData"])(22621, 26929, 3, 1)
   saveasMDF(filenameOut, params)
 end
 
@@ -506,6 +506,7 @@ function saveasMDF(file::HDF5File, params::Dict)
   if hasKeyAndValue(params, "calibIsMeanderingGrid")
     write(file, "/calibration/isMeanderingGrid", Int8(params["calibIsMeanderingGrid"]))
   end
+  writeIfAvailable(file, "/calibration/_temperatures",  params, "calibTemperatures")
   # reconstruction
   if hasKeyAndValue(params, "recoData")
     write(file, "/reconstruction/data", params["recoData"])
