@@ -183,6 +183,10 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
       o_delete(file, "/acquisition/receiver/transferFunction")
     end
     write(file, "/acquisition/receiver/transferFunction", tf)
+    if exists(file, "/acquisition/receiver/inductionFactor")
+      o_delete(file, "/acquisition/receiver/inductionFactor")
+    end
+    write(file, "/acquisition/receiver/inductionFactor", tmf.inductionFactor)
   end
   return
 end
