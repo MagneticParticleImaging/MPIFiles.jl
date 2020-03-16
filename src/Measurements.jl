@@ -285,9 +285,9 @@ function getMeasurementsFD(f::MPIFile, args...;
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
     data ./= tf
-  end
-  if inductionFactor != nothing
+    if inductionFactor != nothing
       data ./= inductionFactor
+    end  
   end
 
   if frequencies != nothing
