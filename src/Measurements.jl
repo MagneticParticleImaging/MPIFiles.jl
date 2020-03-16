@@ -283,7 +283,11 @@ function getMeasurementsFD(f::MPIFile, args...;
 
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
+    inductionFactor = rxInductionFactor(f)
     data ./= tf
+  end
+  if inductionFactor != nothing
+      data ./= inductionFactor
   end
 
   if frequencies != nothing
