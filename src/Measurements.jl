@@ -128,7 +128,7 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     nBlocks = ceil(Int, nFrames / numAverages)
 
     if rem(nFrames, numAverages) != 0
-      @warn "numAverages no integer divisor of nFrames.
+      @warn "numAverages no integer divisor of nFrames ($nFrames).
               Last Block will be averaged over less than $numAverages Frames."
     end
 
@@ -176,12 +176,13 @@ Supported keyword arguments:
 function getMeasurements(f::MPIFile, neglectBGFrames=true;
       frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
       bgCorrection=false, interpolateBG=false, tfCorrection=rxHasTransferFunction(f),
-      sortFrames=false, kargs...)
+      sortFrames=false, numAverages=1, kargs...)
 
   if neglectBGFrames
     idx = measFGFrameIdx(f)
 
-    data = getAveragedMeasurements(f; frames=idx[frames], kargs...)
+    data = getAveragedMeasurements(f; frames=idx[frames],
+                                      numAverages=numAverages, kargs...)
 
     if bgCorrection
       @debug "Applying bg correction ..."
@@ -226,9 +227,9 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
   else
     if sortFrames
       permJoint = fullFramePermutation(f)
-      data = getAveragedMeasurements(f; frames=permJoint, kargs...)
+      data = getAveragedMeasurements(f; frames=permJoint, numAverages=numAverages, kargs...)
     else
-      data = getAveragedMeasurements(f; frames=frames, kargs...)
+      data = getAveragedMeasurements(f; frames=frames, numAverages=numAverages, kargs...)
     end
 
     if bgCorrection
@@ -287,7 +288,7 @@ function getMeasurementsFD(f::MPIFile, args...;
     data ./= tf
     if inductionFactor != nothing
       data ./= inductionFactor
-    end  
+    end
   end
 
   if frequencies != nothing
