@@ -296,8 +296,13 @@ function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFram
   (PosNx,PosNy,PosNz)=[union(Pos[ll,1,:]) for ll in collect(1:3)]
 
   ds = open(dataFilename)
-  raw = Mmap.mmap(ds, Array{dType,4},(rxNumSamplingPoints(f),1,rxNumChannels(f),AllFrames));
-  
+  if numSubPeriods(f) == 1
+     raw = Mmap.mmap(ds, Array{dType,4},(rxNumSamplingPoints(f),1,rxNumChannels(f),AllFrames));
+  else
+     raw = Mmap.mmap(ds, Array{dType,5},(rxNumSamplingPoints(f),numSubPeriods(f),1,rxNumChannels(f),AllFrames))
+     raw = dropdims(sum(raw,dims=2),dims=2)
+  end
+
   for p = collect(1:Nx*Ny*Nz)
 #    p = Nx*Ny*(pz-1)+pxy
     st = p*skipSwitchingFrames+(p-1)*(nAverages+addToEnd)+1
@@ -375,14 +380,26 @@ println("Part1")
   (xFG,yFG,zFG) = params["calibSize"]
 
   bgFullReshaped = reshape(bgFramesFull,xBG,yBG,zBG,rxNumFrequencies(fBG),rxNumChannels(fBG))
-
-  itp = interpolate(bgFullReshaped,(NoInterp(),BSpline(Linear()),BSpline(Linear()),NoInterp(),NoInterp())); #Interpolire bgFramesFull auf
-
+  
+  if yBG !=1
+     if zBG !=1
+       itp = interpolate(bgFullReshaped,(NoInterp(),BSpline(Linear()),BSpline(Linear()),NoInterp(),NoInterp())); #Interpolire bgFramesFull auf
+     else
+       itp = interpolate(bgFullReshaped,(NoInterp(),BSpline(Linear(    )),NoInterp(),NoInterp(),NoInterp())); #Interpolire bgFrames    Full auf
+     end
+ else 
+   if zBG !=1
+      itp = interpolate(bgFullReshaped,(NoInterp(),NoInterp(),BSpline(Linear()),NoInterp(),NoInterp())); #Interpolire bgFrames    Full auf
+   else
+      itp = interpolate(bgFullReshaped,(NoInterp(),NoInterp(),NoInterp(),NoInterp(),NoInterp())); #Interpolire bgFrames        Full auf
+   end
+ end
+  
   bgFramesFullInterp = itp(collect(1:xBG),range(1,yBG,length=yFG),range(1,zBG,length=zFG),collect(1:size(bgFullReshaped,4)),collect(1:size(bgFullReshaped,5)))
 
   params["acqNumFrames"] = numFGFrames + prod(size(bgFramesFullInterp)[1:3])
 
-  tt = [round.(Int,collect(range(1,xBG+xFG,length=xBG))).+(kk-1)*(xBG+xFG) for kk =1:yFG*yFG];
+  tt = [round.(Int,collect(range(1,xBG+xFG,length=xBG))).+(kk-1)*(xBG+xFG) for kk =1:yFG*zFG];
   idxBGFrames = vcat(tt...);
   idxAllFrames = collect(1:params["acqNumFrames"])
   idxAllFrames[idxBGFrames] .= 0

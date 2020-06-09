@@ -254,7 +254,10 @@ function acqStartTime(b::BrukerFile)
 end
 function acqNumFrames(b::BrukerFileMeas)
   M = Int64(b["ACQ_jobs"][1][8])
-  return div(M,acqNumPeriodsPerFrame(b))
+  #For calibration scans interpreted as measurements
+  A_ = b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"]
+  A = (A_ == "") ? 0 : parse(Int64, A_)
+  return div(M-A,acqNumPeriodsPerFrame(b))
 end
 
 function acqNumFrames(b::BrukerFileCalib)
