@@ -361,7 +361,11 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
     params["transferFunction"] = rxTransferFunction(f)
   end
 
-  params["calibFov"] = [sum(abs.(extrema(params["acqOffsetField"][ll,1,:])))./abs.(params["acqGradient"][ll,ll]) for ll in collect(1:3)]
+
+  calibFov=[sum(abs.(extrema(params["acqOffsetField"][ll,1,:])))./abs.(params["acqGradient"][ll,ll]) for ll in collect(1:3)]
+  ind=findall(x->x==0.0,calibFov) # if calibFov is 0.0 for 2D Measurements, AxisArray will fail in creating an ImageMeta object
+  calibFov[ind].=0.001  # for 1mm
+  params["calibFov"] = calibFov
   params["calibOrder"] = "xyz"
 
   params["acqOffsetField"] = reshape([mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)],3,1,1)
@@ -380,21 +384,21 @@ println("Part1")
   (xFG,yFG,zFG) = params["calibSize"]
 
   bgFullReshaped = reshape(bgFramesFull,xBG,yBG,zBG,rxNumFrequencies(fBG),rxNumChannels(fBG))
-  
+
   if yBG !=1
      if zBG !=1
        itp = interpolate(bgFullReshaped,(NoInterp(),BSpline(Linear()),BSpline(Linear()),NoInterp(),NoInterp())); #Interpolire bgFramesFull auf
      else
        itp = interpolate(bgFullReshaped,(NoInterp(),BSpline(Linear(    )),NoInterp(),NoInterp(),NoInterp())); #Interpolire bgFrames    Full auf
      end
- else 
+ else
    if zBG !=1
       itp = interpolate(bgFullReshaped,(NoInterp(),NoInterp(),BSpline(Linear()),NoInterp(),NoInterp())); #Interpolire bgFrames    Full auf
    else
       itp = interpolate(bgFullReshaped,(NoInterp(),NoInterp(),NoInterp(),NoInterp(),NoInterp())); #Interpolire bgFrames        Full auf
    end
  end
-  
+
   bgFramesFullInterp = itp(collect(1:xBG),range(1,yBG,length=yFG),range(1,zBG,length=zFG),collect(1:size(bgFullReshaped,4)),collect(1:size(bgFullReshaped,5)))
 
   params["acqNumFrames"] = numFGFrames + prod(size(bgFramesFullInterp)[1:3])
@@ -417,7 +421,7 @@ function convertCustomSF(filenameOut::String, f::Array{BrukerFileMeas}, fBG::Bru
 
   paramsArray =[];
   paramsBG = loadMetadata(fBG)
-  
+
   params = loadMetadata(f[1])
   loadMeasParams(f[1], params, skipMeasData = true)
   loadCalibParams(f[1], params)
@@ -469,7 +473,7 @@ function convertCustomSF(filenameOut::String, f::Array{BrukerFileMeas}, fBG::Bru
 println("Part1")
   # Daten Laden
 #fgFrames =zeros(ComplexF64,prod(Int64,params["calibSize"]),26929,3,1)
-@time global fgFrames =loadAndProcessFFData(f[1],nAverages, skipSwitchingFrames) 
+@time global fgFrames =loadAndProcessFFData(f[1],nAverages, skipSwitchingFrames)
 #global tmp =1
 for (ii,ffi)  in enumerate(f[2:end])
 println(ffi)
