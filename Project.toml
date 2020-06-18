@@ -22,9 +22,9 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
-AxisArrays = "0.3"
+AxisArrays = "0.3, 0.4"
 FileIO = "1.0"
-Graphics = "0.4"
+Graphics = "0.4, 1.0"
 HDF5 = "0.12.2"
 Images = "0.18"
 Interpolations = "0.12"
