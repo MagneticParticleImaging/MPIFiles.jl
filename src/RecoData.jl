@@ -5,7 +5,7 @@ export converttometer, imcenter, loadRecoData, saveRecoData
 
 converttometer(x) = ustrip.(uconvert.(u"m",x))
 imcenter(img::AxisArray) = map(x->(0.5*(last(x)+first(x))), ImageAxes.filter_space_axes(AxisArrays.axes(img), axisvalues(img)))
-imcenter(img::ImageMeta) = imcenter(data(img))
+imcenter(img::ImageMeta) = imcenter(arraydata(img))
 
 function saveRecoData(filename, image::ImageMeta)
   C = colordim(image) == 0 ? 1 : size(image,colordim(image))
@@ -16,17 +16,17 @@ function saveRecoData(filename, image::ImageMeta)
   else
     grid = size(image)[2:4]
   end
-  N = div(length(data(image)), L*C)
+  N = div(length(arraydata(image)), L*C)
   c = reshape(convert(Array,image), C, N, L )
 
   params = properties(image)
-  params["recoData"] = c
-  params["recoFov"] = collect(grid) .* collect(converttometer(pixelspacing(image)))
-  params["recoFovCenter"] = collect(converttometer(imcenter(image)))[1:3]
-  params["recoSize"] = collect(grid)
-  params["recoOrder"] = "xyz"
-  if haskey(params,"recoParams")
-    params["recoParameters"] = params["recoParams"]
+  params[:recoData] = c
+  params[:recoFov] = collect(grid) .* collect(converttometer(pixelspacing(image)))
+  params[:recoFovCenter] = collect(converttometer(imcenter(image)))[1:3]
+  params[:recoSize] = collect(grid)
+  params[:recoOrder] = "xyz"
+  if haskey(params,:recoParams)
+    params[:recoParameters] = params[:recoParams]
   end
 
   h5open(filename, "w") do file
@@ -41,11 +41,11 @@ end
 
 function loadRecoData(f::MDFFile)
   header = loadMetadata(f)
-  header["datatype"] = "MPI"
+  header[:datatype] = "MPI"
 
   recoParams = recoParameters(f)
   if recoParams != nothing
-    header["recoParams"] = recoParams
+    header[:recoParams] = recoParams
   end
   im = loadRecoData_(f)
   imMeta = ImageMeta(im, header)

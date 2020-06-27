@@ -17,23 +17,23 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
     loadMeasParams(f, params, skipMeasData = true)
     if !applyCalibPostprocessing
       if frames!=1:acqNumFrames(f)
-        setparam!(params, "measData", measData(f,frames))
-        setparam!(params, "acqNumFrames", length(frames))
-        setparam!(params, "measIsBGFrame", measIsBGFrame(f)[frames])
+        setparam!(params, :measData, measData(f,frames))
+        setparam!(params, :acqNumFrames, length(frames))
+        setparam!(params, :measIsBGFrame, measIsBGFrame(f)[frames])
       else
-        setparam!(params, "measData", measData(f))
+        setparam!(params, :measData, measData(f))
       end
     else
         @info "load measurement data"
         data = getMeasurementsFD(f, false, frames=1:acqNumFrames(f), sortFrames=true,
               spectralLeakageCorrection=false, transposed=true, tfCorrection=false)
-        setparam!(params, "measData", data)
-        setparam!(params, "measIsFourierTransformed", true)
-        setparam!(params, "measIsFastFrameAxis", true)
-        setparam!(params, "measIsFramePermutation", true)
-        setparam!(params, "measFramePermutation", fullFramePermutation(f))
+        setparam!(params, :measData, data)
+        setparam!(params, :measIsFourierTransformed, true)
+        setparam!(params, :measIsFastFrameAxis, true)
+        setparam!(params, :measIsFramePermutation, true)
+        setparam!(params, :measFramePermutation, fullFramePermutation(f))
 
-        setparam!(params, "measIsBGFrame",
+        setparam!(params, :measIsBGFrame,
           cat(zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f)), dims=1))
 
         snr = calibSNR(f)
@@ -41,7 +41,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
           @info "calculate SNR"
           snr = calculateSystemMatrixSNR(f, data)
         end
-        setparam!(params, "calibSNR", snr)
+        setparam!(params, :calibSNR, snr)
     end
   end
 
@@ -51,7 +51,8 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
   return params
 end
 
-const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyName, :studyNumber, :studyUuid, :studyTime, :studyDescription,
+const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyName,
+          :studyNumber, :studyUuid, :studyTime, :studyDescription,
           :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
           :experimentSubject,
           :experimentIsSimulation, :experimentIsCalibration,
@@ -66,52 +67,52 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :rxUnit, :rxDataConversionFactor]
 
 function loadMetadata(f, inputParams = MPIFiles.defaultParams)
-  params = Dict{String,Any}()
+  params = Dict{Symbol,Any}()
   # call API function and store result in a parameter Dict
   for op in inputParams
-    setparam!(params, string(op), eval(op)(f))
+    setparam!(params, op, eval(op)(f))
   end
   return params
 end
 
-function loadRecoParams(f, params = Dict{String,Any}())
+function loadRecoParams(f, params = Dict{Symbol,Any}())
   if experimentHasReconstruction(f)
     for op in [:recoData, :recoSize, :recoFov, :recoFovCenter, :recoOrder,
            :recoPositions, :recoParameters]
-      setparam!(params, string(op), eval(op)(f))
+      setparam!(params, op, eval(op)(f))
     end
   end
 
   return params
 end
 
-function loadCalibParams(f, params = Dict{String,Any}())
+function loadCalibParams(f, params = Dict{Symbol,Any}())
   if experimentIsCalibration(f)
     for op in [:calibFov, :calibFovCenter,
                :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
              :calibDeltaSampleSize, :calibMethod]
-      setparam!(params, string(op), eval(op)(f))
+      setparam!(params, op, eval(op)(f))
     end
-    if !haskey(params, "calibSNR")
-      setparam!(params, "calibSNR", calibSNR(f))
+    if !haskey(params, :calibSNR)
+      setparam!(params, :calibSNR, calibSNR(f))
     end
   end
   return params
 end
 
-function loadMeasParams(f, params = Dict{String,Any}(); skipMeasData = false)
+function loadMeasParams(f, params = Dict{Symbol,Any}(); skipMeasData = false)
   if experimentHasMeasurement(f)
     for op in [:measIsFourierTransformed, :measIsTFCorrected,
                  :measIsBGCorrected,
                  :measIsFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
                  :measIsSpectralLeakageCorrected,
                  :measFramePermutation, :measIsBGFrame]
-      setparam!(params, string(op), eval(op)(f))
+      setparam!(params, op, eval(op)(f))
     end
   end
 
   if !skipMeasData
-    setparam!(params, "measData", measData(f))
+    setparam!(params, :measData, measData(f))
   end
 
   return params
@@ -126,11 +127,11 @@ end
 
 function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
   paramsBG = loadDataset(fBG, frames=frames)
-  paramsBG["measIsBGFrame"][:] = true
+  paramsBG[:measIsBGFrame][:] = true
 
-  params["measData"] = cat(4, params["measData"], paramsBG["measData"])
-  params["measIsBGFrame"] = cat(params["measIsBGFrame"], paramsBG["measIsBGFrame"], dims=1)
-  params["acqNumFrames"] += paramsBG["acqNumFrames"]
+  params[:measData] = cat(4, params[:measData], paramsBG[:measData])
+  params[:measIsBGFrame] = cat(params[:measIsBGFrame], paramsBG[:measIsBGFrame], dims=1)
+  params[:acqNumFrames] += paramsBG[:acqNumFrames]
 
   return params
 end
@@ -170,13 +171,15 @@ end
 
 function saveasMDFHacking(filenameOut::String, f::MPIFile)
     dataSet=loadDataset(f)
-    dataSet["acqNumFrames"]=dataSet["acqNumPeriodsPerFrame"]*dataSet["acqNumFrames"]
-    dataSet["acqNumPeriodsPerFrame"]=1
-    dataSet["measData"]=reshape(dataSet["measData"],size(dataSet["measData"],1),size(dataSet["measData"],2),1,size(dataSet["measData"],3)*size(dataSet["measData"],4))
-    dataSet["dfStrength"]=dataSet["dfStrength"][:,:,1:1]
-    dataSet["acqOffsetField"]=dataSet["acqOffsetField"]
+    dataSet[:acqNumFrames]=dataSet[:acqNumPeriodsPerFrame]*dataSet[:acqNumFrames]
+    dataSet[:acqNumPeriodsPerFrame]=1
+    dataSet[:measData]=reshape(dataSet[:measData],size(dataSet[:measData],1),
+                               size(dataSet[:measData],2),1,size(dataSet[:measData],3)*
+                                          size(dataSet[:measData],4))
+    dataSet[:dfStrength]=dataSet[:dfStrength][:,:,1:1]
+    dataSet[:acqOffsetField]=dataSet[:acqOffsetField]
     #dataSet["acqOffsetFieldShift"]=dataSet["acqOffsetFieldShift"][:,1:1]
-    dataSet["dfPhase"]=dataSet["dfPhase"][:,:,1:1]
+    dataSet[:dfPhase]=dataSet[:dfPhase][:,:,1:1]
     saveasMDF(filenameOut, dataSet)
     return dataSet
 end
@@ -223,20 +226,20 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
   params = loadMetadata(f)
   loadMeasParams(f, params, skipMeasData = true)
   loadCalibParams(f, params)
-  params["calibSNR"] = calibSNR(f)
+  params[:calibSNR] = calibSNR(f)
   loadRecoParams(f, params)
 
   data = systemMatrixWithBG(f, idx)
 
-  params["calibSNR"] = params["calibSNR"][idx,:,:]
-  if haskey(params, "rxTransferFunction")
-    params["rxTransferFunction"] = params["rxTransferFunction"][idx,:]
+  params[:calibSNR] = params[:calibSNR][idx,:,:]
+  if haskey(params, :rxTransferFunction)
+    params[:rxTransferFunction] = params[:rxTransferFunction][idx,:]
   end
-  params["measIsFrequencySelection"] = true
-  params["measFrequencySelection"] = idx
+  params[:measIsFrequencySelection] = true
+  params[:measFrequencySelection] = idx
 
   if sparsityTrafoRedFactor == 1.0
-    params["measData"] = data
+    params[:measData] = data
   else
     B = linearOperator(sparsityTrafo, calibSize(f))
     N = prod(calibSize(f))
@@ -258,15 +261,15 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
       dataOut[1:NRed,k,d,p] = I[vec(subsamplingIndices[:,k,d,p])]
     end
 
-    params["measData"] = dataOut
-    params["measIsSparsityTransformed"] = true
-    params["measSparsityTransformation"] = sparsityTrafo
-    params["measSubsamplingIndices"] = subsamplingIndices
+    params[:measData] = dataOut
+    params[:measIsSparsityTransformed] = true
+    params[:measSparsityTransformation] = sparsityTrafo
+    params[:measSubsamplingIndices] = subsamplingIndices
 
     bgFrame = zeros(Bool, NRed+NBG)
     bgFrame[(NRed+1):end] .= true
-    params["measIsBGFrame"] = bgFrame
-    params["acqNumFrames"] = NRed+NBG
+    params[:measIsBGFrame] = bgFrame
+    params[:acqNumFrames] = NRed+NBG
   end
 
   saveasMDF(filenameOut, params)
@@ -338,38 +341,38 @@ function convertCustomSF(filenameOut::String, f::BrukerFile, fBG::BrukerFile,nAv
   paramsBG = loadMetadata(fBG)
 
 
-  params["calibSize"] = [length(union(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
-  numFGFrames = prod(params["calibSize"])
+  params[:calibSize] = [length(union(params[:acqOffsetField][ll,1,:])) for ll in collect(1:3)]
+  numFGFrames = prod(params[:calibSize])
 
-  params["acqGradient"] = reshape(params["acqGradient"][:,:,1,1],3,3,1,1)
-  params["dfPhase"] =  reshape(params["dfPhase"][:,:,1],1,3,1)
-  params["calibDeltaSampleSize"] = [0.0, 0.0, 0.0] #Todo
-  #params["time"] = now()
-  params["calibMethod"] = "BrukerCustom"
-  #params["version"] = v"2.0.0"
-  params["dfStrength"] = reshape(params["dfStrength"][:,:,1,1],1,3,1)
-  params["experimentIsCalibration"] = true
-  #params["uuid"] = uuid4()
-  params["measIsFourierTransformed"] = true
-  params["measIsFastFrameAxis"] = true
-  params["calibFovCenter"] = [mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
-  params["acqNumPeriodsPerFrame"] = 1
+  params[:acqGradient] = reshape(params[:acqGradient][:,:,1,1],3,3,1,1)
+  params[:dfPhase] =  reshape(params[:dfPhase][:,:,1],1,3,1)
+  params[:calibDeltaSampleSize] = [0.0, 0.0, 0.0] #Todo
+  #params[:time] = now()
+  params[:calibMethod] = "BrukerCustom"
+  #params[:version] = v"2.0.0"
+  params[:dfStrength] = reshape(params[:dfStrength][:,:,1,1],1,3,1)
+  params[:experimentIsCalibration] = true
+  #params[:uuid] = uuid4()
+  params[:measIsFourierTransformed] = true
+  params[:measIsFastFrameAxis] = true
+  params[:calibFovCenter] = [mean(extrema(params[:acqOffsetField][ll,1,:])) for ll in collect(1:3)]
+  params[:acqNumPeriodsPerFrame] = 1
 
-  params["measIsFramePermutation"] = 1
+  params[:measIsFramePermutation] = 1
 
   if rxHasTransferFunction(f) &&!measIsTFCorrected(f)
-    params["transferFunction"] = rxTransferFunction(f)
+    params[:transferFunction] = rxTransferFunction(f)
   end
 
 
-  calibFov=[sum(abs.(extrema(params["acqOffsetField"][ll,1,:])))./abs.(params["acqGradient"][ll,ll]) for ll in collect(1:3)]
+  calibFov=[sum(abs.(extrema(params[:acqOffsetField][ll,1,:])))./abs.(params[:acqGradient][ll,ll]) for ll in collect(1:3)]
   ind=findall(x->x==0.0,calibFov) # if calibFov is 0.0 for 2D Measurements, AxisArray will fail in creating an ImageMeta object
   calibFov[ind].=0.001  # for 1mm
-  params["calibFov"] = calibFov
-  params["calibOrder"] = "xyz"
+  params[:calibFov] = calibFov
+  params[:calibOrder] = "xyz"
 
-  params["acqOffsetField"] = reshape([mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)],3,1,1)
-  params["acqNumAverages"] = nAverages
+  params[:acqOffsetField] = reshape([mean(extrema(params[:acqOffsetField][ll,1,:])) for ll in collect(1:3)],3,1,1)
+  params[:acqNumAverages] = nAverages
 
 println("Part1")
   # Daten Laden
@@ -378,10 +381,10 @@ println("Part1")
   nAveragesBGHalf = nAveragesBG >1 ? div(nAveragesBG,2) : nAveragesBG
 @time  bgFramesHalf = loadAndProcessFFData(fBG,div(nAveragesBG,2), skipSwitchingFramesBG+nAveragesBG-div(nAveragesBG,2)) # allePos x freqs x r x 1
 
-  params["calibSNR"] = calculateSNRCustomSF(f,fgFrames,bgFramesFull,bgFramesHalf)
+  params[:calibSNR] = calculateSNRCustomSF(f,fgFrames,bgFramesFull,bgFramesHalf)
 
-  (xBG,yBG,zBG) = [length(union(paramsBG["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
-  (xFG,yFG,zFG) = params["calibSize"]
+  (xBG,yBG,zBG) = [length(union(paramsBG[:acqOffsetField][ll,1,:])) for ll in collect(1:3)]
+  (xFG,yFG,zFG) = params[:calibSize]
 
   bgFullReshaped = reshape(bgFramesFull,xBG,yBG,zBG,rxNumFrequencies(fBG),rxNumChannels(fBG))
 
@@ -401,18 +404,18 @@ println("Part1")
 
   bgFramesFullInterp = itp(collect(1:xBG),range(1,yBG,length=yFG),range(1,zBG,length=zFG),collect(1:size(bgFullReshaped,4)),collect(1:size(bgFullReshaped,5)))
 
-  params["acqNumFrames"] = numFGFrames + prod(size(bgFramesFullInterp)[1:3])
+  params[:acqNumFrames] = numFGFrames + prod(size(bgFramesFullInterp)[1:3])
 
   tt = [round.(Int,collect(range(1,xBG+xFG,length=xBG))).+(kk-1)*(xBG+xFG) for kk =1:yFG*zFG];
   idxBGFrames = vcat(tt...);
-  idxAllFrames = collect(1:params["acqNumFrames"])
+  idxAllFrames = collect(1:params[:acqNumFrames])
   idxAllFrames[idxBGFrames] .= 0
   idxFGFrames = idxAllFrames[idxAllFrames.!=0];
 
-  params["measFramePermutation"] =  vcat(idxFGFrames,idxBGFrames)
-  params["measIsBGFrame"] = vcat(zeros(numFGFrames),ones(length(idxBGFrames)))
-  dataTemp_ = vcat(fgFrames,reshape(bgFramesFullInterp,:,size(bgFullReshaped)[4:5]...,1))  #size(params["measData"])(22621, 26929, 3, 1)
-  params["measData"] = convert(Array{Complex{Float32},4},dataTemp_);  #size(params["measData"])(22621, 26929, 3, 1)
+  params[:measFramePermutation] =  vcat(idxFGFrames,idxBGFrames)
+  params[:measIsBGFrame] = vcat(zeros(numFGFrames),ones(length(idxBGFrames)))
+  dataTemp_ = vcat(fgFrames,reshape(bgFramesFullInterp,:,size(bgFullReshaped)[4:5]...,1))  #size(params[:measData])(22621, 26929, 3, 1)
+  params[:measData] = convert(Array{Complex{Float32},4},dataTemp_);  #size(params[:measData])(22621, 26929, 3, 1)
   saveasMDF(filenameOut, params)
 end
 
@@ -435,49 +438,49 @@ function convertCustomSF(filenameOut::String, f::Array{BrukerFileMeas}, fBG::Bru
   end
 
   for i =2:length(f)
-  params["acqOffsetField"] = cat(params["acqOffsetField"],paramsArray[i]["acqOffsetField"],dims=3)
+  params[:acqOffsetField] = cat(params[:acqOffsetField],paramsArray[i][:acqOffsetField],dims=3)
   end
 
-  params["calibSize"] = [length(union(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
-  numFGFrames = prod(params["calibSize"])
+  params[:calibSize] = [length(union(params[:acqOffsetField][ll,1,:])) for ll in collect(1:3)]
+  numFGFrames = prod(params[:calibSize])
 
-  println(params["calibSize"])
+  println(params[:calibSize])
 
-  params["acqGradient"] = reshape(params["acqGradient"][:,:,1,1],3,3,1,1)
-  params["dfPhase"] =  reshape(params["dfPhase"][:,:,1],1,3,1)
-  params["calibDeltaSampleSize"] = [0.0, 0.0, 0.0] #Todo
-  #params["time"] = now()
-  params["calibMethod"] = "BrukerCustom"
-  #params["version"] = v"2.0.0"
-  params["dfStrength"] = reshape(params["dfStrength"][:,:,1,1],1,3,1)
-  params["experimentIsCalibration"] = true
-  #params["uuid"] = uuid4()
-  params["measIsFourierTransformed"] = true
-  params["measIsFastFrameAxis"] = true
-  params["calibFovCenter"] = [mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
-  params["acqNumPeriodsPerFrame"] = 1
+  params[:acqGradient] = reshape(params[:acqGradient][:,:,1,1],3,3,1,1)
+  params[:dfPhase] =  reshape(params[:dfPhase][:,:,1],1,3,1)
+  params[:calibDeltaSampleSize] = [0.0, 0.0, 0.0] #Todo
+  #params[:time] = now()
+  params[:calibMethod] = "BrukerCustom"
+  #params[:version] = v"2.0.0"
+  params[:dfStrength] = reshape(params[:dfStrength][:,:,1,1],1,3,1)
+  params[:experimentIsCalibration] = true
+  #params[:uuid] = uuid4()
+  params[:measIsFourierTransformed] = true
+  params[:measIsFastFrameAxis] = true
+  params[:calibFovCenter] = [mean(extrema(params[:acqOffsetField][ll,1,:])) for ll in collect(1:3)]
+  params[:acqNumPeriodsPerFrame] = 1
 
-  params["measIsFramePermutation"] = 1
+  params[:measIsFramePermutation] = 1
 
   if rxHasTransferFunction(f[1]) &&!measIsTFCorrected(f[1])
-    params["transferFunction"] = sampleTF(TransferFunction("/opt/data/TFs/TFHDF5/TF_3DMouse_NM0_07102019.h5"), f[1])
-#    params["transferFunction"] = rxTransferFunction(f[1])
+    params[:transferFunction] = sampleTF(TransferFunction("/opt/data/TFs/TFHDF5/TF_3DMouse_NM0_07102019.h5"), f[1])
+#    params[:transferFunction] = rxTransferFunction(f[1])
   end
 
-  params["calibFov"] = [sum(abs.(extrema(params["acqOffsetField"][ll,1,:])))./abs.(params["acqGradient"][ll,ll]) for ll in collect(1:3)]
-  params["calibOrder"] = "xyz"
+  params[:calibFov] = [sum(abs.(extrema(params[:acqOffsetField][ll,1,:])))./abs.(params[:acqGradient][ll,ll]) for ll in collect(1:3)]
+  params[:calibOrder] = "xyz"
 
-  params["acqOffsetField"] = reshape([mean(extrema(params["acqOffsetField"][ll,1,:])) for ll in collect(1:3)],3,1,1)
-  params["acqNumAverages"] = nAverages
+  params[:acqOffsetField] = reshape([mean(extrema(params[:acqOffsetField][ll,1,:])) for ll in collect(1:3)],3,1,1)
+  params[:acqNumAverages] = nAverages
 
 println("Part1")
   # Daten Laden
-#fgFrames =zeros(ComplexF64,prod(Int64,params["calibSize"]),26929,3,1)
+#fgFrames =zeros(ComplexF64,prod(Int64,params[:calibSize]),26929,3,1)
 @time global fgFrames =loadAndProcessFFData(f[1],nAverages, skipSwitchingFrames)
 #global tmp =1
 for (ii,ffi)  in enumerate(f[2:end])
 println(ffi)
-#pos = prod(Int64,[length(union(paramsArray[ii]["acqOffsetField"][ll,1,:])) for ll in collect(1:3)])
+#pos = prod(Int64,[length(union(paramsArray[ii][:acqOffsetField][ll,1,:])) for ll in collect(1:3)])
 #@time fgFrames[tmp:tmp+pos-1,:,:,:] = loadAndProcessFFData(ffi,nAverages, skipSwitchingFrames) # allePos x freqs x r x 1
 @time global fgFrames = cat(fgFrames,loadAndProcessFFData(ffi,nAverages, skipSwitchingFrames),dims=1) # allePos x freqs x r x 1
 #global tmp = tmp+pos
@@ -487,10 +490,10 @@ end
   nAveragesBGHalf = nAveragesBG >1 ? div(nAveragesBG,2) : nAveragesBG
 @time  bgFramesHalf = loadAndProcessFFData(fBG,div(nAveragesBG,2), skipSwitchingFramesBG+nAveragesBG-div(nAveragesBG,2)) # allePos x freqs x r x 1
 
-  params["calibSNR"] = calculateSNRCustomSF(f[1],fgFrames,bgFramesFull,bgFramesHalf)
+  params[:calibSNR] = calculateSNRCustomSF(f[1],fgFrames,bgFramesFull,bgFramesHalf)
 
-  (xBG,yBG,zBG) = [length(union(paramsBG["acqOffsetField"][ll,1,:])) for ll in collect(1:3)]
-  (xFG,yFG,zFG) = params["calibSize"]
+  (xBG,yBG,zBG) = [length(union(paramsBG[:acqOffsetField][ll,1,:])) for ll in collect(1:3)]
+  (xFG,yFG,zFG) = params[:calibSize]
 
   bgFullReshaped = reshape(bgFramesFull,xBG,yBG,zBG,rxNumFrequencies(fBG),rxNumChannels(fBG))
 
@@ -498,18 +501,18 @@ end
 
   bgFramesFullInterp = itp(collect(1:xBG),range(1,yBG,length=yFG),range(1,zBG,length=zFG),collect(1:size(bgFullReshaped,4)),collect(1:size(bgFullReshaped,5)))
 
-  params["acqNumFrames"] = numFGFrames + prod(size(bgFramesFullInterp)[1:3])
+  params[:acqNumFrames] = numFGFrames + prod(size(bgFramesFullInterp)[1:3])
 
   tt = [round.(Int,collect(range(1,xBG+xFG,length=xBG))).+(kk-1)*(xBG+xFG) for kk =1:yFG*yFG];
   idxBGFrames = vcat(tt...);
-  idxAllFrames = collect(1:params["acqNumFrames"])
+  idxAllFrames = collect(1:params[:acqNumFrames])
   idxAllFrames[idxBGFrames] .= 0
   idxFGFrames = idxAllFrames[idxAllFrames.!=0];
 
-  params["measFramePermutation"] =  vcat(idxFGFrames,idxBGFrames)
-  params["measIsBGFrame"] = vcat(zeros(numFGFrames),ones(length(idxBGFrames)))
-  dataTemp_ = vcat(fgFrames,reshape(bgFramesFullInterp,:,size(bgFullReshaped)[4:5]...,1))  #size(params["measData"])(22621, 26929, 3, 1)
-  params["measData"] = convert(Array{Complex{Float32},4},dataTemp_);  #size(params["measData"])(22621, 26929, 3, 1)
+  params[:measFramePermutation] =  vcat(idxFGFrames,idxBGFrames)
+  params[:measIsBGFrame] = vcat(zeros(numFGFrames),ones(length(idxBGFrames)))
+  dataTemp_ = vcat(fgFrames,reshape(bgFramesFullInterp,:,size(bgFullReshaped)[4:5]...,1))  #size(params[:measData])(22621, 26929, 3, 1)
+  params[:measData] = convert(Array{Complex{Float32},4},dataTemp_);  #size(params[:measData])(22621, 26929, 3, 1)
   saveasMDF(filenameOut, params)
 end
 
@@ -525,149 +528,149 @@ end
 function saveasMDF(file::HDF5File, params::Dict)
   # general parameters
   write(file, "/version", "2.0.1")
-  write(file, "/uuid", string(get(params,"uuid",uuid4() )))
-  write(file, "/time", "$( get(params,"time", Dates.unix2datetime(time())) )")
+  write(file, "/uuid", string(get(params,:uuid,uuid4() )))
+  write(file, "/time", "$( get(params,:time, Dates.unix2datetime(time())) )")
 
   # study parameters
-  write(file, "/study/name", get(params,"studyName","default") )
-  write(file, "/study/number", get(params,"studyNumber",0))
-  if hasKeyAndValue(params,"studyUuid")
-    studyUuid = params["studyUuid"]
+  write(file, "/study/name", get(params,:studyName,"default") )
+  write(file, "/study/number", get(params,:studyNumber,0))
+  if hasKeyAndValue(params,:studyUuid)
+    studyUuid = params[:studyUuid]
   else
     studyUuid = uuid4()
   end
   write(file, "/study/uuid", string(studyUuid))
-  write(file, "/study/description", get(params,"studyDescription","n.a."))
-  if hasKeyAndValue(params,"studyTime")
-    write(file, "/study/time", string(params["studyTime"]))
+  write(file, "/study/description", get(params,:studyDescription,"n.a."))
+  if hasKeyAndValue(params,:studyTime)
+    write(file, "/study/time", string(params[:studyTime]))
   end
 
   # experiment parameters
-  write(file, "/experiment/name", get(params,"experimentName","default") )
-  write(file, "/experiment/number", get(params,"experimentNumber",0))
-  if hasKeyAndValue(params,"experimentUuid")
-    expUuid = params["experimentUuid"]
+  write(file, "/experiment/name", get(params,:experimentName,"default") )
+  write(file, "/experiment/number", get(params,:experimentNumber,0))
+  if hasKeyAndValue(params,:experimentUuid)
+    expUuid = params[:experimentUuid]
   else
     expUuid = uuid4()
   end
   write(file, "/experiment/uuid", string(expUuid))
-  write(file, "/experiment/description", get(params,"experimentDescription","n.a."))
-  write(file, "/experiment/subject", get(params,"experimentSubject","n.a."))
-  write(file, "/experiment/isSimulation", Int8(get(params,"experimentIsSimulation",false)))
+  write(file, "/experiment/description", get(params,:experimentDescription,"n.a."))
+  write(file, "/experiment/subject", get(params,:experimentSubject,"n.a."))
+  write(file, "/experiment/isSimulation", Int8(get(params,:experimentIsSimulation,false)))
 
   # tracer parameters
-  write(file, "/tracer/name", get(params,"tracerName","n.a") )
-  write(file, "/tracer/batch", get(params,"tracerBatch","n.a") )
-  write(file, "/tracer/vendor", get(params,"tracerVendor","n.a") )
-  write(file, "/tracer/volume", get(params,"tracerVolume",0.0))
-  write(file, "/tracer/concentration", get(params,"tracerConcentration",0.0) )
-  write(file, "/tracer/solute", get(params,"tracerSolute","Fe") )
-  tr = [string(t) for t in get(params,"tracerInjectionTime", [Dates.unix2datetime(time())]) ]
+  write(file, "/tracer/name", get(params,:tracerName,"n.a") )
+  write(file, "/tracer/batch", get(params,:tracerBatch,"n.a") )
+  write(file, "/tracer/vendor", get(params,:tracerVendor,"n.a") )
+  write(file, "/tracer/volume", get(params,:tracerVolume,0.0))
+  write(file, "/tracer/concentration", get(params,:tracerConcentration,0.0) )
+  write(file, "/tracer/solute", get(params,:tracerSolute,"Fe") )
+  tr = [string(t) for t in get(params,:tracerInjectionTime, [Dates.unix2datetime(time())]) ]
   write(file, "/tracer/injectionTime", tr)
 
   # scanner parameters
-  write(file, "/scanner/facility", get(params,"scannerFacility","n.a") )
-  write(file, "/scanner/operator", get(params,"scannerOperator","n.a") )
-  write(file, "/scanner/manufacturer", get(params,"scannerManufacturer","n.a"))
-  write(file, "/scanner/name", get(params,"scannerName","n.a"))
-  write(file, "/scanner/topology", get(params,"scannerTopology","FFP"))
+  write(file, "/scanner/facility", get(params,:scannerFacility,"n.a") )
+  write(file, "/scanner/operator", get(params,:scannerOperator,"n.a") )
+  write(file, "/scanner/manufacturer", get(params,:scannerManufacturer,"n.a"))
+  write(file, "/scanner/name", get(params,:scannerName,"n.a"))
+  write(file, "/scanner/topology", get(params,:scannerTopology,"FFP"))
 
   # acquisition parameters
-  write(file, "/acquisition/numAverages",  params["acqNumAverages"])
-  write(file, "/acquisition/numFrames", get(params,"acqNumFrames",1))
-  write(file, "/acquisition/numPeriods", get(params,"acqNumPeriodsPerFrame",1))
-  write(file, "/acquisition/startTime", "$( get(params,"acqStartTime", Dates.unix2datetime(time())) )")
+  write(file, "/acquisition/numAverages",  params[:acqNumAverages])
+  write(file, "/acquisition/numFrames", get(params,:acqNumFrames,1))
+  write(file, "/acquisition/numPeriods", get(params,:acqNumPeriodsPerFrame,1))
+  write(file, "/acquisition/startTime", "$( get(params,:acqStartTime, Dates.unix2datetime(time())) )")
 
-  writeIfAvailable(file, "/acquisition/gradient", params, "acqGradient")
-  writeIfAvailable(file, "/acquisition/offsetField", params, "acqOffsetField")
+  writeIfAvailable(file, "/acquisition/gradient", params, :acqGradient)
+  writeIfAvailable(file, "/acquisition/offsetField", params, :acqOffsetField)
 
   # drivefield parameters
-  write(file, "/acquisition/drivefield/numChannels", size(params["dfStrength"],2) )
-  write(file, "/acquisition/drivefield/strength", params["dfStrength"])
-  write(file, "/acquisition/drivefield/phase", params["dfPhase"])
-  write(file, "/acquisition/drivefield/baseFrequency", params["dfBaseFrequency"])
-  write(file, "/acquisition/drivefield/divider", params["dfDivider"])
-  write(file, "/acquisition/drivefield/cycle", params["dfCycle"])
-  if !haskey(params, "dfWaveform")
-    params["dfWaveform"] = "sine"
+  write(file, "/acquisition/drivefield/numChannels", size(params[:dfStrength],2) )
+  write(file, "/acquisition/drivefield/strength", params[:dfStrength])
+  write(file, "/acquisition/drivefield/phase", params[:dfPhase])
+  write(file, "/acquisition/drivefield/baseFrequency", params[:dfBaseFrequency])
+  write(file, "/acquisition/drivefield/divider", params[:dfDivider])
+  write(file, "/acquisition/drivefield/cycle", params[:dfCycle])
+  if !haskey(params, :dfWaveform)
+    params[:dfWaveform] = "sine"
   end
-  write(file, "/acquisition/drivefield/waveform", params["dfWaveform"])
+  write(file, "/acquisition/drivefield/waveform", params[:dfWaveform])
 
   # receiver parameters
-  write(file, "/acquisition/receiver/numChannels", params["rxNumChannels"])
-  write(file, "/acquisition/receiver/bandwidth", params["rxBandwidth"])
-  write(file, "/acquisition/receiver/numSamplingPoints", params["rxNumSamplingPoints"])
-  if !haskey(params, "rxUnit")
-    params["rxUnit"] = "V"
+  write(file, "/acquisition/receiver/numChannels", params[:rxNumChannels])
+  write(file, "/acquisition/receiver/bandwidth", params[:rxBandwidth])
+  write(file, "/acquisition/receiver/numSamplingPoints", params[:rxNumSamplingPoints])
+  if !haskey(params, :rxUnit)
+    params[:rxUnit] = "V"
   end
-  write(file, "/acquisition/receiver/unit",  params["rxUnit"])
-  write(file, "/acquisition/receiver/dataConversionFactor",  params["rxDataConversionFactor"])
-  if hasKeyAndValue(params,"rxTransferFunction")
-    tf = params["rxTransferFunction"]
+  write(file, "/acquisition/receiver/unit",  params[:rxUnit])
+  write(file, "/acquisition/receiver/dataConversionFactor",  params[:rxDataConversionFactor])
+  if hasKeyAndValue(params,:rxTransferFunction)
+    tf = params[:rxTransferFunction]
     group = file["/acquisition/receiver"]
     writeComplexArray(group, "transferFunction", tf)
   end
-  writeIfAvailable(file, "/acquisition/receiver/inductionFactor",  params, "rxInductionFactor")
+  writeIfAvailable(file, "/acquisition/receiver/inductionFactor",  params, :rxInductionFactor)
 
   # measurements
-  if hasKeyAndValue(params, "measData")
-    meas = params["measData"]
+  if hasKeyAndValue(params, :measData)
+    meas = params[:measData]
     if eltype(meas) <: Complex
       group = g_create(file,"/measurement")
       writeComplexArray(group, "/measurement/data", meas)
     else
       write(file, "/measurement/data", meas)
     end
-    write(file, "/measurement/isFourierTransformed", Int8(params["measIsFourierTransformed"]))
-    write(file, "/measurement/isSpectralLeakageCorrected", Int8(params["measIsSpectralLeakageCorrected"]))
-    write(file, "/measurement/isTransferFunctionCorrected", Int8(params["measIsTFCorrected"]))
-    write(file, "/measurement/isFrequencySelection", Int8(params["measIsFrequencySelection"]))
-    write(file, "/measurement/isBackgroundCorrected",  Int8(params["measIsBGCorrected"]))
-    write(file, "/measurement/isFastFrameAxis",  Int8(params["measIsFastFrameAxis"]))
-    write(file, "/measurement/isFramePermutation",  Int8(params["measIsFramePermutation"]))
-    writeIfAvailable(file, "/measurement/frequencySelection",  params, "measFrequencySelection")
+    write(file, "/measurement/isFourierTransformed", Int8(params[:measIsFourierTransformed]))
+    write(file, "/measurement/isSpectralLeakageCorrected", Int8(params[:measIsSpectralLeakageCorrected]))
+    write(file, "/measurement/isTransferFunctionCorrected", Int8(params[:measIsTFCorrected]))
+    write(file, "/measurement/isFrequencySelection", Int8(params[:measIsFrequencySelection]))
+    write(file, "/measurement/isBackgroundCorrected",  Int8(params[:measIsBGCorrected]))
+    write(file, "/measurement/isFastFrameAxis",  Int8(params[:measIsFastFrameAxis]))
+    write(file, "/measurement/isFramePermutation",  Int8(params[:measIsFramePermutation]))
+    writeIfAvailable(file, "/measurement/frequencySelection",  params, :measFrequencySelection)
 
-    if hasKeyAndValue(params, "measFramePermutation")
-      write(file, "/measurement/framePermutation", params["measFramePermutation"] )
+    if hasKeyAndValue(params, :measFramePermutation)
+      write(file, "/measurement/framePermutation", params[:measFramePermutation] )
     end
-    if hasKeyAndValue(params, "measIsBGFrame")
-      write(file, "/measurement/isBackgroundFrame", convert(Array{Int8}, params["measIsBGFrame"]) )
+    if hasKeyAndValue(params, :measIsBGFrame)
+      write(file, "/measurement/isBackgroundFrame", convert(Array{Int8}, params[:measIsBGFrame]) )
     end
-    if hasKeyAndValue(params, "measIsSparsityTransformed")
-      write(file, "/measurement/isSparsityTransformed", params["measIsSparsityTransformed"] )
-      write(file, "/measurement/subsamplingIndices", params["measSubsamplingIndices"] )
-      write(file, "/measurement/sparsityTransformation", params["measSparsityTransformation"] )
+    if hasKeyAndValue(params, :measIsSparsityTransformed)
+      write(file, "/measurement/isSparsityTransformed", params[:measIsSparsityTransformed] )
+      write(file, "/measurement/subsamplingIndices", params[:measSubsamplingIndices] )
+      write(file, "/measurement/sparsityTransformation", params[:measSparsityTransformation] )
     end
   end
 
   # calibrations
-  writeIfAvailable(file, "/calibration/snr",  params, "calibSNR")
-  writeIfAvailable(file, "/calibration/fieldOfView",  params, "calibFov")
-  writeIfAvailable(file, "/calibration/fieldOfViewCenter",  params, "calibFovCenter")
-  writeIfAvailable(file, "/calibration/size",  params, "calibSize")
-  writeIfAvailable(file, "/calibration/order",  params, "calibOrder")
-  writeIfAvailable(file, "/calibration/positions",  params, "calibPositions")
-  writeIfAvailable(file, "/calibration/offsetField",  params, "calibOffsetField")
-  writeIfAvailable(file, "/calibration/deltaSampleSize",  params, "calibDeltaSampleSize")
-  writeIfAvailable(file, "/calibration/method",  params, "calibMethod")
-  if hasKeyAndValue(params, "calibIsMeanderingGrid")
-    write(file, "/calibration/isMeanderingGrid", Int8(params["calibIsMeanderingGrid"]))
+  writeIfAvailable(file, "/calibration/snr",  params, :calibSNR)
+  writeIfAvailable(file, "/calibration/fieldOfView",  params, :calibFov)
+  writeIfAvailable(file, "/calibration/fieldOfViewCenter",  params, :calibFovCenter)
+  writeIfAvailable(file, "/calibration/size",  params, :calibSize)
+  writeIfAvailable(file, "/calibration/order",  params, :calibOrder)
+  writeIfAvailable(file, "/calibration/positions",  params, :calibPositions)
+  writeIfAvailable(file, "/calibration/offsetField",  params, :calibOffsetField)
+  writeIfAvailable(file, "/calibration/deltaSampleSize",  params, :calibDeltaSampleSize)
+  writeIfAvailable(file, "/calibration/method",  params, :calibMethod)
+  if hasKeyAndValue(params, :calibIsMeanderingGrid)
+    write(file, "/calibration/isMeanderingGrid", Int8(params[:calibIsMeanderingGrid]))
   end
-  writeIfAvailable(file, "/calibration/_temperatures",  params, "calibTemperatures")
+  writeIfAvailable(file, "/calibration/_temperatures",  params, :calibTemperatures)
   # reconstruction
-  if hasKeyAndValue(params, "recoData")
-    write(file, "/reconstruction/data", params["recoData"])
-    write(file, "/reconstruction/fieldOfView", params["recoFov"])
-    write(file, "/reconstruction/fieldOfViewCenter", params["recoFovCenter"])
-    write(file, "/reconstruction/size", params["recoSize"])
-    write(file, "/reconstruction/order", get(params,"recoOrder", "xyz"))
-    if hasKeyAndValue(params,"recoPositions")
-      write(file, "/reconstruction/positions", params["recoPositions"])
+  if hasKeyAndValue(params, :recoData)
+    write(file, "/reconstruction/data", params[:recoData])
+    write(file, "/reconstruction/fieldOfView", params[:recoFov])
+    write(file, "/reconstruction/fieldOfViewCenter", params[:recoFovCenter])
+    write(file, "/reconstruction/size", params[:recoSize])
+    write(file, "/reconstruction/order", get(params, :recoOrder, "xyz"))
+    if hasKeyAndValue(params, :recoPositions)
+      write(file, "/reconstruction/positions", params[:recoPositions])
     end
-    if hasKeyAndValue(params,"recoParameters")
-      saveParams(file, "/reconstruction/_parameters", params["recoParameters"])
+    if hasKeyAndValue(params, :recoParameters)
+      saveParams(file, "/reconstruction/_parameters", params[:recoParameters])
     end
   end
 
-  writeIfAvailable(file, "/custom/auxiliaryData", params, "auxiliaryData")
+  writeIfAvailable(file, "/custom/auxiliaryData", params, :auxiliaryData)
 end
