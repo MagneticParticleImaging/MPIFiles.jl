@@ -290,7 +290,7 @@ function getMeasurementsFD(f::MPIFile, args...;
     data ./= tf
     if inductionFactor != nothing
        	for k=1:length(inductionFactor)
-       		dataF[:,k,:,:] ./= inductionFactor[k]
+       		data[:,k,:,:] ./= inductionFactor[k]
        	end
     end
   end
