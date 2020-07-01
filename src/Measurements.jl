@@ -248,7 +248,9 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
     dataF = rfft(data, 1)
     dataF ./= tf
     if inductionFactor != nothing
-      dataF ./= inductionFactor
+       	for k=1:length(inductionFactor)
+       		dataF[:,k,:,:] ./= inductionFactor[k]
+       	end
     end
     data = irfft(dataF,J,1)
   end
@@ -287,7 +289,9 @@ function getMeasurementsFD(f::MPIFile, args...;
     inductionFactor = rxInductionFactor(f)
     data ./= tf
     if inductionFactor != nothing
-      data ./= inductionFactor
+       	for k=1:length(inductionFactor)
+       		dataF[:,k,:,:] ./= inductionFactor[k]
+       	end
     end
   end
 
