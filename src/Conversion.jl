@@ -525,7 +525,13 @@ function writeIfAvailable(file, paramOut, paramDict, paramIn )
   end
 end
 
-function saveasMDF(file::HDF5File, params::Dict)
+
+function saveasMDF(file::HDF5File, params::Dict{T,Any}) where  {T<:AbstractString}
+  paramsSymbol = Dict{Symbol,Any}([Symbol(k)=>v for (k,v) in params])
+  saveasMDF(file, paramsSymbol)
+end
+
+function saveasMDF(file::HDF5File, params::Dict{Symbol,Any})
   # general parameters
   write(file, "/version", "2.0.1")
   write(file, "/uuid", string(get(params,:uuid,uuid4() )))
