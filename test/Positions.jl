@@ -131,7 +131,7 @@ pospath = "./data/positions/Positions.h5"
     end
     h5open(pospath, "r") do file
       bG1 = Positions(file)
-      @test bG1[1] ≈ grid[1]
+      @test bG1[1] ≈ bgPos
       @test shape(bG1) == shp
       @test fieldOfView(bG1) == fov
       @test fieldOfViewCenter(bG1) == ctr
@@ -191,7 +191,7 @@ pospath = "./data/positions/Positions.h5"
     end
     h5open(pospath, "r") do file
       bG1 = Positions(file)
-      @test bG1[1] ≈ grid[1]
+      @test bG1[1] ≈ bgPos
       @test shape(bG1) == shp
       @test fieldOfView(bG1) == fov
       @test fieldOfViewCenter(bG1) == ctr
