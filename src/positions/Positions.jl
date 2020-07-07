@@ -4,7 +4,7 @@ export Positions, GridPositions, RegularGridPositions, ChebyshevGridPositions,
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
-export idxToPos, posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid
+export idxToPos, posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid, toDict
 
 abstract type Positions end
 abstract type GridPositions<:Positions end
@@ -36,6 +36,33 @@ function Positions(file::HDF5File)
   return positions
 end
 
+function Positions(params::Dict)
+  if haskey(params, "positionsBreakpoint")
+    return BreakpointGridPositions(params)
+  end
+
+  typ = params["positionsType"]
+  if typ == "RegularGridPositions"
+    positions = RegularGridPositions(params)
+  elseif typ == "ChebyshevGridPositions"
+    positions = ChebyshevGridPositions(params)
+  elseif typ == "SphericalTDesign"
+    positions = SphericalTDesign(params)
+  elseif typ == "UniformRandomPositions"
+    positions = UniformRandomPositions(params)
+  elseif typ == "ArbitraryPositions"
+    positions = ArbitraryPositions(params)
+  else
+    throw(ErrorException("No grid found to load from dict $params"))
+  end
+
+  if haskey(params, "positionsMeandering") && typ in ["RegularGridPositions","ChebyshevGridPositions"] && params["positionsMeandering"]
+    positions = MeanderingGridPositions(positions)
+  end
+
+  return positions
+end
+
 # Cartesian grid
 mutable struct RegularGridPositions{T} <: GridPositions where {T<:Unitful.Length}
   shape::Vector{Int}
@@ -60,6 +87,13 @@ function RegularGridPositions(file::HDF5File)
   shape = read(file, "/positionsShape")
   fov = read(file, "/positionsFov")*Unitful.m
   center = read(file, "/positionsCenter")*Unitful.m
+  return RegularGridPositions(shape,fov,center)
+end
+
+function RegularGridPositions(params::Dict)
+  shape = params["positionsShape"]
+  fov = params["positionsFov"]*Unitful.m
+  center = params["positionsCenter"]*Unitful.m
   return RegularGridPositions(shape,fov,center)
 end
 
@@ -121,6 +155,15 @@ function write(file::HDF5File, positions::RegularGridPositions)
   write(file, "/positionsShape", positions.shape)
   write(file, "/positionsFov", Float64.(ustrip.(uconvert.(Unitful.m, positions.fov))) )
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
+end
+
+function toDict(positions::RegularGridPositions)
+  params = Dict{String,Any}()
+  params["positionsType"] = "RegularGridPositions"
+  params["positionsShape"] = positions.shape
+  params["positionsFov"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.fov)))
+  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
+  return params
 end
 
 function getindex(grid::RegularGridPositions, i::Integer)
@@ -188,10 +231,26 @@ function write(file::HDF5File, positions::ChebyshevGridPositions)
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
 end
 
+function toDict(positions::ChebyshevGridPositions)
+  params = Dict{String,Any}()
+  params["positionsType"] = "ChebyshevGridPositions"
+  params["positionsShape"] = positions.shape
+  params["positionsFov"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.fov)))
+  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
+  return params
+end
+
 function ChebyshevGridPositions(file::HDF5File)
   shape = read(file, "/positionsShape")
   fov = read(file, "/positionsFov")*Unitful.m
   center = read(file, "/positionsCenter")*Unitful.m
+  return ChebyshevGridPositions(shape,fov,center)
+end
+
+function ChebyshevGridPositions(params::Dict)
+  shape = params["positionsShape"]
+  fov = params["positionsFov"]*Unitful.m
+  center = params["positionsCenter"]*Unitful.m
   return ChebyshevGridPositions(shape,fov,center)
 end
 
@@ -220,9 +279,26 @@ function MeanderingGridPositions(file::HDF5File)
   end
 end
 
+function MeanderingGridPositions(params::Dict)
+  typ = params["positionsType"]
+  if typ == "RegularGridPositions"
+    grid = RegularGridPositions(params)
+    return MeanderingGridPositions(grid)
+  elseif typ == "ChebyshevGridPositions"
+    grid = ChebyshevGridPositions(params)
+    return MeanderingGridPositions(grid)
+  end
+end
+
 function write(file::HDF5File, positions::MeanderingGridPositions)
   write(file,"/positionsMeandering", Int8(1))
   write(file, positions.grid)
+end
+
+function toDict(positions::MeanderingGridPositions)
+  params = toDict(positions.grid)
+  params["positionsMeandering"] = true
+  return params
 end
 
 function indexPermutation(grid::MeanderingGridPositions, i::Integer)
@@ -267,19 +343,42 @@ function BreakpointGridPositions(file::HDF5File)
     return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
   elseif typ == "RegularGridPositions"
     grid = RegularGridPositions(file)
-    return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
+    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
   elseif typ == "ChebyshevGridPositions"
     grid = ChebyshevGridPositions(file)
-    return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
+    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
+  end
+end
+
+function BreakpointGridPositions(params::Dict)
+  typ = params["positionsType"]
+  breakpointPosition = params["positionsBreakpoint"] * Unitful.m
+  breakpointIndices = params["indicesBreakpoint"]
+
+  if typ == "MeanderingGridPositions"
+    grid = MeanderingGridPositions(params)
+    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
+  elseif typ == "RegularGridPositions"
+    grid = RegularGridPositions(params)
+    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
+  elseif typ == "ChebyshevGridPositions"
+    grid = ChebyshevGridPositions(params)
+    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
   end
 end
 
 function write(file::HDF5File, positions::BreakpointGridPositions)
-  write(file,"/positionsBreakpoint",Float64.(ustrip.(uconvert.(Unitful.m, positions.breakpointPosition))))
+  write(file,"/positionsBreakpoint", Float64.(ustrip.(uconvert.(Unitful.m, positions.breakpointPosition))))
   write(file,"/indicesBreakpoint", positions.breakpointIndices)
   write(file, positions.grid)
 end
 
+function toDict(positions::BreakpointGridPositions)
+  params = toDict(positions.grid)
+  params["positionsBreakpoint"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.breakpointPosition)))
+  params["indicesBreakpoint"] = positions.breakpointIndices
+  return params
+end
 
 function getmask(grid::BreakpointGridPositions)
   bgind=grid.breakpointIndices
