@@ -10,6 +10,10 @@ abstract type Positions end
 abstract type GridPositions<:Positions end
 
 function Positions(file::HDF5File)
+  if exists(file, "/positionsBreakpoint")
+    return BreakpointGridPositions(file)
+  end
+
   typ = read(file, "/positionsType")
   if typ == "RegularGridPositions"
     positions = RegularGridPositions(file)
@@ -25,7 +29,7 @@ function Positions(file::HDF5File)
     throw(ErrorException("No grid found to load from $file"))
   end
 
-  if exists(file, "/positionsMeandering") && typ in ["CartesianGrid","ChebyshevGrid"] && read(file, "/positionsMeandering") == Int8(1)
+  if exists(file, "/positionsMeandering") && typ in ["RegularGridPositions","ChebyshevGridPositions"] && read(file, "/positionsMeandering") == Int8(1)
     positions = MeanderingGridPositions(positions)
   end
 
@@ -255,8 +259,8 @@ end
 
 function BreakpointGridPositions(file::HDF5File)
   typ = read(file, "/positionsType")
-  breakpointIndices = read(file, "/positionsBreakpoint")
-  breakpointPosition = read(file, "/indicesBreakpoint")
+  breakpointPosition = read(file, "/positionsBreakpoint") * Unitful.m
+  breakpointIndices = read(file, "/indicesBreakpoint")
 
   if typ == "MeanderingGridPositions"
     grid = MeanderingGridPositions(file)
@@ -451,8 +455,8 @@ getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] 
     loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{V}=[0.0,0.0,0.0]Unitful.mm, filename::String=joinpath(@__DIR__, "TDesigns.hd5")) where {S,V<:Unitful.Length}
 *Description:* Returns the t-design array for chosen degree t and number of points N\\
 \\
-*Input:* 
-- `t` - degree 
+*Input:*
+- `t` - degree
 - `N` - number of points
 - `radius` - radius of the sphere (default: 10mm)
 - `center` - center of the sphere (default: [0.0,0.0,0.0]mm)
