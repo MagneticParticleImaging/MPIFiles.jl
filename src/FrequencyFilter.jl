@@ -46,15 +46,30 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
     freqMask[(maxIdx):end,:,:] .= false
   end
 
-
-
   if maxMixingOrder > 0
+    if numPeriodGrouping == 1
       mf = mixingFactors(f)
       for l=1:size(mf,1)
         if mf[l,4] > maxMixingOrder || mf[l,4] > maxMixingOrder
-          freqMask[(l-1)+1,recChannels] = false
+          freqMask[(l-1)+1,recChannels] .= false
         end
       end
+    else # This is a hack until we have a general solution
+
+      numPatches = div(acqNumPeriodsPerFrame(f), numPeriodAverages)
+      fBands = (collect(0:(rxNumFrequencies(f)-1)).-1) .* numPatches
+      freqMaskMO = zeros(Bool,nFreq,nReceivers,nPeriods)
+
+      for i=1:length(fBands)
+        for y=-maxMixingOrder:maxMixingOrder
+          index = fBands[i]+y
+          if 1 <= index <= size(freqMask,1)
+            freqMaskMO[index,recChannels] .= true
+          end
+        end
+      end
+      freqMask .&= freqMaskMO
+    end
   end
 
   if SNRThresh > 0 || numUsedFreqs > 0 || sortBySNR
