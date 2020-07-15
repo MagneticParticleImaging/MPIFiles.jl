@@ -9,7 +9,8 @@ function setparam!(params::Dict, parameter, value)
 end
 
 # we do not support all conversion possibilities
-function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocessing=false)
+function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocessing=false,
+                     numPeriodAverages=1, numPeriodGrouping=1)
   params = loadMetadata(f)
 
   # call API function and store result in a parameter Dict
@@ -26,20 +27,32 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
     else
         @info "load measurement data"
         data = getMeasurementsFD(f, false, frames=1:acqNumFrames(f), sortFrames=true,
-              spectralLeakageCorrection=false, transposed=true, tfCorrection=false)
+                       spectralLeakageCorrection=false, transposed=true, tfCorrection=false,
+                       numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
+
+          @info size(data)
         setparam!(params, :measData, data)
         setparam!(params, :measIsFourierTransformed, true)
         setparam!(params, :measIsFastFrameAxis, true)
         setparam!(params, :measIsFramePermutation, true)
         setparam!(params, :measFramePermutation, fullFramePermutation(f))
 
+        if numPeriodAverages > 1
+          params[:acqNumAverages] *= numPeriodAverages
+          params[:acqNumPeriodsPerFrame] = div(params[:acqNumPeriodsPerFrame],numPeriodAverages)
+        end
+        if numPeriodGrouping > 1
+          params[:acqNumPeriodsPerFrame] = div(params[:acqNumPeriodsPerFrame],numPeriodGrouping)
+          params[:dfCycle] *= numPeriodGrouping # Not sure about this one
+        end
+
         setparam!(params, :measIsBGFrame,
           cat(zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f)), dims=1))
 
         snr = calibSNR(f)
-	if snr == nothing
+	      if snr == nothing
           @info "calculate SNR"
-          snr = calculateSystemMatrixSNR(f, data)
+          snr = calculateSystemMatrixSNR(f, data, numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
         end
         setparam!(params, :calibSNR, snr)
     end

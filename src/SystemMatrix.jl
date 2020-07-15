@@ -23,9 +23,9 @@ function getSystemMatrix(f::MPIFile, frequencies=nothing;
     # This is the fast path if the SM lays on disk in the required format
     data = systemMatrix(f, frequencies, bgCorrection)
   else
-    data = getMeasurementsFD(f, frequencies=frequencies, sortFrames=true, bgCorrection=bgCorrection,
+    data = reshape(getMeasurementsFD(f, frequencies=frequencies, sortFrames=true, bgCorrection=bgCorrection,
               spectralLeakageCorrection=false, transposed=true, tfCorrection=false,
-              numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
+              numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping), Val(2))
   end
   
   S = map(ComplexF32, data)
@@ -63,10 +63,10 @@ function calculateSystemMatrixSNR(f::MPIFile)
   return SNR
 end
 
-function calculateSystemMatrixSNR(f::MPIFile, S::Array)
-  J = acqNumPeriodsPerFrame(f)
+function calculateSystemMatrixSNR(f::MPIFile, S::Array; numPeriodAverages=1, numPeriodGrouping=1)
+  J = div(acqNumPeriodsPerFrame(f),numPeriodAverages*numPeriodGrouping)
   R = rxNumChannels(f)
-  K = rxNumFrequencies(f)
+  K = rxNumFrequencies(f,numPeriodGrouping)
   N = acqNumFGFrames(f)
 
   SNR = zeros(K, R, J)
