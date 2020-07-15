@@ -20,12 +20,13 @@ if !isdir("data")
   rm("data.zip")
 end
 
-include("Positions.jl")
+include("Cartesian.jl")
+#=include("Positions.jl")
 include("General.jl")
 include("MDFv1.jl")
 include("MultiMPIFile.jl")
 include("Reco.jl")
 include("IMT.jl")
-include("TransferFunction.jl")
+include("TransferFunction.jl")=#
 
 @info "The unit tests are done!"
