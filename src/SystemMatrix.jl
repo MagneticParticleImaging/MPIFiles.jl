@@ -10,13 +10,24 @@ Supported keyword arguments:
 * bgCorrection
 * loadasreal
 """
-function getSystemMatrix(f::MPIFile,
-           frequencies=1:rxNumFrequencies(f)*rxNumChannels(f);
+function getSystemMatrix(f::MPIFile, frequencies=nothing;
                          bgCorrection=false, loadasreal=false,
-                         tfCorrection=rxHasTransferFunction(f), kargs...)
+                         tfCorrection=rxHasTransferFunction(f), 
+                         numPeriodAverages=1, numPeriodGrouping=1, kargs...)
 
-  data = systemMatrix(f, frequencies, bgCorrection)
+  if frequencies == nothing
+    frequencies = 1:rxNumFrequencies(f,numPeriodGrouping)*rxNumChannels(f)
+  end
 
+  if measIsFastFrameAxis(f) && measIsFourierTransformed(f)
+    # This is the fast path if the SM lays on disk in the required format
+    data = systemMatrix(f, frequencies, bgCorrection)
+  else
+    data = getMeasurementsFD(f, frequencies=frequencies, sortFrames=true, bgCorrection=bgCorrection,
+              spectralLeakageCorrection=false, transposed=true, tfCorrection=false,
+              numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
+  end
+  
   S = map(ComplexF32, data)
 
   if tfCorrection && !measIsTFCorrected(f)

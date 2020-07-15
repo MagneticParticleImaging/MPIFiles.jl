@@ -4,7 +4,7 @@ export acqNumFGFrames, acqNumBGFrames, acqOffsetFieldShift, acqFramePeriod,
        rxNumFrequencies, rxFrequencies, rxTimePoints,
        measFGFrameIdx, measBGFrameIdx, measBGFrameBlockLengths
 
-rxNumFrequencies(f::MPIFile) = floor(Int,rxNumSamplingPoints(f) ./ 2 .+ 1)
+rxNumFrequencies(f::MPIFile, numPeriodGrouping=1) = floor(Int,rxNumSamplingPoints(f)*numPeriodGrouping ./ 2 .+ 1)
 
 function rxFrequencies(f::MPIFile)
   numFreq = rxNumFrequencies(f)

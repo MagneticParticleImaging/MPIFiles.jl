@@ -17,9 +17,9 @@ Supported keyword arguments:
 function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
                maxFreq=rxBandwidth(f), recChannels=1:rxNumChannels(f),
                sortBySNR=false, numUsedFreqs=-1, stepsize=1, maxMixingOrder=-1,
-               sortByMixFactors=false)
+               sortByMixFactors=false, numPeriodAverages=1, numPeriodGrouping=1)
 
-  nFreq = rxNumFrequencies(f)
+  nFreq = rxNumFrequencies(f, numPeriodGrouping)
   nReceivers = rxNumChannels(f)
   nPeriods = 1 #acqNumPeriodsPerFrame(f)
 

@@ -117,7 +117,7 @@ returnasreal(u::AbstractArray{T}) where {T<:Real} = u
 
 function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
             numAverages=1,  periods=1:acqNumPeriodsPerFrame(f),
-            averagePeriodsPerPatch=false, kargs...)
+            averagePeriodsPerPatch=false, numPeriodAverages=1, kargs...)
 
   @debug "frequency and frame selection" rxNumSamplingPoints(f) rxNumChannels(f) acqNumFrames(f)
 
@@ -143,16 +143,24 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     end
   end
 
+  if numPeriodAverages > 1 && averagePeriodsPerPatch
+    error("getAveragedMeasurements: not possible to combine numPeriodAverages and averagePeriodsPerPatch")
+  end
+
   if averagePeriodsPerPatch
     if periods != 1:acqNumPeriodsPerFrame(f)
       error("Option averagePeriodsPerPatch can only be used when all periods are selected")
     end
     data_ = reshape(data, rxNumSamplingPoints(f), rxNumChannels(f),
                           acqNumPeriodsPerPatch(f), acqNumPatches(f), size(data,4))
-    dataAv = mean(data,dims=3)
+    dataAv = mean(data_,dims=3)
 
-    return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f),
-                           acqNumPatches(f), size(data,4))
+    return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f), size(data,4))
+  elseif numPeriodAverages > 1
+    newNumPeriods = div(acqNumPeriodsPerFrame(f), numPeriodAverages)
+    data_ = reshape(data, rxNumSamplingPoints(f), rxNumChannels(f), numPeriodAverages, newNumPeriods, size(data,4))
+    dataAv = sum(data_,dims=3)
+    return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f), newNumPeriods, size(data,4))    
   else
     return data
   end
@@ -171,12 +179,13 @@ Supported keyword arguments:
 * tfCorrection
 * sortFrames
 * numAverages
+* numPeriodAverages
 * spectralLeakageCorrection
 """
 function getMeasurements(f::MPIFile, neglectBGFrames=true;
       frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
       bgCorrection=false, interpolateBG=false, tfCorrection=rxHasTransferFunction(f),
-      sortFrames=false, numAverages=1, kargs...)
+      sortFrames=false, numAverages=1, numPeriodGrouping=1, kargs...)
 
   if neglectBGFrames
     idx = measFGFrameIdx(f)
@@ -238,6 +247,18 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
       data[:,:,:,:] .-= mean(dataBG, dims=4)
     end
+  end
+
+  if numPeriodGrouping > 1
+    tmp = permutedims(data, (1,3,2,4))
+
+    if mod(size(tmp,2),numPeriodGrouping) != 0
+      error("Periods cannot be grouped because $(size(tmp,2)) cannot be divided by $numPeriodGrouping")
+    end
+
+    tmp2 = reshape(tmp, size(tmp,1)*numPeriodGrouping, div(size(tmp,2),numPeriodGrouping),
+                        size(tmp,3), size(tmp,4) )
+    data = permutedims(tmp2, (1,3,2,4))
   end
 
   if tfCorrection && !measIsTFCorrected(f)
