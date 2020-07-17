@@ -44,6 +44,8 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
         if numPeriodGrouping > 1
           params[:acqNumPeriodsPerFrame] = div(params[:acqNumPeriodsPerFrame],numPeriodGrouping)
           params[:dfCycle] *= numPeriodGrouping # Not sure about this one
+          
+          params[:rxNumSamplingPoints] *= numPeriodGrouping
         end
 
         setparam!(params, :measIsBGFrame,
