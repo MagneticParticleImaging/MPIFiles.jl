@@ -72,22 +72,27 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
     end
   end
 
+  SNRAll = nothing
+
   if SNRThresh > 0 || numUsedFreqs > 0 || sortBySNR
     SNR = zeros(nFreq, nReceivers)
     idx = measIsFrequencySelection(f) ? measFrequencySelection(f) : idx = 1:nFreq
 
-    SNR[idx,:] = calibSNR(f)[:,:,1]
+    SNRAll = calibSNR(f)
+    if SNRAll != nothing
+      SNR[idx,:] = SNRAll[:,:,1]
+    end
   end
 
   if SNRThresh > 0 && numUsedFreqs > 0
     error("It is not possible to use SNRThresh and SNRFactorUsedFreq similtaneously")
   end
 
-  if SNRThresh > 0
+  if SNRThresh > 0 && SNRAll != nothing
     freqMask[ findall(vec(SNR) .< SNRThresh) ] .= false
   end
 
-  if numUsedFreqs > 0
+  if numUsedFreqs > 0 && SNRAll != nothing
     numFreqsAlreadyFalse = sum(!freqMask)
     numFreqsFalse = round(Int,length(freqMask)* (1-numUsedFreqs))
     S = sortperm(vec(SNR))
@@ -113,7 +118,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
 
   freq = findall( vec(freqMask) )
 
-  if sortBySNR && !sortByMixFactors
+  if sortBySNR && !sortByMixFactors && SNRAll != nothing
     SNR = vec(SNR[1:stepsize:nFreq,:,:])
 
     freq = freq[reverse(sortperm(SNR[freq]),dims=1)]
