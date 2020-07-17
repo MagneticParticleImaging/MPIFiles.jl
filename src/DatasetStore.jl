@@ -383,7 +383,7 @@ end
 
 function generateSFDatabase(fileList::Vector)
 
-  A = Array{Any}(undef,length(fileList)+1,16)
+  A = Array{Any}(undef,length(fileList)+1,17)
 
   # Headerrow
   A[1,1] = "Name"
@@ -402,6 +402,7 @@ function generateSFDatabase(fileList::Vector)
   A[1,14] = "Path"
   A[1,15] = "StartDate"
   A[1,16] = "MeasurementTime"
+  A[1,17] = "ExperimentNumber"
 
   for (k,sf) in enumerate(fileList)
     i=k+1
@@ -431,6 +432,7 @@ function _innerGenerateSFDatabase(A,i,sf,b)
   A[i,14] = sf #filepath(b)
   A[i,15] = string(acqStartTime(b))
   A[i,16] = 0.0#b["PVM_ScanTimeStr"]
+  A[i,17] = experimentNumber(b)
 end
 
 function generateSFDatabase(d::MDFDatasetStore)
