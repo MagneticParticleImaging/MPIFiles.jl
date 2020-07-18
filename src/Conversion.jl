@@ -10,8 +10,12 @@ end
 
 # we do not support all conversion possibilities
 function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocessing=false,
-                     numPeriodAverages=1, numPeriodGrouping=1)
+                     numPeriodAverages=1, numPeriodGrouping=1, experimentNumber=nothing)
   params = loadMetadata(f)
+
+  if experimentNumber != nothing
+    params[:experimentNumber] = experimentNumber
+  end
 
   # call API function and store result in a parameter Dict
   if experimentHasMeasurement(f)
