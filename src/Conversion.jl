@@ -1,5 +1,6 @@
 # This file contains routines to generate MDF files
 export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!, compressCalibMDF
+export getFFdataPerPos, prepareAsMDFSingleMeasurement
 export saveasMDFHacking # temporary Hack
 
 function setparam!(params::Dict, parameter, value)
@@ -48,7 +49,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
         if numPeriodGrouping > 1
           params[:acqNumPeriodsPerFrame] = div(params[:acqNumPeriodsPerFrame],numPeriodGrouping)
           params[:dfCycle] *= numPeriodGrouping # Not sure about this one
-          
+
           params[:rxNumSamplingPoints] *= numPeriodGrouping
         end
 
@@ -535,6 +536,80 @@ end
   saveasMDF(filenameOut, params)
 end
 
+"""
+This function returns the time data `timeData` Array(Float32,numPos,samplingPoints,channels,1,numFrames)
+of an FF-measurement with `numPos` as number of FF-positions. The function splits the entire FF-measurement
+in measurement per FF-position. As a second return argument the corresponding positions vector
+`pos` Array(Float64,3,1,numPos) is returned.
+"""
+function getFFdataPerPos(f::MPIFile, nAverages::Int64, skipSwitchingFrames::Int64; addToEnd=0)
+    dataFilename = joinpath(f.path,"rawdata.job0")
+    AllFrames = acqNumPeriodsPerFrame(f)
+    numPos_= size(acqOffsetField(f),3)
+    numPos = convert(Int64,div(numPos_,nAverages+skipSwitchingFrames))
+    timeData_ = zeros(Float32,numPos,rxNumSamplingPoints(f),rxNumChannels(f),1,nAverages)
+
+    posFF = acqOffsetField(f).*[-1,-1,-1] #Field to position
+    pos = zeros(Float64,3,1,numPos)
+
+    measTime = measData(f)
+
+    for p = collect(1:numPos)
+        st = p*skipSwitchingFrames+(p-1)*(nAverages+addToEnd)+1
+        ind = collect(st:st+nAverages-1)
+        pos_ = unique(posFF[:,:,ind],dims=3)
+        if size(pos_,3) != 1
+            error("FF Positions not unqiue! Check Average and skipSwitchingFrames Parameter!")
+        end
+        pos[:,:,p] = pos_
+        tempTimeData = measTime[:,:,ind,:]
+        timeData_[p,:,:,:,:] = permutedims(tempTimeData, [1,2,4,3])# switch last two dimensions: frames and patches switch
+    end
+    timeData = convert(Array{Int16,5},timeData_)
+    return timeData, pos
+end
+
+"""
+This function spilts a FF-measurement according to it FF-positions in measurements per position
+and treats them as single measurements. It returns `fileNames` Array{String,1}
+and the correspodning `paramsArray` as Array{Dict,1}, which are the data dictionaries.
+Both can be used to save the data with saveasMDF(...).
+"""
+function prepareAsMDFSingleMeasurement(f::MPIFile, numFrames::Int64, skipSwitchingFrames::Int64; addToEnd=0)
+    global params = loadMetadata(f)
+
+    # get FF data
+    timeDataPerPos, pos = getFFdataPerPos(f, numFrames, skipSwitchingFrames, addToEnd=addToEnd);
+
+    # adjust meta data
+    params[:acqGradient] = acqGradient(f)[:,:,1:1,1:1]
+    params[:acqNumPeriodsPerFrame] = 1
+    params[:acqNumFrames] = numFrames
+    params[:dfStrength] = dfStrength(f)[:,:,1:1]
+    params[:dfPhase] = dfPhase(f)[:,:,1:1]
+
+    # adjust data and meta data per position
+    paramsArray = Array{Any,1}(undef,size(pos,3))
+    fileNames = Array{String,1}(undef,size(pos,3))
+    for p=1:size(pos,3)
+        tempParas=deepcopy(params)
+        filename = string(params[:experimentNumber],"_pos",p)
+        tempParas[:acqOffsetField] = pos[:,:,p:p] # all
+        tempParas[:measIsFrequencySelection] = false
+        tempParas[:measIsBGCorrected] = false
+        tempParas[:measIsFramePermutation] = false
+        tempParas[:measIsFastFrameAxis] = false
+        tempParas[:measIsFourierTransformed] = false
+        tempParas[:measIsSpectralLeakageCorrected] = false
+        tempParas[:measIsBGFrame] = convert(Array{Bool,1},zeros(size(timeDataPerPos,5)));
+        tempParas[:measIsTFCorrected] = false
+        tempParas[:measData] = timeDataPerPos[p,:,:,:,:];
+
+        fileNames[p] = filename
+        paramsArray[p] = tempParas
+    end
+    return fileNames, paramsArray
+end
 
 hasKeyAndValue(paramDict,param) = haskey(paramDict, param) && paramDict[param] != nothing
 
