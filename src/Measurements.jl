@@ -153,13 +153,13 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     end
     data_ = reshape(data, rxNumSamplingPoints(f), rxNumChannels(f),
                           acqNumPeriodsPerPatch(f), acqNumPatches(f), size(data,4))
-    dataAv = mean(data_,dims=3)
+    dataAv = mean(data_, dims=3)
 
     return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f), size(data,4))
   elseif numPeriodAverages > 1
     newNumPeriods = div(acqNumPeriodsPerFrame(f), numPeriodAverages)
     data_ = reshape(data, rxNumSamplingPoints(f), rxNumChannels(f), numPeriodAverages, newNumPeriods, size(data,4))
-    dataAv = sum(data_,dims=3)
+    dataAv = mean(data_, dims=3)
     return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f), newNumPeriods, size(data,4))    
   else
     return data
