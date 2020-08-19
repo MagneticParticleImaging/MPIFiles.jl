@@ -177,8 +177,8 @@ function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
   saveasMDF(filenameOut, MPIFile(filenameIn); kargs...)
 end
 
-function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, kargs...)
-  if isConvertibleToMDF(f)
+function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, enforceConversion=false, kargs...)
+  if enforceConversion || isConvertibleToMDF(f)
     params = loadDataset(f;kargs...)
     if filenameBG != nothing
       appendBGDataset(params, filenameBG)
