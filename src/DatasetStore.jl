@@ -509,7 +509,7 @@ function getExperiments(d::MDFDatasetStore, s::Study)
   experiments = Experiment[]
 
   @debug "Time for get Experiments"
-  @time for file in files
+  for file in files
     prefix, ext = splitext(file)
     if !isdir(file) && tryparse(Int64,prefix) != nothing &&
        (ext == ".mdf" || ext == ".hdf" || ext == ".h5") &&
