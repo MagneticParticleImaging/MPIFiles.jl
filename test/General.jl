@@ -71,6 +71,7 @@ for mdf in (measBruker,mdfv2)
   @test rxNumSamplingPoints(mdf) == 1632
   @test rxDataConversionFactor(mdf) == repeat([1.0, 0.0], outer=(1,rxNumChannels(mdf)))
   @test size(rxTransferFunction(mdf)) == (817, 3)
+  @test rxTransferFunctionFileName(mdf) == "./data/transferFunction/tf.h5"
 
   @test acqNumAverages(mdf) == 1
   @test acqNumFrames(mdf) == 500
@@ -130,6 +131,7 @@ for sm in (smBruker,smv2,smv3)
 
   @test size(rxTransferFunction(sm)) == (817, 3)
   @test rxHasTransferFunction(sm) == true
+  @test rxTransferFunctionFileName(sm) == "./data/transferFunction/tf.h5"
 
   @test measIsFourierTransformed(sm) == true
   @test measIsTFCorrected(sm) == false

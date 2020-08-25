@@ -34,6 +34,7 @@ function getSystemMatrix(f::MPIFile, frequencies=nothing;
     tf = rxTransferFunction(f)
     if tf != nothing
       _corrTFSF(S,tf[rowsToSubsampledRows(f,frequencies)])
+      @warn "System matrix has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
     else
       error("TF not available")
     end

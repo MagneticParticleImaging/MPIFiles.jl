@@ -62,7 +62,7 @@ export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
 
 # receiver parameters
 export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
-       rxTransferFunction, rxHasTransferFunction, rxUnit,
+       rxTransferFunction, rxTransferFunctionFileName, rxHasTransferFunction, rxUnit,
        rxDataConversionFactor, rxInductionFactor
 
 # measurements
@@ -149,6 +149,7 @@ abstract type MPIFile end
 @mustimplement rxBandwidth(f::MPIFile)
 @mustimplement rxNumSamplingPoints(f::MPIFile)
 @mustimplement rxTransferFunction(f::MPIFile)
+@mustimplement rxTransferFunctionFileName(f::MPIFile)
 @mustimplement rxHasTransferFunction(f::MPIFile)
 @mustimplement rxInductionFactor(f::MPIFile)
 @mustimplement rxUnit(f::MPIFile)
