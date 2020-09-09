@@ -179,6 +179,10 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
   close(f.file)
 
   h5open(filepath(f), "r+") do file
+	if exists(file, "/acquisition/receiver/transferFunctionFileName")
+      o_delete(file, "/acquisition/receiver/transferFunctionFileName")
+    end
+    write(file, "/acquisition/receiver/transferFunctionFileName", filenameTF)
     if exists(file, "/acquisition/receiver/transferFunction")
       o_delete(file, "/acquisition/receiver/transferFunction")
     end
