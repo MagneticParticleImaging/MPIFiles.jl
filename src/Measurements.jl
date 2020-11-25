@@ -277,7 +277,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
     data = irfft(dataF,J,1)
   end
 
-  return data
+  return map(Float32,data)
 end
 
 
