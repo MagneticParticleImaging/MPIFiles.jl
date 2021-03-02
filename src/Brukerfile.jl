@@ -369,6 +369,14 @@ function rxTransferFunction(b::BrukerFile)
     return nothing
   end
 end
+function rxTransferFunctionFileName(b::BrukerFile)
+  filename = b["ACQ_comment"]
+  if isfile(filename)
+    return filename
+  else
+    return nothing
+   end
+end
 function rxHasTransferFunction(b::BrukerFile)
   filename = b["ACQ_comment"]
   return isfile(filename)

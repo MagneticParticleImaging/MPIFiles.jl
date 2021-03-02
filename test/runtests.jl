@@ -28,5 +28,6 @@ include("MultiMPIFile.jl")
 include("Reco.jl")
 include("IMT.jl")
 include("TransferFunction.jl")
+include("CustomSFMeas.jl")
 
 @info "The unit tests are done!"

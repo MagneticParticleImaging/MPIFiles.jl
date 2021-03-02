@@ -44,10 +44,12 @@ for op in [:filepath, :version, :uuid, :time, :studyName, :studyNumber, :studyTi
             :acqStartTime,
             :dfNumChannels, :dfBaseFrequency, :dfDivider,
             :dfCycle, :dfWaveform, :rxNumChannels, :acqNumAverages, :rxBandwidth,
-            :rxNumSamplingPoints, :rxTransferFunction, :rxHasTransferFunction, 
+            :rxNumSamplingPoints, :rxTransferFunction, :rxTransferFunctionFileName, 
             :rxInductionFactor, :rxUnit, :rxDataConversionFactor]
   @eval $op(f::MultiMPIFile) = $op(f.files[1])
 end
+
+rxHasTransferFunction(f::MultiMPIFile) = !(any(rxHasTransferFunction.(f) .== 0))
 
 for op in [ :dfStrength, :dfPhase ]
   @eval begin function $op(f::MultiMPIFile)

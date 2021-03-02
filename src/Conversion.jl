@@ -1,7 +1,7 @@
 # This file contains routines to generate MDF files
 export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!, compressCalibMDF
-export getFFdataPerPos, prepareAsMDFSingleMeasurement
-export saveasMDFHacking # temporary Hack
+export getFFdataPerPos, prepareAsMDFSingleMeasurement, convertCustomSF
+
 
 function setparam!(params::Dict, parameter, value)
   if value != nothing
@@ -83,7 +83,7 @@ const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyN
           :acqStartTime, :acqOffsetField, :acqNumFrames,
           :dfNumChannels, :dfPhase, :dfBaseFrequency, :dfDivider,
           :dfCycle, :dfWaveform, :rxNumChannels, :rxBandwidth,
-          :rxNumSamplingPoints, :rxTransferFunction, :rxInductionFactor,
+          :rxNumSamplingPoints, :rxTransferFunction, :rxTransferFunctionFileName, :rxInductionFactor,
           :rxUnit, :rxDataConversionFactor]
 
 function loadMetadata(f, inputParams = MPIFiles.defaultParams)
@@ -189,20 +189,6 @@ function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, enforc
   end
 end
 
-function saveasMDFHacking(filenameOut::String, f::MPIFile)
-    dataSet=loadDataset(f)
-    dataSet[:acqNumFrames]=dataSet[:acqNumPeriodsPerFrame]*dataSet[:acqNumFrames]
-    dataSet[:acqNumPeriodsPerFrame]=1
-    dataSet[:measData]=reshape(dataSet[:measData],size(dataSet[:measData],1),
-                               size(dataSet[:measData],2),1,size(dataSet[:measData],3)*
-                                          size(dataSet[:measData],4))
-    dataSet[:dfStrength]=dataSet[:dfStrength][:,:,1:1]
-    dataSet[:acqOffsetField]=dataSet[:acqOffsetField]
-    #dataSet["acqOffsetFieldShift"]=dataSet["acqOffsetFieldShift"][:,1:1]
-    dataSet[:dfPhase]=dataSet[:dfPhase][:,:,1:1]
-    saveasMDF(filenameOut, dataSet)
-    return dataSet
-end
 
 function saveasMDF(filename::String, params::Dict)
   # file has to be removed if exists. Otherwise h5create fails.
@@ -710,6 +696,7 @@ function saveasMDF(file::HDF5File, params::Dict{Symbol,Any})
     group = file["/acquisition/receiver"]
     writeComplexArray(group, "transferFunction", tf)
   end
+  writeIfAvailable(file, "/acquisition/receiver/transferFunctionFileName", params, :rxTransferFunctionFileName)
   writeIfAvailable(file, "/acquisition/receiver/inductionFactor",  params, :rxInductionFactor)
 
   # measurements

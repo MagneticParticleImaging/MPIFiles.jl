@@ -1,7 +1,7 @@
 name = "MPIFiles"
 uuid = "371237a9-e6c1-5201-9adb-3d8cfa78fa9f"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
-version = "0.9.5"
+version = "0.10.0"
 
 [deps]
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
@@ -26,9 +26,9 @@ AxisArrays = "0.3, 0.4"
 FileIO = "1.0"
 Graphics = "0.4, 1.0"
 HDF5 = "0.13"
-Images = "0.22"
-Interpolations = "0.12"
-SparsityOperators = "0.1.4"
+Images = "0.22, 0.23"
+Interpolations = "0.12, 0.13"
+SparsityOperators = "0.1.4, 0.2"
 Unitful = "0.17, 1.2"
 julia = "1.3"
 

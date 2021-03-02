@@ -236,6 +236,14 @@ function rxTransferFunction(f::MDFFile)
     return nothing
   end
 end
+function rxTransferFunctionFileName(f::MDFFile)
+  parameter = "/acquisition/receiver/transferFunctionFileName"
+  if exists(f.file, parameter)
+    return f[parameter]
+  else
+    return nothing
+  end
+end
 function rxHasTransferFunction(f::MDFFile)
   exists(f.file, "/acquisition/receiver/transferFunction")
 end

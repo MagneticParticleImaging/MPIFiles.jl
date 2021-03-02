@@ -125,6 +125,7 @@ rxNumChannels(f::IMTFileCalib) = length(f["/numberOfAvailableFrequencies"])
 rxBandwidth(f::IMTFile)::Float64 = 1.25e6
 rxNumSamplingPoints(f::IMTFile) = (f["/numberOfAvailableFrequencies"][1]-1)*2
 rxTransferFunction(f::IMTFile) = nothing
+rxTransferFunctionFileName(f::IMTFile) = nothing
 rxInductionFactor(f::IMTFile) = nothing
 
 rxUnit(f::IMTFile) = "a.u."
