@@ -195,7 +195,14 @@ end
 
 # study parameters
 experimentName(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
-experimentNumber(b::BrukerFile) = parse(Int64,b["VisuExperimentNumber"])
+function experimentNumber(b::BrukerFile) 
+  val = b["VisuExperimentNumber"]
+  if val == nothing || val == ""
+    val = "0" # the file is corrupt and has no Visu file
+  end
+  parse(Int64, val)
+end
+
 function experimentUuid(b::BrukerFile)
   rng = MersenneTwister(hash(b["VisuUid"])) # use VisuUid as seed to generate uuid4
   return uuid4(rng)
