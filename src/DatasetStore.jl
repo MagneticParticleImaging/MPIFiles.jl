@@ -464,7 +464,7 @@ end
 function loadSFDatabase(d::BrukerDatasetStore)
   if isfile("/opt/data/SF_Database.csv")
     A = readdlm("/opt/data/SF_Database.csv",',')
-    if size(A,2) != 16
+    if size(A,2) < 16
       A = readdlm("/opt/data/SF_Database.csv",'\t')
     end
     return A
