@@ -28,17 +28,17 @@ function isComplexArray(file, dataset)
 end
 
 function getComplexType(file, dataset)
-  T = HDF5.hdf5_to_julia_eltype(
-            HDF5Datatype(
+  T = HDF5.get_jl_type(
+            HDF5.Datatype(
               HDF5.h5t_get_member_type( datatype(file[dataset]).id, 0 )
           )
         )
     return Complex{T}
 end
 
-function readComplexArray(file::HDF5File, dataset)
+function readComplexArray(file::HDF5.File, dataset)
   T = getComplexType(file, dataset)
-  A = copy(readmmap(file[dataset],Array{getComplexType(file,dataset)}))
+  A = copy(HDF5.readmmap(file[dataset],getComplexType(file,dataset)))
   return A
 end
 

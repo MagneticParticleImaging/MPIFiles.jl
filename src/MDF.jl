@@ -6,18 +6,18 @@ abstract type MDFFile <: MPIFile end
 # are the same we use the abstract type MDFFile
 mutable struct MDFFileV1{T} <: MDFFile
   filename::String
-  file::HDF5File
+  file::HDF5.File
   mmap_measData::T
 end
 
 function MDFFileV1(filename::String, file=h5open(filename,"r"))
-  tdExists = exists(file, "/measurement/dataTD")
-  if exists(file, "/measurement/dataTD")
-    mmap_measData = readmmap(file["/measurement/dataTD"])
-  elseif exists(file, "/measurement/dataFD")
-    mmap_measData = readmmap(file["/measurement/dataFD"])
-  elseif exists(file, "/calibration/dataFD")
-    mmap_measData = readmmap(file["/calibration/dataFD"])
+  tdExists = haskey(file, "/measurement/dataTD")
+  if haskey(file, "/measurement/dataTD")
+    mmap_measData = HDF5.readmmap(file["/measurement/dataTD"])
+  elseif haskey(file, "/measurement/dataFD")
+    mmap_measData = HDF5.readmmap(file["/measurement/dataFD"])
+  elseif haskey(file, "/calibration/dataFD")
+    mmap_measData = HDF5.readmmap(file["/calibration/dataFD"])
   else
     mmap_measData = nothing
   end
@@ -27,17 +27,18 @@ end
 
 mutable struct MDFFileV2{T} <: MDFFile
   filename::String
-  file::HDF5File
+  file::HDF5.File
   mmap_measData::T
 end
 
 function MDFFileV2(filename::String, file=h5open(filename,"r"))
   parameter = "/measurement/data"
-  if exists(file, "/measurement/data")
+  if haskey(file, "/measurement/data")
     if !isComplexArray(file, parameter)
-      mmap_measData = readmmap(file[parameter])
+      mmap_measData = HDF5.readmmap(file[parameter])
     else
-      mmap_measData = readmmap(file[parameter], Array{getComplexType(file,parameter)} )
+      #mmap_measData = HDF5.readmmap(file[parameter], Array{getComplexType(file,parameter)} )
+      mmap_measData = HDF5.readmmap(file[parameter], getComplexType(file,parameter) )
     end
   else
     mmap_measData = nothing
@@ -59,14 +60,14 @@ function MDFFile(filename::String, file = h5open(filename,"r"))
   end
 end
 
-function h5exists(filename, parameter)
+function h5haskey(filename, parameter)
   return h5open(filename) do file
-    exists(file, parameter)
+    haskey(file, parameter)
   end
 end
 
 function getindex(f::MDFFile, parameter)
-  if exists(f.file, parameter)
+  if haskey(f.file, parameter)
     return read(f.file, parameter)
   else
     return nothing
@@ -78,7 +79,7 @@ function getindex(f::MDFFile, parameter, default)
   #  f.param_cache[parameter] = h5read_(f.filename, parameter, default)
   #end
   #return f.param_cache[parameter]
-  if exists(f.file, parameter)
+  if haskey(f.file, parameter)
     return read(f.file, parameter)
   else
     return default
@@ -123,11 +124,11 @@ experimentSubject(f::MDFFileV1)::String = f["/study/subject"]
 experimentSubject(f::MDFFileV2)::String = f["/experiment/subject"]
 experimentIsSimulation(f::MDFFileV2)::Bool = Bool( f["/experiment/isSimulation"] )
 experimentIsSimulation(f::MDFFileV1)::Bool = Bool( f["/study/simulation"] )
-experimentIsCalibration(f::MDFFile)::Bool = exists(f.file, "/calibration")
-experimentHasReconstruction(f::MDFFile)::Bool = exists(f.file, "/reconstruction")
-experimentHasMeasurement(f::MDFFileV1)::Bool = exists(f.file, "/measurement") ||
-                                         exists(f.file, "/calibration")
-experimentHasMeasurement(f::MDFFileV2)::Bool = exists(f.file, "/measurement")
+experimentIsCalibration(f::MDFFile)::Bool = haskey(f.file, "/calibration")
+experimentHasReconstruction(f::MDFFile)::Bool = haskey(f.file, "/reconstruction")
+experimentHasMeasurement(f::MDFFileV1)::Bool = haskey(f.file, "/measurement") ||
+                                         haskey(f.file, "/calibration")
+experimentHasMeasurement(f::MDFFileV2)::Bool = haskey(f.file, "/measurement")
 
 _makeStringArray(s::String) = [s]
 _makeStringArray(s::Vector{T}) where {T<:AbstractString} = s
@@ -230,7 +231,7 @@ rxBandwidth(f::MDFFile)::Float64 = f["/acquisition/receiver/bandwidth"]
 rxNumSamplingPoints(f::MDFFile)::Int64 = f["/acquisition/receiver/numSamplingPoints"]
 function rxTransferFunction(f::MDFFile)
   parameter = "/acquisition/receiver/transferFunction"
-  if exists(f.file, parameter)
+  if haskey(f.file, parameter)
     return readComplexArray(f.filename, parameter)
   else
     return nothing
@@ -238,14 +239,14 @@ function rxTransferFunction(f::MDFFile)
 end
 function rxTransferFunctionFileName(f::MDFFile)
   parameter = "/acquisition/receiver/transferFunctionFileName"
-  if exists(f.file, parameter)
+  if haskey(f.file, parameter)
     return f[parameter]
   else
     return nothing
   end
 end
 function rxHasTransferFunction(f::MDFFile)
-  exists(f.file, "/acquisition/receiver/transferFunction")
+  haskey(f.file, "/acquisition/receiver/transferFunction")
 end
 rxInductionFactor(f::MDFFileV1) = nothing
 rxInductionFactor(f::MDFFileV2) = f["/acquisition/receiver/inductionFactor"]
@@ -258,7 +259,7 @@ rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFa
 # measurements
 function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
-  if !exists(f.file, "/measurement")
+  if !haskey(f.file, "/measurement")
     # the V1 file is a calibration
     data = f["/calibration/dataFD"]
     if ndims(data) == 4
@@ -267,7 +268,7 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
       return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4),size(data,5)))
     end
   end
-  tdExists = exists(f.file, "/measurement/dataTD")
+  tdExists = haskey(f.file, "/measurement/dataTD")
 
   if tdExists
     data = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
@@ -303,7 +304,7 @@ end
 
 function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
                   receivers=1:rxNumChannels(f))
-  tdExists = exists(f.file, "/measurement/dataTD")
+  tdExists = haskey(f.file, "/measurement/dataTD")
 
   if tdExists
     data = f.mmap_measData[:, receivers, periods]
@@ -339,7 +340,7 @@ function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
 end
 
 function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
-  if !exists(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
+  if !haskey(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
     !measIsFourierTransformed(f)
     return nothing
   end
@@ -399,7 +400,7 @@ function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
 end
 
 function systemMatrixWithBG(f::MDFFileV2)
-  if !exists(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
+  if !haskey(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
       !measIsFourierTransformed(f)
       return nothing
   end
@@ -410,7 +411,7 @@ end
 
 # This is a special variant used for matrix compression
 function systemMatrixWithBG(f::MDFFileV2, freq)
-  if !exists(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
+  if !haskey(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
     !measIsFourierTransformed(f)
     return nothing
   end
@@ -449,7 +450,7 @@ measFrequencySelection(f::MDFFileV2) = f["/measurement/frequencySelection"]
 
 measIsSparsityTransformed(f::MDFFileV1) = false
 function measIsSparsityTransformed(f::MDFFileV2)
-  if exists(f.file, "/measurement/isSparsityTransformed")
+  if haskey(f.file, "/measurement/isSparsityTransformed")
     Bool(f["/measurement/isSparsityTransformed"])
   else
     return false
@@ -465,7 +466,7 @@ function measIsFastFrameAxis(f::MDFFileV1)
 end
 
 function measIsFastFrameAxis(f::MDFFileV2)
-  if exists(f.file, "/measurement/isFastFrameAxis")
+  if haskey(f.file, "/measurement/isFastFrameAxis")
     return Bool(f["/measurement/isFastFrameAxis"])
   else
     @warn "/measurement/isFastFrameAxis missing in MDF data set. `measIsFastFrameAxis` returning false per default."
@@ -516,7 +517,7 @@ recoPositions(f::MDFFile) = f["/reconstruction/positions"]
 
 # this is non-standard
 function recoParameters(f::MDFFile)
-  if !exists(f.file, "/reconstruction/_parameters")
+  if !haskey(f.file, "/reconstruction/_parameters")
     return nothing
   else
     return loadParams(f.file, "/reconstruction/_parameters")

@@ -179,15 +179,15 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
   close(f.file)
 
   h5open(filepath(f), "r+") do file
-	if exists(file, "/acquisition/receiver/transferFunctionFileName")
+	if haskey(file, "/acquisition/receiver/transferFunctionFileName")
       o_delete(file, "/acquisition/receiver/transferFunctionFileName")
     end
     write(file, "/acquisition/receiver/transferFunctionFileName", filenameTF)
-    if exists(file, "/acquisition/receiver/transferFunction")
+    if haskey(file, "/acquisition/receiver/transferFunction")
       o_delete(file, "/acquisition/receiver/transferFunction")
     end
     write(file, "/acquisition/receiver/transferFunction", tf)
-    if exists(file, "/acquisition/receiver/inductionFactor")
+    if haskey(file, "/acquisition/receiver/inductionFactor")
       o_delete(file, "/acquisition/receiver/inductionFactor")
     end
     write(file, "/acquisition/receiver/inductionFactor", tmf.inductionFactor)
