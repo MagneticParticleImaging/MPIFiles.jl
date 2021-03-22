@@ -1,10 +1,10 @@
 using Documenter, MPIFiles
 
 makedocs(
+    format = Documenter.HTML(prettyurls = false),
     modules = [MPIFiles],
-    format = :html,
     sitename = "MPI Files",
-    authors = "Tobias Knopp, et al.",
+    authors = "Tobias Knopp et al.",
     pages = [
         "Home" => "index.md",
         "Getting Started" => "gettingStarted.md",
@@ -15,8 +15,7 @@ makedocs(
         "Frequency Filter" => "frequencyFilter.md",
         "Reconstruction Results" => "reconstruction.md"
       #  "Positions" => "positions.md"
-    ],
-    html_prettyurls = false, #!("local" in ARGS),
+    ]
 )
 
 deploydocs(
