@@ -65,7 +65,7 @@ function loadRecoData_(f::MDFFile)
 
   # preparation for time axis
   periodTime = Float64(acqNumAverages(f)*acqFramePeriod(f))*u"s"
-  if exists(f.file, "/reconstruction/_parameters/nAverages")
+  if haskey(f.file, "/reconstruction/_parameters/nAverages")
     periodTime *= read(f.file, "/reconstruction/_parameters/nAverages")
   else
     @warn "No reconstruction averaging number found. tempoaral spacings in axis `:time` might be wrong."

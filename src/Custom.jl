@@ -72,20 +72,20 @@ function loadParams(file, path)
   for obj in g
     key = last(splitdir(HDF5.name(obj)))
     data = read(obj)
-    attr = attrs(obj)
-    if exists(attr, "isbool")
+    attr = attributes(obj)
+    if haskey(attr, "isbool")
       params[Symbol(key)] = Bool(data)
-    elseif exists(attr, "isrange")
+    elseif haskey(attr, "isrange")
       if data[2] == 1
         params[Symbol(key)] = data[1]:data[3]
       else
         params[Symbol(key)] = data[1]:data[2]:data[3]
       end
-    elseif exists(attr, "isnothing")
+    elseif haskey(attr, "isnothing")
        params[Symbol(key)] = nothing
-    elseif exists(attr, "iscoloring")
+    elseif haskey(attr, "iscoloring")
        params[Symbol(key)] = ColoringParamsInt(data[1], data[2],round(Int64,data[3]))
-    elseif exists(attr, "iscoloringarray")
+    elseif haskey(attr, "iscoloringarray")
        coloring = ColoringParamsInt[]
        for i=1:size(data,2)
          push!(coloring, ColoringParamsInt(data[1,i], data[2,i],round(Int64,data[3,i])))

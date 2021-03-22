@@ -6,7 +6,7 @@ abstract type IMTFile <: MPIFile end
 # are the same we use the abstract type IMTFile
 mutable struct IMTFileCalib <: IMTFile
   filename::String
-  file::HDF5File
+  file::HDF5.File
   mmap_measData
 end
 
@@ -21,7 +21,7 @@ end
 
 mutable struct IMTFileMeas <: IMTFile
   filename::String
-  file::HDF5File
+  file::HDF5.File
   mmap_measData
 end
 
@@ -33,7 +33,7 @@ end
 
 # Dispatch on file extension
 function (::Type{IMTFile})(filename::String, file = h5open(filename,"r"))
- if !exists(file, "/measurements")
+ if !haskey(file, "/measurements")
    return IMTFileCalib(filename, file)
  else
    return IMTFileMeas(filename, file)
@@ -41,7 +41,7 @@ function (::Type{IMTFile})(filename::String, file = h5open(filename,"r"))
 end
 
 function getindex(f::IMTFile, parameter)
-  if exists(f.file, parameter)
+  if haskey(f.file, parameter)
     return read(f.file, parameter)
   else
     return nothing
@@ -49,7 +49,7 @@ function getindex(f::IMTFile, parameter)
 end
 
 function getindex(f::IMTFile, parameter, default)
-  if exists(f.file, parameter)
+  if haskey(f.file, parameter)
     return read(f.file, parameter)
   else
     return default
@@ -136,14 +136,14 @@ rxDataConversionFactor(f::IMTFile) = repeat([1.0, 0.0], outer=(1,rxNumChannels(f
 function measData(f::IMTFile, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
 
-  if !exists(f.file, "/measurements")
+  if !haskey(f.file, "/measurements")
     # file is calibration
     dataFD = f["/systemResponseFrequencies"]
     dataFD = reshape(reinterpret(Complex{eltype(dataFD)}, vec(dataFD)), (div(size(dataFD,1),2),size(dataFD,2),size(dataFD,3),size(dataFD,4)))
     return dataFD = reshape(dataFD, (size(dataFD,1)*size(dataFD,2)*size(dataFD,3), div(size(dataFD,4),2), length(receivers), length(frames)))
   end
 
-  tdExists = exists(f.file, "/measurements")
+  tdExists = haskey(f.file, "/measurements")
 
   if tdExists
     dataTD = f["/measurements"]
@@ -162,7 +162,7 @@ function systemMatrix(f::IMTFileCalib, rows, bgCorrection=true)
     return nothing
   end
   if f.mmap_measData == nothing
-    f.mmap_measData = readmmap(f.file["/systemResponseFrequencies"])
+    f.mmap_measData = HDF5.readmmap(f.file["/systemResponseFrequencies"])
   end
 
   data = f.mmap_measData[:, :, :, rows]

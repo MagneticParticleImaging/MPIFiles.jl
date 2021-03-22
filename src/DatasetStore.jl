@@ -642,7 +642,7 @@ end
 
 function save(reco::Reconstruction)
   h5open(reco.path, "r+") do file
-    if exists(file, "/reconstruction/_parameters")
+    if haskey(file, "/reconstruction/_parameters")
       o_delete(file, "/reconstruction/_parameters")
     end
     saveParams(file, "/reconstruction/_parameters", reco.params)
@@ -654,7 +654,7 @@ function loadParams(reco::Reconstruction)
   if isfile(reco.path)
    h5open(reco.path, "r") do file
     g = file["/reconstruction"]
-    if exists(g, "_parameters") #new world order
+    if haskey(g, "_parameters") #new world order
       reco.params = loadParams(reco.path, "/reconstruction/_parameters")
     else #this needs to go
       @debug "opening legacy file"
@@ -751,7 +751,7 @@ end
 
 function remove(visu::Visualization)
   h5open(visu.path, "r+") do file
-    if exists(file, string(visu.num))
+    if haskey(file, string(visu.num))
       o_delete(file, string(visu.num))
     end
   end
@@ -763,7 +763,7 @@ function save(visu::Visualization)
   else
     file = h5open(visu.path, "w")
   end
-  if exists(file, string(visu.num))
+  if haskey(file, string(visu.num))
     o_delete(file, string(visu.num))
   end
   saveParams(file, string(visu.num), visu.params)

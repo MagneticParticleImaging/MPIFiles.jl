@@ -606,12 +606,12 @@ function writeIfAvailable(file, paramOut, paramDict, paramIn )
 end
 
 
-function saveasMDF(file::HDF5File, params::Dict{T,Any}) where  {T<:AbstractString}
+function saveasMDF(file::HDF5.File, params::Dict{T,Any}) where  {T<:AbstractString}
   paramsSymbol = Dict{Symbol,Any}([Symbol(k)=>v for (k,v) in params])
   saveasMDF(file, paramsSymbol)
 end
 
-function saveasMDF(file::HDF5File, params::Dict{Symbol,Any})
+function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
   # general parameters
   write(file, "/version", "2.0.1")
   write(file, "/uuid", string(get(params,:uuid,uuid4() )))
@@ -703,7 +703,7 @@ function saveasMDF(file::HDF5File, params::Dict{Symbol,Any})
   if hasKeyAndValue(params, :measData)
     meas = params[:measData]
     if eltype(meas) <: Complex
-      group = g_create(file,"/measurement")
+      group = create_group(file,"/measurement")
       writeComplexArray(group, "/measurement/data", meas)
     else
       write(file, "/measurement/data", meas)
