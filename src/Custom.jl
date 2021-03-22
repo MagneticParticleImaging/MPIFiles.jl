@@ -72,7 +72,7 @@ function loadParams(file, path)
   for obj in g
     key = last(splitdir(HDF5.name(obj)))
     data = read(obj)
-    attr = attrs(obj)
+    attr = attributes(obj)
     if haskey(attr, "isbool")
       params[Symbol(key)] = Bool(data)
     elseif haskey(attr, "isrange")
