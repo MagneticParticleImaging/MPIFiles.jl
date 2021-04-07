@@ -20,15 +20,15 @@ function saveParams(file, path, params::Dict)
     if typeof(value) <: Bool
       write(file, ppath, UInt8(value))
       dset = file[ppath]
-      attrs(dset)["isbool"] = "true"
+      attributes(dset)["isbool"] = "true"
     elseif typeof(value) <: AbstractRange
       write(file, ppath, [first(value),step(value),last(value)])
       dset = file[ppath]
-      attrs(dset)["isrange"] = "true"
+      attributes(dset)["isrange"] = "true"
     elseif value == nothing
       write(file, ppath, "")
       dset = file[ppath]
-      attrs(dset)["isnothing"] = "true"
+      attributes(dset)["isnothing"] = "true"
     elseif typeof(value) <: ColoringParamsInt
       tmp = zeros(3)
       tmp[1] = value.cmin
@@ -37,7 +37,7 @@ function saveParams(file, path, params::Dict)
 
       write(file, ppath, tmp)
       dset = file[ppath]
-      attrs(dset)["iscoloring"] = "true"
+      attributes(dset)["iscoloring"] = "true"
     elseif typeof(value) <: Array{ColoringParamsInt,1}
       tmp = zeros(3,length(value))
       for i=1:length(value)
@@ -47,7 +47,7 @@ function saveParams(file, path, params::Dict)
       end
       write(file, ppath, tmp)
       dset = file[ppath]
-      attrs(dset)["iscoloringarray"] = "true"
+      attributes(dset)["iscoloringarray"] = "true"
     elseif typeof(value) <: Array{Any}
       write(file, ppath, [v for v in value])
     elseif typeof(value) <: MPIFile
