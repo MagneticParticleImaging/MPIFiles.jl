@@ -1,6 +1,6 @@
 # This file contains routines to generate MDF files
 export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!, compressCalibMDF
-export getFFdataPerPos, prepareAsMDFSingleMeasurement, convertCustomSF
+export getFFdataPerPos, prepareAsMDFSingleMeasurement, convertCustomSF, blockAverage
 
 
 function setparam!(params::Dict, parameter, value)
@@ -225,6 +225,63 @@ function compressCalibMDF(filenamesOut::Vector{String}, f::MultiMPIFile; SNRThre
   for (i,f_) in enumerate(f)
     compressCalibMDF(filenamesOut[i], f_, idx; kargs...)
   end
+end
+
+function blockAverage(filenameOut::String, f::MPIFile, numAverages)
+	#block averaging is not possible
+	if rem(acqNumFrames(f),numAverages) != 0
+		throw(DomainError(numAverages, "`numAverages` must be a divider of $(acqNumFrames(f))"))
+	end
+	
+	# is there a way to rule out calibration scans?
+	
+	# get data, exept for measurement data
+	params = loadMetadata(f)
+	loadMeasParams(f, params, skipMeasData = true)
+	loadCalibParams(f, params)
+	loadRecoParams(f, params)
+
+	# uuid and time newly created on saving MDF
+	delete!(params,:uuid)
+	delete!(params,:time)
+	
+	# update measurement data
+	Nnew = div(acqNumFrames(f),numAverages)
+	data = measData(f)
+	if measIsSparsityTransformed(f)
+		error("No block averaging of sparsity transformed data possible")
+	elseif measIsFramePermutation(f)
+		error("No block averaging of data with frame permutation possible")
+	else
+		if measIsFastFrameAxis(f)
+			N,J,C,KW = size(data)
+			data = reshape(data,numAverages,Nnew,J,C,KW)
+			data = mean(data, dims=1) # creates Float64 data if eltype is <: Integer
+			data = reshape(data,Nnew,J,C,KW)
+		else
+			J,C,KW,N = size(data)
+			data = reshape(data,J,C,KW,numAverages,Nnew)
+			data = mean(data, dims=4) # creates Float64 data if eltype is <: Integer
+			data = reshape(data,J,C,KW,Nnew)
+		end
+		if eltype(data) == Float64
+			data = Float32.(data) # Float64 is not necessary
+		end
+		setparam!(params, :measData, data)
+	end
+  	
+	# update measurement parameters
+	p = measIsBGFrame(f)
+	p = reshape(p,numAverages,Nnew)
+	p = any(p, dims=1) # all blocks with at least one background frames will be labeled as background
+	p = reshape(p,Nnew)
+	setparam!(params, :measIsBGFrame, p)
+
+	# update acquisition parameters
+	setparam!(params, :acqNumFrames, Nnew)
+	setparam!(params, :acqNumAverages, acqNumAverages(f)*numAverages)
+
+  	return saveasMDF(filenameOut, params)
 end
 
 function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
