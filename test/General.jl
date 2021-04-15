@@ -259,3 +259,30 @@ end
 
 
 end
+
+@testset "Testing Block Averaging" begin
+    measPath = "./data/mdf/measurement_V2.mdf"
+    avgMeasPath = "./data/mdf/avg.mdf"
+    mdf = MPIFile(measPath)
+
+	numF = acqNumFrames(mdf)
+	numA = acqNumAverages(mdf)
+	numAverages = 500
+	
+	# test exceptions, where no averaging should be done
+	@test_throws DomainError blockAverage(avgMeasPath, mdf, 41)
+	
+	# average data
+	blockAverage(avgMeasPath, mdf, numAverages)
+	mdfavg = MPIFile(avgMeasPath)
+	
+	# test averaged data
+	@test mean(measData(mdf),dims=4) ≈ measData(mdfavg)
+	
+	# test new acquisition parameters
+	@test acqNumFrames(mdfavg) == div(numF,numAverages)
+	@test acqNumAverages(mdfavg) == numA*numAverages
+	
+	# test new measurement parameters
+	@test [any(measIsBGFrame(mdf))] == measIsBGFrame(mdfavg)
+end
