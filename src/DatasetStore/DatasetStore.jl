@@ -126,6 +126,10 @@ function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false, storeFor
   # pretend to be a measurement to enforce loading data from time domain in case post processed data is not available
   f = MPIFile(path(e), isCalib=false)
 
+  if !isConvertibleToMDF(f)
+    return ""
+  end
+
   if iscalib(e)
     exportpath = getNewCalibPath(mdf)
     saveasMDF(exportpath, f, applyCalibPostprocessing=true)
