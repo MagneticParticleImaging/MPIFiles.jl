@@ -1,6 +1,6 @@
 @testset "MultiMPIFile submodule" begin
 
-fnMeasBruker = "./data/measurement"
+fnMeasBruker = "./data/BrukerStore/20150915_102110_Wuerfelphantom_1_1/18"
 fnMeasMultiV2 = "./data/mdf/measurement_multi_V2.mdf"
 
 
