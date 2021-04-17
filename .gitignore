@@ -2,6 +2,6 @@
 *.jl.*.cov
 *.jl.mem
 
-test/data*
+test/data/*
 
 Manifest.toml
