@@ -1,7 +1,7 @@
 @testset "Testing Custom SF and Meas submodule" begin
 
-customSF = "./data/customSystemMatrixFF"
-customMeas = "./data/customMeasFF"
+customSF = "./data/BrukerStore/20200603_172811_EasyAxisContrast_1_1/245"
+customMeas = "./data/BrukerStore/20200603_172811_EasyAxisContrast_1_1/245"
 
 fnCustomSF_FF = "./data/mdf/customSystemMatrixFF.mdf"
 
