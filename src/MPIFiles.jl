@@ -253,9 +253,9 @@ include("SystemMatrix.jl")
 include("FrequencyFilter.jl")
 include("Conversion.jl")
 include("RecoData.jl")
-include("DatasetStore.jl")
+include("DatasetStore/DatasetStore.jl")
 include("MixingFactors.jl")
-include("positions/Positions.jl")
+include("Positions/Positions.jl")
 
 
 end # module

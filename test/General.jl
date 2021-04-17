@@ -1,8 +1,9 @@
 @testset "Testing General submodule" begin
 
-fnMeasBruker = "./data/measurement"
-fnSMBruker = "./data/systemMatrix"
-fnSM1DBruker = "./data/systemMatrix1D"
+fnMeasBruker = "./data/BrukerStore/20150915_102110_Wuerfelphantom_1_1/18"
+fnSMBruker = "./data/BrukerStore/20141121_130749_CalibrationScans_1_1/76"
+fnSM1DBruker = "./data/BrukerStore/20170807_142514_Service_1_1/89/"
+
 fnMeasV1 = "./data/mdf/measurement_V1.mdf"
 fnMeasV2 = "./data/mdf/measurement_V2.mdf"
 fnSMV1 = "./data/mdf/systemMatrix_V1.mdf"

@@ -2,33 +2,51 @@ using MPIFiles, Test
 
 @testset "Testing DatasetStore submodule" begin
 
-store = MDFDatasetStore(joinpath(@__DIR__, "MDFStore"))
-@test readonly(store) == false
-empty!(store)
+# Bruker store
 
-# Study handling
+storeA = BrukerDatasetStore(joinpath(@__DIR__, "data", "BrukerStore"))
+@test readonly(storeA) == true
 
-studyA = Study(store,"StudyA")
-studyB = Study(store,"StudyB")
+studiesA = getStudies(storeA)
+@test id.(studiesA) == ["SF", "Wuerfelphantom", "Size Distributions"]
 
-addStudy(store, studyA)
-addStudy(store, studyB)
+# MDF store
 
-studies = getStudies(store)
+storeB = MDFDatasetStore(joinpath(@__DIR__, "data", "MDFStoreA"))
+@test readonly(storeB) == false
+empty!(storeB)
+
+# First add studies and remove them
+studyA = Study(storeB,"StudyA")
+studyB = Study(storeB,"StudyB")
+
+addStudy(storeB, studyA)
+addStudy(storeB, studyB)
+
+studies = getStudies(storeB)
 @test studies == [studyA, studyB]
 
 remove(studyB)
-studies = getStudies(store)
+studies = getStudies(storeB)
 @test studies == [studyA]
+
+empty!(storeB)
+
+
+# Now lets copy over the Bruker studies
+exportData(storeA, storeB)
+storeC = MDFDatasetStore(joinpath(@__DIR__, "data", "MDFStoreB"))
+empty!(storeC)
+exportData(storeB, storeC)
 
 # Experiment handling
 
-exps = getExperiments(store, studyA)
-@test exps == Experiment[]
-@info getNewExperimentNum(store,studyA) == 1
+#exps = getExperiments(storeB, studyA)
+#@test exps == Experiment[]
+#@info getNewExperimentNum(storeB,studyA) == 1
 
 
 # Calibration handling
-@info getNewCalibNum(store) == 1
+@info getNewCalibNum(storeB) == 1
 
 end
