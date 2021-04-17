@@ -20,6 +20,7 @@ if !isdir("data")
   rm("data.zip")
 end
 
+include("DatasetStore.jl")
 include("Cartesian.jl")
 include("Positions.jl")
 include("General.jl")

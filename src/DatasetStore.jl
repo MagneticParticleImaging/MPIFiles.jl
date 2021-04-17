@@ -7,6 +7,8 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
 
 ########################################
 
+abstract type DatasetStore end
+
 # The following are base types describing
 # the dataset store at a certain level
 struct Study
@@ -14,12 +16,22 @@ struct Study
   name::String
   subject::String
   date::DateTime
+
+  Study(path::String,name::String,subject::String,date::DateTime) = new(path,name,subject,date)
+
+  function Study(store::DatasetStore, name::String, date::DateTime = now(), subject::String="")
+    #remove Milliseconds
+    date_ = DateTime(split(string(date),".")[1])
+
+    path = joinpath( studydir(store), getMDFStudyFolderName(name,date_))
+    return new(path,name,subject,date_)
+  end
 end
 
 
 id(s::Study) = s.name
 
-# might not be so clever to use explicity type fields here
+# might not be so clever to use an explicit type fields here
 # maybe better a dict
 struct Experiment
   path::String
@@ -46,8 +58,6 @@ mutable struct Visualization
   params::Dict
 end
 
-abstract type DatasetStore end
-
 struct BrukerDatasetStore <: DatasetStore
    path::String
 end
@@ -66,14 +76,12 @@ struct MDFDatasetStore <: DatasetStore
   path::String
 
   function MDFDatasetStore(path::String)
-    if ispath(path)
-      mkpath(joinpath(path,"measurements"))
-      try_chmod(joinpath(path,"measurements"), 0o777, recursive=true)
-      mkpath(joinpath(path,"reconstructions"))
-      try_chmod(joinpath(path,"reconstructions"), 0o777, recursive=true)
-      mkpath(joinpath(path,"calibrations"))
-      try_chmod(joinpath(path,"calibrations"), 0o777, recursive=true)
-    end
+    mkpath(path)
+    mkpath(joinpath(path,"measurements"))
+    mkpath(joinpath(path,"reconstructions"))
+    mkpath(joinpath(path,"calibrations"))
+    t = @elapsed try_chmod(joinpath(path,"path"), 0o777, recursive=true)
+    @info "chmod MDFStore took $(t) seconds"
     return new(path)
   end
 end
@@ -118,6 +126,8 @@ function remove(study::Study)
     #TODO remove recos!
   end
 end
+
+
 
 function getExperiment(path::String)
 
@@ -282,6 +292,12 @@ function addStudy(d::MDFDatasetStore, study::Study)
   try_chmod(studypath, 0o770, recursive=true)
 
   nothing
+end
+
+function Base.empty!(d::MDFDatasetStore)
+  studies = getStudies(d)
+  remove.(studies)
+  rm(calibdir(d), recursive=true)
 end
 
 @static if Sys.isunix()
