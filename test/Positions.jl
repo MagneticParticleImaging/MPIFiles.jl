@@ -1,4 +1,4 @@
-pospath = "./data/positions/Positions.h5"
+pospath = joinpath(tmpdir,"positions/Positions.h5")
 
 @testset "Testing Positions submodule" begin
   shp = [3,3,3]

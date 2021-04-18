@@ -1,8 +1,8 @@
 @testset "Testing Reco submodule" begin
 
-fnRecoV1 = "./data/mdf/reco_V1.mdf"
-fnRecoV2 = "./data/mdf/reco_V2.mdf"
-fnRecoV2b = "./data/mdf/reco_V2b.mdf"
+fnRecoV1 = joinpath(datadir,"mdf","reco_V1.mdf")
+fnRecoV2 = joinpath(tmpdir,"mdf","reco_V2.mdf")
+fnRecoV2b = joinpath(tmpdir,"mdf","reco_V2b.mdf")
 
 mdfv1 = MPIFile(fnRecoV1)
 @test typeof(mdfv1) <: MDFFileV1

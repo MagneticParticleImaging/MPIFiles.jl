@@ -1,0 +1,7 @@
+[data]
+git-tree-sha1 = "9ee98d5e38a1834d8e3dae6875c549660e32890b"
+lazy = true
+
+    [[data.download]]
+    url = "http://media.tuhh.de/ibi/MPIFiles/data.tar.gz"
+    sha256 = "ac36bfae4a4beff230b367b186502f8e9e8e5d3f44d5d9d3cbaa83dd547ecbd2"

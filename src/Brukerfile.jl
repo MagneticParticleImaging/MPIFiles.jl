@@ -362,24 +362,27 @@ rxNumChannels(b::BrukerFile) = sum( selectedReceivers(b)[1:3] .== true )
 rxBandwidth(b::BrukerFile) = parse(Float64,b["PVM_MPI_Bandwidth"])*1e6
 rxNumSamplingPoints(b::BrukerFile) = div(parse(Int64,b["ACQ_size"][1]),numSubPeriods(b))
 function rxTransferFunction(b::BrukerFile)
-  filename = b["ACQ_comment"]
-  if isfile(filename)
+  filename = rxTransferFunctionFileName(b)
+  if filename != nothing
     return sampleTF(TransferFunction(filename), b)
   else
     return nothing
   end
 end
 function rxTransferFunctionFileName(b::BrukerFile)
-  filename = b["ACQ_comment"]
-  if isfile(filename)
-    return filename
+  filenameA = b["ACQ_comment"]
+  filenameB = joinpath(b.path*"/", filenameA)
+
+  if isfile(filenameB)
+    return filenameB
+  elseif isfile(filenameA)
+    return filenameA
   else
     return nothing
    end
 end
 function rxHasTransferFunction(b::BrukerFile)
-  filename = b["ACQ_comment"]
-  return isfile(filename)
+  return rxTransferFunctionFileName(b) != nothing
 end
 rxInductionFactor(b::BrukerFile) = nothing
 rxUnit(b::BrukerFile) = "a.u."

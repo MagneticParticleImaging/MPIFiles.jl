@@ -7,23 +7,23 @@ using Statistics
 using Test
 using UUIDs
 using Unitful
+using Scratch
+using LazyArtifacts
 
-if !isdir("data")
-  @info "download data.zip"
-  HTTP.open("GET", "http://media.tuhh.de/ibi/MPIFiles/data.zip") do http
-    open("data.zip", "w") do file
-        write(file, http)
-    end
-  end
-  @info "extracting data"
-  run(`unzip -oq data.zip`)
-  rm("data.zip")
-end
+const datadir = joinpath(artifact"data", "data")
+@info "The test data is located at $datadir."
+
+const tmpdir  = @get_scratch!("tmp")
+@info "If you want to check the output of the tests, please head to $tmpdir."
+
+mkpath(joinpath(tmpdir,"mdf"))
+mkpath(joinpath(tmpdir,"positions"))
+mkpath(joinpath(tmpdir,"transferFunction"))
 
 include("DatasetStore.jl")
+include("General.jl")
 include("Cartesian.jl")
 include("Positions.jl")
-include("General.jl")
 include("MDFv1.jl")
 include("MultiMPIFile.jl")
 include("Reco.jl")

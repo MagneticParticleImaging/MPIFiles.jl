@@ -2,10 +2,10 @@
 
 # Download test files
 
-fnMeasV1 = "./data/mdf/measurement_V1.mdf"
-fnMeasV2 = "./data/mdf/measurement_V2c.mdf"
-fnSMV1 = "./data/mdf/systemMatrix_V1.mdf"
-fnSMV2 = "./data/mdf/systemMatrix_V2c.mdf"
+fnMeasV1 = joinpath(datadir,"mdf","measurement_V1.mdf")
+fnMeasV2 = joinpath(tmpdir,"mdf","measurement_V2c.mdf")
+fnSMV1 = joinpath(datadir,"mdf","systemMatrix_V1.mdf")
+fnSMV2 = joinpath(tmpdir,"mdf","systemMatrix_V2c.mdf")
 
 saveasMDF(fnMeasV2, fnMeasV1)
 saveasMDF(fnSMV2, fnSMV1)

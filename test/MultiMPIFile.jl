@@ -1,7 +1,7 @@
 @testset "MultiMPIFile submodule" begin
 
-fnMeasBruker = "./data/BrukerStore/20150915_102110_Wuerfelphantom_1_1/18"
-fnMeasMultiV2 = "./data/mdf/measurement_multi_V2.mdf"
+fnMeasBruker = joinpath(datadir,"BrukerStore/20150915_102110_Wuerfelphantom_1_1/18")
+fnMeasMultiV2 = joinpath(tmpdir,"mdf","measurement_multi_V2.mdf")
 
 
 measBruker = MultiMPIFile([fnMeasBruker,fnMeasBruker,fnMeasBruker])

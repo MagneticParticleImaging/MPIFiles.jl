@@ -4,7 +4,7 @@ using MPIFiles, Test
 
 # Bruker store
 
-storeA = BrukerDatasetStore(joinpath(@__DIR__, "data", "BrukerStore"))
+storeA = BrukerDatasetStore(joinpath(datadir, "BrukerStore"))
 @test readonly(storeA) == true
 
 studiesA = getStudies(storeA)
@@ -12,7 +12,7 @@ studiesA = getStudies(storeA)
 
 # MDF store
 
-storeB = MDFDatasetStore(joinpath(@__DIR__, "data", "MDFStoreA"))
+storeB = MDFDatasetStore(joinpath(tmpdir, "MDFStoreA"))
 @test readonly(storeB) == false
 empty!(storeB)
 
@@ -35,7 +35,7 @@ empty!(storeB)
 
 # Now lets copy over the Bruker studies
 exportData(storeA, storeB)
-storeC = MDFDatasetStore(joinpath(@__DIR__, "data", "MDFStoreB"))
+storeC = MDFDatasetStore(joinpath(tmpdir, "MDFStoreB"))
 empty!(storeC)
 exportData(storeB, storeC)
 

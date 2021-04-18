@@ -1,9 +1,9 @@
 using MPIFiles
 using Test
 
-fnMeasBruker = "./data/BrukerStore/20150915_102110_Wuerfelphantom_1_1/18"
-tfpath = "./data/transferFunction/example.s1p"
-tfh5path = "./data/transferFunction/example.h5"
+fnMeasBruker = joinpath(datadir,"BrukerStore/20150915_102110_Wuerfelphantom_1_1/18")
+tfpath = joinpath(datadir,"transferFunction/example.s1p")
+tfh5path = joinpath(tmpdir,"transferFunction/example.h5")
 
 @testset "Testing TransferFunction submodule" begin
   a = TransferFunction(tfpath, frequencyWeighting=true)

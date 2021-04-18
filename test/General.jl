@@ -1,19 +1,20 @@
 @testset "Testing General submodule" begin
 
-fnMeasBruker = "./data/BrukerStore/20150915_102110_Wuerfelphantom_1_1/18"
-fnSMBruker = "./data/BrukerStore/20141121_130749_CalibrationScans_1_1/76"
-fnSM1DBruker = "./data/BrukerStore/20170807_142514_Service_1_1/89/"
+fnMeasBruker = joinpath(datadir,"BrukerStore/20150915_102110_Wuerfelphantom_1_1/18")
+fnSMBruker = joinpath(datadir,"BrukerStore/20141121_130749_CalibrationScans_1_1/76")
+fnSM1DBruker = joinpath(datadir,"BrukerStore/20170807_142514_Service_1_1/89")
 
-fnMeasV1 = "./data/mdf/measurement_V1.mdf"
-fnMeasV2 = "./data/mdf/measurement_V2.mdf"
-fnSMV1 = "./data/mdf/systemMatrix_V1.mdf"
-fnSMV2 = "./data/mdf/systemMatrix_V2.mdf"
-fnSMV3 = "./data/mdf/systemMatrix_V3.mdf"
-fnSMV4 = "./data/mdf/systemMatrix_V4.mdf"
-fnSMV5 = "./data/mdf/systemMatrix_V5.mdf"
-fnSMV6 = "./data/mdf/systemMatrix_V6.mdf"
-fnSM1DV1 = "./data/mdf/systemMatrix1D_V1.mdf"
-fnSM1DV2 = "./data/mdf/systemMatrix1D_V2.mdf"
+
+fnMeasV1 = joinpath(tmpdir,"mdf","measurement_V1.mdf")
+fnMeasV2 = joinpath(tmpdir,"mdf","measurement_V2.mdf")
+fnSMV1 = joinpath(tmpdir,"mdf","systemMatrix_V1.mdf")
+fnSMV2 = joinpath(tmpdir,"mdf","systemMatrix_V2.mdf")
+fnSMV3 = joinpath(tmpdir,"mdf","systemMatrix_V3.mdf")
+fnSMV4 = joinpath(tmpdir,"mdf","systemMatrix_V4.mdf")
+fnSMV5 = joinpath(tmpdir,"mdf","systemMatrix_V5.mdf")
+fnSMV6 = joinpath(tmpdir,"mdf","systemMatrix_V6.mdf")
+fnSM1DV1 = joinpath(tmpdir,"mdf","systemMatrix1D_V1.mdf")
+fnSM1DV2 = joinpath(tmpdir,"mdf","systemMatrix1D_V2.mdf")
 
 measBruker = MPIFile(fnMeasBruker)
 @test typeof(measBruker) == BrukerFileMeas
@@ -72,7 +73,7 @@ for mdf in (measBruker,mdfv2)
   @test rxNumSamplingPoints(mdf) == 1632
   @test rxDataConversionFactor(mdf) == repeat([1.0, 0.0], outer=(1,rxNumChannels(mdf)))
   @test size(rxTransferFunction(mdf)) == (817, 3)
-  @test rxTransferFunctionFileName(mdf) == "./data/transferFunction/tf.h5"
+  @test occursin("../../../transferFunction/tf.h5", rxTransferFunctionFileName(mdf))
 
   @test acqNumAverages(mdf) == 1
   @test acqNumFrames(mdf) == 500
@@ -132,7 +133,7 @@ for sm in (smBruker,smv2,smv3)
 
   @test size(rxTransferFunction(sm)) == (817, 3)
   @test rxHasTransferFunction(sm) == true
-  @test rxTransferFunctionFileName(sm) == "./data/transferFunction/tf.h5"
+  @test occursin("../../../transferFunction/tf.h5", rxTransferFunctionFileName(sm))
 
   @test measIsFourierTransformed(sm) == true
   @test measIsTFCorrected(sm) == false
@@ -262,9 +263,9 @@ end
 end
 
 @testset "Testing Block Averaging" begin
-    measPath = "./data/mdf/measurement_V2.mdf"
-    avgMeasPath = "./data/mdf/avg.mdf"
-    mdf = MPIFile(measPath)
+  measPath = joinpath(tmpdir,"mdf","measurement_V2.mdf")
+  avgMeasPath = joinpath(tmpdir,"mdf","avg.mdf")
+  mdf = MPIFile(measPath)
 
 	numF = acqNumFrames(mdf)
 	numA = acqNumAverages(mdf)

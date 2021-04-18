@@ -1,8 +1,8 @@
 @testset "Testing Cartesian Sequence submodule" begin
 
-fnSMTD = "./data/mdf/systemMatrixCartesian.mdf"
-fnSMFDMP = "./data/mdf/systemMatrixCartesianMP.mdf"
-fnSMFDSP = "./data/mdf/systemMatrixCartesianSP.mdf"
+fnSMTD = joinpath(datadir,"mdf","systemMatrixCartesian.mdf")
+fnSMFDMP = joinpath(tmpdir,"mdf","systemMatrixCartesianMP.mdf")
+fnSMFDSP = joinpath(tmpdir,"mdf","systemMatrixCartesianSP.mdf")
 
 smTD = MPIFile(fnSMTD)
 @test typeof(smTD) <: MDFFileV2

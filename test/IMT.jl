@@ -1,7 +1,7 @@
 @testset "Testing IMT submodule" begin
 
-fnMeas = "./data/imt/measurementIMT2D.h5"
-fnCalib = "./data/imt/systemMatrixIMT2D.h5"
+fnMeas = joinpath(datadir,"imt/measurementIMT2D.h5")
+fnCalib = joinpath(datadir,"imt/systemMatrixIMT2D.h5")
 
 measIMT = MPIFile(fnMeas)
 calibIMT = MPIFile(fnCalib)
