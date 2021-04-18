@@ -180,14 +180,13 @@ S_loadedfromproc = systemMatrix(smBruker)
 
 # Compression of calib files
 
-
-compressCalibMDF(fnSMV4, smv2, SNRThresh=0.0)
+saveasMDF(fnSMV4, smv2, SNRThresh=0.0)
 smv4 = MPIFile(fnSMV4)
 @test size(calibSNR(smv4), 1) == 817
 @test length(filterFrequencies(smv4)) == 817*3
 
 
-compressCalibMDF(fnSMV5, smv2, SNRThresh=4.0)
+saveasMDF(fnSMV5, smv2, SNRThresh=4.0)
 smv5 = MPIFile(fnSMV5)
 @test size(calibSNR(smv5), 1) == 110
 @test length(filterFrequencies(smv5)) == 110*3
@@ -203,7 +202,7 @@ S1 = getSystemMatrix(smv5, freq)
 S2 = getSystemMatrix(smv2, freq)
 @test S1  == S2
 
-compressCalibMDF(fnSMV6, smv2, SNRThresh=4.0, sparsityTrafoRedFactor=0.2)
+saveasMDF(fnSMV6, smv2, SNRThresh=4.0, sparsityTrafoRedFactor=0.2)
 smv6 = MPIFile(fnSMV6)
 
 S1 = getSystemMatrix(smv6, freq)

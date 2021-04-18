@@ -122,9 +122,13 @@ function remove(exp::Experiment)
   end
 end
 
-function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false, storeForwardRef=false)
+function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false, storeForwardRef=false, kargs...)
   # pretend to be a measurement to enforce loading data from time domain in case post processed data is not available
-  f = MPIFile(path(e), isCalib=false)
+  # in case of compression isCalib=false right now does not work, thus we disable it.
+  
+  isCalib = (haskey(kargs, :SNRThresh) || haskey(kargs, :sparsityTrafoRedFactor)) ? true : false
+
+  f = MPIFile(path(e), isCalib=isCalib)
 
   if !isConvertibleToMDF(f)
     return ""
@@ -132,7 +136,7 @@ function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false, storeFor
 
   if iscalib(e)
     exportpath = getNewCalibPath(mdf)
-    saveasMDF(exportpath, f, applyCalibPostprocessing=true)
+    saveasMDF(exportpath, f; applyCalibPostprocessing=true, kargs...)
     @info "Calibration data from $path successfully exported to $exportpath." 
   else
     name = studyName(f)
@@ -140,7 +144,7 @@ function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false, storeFor
     date = studyTime(f)
     s = Study(mdf, name; date=date, subject=subject)
     exportpath = getNewExperimentPath(s)
-    saveasMDF(exportpath, f)
+    saveasMDF(exportpath, f; kargs...)
     @info "Measurement data from $path successfully exported to $exportpath." 
   end
 

@@ -37,7 +37,7 @@ empty!(storeB)
 exportData(storeA, storeB)
 storeC = MDFDatasetStore(joinpath(tmpdir, "MDFStoreB"))
 empty!(storeC)
-exportData(storeB, storeC)
+exportData(storeB, storeC, SNRThresh=4.0)
 
 # Experiment handling
 

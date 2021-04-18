@@ -11,7 +11,7 @@ end
 
 # we do not support all conversion possibilities
 function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocessing=false,
-                     numPeriodAverages=1, numPeriodGrouping=1, experimentNumber=nothing)
+                     numPeriodAverages=1, numPeriodGrouping=1, experimentNumber=nothing, kargs...)
   params = loadMetadata(f)
 
   if experimentNumber != nothing
@@ -178,6 +178,13 @@ function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
 end
 
 function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, enforceConversion=false, kargs...)
+  
+  # This is a hack. Needs to be fixed properly
+  if(haskey(kargs, :SNRThresh) || haskey(kargs, :sparsityTrafoRedFactor)) && calibSNR(f) != nothing
+    compressCalibMDF(filenameOut, f; kargs...)
+    return
+  end
+  
   if enforceConversion || isConvertibleToMDF(f)
     params = loadDataset(f;kargs...)
     if filenameBG != nothing
@@ -187,6 +194,7 @@ function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, enforc
   else
     error("File not Convertible")
   end
+  return
 end
 
 
@@ -226,6 +234,61 @@ function compressCalibMDF(filenamesOut::Vector{String}, f::MultiMPIFile; SNRThre
     compressCalibMDF(filenamesOut[i], f_, idx; kargs...)
   end
 end
+
+function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
+                          sparsityTrafoRedFactor=1.0, sparsityTrafo="DCT-IV", kargs...)
+  params = loadMetadata(f)
+  loadMeasParams(f, params, skipMeasData = true)
+  loadCalibParams(f, params)
+  params[:calibSNR] = calibSNR(f)
+  loadRecoParams(f, params)
+
+  data = systemMatrixWithBG(f, idx)
+
+  params[:calibSNR] = params[:calibSNR][idx,:,:]
+  if haskey(params, :rxTransferFunction)
+    params[:rxTransferFunction] = params[:rxTransferFunction][idx,:]
+  end
+  params[:measIsFrequencySelection] = true
+  params[:measFrequencySelection] = idx
+
+  if sparsityTrafoRedFactor == 1.0
+    params[:measData] = data
+  else
+    B = linearOperator(sparsityTrafo, calibSize(f))
+    N = prod(calibSize(f))
+    NBG = size(data,1) - N
+    D = size(data,3)
+    P = size(data,4)
+    NRed = max(1, floor(Int, sparsityTrafoRedFactor*N))
+    dataOut = similar(data, NBG+NRed, length(idx), D, P)
+    subsamplingIndices = zeros(Int32, NRed, length(idx), D, P)
+
+    fgdata = data[measFGFrameIdx(f),:,:,:]
+    bgdata = data[measBGFrameIdx(f),:,:,:]
+
+    dataOut[(NRed+1):end,:,:,:] = bgdata
+
+    for k=1:length(idx), d=1:D, p=1:P
+      I = B * fgdata[:,k,d,p]
+      subsamplingIndices[:,k,d,p] = round.(Int32,reverse(sortperm(abs.(I)),dims=1)[1:NRed])
+      dataOut[1:NRed,k,d,p] = I[vec(subsamplingIndices[:,k,d,p])]
+    end
+
+    params[:measData] = dataOut
+    params[:measIsSparsityTransformed] = true
+    params[:measSparsityTransformation] = sparsityTrafo
+    params[:measSubsamplingIndices] = subsamplingIndices
+
+    bgFrame = zeros(Bool, NRed+NBG)
+    bgFrame[(NRed+1):end] .= true
+    params[:measIsBGFrame] = bgFrame
+    params[:acqNumFrames] = NRed+NBG
+  end
+
+  saveasMDF(filenameOut, params)
+end
+
 
 function blockAverage(filenameOut::String, f::MPIFile, numAverages)
 	#block averaging is not possible
@@ -281,63 +344,8 @@ function blockAverage(filenameOut::String, f::MPIFile, numAverages)
 	setparam!(params, :acqNumFrames, Nnew)
 	setparam!(params, :acqNumAverages, acqNumAverages(f)*numAverages)
 
-  	return saveasMDF(filenameOut, params)
+  return saveasMDF(filenameOut, params)
 end
-
-function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
-                          sparsityTrafoRedFactor=1.0, sparsityTrafo="DCT-IV")
-  params = loadMetadata(f)
-  loadMeasParams(f, params, skipMeasData = true)
-  loadCalibParams(f, params)
-  params[:calibSNR] = calibSNR(f)
-  loadRecoParams(f, params)
-
-  data = systemMatrixWithBG(f, idx)
-
-  params[:calibSNR] = params[:calibSNR][idx,:,:]
-  if haskey(params, :rxTransferFunction)
-    params[:rxTransferFunction] = params[:rxTransferFunction][idx,:]
-  end
-  params[:measIsFrequencySelection] = true
-  params[:measFrequencySelection] = idx
-
-  if sparsityTrafoRedFactor == 1.0
-    params[:measData] = data
-  else
-    B = linearOperator(sparsityTrafo, calibSize(f))
-    N = prod(calibSize(f))
-    NBG = size(data,1) - N
-    D = size(data,3)
-    P = size(data,4)
-    NRed = max(1, floor(Int, sparsityTrafoRedFactor*N))
-    dataOut = similar(data, NBG+NRed, length(idx), D, P)
-    subsamplingIndices = zeros(Int32, NRed, length(idx), D, P)
-
-    fgdata = data[measFGFrameIdx(f),:,:,:]
-    bgdata = data[measBGFrameIdx(f),:,:,:]
-
-    dataOut[(NRed+1):end,:,:,:] = bgdata
-
-    for k=1:length(idx), d=1:D, p=1:P
-      I = B * fgdata[:,k,d,p]
-      subsamplingIndices[:,k,d,p] = round.(Int32,reverse(sortperm(abs.(I)),dims=1)[1:NRed])
-      dataOut[1:NRed,k,d,p] = I[vec(subsamplingIndices[:,k,d,p])]
-    end
-
-    params[:measData] = dataOut
-    params[:measIsSparsityTransformed] = true
-    params[:measSparsityTransformation] = sparsityTrafo
-    params[:measSubsamplingIndices] = subsamplingIndices
-
-    bgFrame = zeros(Bool, NRed+NBG)
-    bgFrame[(NRed+1):end] .= true
-    params[:measIsBGFrame] = bgFrame
-    params[:acqNumFrames] = NRed+NBG
-  end
-
-  saveasMDF(filenameOut, params)
-end
-
 
 function loadAndProcessFFData(f::BrukerFile, nAverages::Int64, skipSwitchingFrames::Int64;addToEnd=0)
   dataFilename = joinpath(f.path,"rawdata.job0")
