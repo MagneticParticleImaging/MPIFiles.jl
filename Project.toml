@@ -22,6 +22,7 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 CodecZlib = "944b1d66-785c-5afd-91f1-9de20f533193"
 Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [compat]
 AxisArrays = "0.3, 0.4"

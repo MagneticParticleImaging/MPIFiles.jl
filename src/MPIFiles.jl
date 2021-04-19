@@ -19,6 +19,9 @@ const axes = Base.axes
 @reexport using Unitful
 using CodecZlib
 using Tar
+using Pkg.PlatformEngines
+using Pkg.GitTools
+using Pkg.Artifacts
 
 if VERSION < v"1.1"
   isnothing(x) = x == nothing

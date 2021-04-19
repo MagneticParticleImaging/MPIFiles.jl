@@ -3,7 +3,7 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
        findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum,
        exportData, generateSFDatabase, loadSFDatabase, addVisu, readonly, getNewCalibNum,
-       calibdir, try_chmod, getMDFStudyFolderName, path, makeTarGzip
+       calibdir, try_chmod, getMDFStudyFolderName, path, makeTarGzip, createArtifact
 
 include("Utils.jl")
 
@@ -200,6 +200,20 @@ end
 function makeTarGzip(d::DatasetStore)
   filename = joinpath(splitpath(d.path)...)*".tar.gz" # this ensures that a trailing / is removed
   makeTarGzip(d.path, filename)
+end
+
+function createArtifact(d::DatasetStore, url="https://")
+  makeTarGzip(d)
+  tarball = joinpath(splitpath(d.path)...)*".tar.gz" 
+  artifact_toml = joinpath(d.path, "..", "Artifacts.toml")
+  tarball_hash = bytes2hex(GitTools.blob_hash(tarball))
+  name = splitpath(d.path)[end]
+
+  hash = create_artifact() do artifact_dir
+    unpack(tarball, artifact_dir)
+  end
+  bind_artifact!(artifact_toml, name, hash;
+                 download_info=[(url, tarball_hash)],lazy=true, force=true)
 end
 
 

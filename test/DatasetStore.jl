@@ -38,7 +38,7 @@ exportData(storeA, storeB)
 storeC = MDFDatasetStore(joinpath(tmpdir, "MDFStoreB"))
 empty!(storeC)
 exportData(storeB, storeC, SNRThresh=4.0)
-makeTarGzip(storeB)
+createArtifact(storeB, "https://")
 
 # Experiment handling
 
