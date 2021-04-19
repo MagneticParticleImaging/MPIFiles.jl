@@ -204,6 +204,7 @@ include("FramePermutation.jl")
 include("MDF.jl")
 include("Brukerfile.jl")
 include("IMT.jl")
+include("MDFInMemory.jl")
 
 # This dispatches on the file extension and automatically
 # generates the correct type
