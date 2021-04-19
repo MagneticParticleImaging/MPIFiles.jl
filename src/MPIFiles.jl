@@ -17,6 +17,8 @@ const axes = Base.axes
 @reexport using Mmap
 @reexport using Statistics
 @reexport using Unitful
+using CodecZlib
+using Tar
 
 if VERSION < v"1.1"
   isnothing(x) = x == nothing

@@ -38,6 +38,7 @@ exportData(storeA, storeB)
 storeC = MDFDatasetStore(joinpath(tmpdir, "MDFStoreB"))
 empty!(storeC)
 exportData(storeB, storeC, SNRThresh=4.0)
+makeTarGzip(storeB)
 
 # Experiment handling
 
@@ -47,6 +48,6 @@ exportData(storeB, storeC, SNRThresh=4.0)
 
 
 # Calibration handling
-@info getNewCalibNum(storeB) == 1
+@info getNewCalibNum(storeB) 
 
 end

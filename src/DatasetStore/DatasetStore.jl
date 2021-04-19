@@ -3,7 +3,7 @@ export Study, Experiment, Reconstruction, Visualization, DatasetStore,
        getExperiments, MDFDatasetStore, MDFStore, addReco, getReco, getRecons, findReco,
        findBrukerFiles, id, getVisus, getVisuPath, remove, addStudy, getNewExperimentNum,
        exportData, generateSFDatabase, loadSFDatabase, addVisu, readonly, getNewCalibNum,
-       calibdir, try_chmod, getMDFStudyFolderName, path
+       calibdir, try_chmod, getMDFStudyFolderName, path, makeTarGzip
 
 include("Utils.jl")
 
@@ -181,6 +181,25 @@ function exportData(store::D, mdf::MDFDatasetStore; kargs...) where D<:DatasetSt
   if D == MDFDatasetStore
     exportData(getCalibStudy(store), mdf; kargs...) 
   end
+end
+
+#########
+
+# generate tar balls and Julia Artifacts.
+function makeTarGzip(dir, filename)
+  tar_gz = open(filename, write=true)
+  tar = GzipCompressorStream(tar_gz)
+  Tar.create(dir, tar)
+  close(tar)
+end
+
+function makeTarGzip(d::DatasetStore, filename)
+  makeTarGzip(d.path, filename)
+end
+
+function makeTarGzip(d::DatasetStore)
+  filename = joinpath(splitpath(d.path)...)*".tar.gz" # this ensures that a trailing / is removed
+  makeTarGzip(d.path, filename)
 end
 
 
