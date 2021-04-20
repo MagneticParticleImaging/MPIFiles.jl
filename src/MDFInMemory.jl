@@ -1,11 +1,58 @@
 using Unitful
 
-export MDFv2Root, MDFv2Study, MDFv2Experiment, MDFv2Tracer, MDFv2Scanner,
-       MDFv2Drivefield, MDFv2Receiver, MDFv2Acquisition,
-       MDFv2Measurement, MDFv2Calibration, MDFv2Reconstruction, MDFv2InMemory
+export MDFv2InMemoryPart, MDFv2Variables, MDFv2InMemoryPart, MDFv2Root, MDFv2Study,
+       MDFv2Experiment, MDFv2Tracer, MDFv2Scanner, MDFv2Drivefield, MDFv2Receiver,
+       MDFv2Acquisition, MDFv2Measurement, MDFv2Calibration, MDFv2Reconstruction, MDFv2InMemory
+
+export defaultMDFv2Root, defaultMDFv2Study, defaultMDFv2Experiment,
+       defaultMDFv2Tracer, defaultMDFv2Scanner, defaultMDFv2Drivefield,
+       defaultMDFv2Receiver, defaultMDFv2Acquisition, defaultMDFv2Measurement,
+       defaultMDFv2Calibration, defaultMDFv2Reconstruction, defaultMDFv2InMemory
+
+export checkConsistency
+
+abstract type MDFv2InMemoryPart end
+
+mutable struct MDFv2Variables
+  "tracer materials/injections for multi-color MPI"
+  A::Union{Int64, Nothing}
+  "acquired frames (N = O + E), same as a spatial position for calibration"
+  N::Union{Int64, Nothing}
+  "acquired background frames (E = N − O)"
+  E::Union{Int64, Nothing}
+  "acquired foreground frames (O = N − E)"
+  O::Union{Int64, Nothing}
+  "coefficients stored after sparsity transformation (B \\le O)"
+  B::Union{Int64, Nothing}
+  "periods within one frame"
+  J::Union{Int64, Nothing}
+  "partitions of each patch position"
+  Y::Union{Int64, Nothing}
+  "receive channels"
+  C::Union{Int64, Nothing}
+  "drive-field channels"
+  D::Union{Int64, Nothing}
+  "frequencies describing the drive-field waveform"
+  F::Union{Int64, Nothing}
+  "points sampled at receiver during one drive-field period"
+  V::Union{Int64, Nothing}
+  "sampling points containing processed data (W = V if no frequency selection or bandwidth reduction has been applied)"
+  W::Union{Int64, Nothing}
+  "frequencies describing the processed data (K = V/2 + 1 if no frequency selection or bandwidth reduction has been applied)"
+  K::Union{Int64, Nothing}
+  "frames in the reconstructed MPI data set"
+  Q::Union{Int64, Nothing}
+  "voxels in the reconstructed MPI data set"
+  P::Union{Int64, Nothing}
+
+  function MDFv2Variables()
+    return new(nothing, nothing, nothing, nothing, nothing, nothing, nothing,
+               nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing)
+  end
+end
 
 "Root group of an in-memory MDF"
-mutable struct MDFv2Root
+mutable struct MDFv2Root <: MDFv2InMemoryPart
   "UTC creation time of MDF data set"
   time::Union{DateTime, Missing}
   "Universally Unique Identifier (RFC 4122) of MDF file"
@@ -26,10 +73,10 @@ mutable struct MDFv2Root
   end
 end
 
-defaultMDFv2Root() = MDFv2Root(time=Dates.now(), uuid=UUIDs.uuid4(), "2.1.0")
+defaultMDFv2Root() = MDFv2Root(time=Dates.now(), uuid=UUIDs.uuid4(), version=VersionNumber("2.1.0"))
 
 "Study group of an in-memory MDF"
-mutable struct MDFv2Study
+mutable struct MDFv2Study <: MDFv2InMemoryPart
   "Short description of the study"
   description::Union{String, Missing}
   "Name of the study"
@@ -61,7 +108,7 @@ end
 defaultMDFv2Study() = MDFv2Study()
 
 "Experiment group of an in-memory MDF"
-mutable struct MDFv2Experiment
+mutable struct MDFv2Experiment <: MDFv2InMemoryPart
   "Short description of the experiment"
   description::Union{String, Missing}
   "Flag indicating if the data in this file is simulated rather than measured"
@@ -97,7 +144,7 @@ end
 defaultMDFv2Experiment() = MDFv2Experiment() # Should we create the UUID automatically?
 
 "Tracer group of an in-memory MDF; optional"
-mutable struct MDFv2Tracer
+mutable struct MDFv2Tracer <: MDFv2InMemoryPart
   "Batch of tracer"
   batch::Union{Vector{String}, Missing}
   "A mol(solute)/L no Molar concentration of solute per litre"
@@ -137,7 +184,7 @@ end
 defaultMDFv2Tracer() = MDFv2Tracer()
 
 "Scanner group of an in-memory MDF"
-mutable struct MDFv2Scanner
+mutable struct MDFv2Scanner <: MDFv2InMemoryPart
   "Diameter of the bore; optional"
   boreSize::Union{Float64, Nothing}
   "Facility where the MPI scanner is installed"
@@ -173,7 +220,7 @@ end
 defaultMDFv2Scanner() = MDFv2Scanner()
 
 "Drivefield subgroup of acquisition group of an in-memory MDF"
-mutable struct MDFv2Drivefield
+mutable struct MDFv2Drivefield <: MDFv2InMemoryPart
   "Base frequency to derive drive field frequencies"
   baseFrequency::Union{Float64, Missing}
   "Trajectory cycle is determined by lcm(divider)/baseFrequency. It will not change
@@ -215,7 +262,7 @@ end
 defaultMDFv2Drivefield() = MDFv2Drivefield()
 
 "Receiver subgroup of acquisition group of an in-memory MDF"
-mutable struct MDFv2Receiver
+mutable struct MDFv2Receiver <: MDFv2InMemoryPart
   "Bandwidth of the receiver unit"
   bandwidth::Union{Float64, Missing}
   "Dimension less scaling factor and offset (a_c, b_c) to convert raw data into a
@@ -257,7 +304,7 @@ end
 defaultMDFv2Receiver() = MDFv2Receiver(unit = "V")
 
 "Acquisition group of an in-memory MDF"
-mutable struct MDFv2Acquisition
+mutable struct MDFv2Acquisition <: MDFv2InMemoryPart
   "Gradient strength of the selection field in x, y, and z directions; optional"
   gradient::Union{Array{Float64, 4}, Nothing}
   "Number of block averages per drive-field period."
@@ -269,19 +316,19 @@ mutable struct MDFv2Acquisition
   "Offset field applied; optional"
   offsetField::Union{Array{Float64, 3}, Nothing}
   "UTC start time of MPI measurement"
-  time::Union{DateTime, Missing}
+  startTime::Union{DateTime, Missing}
 
-  drivefield::MDFv2Drivefield
-  receiver::MDFv2Receiver
+  drivefield::Union{MDFv2Drivefield, Missing}
+  receiver::Union{MDFv2Receiver, Missing}
 
   function MDFv2Acquisition(;
     gradient = nothing,
     numAverages = missing,
     numFrames = missing,
     numPeriodsPerFrame = missing,
-    offsetField = missing,
-    time = missing,
-    drivefield = nothing,
+    offsetField = nothing,
+    startTime = missing,
+    drivefield = missing,
     receiver = missing)
     
     return new(
@@ -290,7 +337,7 @@ mutable struct MDFv2Acquisition
       numFrames,
       numPeriodsPerFrame,
       offsetField,
-      time,
+      startTime,
       drivefield,
       receiver
     )
@@ -300,7 +347,7 @@ end
 defaultMDFv2Acquisition() = MDFv2Acquisition()
 
 "Measurement group of an in-memory MDF"
-mutable struct MDFv2Measurement
+mutable struct MDFv2Measurement <: MDFv2InMemoryPart
   "Measured data at a specific processing stage"
   data::Union{Array{Number, 4}, Missing} # Should be mmapable
   "Indices of original frame order; optional if !isFramePermutation"
@@ -368,7 +415,7 @@ end
 defaultMDFv2Measurement() = MDFv2Measurement()
 
 "Calibration group of an in-memory MDF"
-mutable struct MDFv2Calibration
+mutable struct MDFv2Calibration <: MDFv2InMemoryPart
   "Size of the delta sample used for calibration scan; optional"
   deltaSampleSize::Union{Vector{Float64}, Nothing}
   "Field of view of the system matrix; optional"
@@ -416,7 +463,7 @@ end
 defaultMDFv2Calibration() = MDFv2Calibration(order="xyz")
 
 "Reconstruction group of an in-memory MDF"
-mutable struct MDFv2Reconstruction
+mutable struct MDFv2Reconstruction <: MDFv2InMemoryPart
   "Reconstructed data"
   data::Union{Array{Number, 3}, Missing}
   "Field of view of reconstructed data; optional"
@@ -465,6 +512,7 @@ mutable struct MDFv2InMemory <: MPIFile # TODO: Not sure, if MPIFile is a good f
   measurement::Union{MDFv2Measurement, Nothing}
   calibration::Union{MDFv2Calibration, Nothing}
   reconstruction::Union{MDFv2Reconstruction, Nothing}
+  variables::MDFv2Variables
 
   function MDFv2InMemory(;
     root = missing,
@@ -475,7 +523,8 @@ mutable struct MDFv2InMemory <: MPIFile # TODO: Not sure, if MPIFile is a good f
     acquisition = missing,
     measurement = nothing,
     calibration = nothing,
-    reconstruction = nothing)
+    reconstruction = nothing,
+    variables = MDFv2Variables())
 
     return new(
       root,
@@ -486,10 +535,14 @@ mutable struct MDFv2InMemory <: MPIFile # TODO: Not sure, if MPIFile is a good f
       acquisition,
       measurement,
       calibration,
-      reconstruction
+      reconstruction,
+      variables
     )
   end
 end
+
+MDFv2InMemory(mdfFile::MDFFileV2) = inMemoryMDFFromMDFFileV2(mdfFile)
+MDFv2InMemory(dict::Dict) = inMemoryMDFFromDict(dict)
 
 function defaultMDFv2InMemory()
   return MDFv2InMemory(
@@ -501,164 +554,494 @@ function defaultMDFv2InMemory()
   )
 end
 
-"Check, whether all non-optional fields have been
-set and if the dimensions of the fields match"
-function checkConsistency(mdf::MDFv2InMemory)
-  for field in fieldnames(MDFv2InMemory)
-    
+function checkSizes(part::MDFv2Tracer, variables::MDFv2Variables)
+  # Init comparison
+  if isnothing(variables.A)
+    variables.A = length(part.vendor)
+  end
+
+  # Check if all sizes match
+  for fieldname in fieldnames(T)
+    field = getproperty(part, fieldname)
+    @assert length(field) == variables.A "Inconsistent dimensions in `$fieldname` in `$part`."
   end
 end
 
+function checkSizes(part::MDFv2Acquisition, variables::MDFv2Variables)
+  # Check dimensions of `gradient` field
+  if !isnothing(part.gradient)
+    if isnothing(variables.J)
+      variables.J = size(part.gradient, 1)
+    else
+      @assert variables.J == size(part.gradient, 1) "Inconsistent dimension J in `gradient` in `$part`."
+    end
+
+    if isnothing(variables.Y)
+      variables.Y = size(part.gradient, 2)
+    else
+      @assert variables.Y = size(part.gradient, 1) "Inconsistent dimension Y in `gradient` in `$part`."
+    end
+
+    @assert size(part.gradient, 3) == 3 "Inconsistent third dimension in `gradient` in `$part`."
+    @assert size(part.gradient, 4) == 3 "Inconsistent fourth dimension in `gradient` in `$part`."
+  end
+
+  # Check dimensions of `offsetField` field
+  if !isnothing(part.offsetField)
+    if isnothing(variables.J)
+      variables.J = size(part.offsetField, 1)
+    else
+      @assert variables.J == size(part.offsetField, 1) "Inconsistent dimension J in `offsetField` in `$part`."
+    end
+
+    if isnothing(variables.Y)
+      variables.Y = size(part.offsetField, 2)
+    else
+      @assert variables.Y == size(part.offsetField, 2) "Inconsistent dimension Y in `offsetField` in `$part`."
+    end
+
+    @assert size(part.offsetField, 3) == 3 "Inconsistent third dimension in `offsetField` in `$part`."
+  end
+end
+
+function checkSizes(part::MDFv2Drivefield, variables::MDFv2Variables)
+  # Pick variables first
+  if isnothing(variables.D)
+    variables.D = size(part.divider, 1)
+  end
+  if isnothing(variables.F)
+    variables.F = size(part.divider, 2)
+  end
+  if isnothing(variables.J)
+    variables.J = size(part.phase, 1)
+  end
+
+  # Then check dimensions for multidimensional fields
+  @assert variables.D == size(part.divider, 1) "Inconsistent dimension D in `divider` in `$part`."
+  @assert variables.F == size(part.divider, 2) "Inconsistent dimension F in `divider` in `$part`."
+
+  @assert variables.J == size(part.phase, 1) "Inconsistent dimension J in `phase` in `$part`."
+  @assert variables.D == size(part.phase, 2) "Inconsistent dimension D in `phase` in `$part`."
+  @assert variables.F == size(part.phase, 3) "Inconsistent dimension F in `phase` in `$part`."
+
+  @assert variables.J == size(part.strength, 1) "Inconsistent dimension J in `strength` in `$part`."
+  @assert variables.D == size(part.strength, 2) "Inconsistent dimension D in `strength` in `$part`."
+  @assert variables.F == size(part.strength, 3) "Inconsistent dimension F in `strength` in `$part`."
+
+  @assert variables.D == size(part.waveform, 1) "Inconsistent dimension D in `waveform` in `$part`."
+  @assert variables.F == size(part.waveform, 2) "Inconsistent dimension F in `waveform` in `$part`."
+end
+
+function checkSizes(part::MDFv2Receiver, variables::MDFv2Variables)
+  # C is defined by numChannels
+  if isnothing(variables.C)
+    variables.C = numChannels
+  end
+
+  if !isnothing(part.dataConversionFactor)
+    @assert variables.C == size(part.dataConversionFactor, 1) "Inconsistent dimension C in `dataConversionFactor` in `$part`."
+    @assert size(part.dataConversionFactor, 2) == 2 "Inconsistent second dimension in `dataConversionFactor` in `$part`."
+  end
+
+  if !isnothing(part.inductionFactor)
+    @assert variables.C == size(part.inductionFactor, 1) "Inconsistent dimension C in `inductionFactor` in `$part`."
+  end
+
+  if !isnothing(part.transferFunction)
+    @assert variables.C == size(part.transferFunction, 1) "Inconsistent dimension C in `transferFunction` in `$part`."
+
+    if isnothing(variables.K)
+      variables.K = size(part.transferFunction, 2)
+    else
+      @assert variables.K == size(part.transferFunction, 2) "Inconsistent dimension K in `transferFunction` in `$part`."
+    end
+  end
+end
+
+function checkSizes(part::MDFv2Measurement, variables::MDFv2Variables)
+  # TODO: check data consistency; I don't know how to to that since we can't know all variables
+  # N × J × C × K or
+  # J × C × K × N or
+  # N × J × C × W or
+  # J × C × W × N or
+  # J×C×K×(B+E)
+
+  if part.isFramePermutation
+    if isnothing(variables.K)
+      variables.N = length(part.framePermutation)
+    else
+      @assert variables.N == length(part.framePermutation) "Inconsistent dimension N in `framePermutation` in `$part`."
+    end
+  end
+
+  if part.isFrequencySelection
+    if isnothing(variables.K)
+      variables.K = length(part.frequencySelection)
+    else
+      @assert variables.K == length(part.frequencySelection) "Inconsistent dimension K in `frequencySelection` in `$part`."
+    end
+  end
+
+  @assert variables.N == length(part.isBackgroundFrame) "Inconsistent dimension N in `isBackgroundFrame` in `$part`."
+
+  if part.isSparsityTransformed
+    @assert !isnothing(part.sparsityTransformation) "Field `sparsityTransformation` must be set when `isSparsityTransformed` is set in in `$part`."
+  end
+
+  if part.isSparsityTransformed
+    # J, C, K and B should be defined by now
+    @assert variables.J == size(part.subsamplingIndices, 1) "Inconsistent dimension J in `subsamplingIndices` in `$part`."
+    @assert variables.C == size(part.subsamplingIndices, 2) "Inconsistent dimension C in `subsamplingIndices` in `$part`."
+    @assert variables.K == size(part.subsamplingIndices, 3) "Inconsistent dimension K in `subsamplingIndices` in `$part`."
+    @assert variables.B == size(part.subsamplingIndices, 4) "Inconsistent dimension B in `subsamplingIndices` in `$part`."
+  end
+end
+
+function checkSizes(part::MDFv2Calibration, variables::MDFv2Variables)
+  if !isnothing(part.deltaSampleSize)
+    @assert length(part.deltaSampleSize) == 3 "Inconsistent length in `deltaSampleSize` in `$part`."
+  end
+
+  if !isnothing(part.fieldOfView)
+    @assert length(part.fieldOfView) == 3 "Inconsistent length in `fieldOfView` in `$part`."
+  end
+
+  if !isnothing(part.fieldOfViewCenter)
+    @assert length(part.fieldOfViewCenter) == 3 "Inconsistent length in `fieldOfViewCenter` in `$part`."
+  end
+
+  if !isnothing(part.offsetFields)
+    if isnothing(variables.O)
+      variables.O = size(part.offsetFields, 1)
+    else
+      @assert variables.O == size(part.offsetFields, 2) "Inconsistent dimension O in `offsetFields` in `$part`."
+    end
+    @assert size(part.offsetFields, 2) == 3 "Inconsistent second dimension in `offsetFields` in `$part`."
+  end
+
+  if !isnothing(part.order)
+    @assert part.order in ["xyz", "xzy", "yxz", "yzx", "zyx", "zxy"] "Wrong `order` of `$(part.order)` in `$part`."
+  end
+
+  if !isnothing(part.positions)
+    # O must be defined by now
+    @assert variables.O == size(part.positions, 1) "Inconsistent dimension O in `positions` in `$part`."
+    @assert size(part.positions, 2) == 3 "Inconsistent second dimension in `positions` in `$part`."
+  end
+
+  if !isnothing(part.size)
+    @assert length(part.size) == 3 "Inconsistent length in `size` in `$part`."
+    # O must be defined by now
+    @assert variables.O == prod(part.size) "The product of `size` with $(part.size) must equal O."
+  end
+
+  if !isnothing(part.snr)
+    if isnothing(variables.J)
+      variables.J = size(part.snr, 1)
+    else
+      @assert variables.J == size(part.snr, 1) "Inconsistent dimension J in `snr` in `$part`."
+    end
+
+    if isnothing(variables.C)
+      variables.C = size(part.snr, 2)
+    else
+      @assert variables.C == size(part.snr, 2) "Inconsistent dimension C in `snr` in `$part`."
+    end
+
+    if isnothing(variables.K)
+      variables.K = size(part.snr, 3)
+    else
+      @assert variables.K == size(part.snr, 3) "Inconsistent dimension K in `snr` in `$part`."
+    end
+  end
+end
+
+function checkSizes(part::MDFv2Reconstruction, variables::MDFv2Variables)
+  # Pick variables first
+  if isnothing(variables.Q)
+    variables.Q = size(part.data, 1)
+  end
+  if isnothing(variables.P)
+    variables.P = size(part.data, 2)
+  end
+  if isnothing(variables.S)
+    variables.S = size(part.data, 1)
+  end
   
-# # general parameters
-# version(f::MDFFile)::VersionNumber = VersionNumber( f["/version"] )
-# uuid(f::MDFFile)::UUID = UUID(f["/uuid"])
-# time(f::MDFFileV1)::DateTime = DateTime( f["/date"] )
-# time(f::MDFFileV2)::DateTime = DateTime( f["/time"] )
+  if !isnothing(part.fieldOfView)
+    @assert length(part.fieldOfView) == 3 "Inconsistent length in `fieldOfView` in `$part`."
+  end
 
-# # study parameters
-# studyName(f::MDFFile)::String = f["/study/name"]
-# studyNumber(f::MDFFileV1)::Int = 0
-# studyNumber(f::MDFFileV2)::Int = f["/study/number"]
-# studyUuid(f::MDFFileV1) = nothing
-# studyUuid(f::MDFFileV2) = UUID(f["/study/uuid"])
-# studyDescription(f::MDFFileV1)::String = "n.a."
-# studyDescription(f::MDFFileV2)::String = f["/study/description"]
-# function studyTime(f::MDFFile)
-#   t = f["/study/time"]
-#   if typeof(t)==String
-#     return DateTime(t)
-#   else
-#     return nothing
-#   end
-# end
+  if !isnothing(part.fieldOfViewCenter)
+    @assert length(part.fieldOfViewCenter) == 3 "Inconsistent length in `fieldOfViewCenter` in `$part`."
+  end
 
-# # experiment parameters
-# experimentName(f::MDFFileV1)::String = "n.a."
-# experimentName(f::MDFFileV2)::String = f["/experiment/name"]
-# experimentNumber(f::MDFFileV1)::Int64 = parse(Int64, f["/study/experiment"])
-# experimentNumber(f::MDFFileV2)::Int64 = f["/experiment/number"]
-# experimentUuid(f::MDFFileV1) = nothing
-# experimentUuid(f::MDFFileV2) = UUID(f["/experiment/uuid"])
-# experimentDescription(f::MDFFileV1)::String = f["/study/description"]
-# experimentDescription(f::MDFFileV2)::String = f["/experiment/description"]
-# experimentSubject(f::MDFFileV1)::String = f["/study/subject"]
-# experimentSubject(f::MDFFileV2)::String = f["/experiment/subject"]
-# experimentIsSimulation(f::MDFFileV2)::Bool = Bool( f["/experiment/isSimulation"] )
-# experimentIsSimulation(f::MDFFileV1)::Bool = Bool( f["/study/simulation"] )
-# experimentIsCalibration(f::MDFFile)::Bool = haskey(f.file, "/calibration")
-# experimentHasReconstruction(f::MDFFile)::Bool = haskey(f.file, "/reconstruction")
-# experimentHasMeasurement(f::MDFFileV1)::Bool = haskey(f.file, "/measurement") ||
-#                                           haskey(f.file, "/calibration")
-# experimentHasMeasurement(f::MDFFileV2)::Bool = haskey(f.file, "/measurement")
+  if !isnothing(part.isOverscanRegion)
+    @assert variables.P == length(part.isOverscanRegion) "Inconsistent length in `isOverscanRegion` in `$part`."
+  end
 
-# _makeStringArray(s::String) = [s]
-# _makeStringArray(s::Vector{T}) where {T<:AbstractString} = s
+  if !isnothing(part.order)
+    @assert part.order in ["xyz", "xzy", "yxz", "yzx", "zyx", "zxy"] "Wrong `order` of `$(part.order)` in `$part`."
+  end
 
-# # tracer parameters
-# tracerName(f::MDFFileV1)::Vector{String} = [f["/tracer/name"]]
-# tracerName(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/name"])
-# tracerBatch(f::MDFFileV1)::Vector{String} = [f["/tracer/batch"]]
-# tracerBatch(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/batch"])
-# tracerVolume(f::MDFFileV1)::Vector{Float64} = [f["/tracer/volume"]]
-# tracerVolume(f::MDFFileV2)::Vector{Float64} = [f["/tracer/volume"]...]
-# tracerConcentration(f::MDFFileV1)::Vector{Float64} = [f["/tracer/concentration"]]
-# tracerConcentration(f::MDFFileV2)::Vector{Float64} = [f["/tracer/concentration"]...]
-# tracerSolute(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/solute"])
-# tracerSolute(f::MDFFileV1)::Vector{String} = ["Fe"]
-# function tracerInjectionTime(f::MDFFile)::Vector{DateTime}
-#   p = typeof(f) <: MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
-#   if f[p] == nothing
-#     return nothing
-#   end
+  if !isnothing(part.positions)
+    @assert variables.P == size(part.positions, 1) "Inconsistent dimension P in `positions` in `$part`."
+    @assert size(part.positions, 2) == 3 "Inconsistent second dimension in `positions` in `$part`."
+  end
 
-#   if typeof(f[p]) == String
-#     return [DateTime(f[p])]
-#   else
-#     return [DateTime(y) for y in f[p]]
-#   end
-# end
-# #tracerInjectionTime(f::MDFFileV2) = DateTime( f["/tracer/injectionTime"] )
-# tracerVendor(f::MDFFileV1)::Vector{String} = [f["/tracer/vendor"]]
-# tracerVendor(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/vendor"])
+  if !isnothing(part.size)
+    @assert length(part.size) == 3 "Inconsistent length in `size` in `$part`."
+    # P must be defined by now
+    @assert variables.P == prod(part.size) "The product of `size` with $(part.size) must equal O."
+  end
+end
 
-# # scanner parameters
-# scannerFacility(f::MDFFile)::String = f["/scanner/facility"]
-# scannerOperator(f::MDFFile)::String = f["/scanner/operator"]
-# scannerManufacturer(f::MDFFile)::String = f["/scanner/manufacturer"]
-# scannerName(f::MDFFileV1)::String = f["/scanner/model"]
-# scannerName(f::MDFFileV2)::String = f["/scanner/name", ""]
-# scannerTopology(f::MDFFile)::String = f["/scanner/topology"]
+"Check for missing fields in MDF parts"
+function checkMissing(part::T) where T <: MDFv2InMemoryPart
+  for (fieldname, fieldtype) in zip(fieldnames(T), fieldtypes(T))
+    field = getproperty(part, fieldname)
+    @assert ismissing(field) "The field `$fieldname` in `$part` is missing in the given MDF representation."
+  end
+end
 
-# # acquisition parameters
-# acqStartTime(f::MDFFileV1)::DateTime = DateTime( f["/acquisition/time"] )
-# acqStartTime(f::MDFFileV2)::DateTime = DateTime( f["/acquisition/startTime"] )
-# acqNumAverages(f::MDFFileV1)::Int = f["/acquisition/drivefield/averages"]
-# acqNumAverages(f::MDFFileV2)::Int = f["/acquisition/numAverages",1]
-# function acqNumFrames(f::MDFFileV1)::Int
-#   if experimentIsCalibration(f)
-#     return size(f.mmap_measData,2)
-#   else
-#     return f["/acquisition/numFrames"]
-#   end
-# end
-# acqNumFrames(f::MDFFileV2)::Int = f["/acquisition/numFrames"]
-# acqNumPeriodsPerFrame(f::MDFFileV1)::Int = 1
-# acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods",1]
+"Check, whether all non-optional fields have been
+set and if the dimensions of the fields match"
+function checkConsistency(mdf::MDFv2InMemory)
+  for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InMemory))
+    if fieldtype != MDFv2Variables
+      field = getproperty(mdf, fieldname)
+      @assert ismissing(field) "The field `$fieldname` is missing in the given MDF representation."
+      
+      checkMissing(field)
+      checkSizes(field, mdf.variables)
+    end
+  end
+end
 
-# acqGradient(f::MDFFileV1)::Array{Float64,4} = reshape(Matrix(Diagonal(f["/acquisition/gradient"])), 3,3,1,1)
-# function acqGradient(f::MDFFileV2)::Array{Float64,4} 
-#   G = f["/acquisition/gradient"]
-#   if ndims(G) == 4
-#     return G
-#   elseif ndims(G) == 3 # for corrupt files
-#     return reshape(G,3,3,1,size(G,3))
-#   elseif ndims(G) == 2 && prod(size(G)) == 9  # for corrupt files
-#     return reshape(G,3,3,1,1)
-#   else # for corrupt files
-#     return reshape(Matrix(Diagonal(vec(G))),3,3,1,1)
-#   end
-# end
+# Create getters and setters
+prefixes = Dict{String, String}(
+  "MDFv2Root" => "",
+  "MDFv2Study" => "study",
+  "MDFv2Experiment" => "experiment",
+  "MDFv2Tracer" => "tracer",
+  "MDFv2Scanner" => "scanner",
+  "MDFv2Acquisition" => "acq",
+  "MDFv2Drivefield" => "df",
+  "MDFv2Receiver" => "rx",
+  "MDFv2Measurement" => "meas",
+  "MDFv2Calibration" => "calib",
+  "MDFv2Reconstruction" => "reco"
+)
+for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InMemory))
+  if fieldtype != MDFv2Variables
+    # At the moment, this should be a Union
+    fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
 
-# acqOffsetField(f::MDFFileV1)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
-# function acqOffsetField(f::MDFFileV2)::Array{Float64,3} 
-#   H = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
-#   if ndims(H) == 3
-#     return H
-#   else # for corrupt files
-#     return reshape(H,:,1,1)
-#   end
-# end
+    for (partFieldname, partFieldtype) in zip(fieldnames(fieldtype), fieldtypes(fieldtype))
+      partFieldnameStr = string(partFieldname)
 
-# # drive-field parameters
-# dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]
-# dfStrength(f::MDFFileV1)::Array{Float64,3} = addTrailingSingleton( addLeadingSingleton(
-#           f["/acquisition/drivefield/strength"], 2), 3)
-# dfStrength(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/drivefield/strength"]
-# dfPhase(f::MDFFileV1)::Array{Float64,3} = dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
-# dfPhase(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/drivefield/phase"]
-# dfBaseFrequency(f::MDFFile)::Float64 = f["/acquisition/drivefield/baseFrequency"]
+      # The acquisition group has subgroups, so we need to go deeper there
+      if !(partFieldnameStr == "drivefield" || partFieldnameStr == "receiver")
+        if fieldtype != MDFv2Root
+          capitalizedPartFieldname = uppercase(partFieldnameStr[1])*partFieldnameStr[2:end]
+        else
+          capitalizedPartFieldname = partFieldnameStr
+        end
+        functionSymbol = Symbol(prefixes[replace(string(fieldtype), "MPIFiles." => "")]*capitalizedPartFieldname)
+
+        @eval begin
+          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          function $(functionSymbol)(mdf::MDFv2InMemory)::$partFieldtype
+            return mdf.$fieldname.$partFieldname
+          end
+
+          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          function $(functionSymbol)(mdf::MDFv2InMemory, value::$partFieldtype)
+            # Automatically create optional fields if they do not exist
+            if isnothing(mdf.$fieldname)
+              mdf.$fieldname = $fieldtype()
+            end
+            mdf.$fieldname.$partFieldname = value
+          end
+        end
+      else
+        # At the moment, this should be a Union
+        partFieldtype = (partFieldtype.b <: MDFv2InMemoryPart) ? partFieldtype.b : partFieldtype.a
+
+        for (subPartFieldname, subPartFieldtype) in zip(fieldnames(partFieldtype), fieldtypes(partFieldtype))
+          subPartFieldnameStr = string(subPartFieldname)
+          capitalizedSubPartFieldname = uppercase(subPartFieldnameStr[1])*subPartFieldnameStr[2:end]
+          functionSymbol = Symbol(prefixes[replace(string(partFieldtype), "MPIFiles." => "")]*capitalizedSubPartFieldname)
+          @eval begin
+            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            function $(functionSymbol)(mdf::MDFv2InMemory)::$subPartFieldtype
+              return mdf.$fieldname.$partFieldname.$subPartFieldname
+            end
+  
+            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            function $(functionSymbol)(mdf::MDFv2InMemory, value::$subPartFieldtype)
+              # Automatically create optional fields if they do not exist
+              if isnothing(mdf.$fieldname)
+                mdf.$fieldname.$partFieldname = $partFieldtype()
+              end
+              mdf.$fieldname.$partFieldname.$subPartFieldname = value
+            end
+          end
+        end
+      end
+    end
+  end
+end
+
+# Some alias functions are needed
+measIsTFCorrected(mdf::MDFv2InMemory) = measIsTransferFunctionCorrected(mdf)
+measIsTFCorrected(mdf::MDFv2InMemory, value::Bool) = measIsTransferFunctionCorrected(mdf, value)
+
+measIsBGCorrected(mdf::MDFv2InMemory) = measIsBackgroundCorrected(mdf)
+measIsBGCorrected(mdf::MDFv2InMemory, value::Bool) = measIsBackgroundCorrected(mdf; value)
+
+measIsBGFrame(mdf::MDFv2InMemory) = measIsBackgroundFrame(mdf)
+measIsBGFrame(mdf::MDFv2InMemory, value::Vector{Bool}) = measIsBackgroundFrame(mdf, value)
+
+calibSNR(mdf::MDFv2InMemory) = calibSnr(mdf)
+calibSNR(mdf::MDFv2InMemory, value::Array{Float64, 3}) = calibSnr(mdf, value)
+
+calibFov(mdf::MDFv2InMemory) = calibFieldOfView(mdf)
+calibFov(mdf::MDFv2InMemory, value::Vector{Float64}) = calibFieldOfView(mdf, value)
+
+calibFovCenter(mdf::MDFv2InMemory) = calibFieldOfViewCenter(mdf)
+calibFovCenter(mdf::MDFv2InMemory, value::Vector{Float64}) = calibFieldOfViewCenter(mdf, value)
+
+measIsCalibProcessed(mdf::MDFv2InMemory) = measIsFramePermutation(mdf) && 
+                                           measIsFourierTransformed(mdf) &&
+                                           measIsFastFrameAxis(mdf)
+
+# And some utility functions
+experimentHasReconstruction(mdf::MDFv2InMemory) = !isnothing(mdf.reconstruction)
+experimentHasMeasurement(mdf::MDFv2InMemory) = !isnothing(mdf.measurement)
+
+# Creation and conversion
+
+"Create an in-memory MDF from a dict matching the respective function names."
+function inMemoryMDFFromDict(dict::Dict)
+  mdf = MDFv2InMemory()
+
+  for (key, value) in dict
+    # TODO: Will error on custom keys
+    functionSymbol = Symbol(key)
+    f = getfield(MPIFiles, functionSymbol)
+    f(mdf, value)
+  end
+
+  return mdf
+end
+
+"Create a dict from an in-memory MDF by matching the respective function names."
+function inMemoryMDFToDict(mdf::MDFv2InMemory)
+  dict = Dict{String, Any}()
+
+  for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InMemory))
+    if fieldtype != MDFv2Variables
+      # At the moment, this should be a Union
+      fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
+  
+      for (partFieldname, partFieldtype) in zip(fieldnames(fieldtype), fieldtypes(fieldtype))
+        partFieldnameStr = string(partFieldname)
+  
+        # The acquisition group has subgroups, so we need to go deeper there
+        if !(partFieldnameStr == "drivefield" || partFieldnameStr == "receiver")
+          if fieldtype != MDFv2Root
+            capitalizedPartFieldname = uppercase(partFieldnameStr[1])*partFieldnameStr[2:end]
+          else
+            capitalizedPartFieldname = partFieldnameStr
+          end
+  
+          functionName = prefixes[replace(string(fieldtype), "MPIFiles." => "")]*capitalizedPartFieldname
+          functionSymbol = Symbol(functionName)
+          
+          f = getfield(MPIFiles, functionSymbol)
+          dict[functionName] = f(mdf)
+        else
+          for (subPartFieldname, subPartFieldtype) in zip(fieldnames(partFieldtype), fieldtypes(partFieldtype))
+            # At the moment, this should be a Union
+            partFieldtype = (partFieldtype.b <: MDFv2InMemoryPart) ? partFieldtype.b : partFieldtype.a
+  
+            subPartFieldnameStr = string(subPartFieldname)
+            capitalizedSubPartFieldname = uppercase(subPartFieldnameStr[1])*subPartFieldnameStr[2:end]
+            functionName = prefixes[replace(string(partFieldtype), "MPIFiles." => "")]*capitalizedSubPartFieldname
+            functionSymbol = Symbol(functionName)
+            
+            f = getfield(MPIFiles, functionSymbol)
+            dict[functionName] = f(mdf)
+          end
+        end
+      end
+    end
+  end
+end
+
+"Create an in-memory MDF from an MDFFile."
+function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)
+  mdf = MDFv2InMemory()
+
+  for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InMemory))
+    if fieldtype != MDFv2Variables
+      # At the moment, this should be a Union
+      fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
+  
+      for (partFieldname, partFieldtype) in zip(fieldnames(fieldtype), fieldtypes(fieldtype))
+        partFieldnameStr = string(partFieldname)
+  
+        # The acquisition group has subgroups, so we need to go deeper there
+        if !(partFieldnameStr == "drivefield" || partFieldnameStr == "receiver")
+          if fieldtype != MDFv2Root
+            capitalizedPartFieldname = uppercase(partFieldnameStr[1])*partFieldnameStr[2:end]
+          else
+            capitalizedPartFieldname = partFieldnameStr
+          end
+  
+          functionName = prefixes[replace(string(fieldtype), "MPIFiles." => "")]*capitalizedPartFieldname
+          functionSymbol = Symbol(functionName)
+          
+          f = getfield(MPIFiles, functionSymbol)
+          f(mdf, f(mdfFile)) # Call the setter of an MDFv2InMemory with a getter from an MDFFileV2
+        else
+          for (subPartFieldname, subPartFieldtype) in zip(fieldnames(partFieldtype), fieldtypes(partFieldtype))
+            # At the moment, this should be a Union
+            partFieldtype = (partFieldtype.b <: MDFv2InMemoryPart) ? partFieldtype.b : partFieldtype.a
+  
+            subPartFieldnameStr = string(subPartFieldname)
+            capitalizedSubPartFieldname = uppercase(subPartFieldnameStr[1])*subPartFieldnameStr[2:end]
+            functionName = prefixes[replace(string(partFieldtype), "MPIFiles." => "")]*capitalizedSubPartFieldname
+            functionSymbol = Symbol(functionName)
+            
+            f = getfield(MPIFiles, functionSymbol)
+            f(mdf, f(mdfFile)) # Call the setter of an MDFv2InMemory with a getter from an MDFFileV2
+          end
+        end
+      end
+    end
+  end
+
+  return mdf
+end
+
+"Create an MDFFile from an in-memory MDF; alias to `saveasMDF`."
+function inMemoryMDFToMDFFileV2(filename::String, mdf::MDFv2InMemory)
+  saveasMDF(filename, mdf)
+end
+
+"Create an MDFFile from an in-memory MDF."
+function saveasMDF(filename::String, mdf::MDFv2InMemory)
+  dict = inMemoryMDFToDict(mdf)
+  saveasMDF(filename, dict)
+end
+
+
+# This is non-standard; not yet supported
 # dfCustomWaveform(f::MDFFileV2)::String = f["/acquisition/drivefield/customWaveform"]
-# dfDivider(f::MDFFileV1) = addTrailingSingleton(
-#                 f["/acquisition/drivefield/divider"],2)
-# dfDivider(f::MDFFileV2) = f["/acquisition/drivefield/divider"]
-# dfWaveform(f::MDFFileV1)::String = "sine"
-# dfWaveform(f::MDFFileV2)::String = f["/acquisition/drivefield/waveform"]
-# dfCycle(f::MDFFile)::Float64 = f["/acquisition/drivefield/cycle"]
-# dfCycle(f::MDFFileV1)::Float64 = f["/acquisition/drivefield/period"]
+# calibIsMeanderingGrid(f::MDFFile) = Bool(f["/calibration/isMeanderingGrid", 0])
 
-# # receiver parameters
-# rxNumChannels(f::MDFFile)::Int64 = f["/acquisition/receiver/numChannels"]
-# rxBandwidth(f::MDFFile)::Float64 = f["/acquisition/receiver/bandwidth"]
-# rxNumSamplingPoints(f::MDFFile)::Int64 = f["/acquisition/receiver/numSamplingPoints"]
-# function rxTransferFunction(f::MDFFile)
-#   parameter = "/acquisition/receiver/transferFunction"
-#   if haskey(f.file, parameter)
-#     return readComplexArray(f.filename, parameter)
-#   else
-#     return nothing
-#   end
-# end
 # function rxTransferFunctionFileName(f::MDFFile)
 #   parameter = "/acquisition/receiver/transferFunctionFileName"
 #   if haskey(f.file, parameter)
@@ -670,13 +1053,8 @@ end
 # function rxHasTransferFunction(f::MDFFile)
 #   haskey(f.file, "/acquisition/receiver/transferFunction")
 # end
-# rxInductionFactor(f::MDFFileV1) = nothing
-# rxInductionFactor(f::MDFFileV2) = f["/acquisition/receiver/inductionFactor"]
 
-# rxUnit(f::MDFFileV1)::String = "a.u."
-# rxUnit(f::MDFFileV2)::String = f["/acquisition/receiver/unit"]
-# rxDataConversionFactor(f::MDFFileV1) = repeat([1.0, 0.0], outer=(1,rxNumChannels(f)))
-# rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFactor"]
+#TODO: I don't know what to do with these functions
 
 # # measurements
 # function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
@@ -842,101 +1220,6 @@ end
 #   return data
 # end
 
-# function measIsFourierTransformed(f::MDFFileV1)
-#   if !experimentIsCalibration(f)
-#     return false
-#   else
-#     return true
-#   end
-# end
-# measIsFourierTransformed(f::MDFFileV2) = Bool(f["/measurement/isFourierTransformed"])
-
-# measIsTFCorrected(f::MDFFileV1) = false
-# measIsTFCorrected(f::MDFFileV2) = Bool(f["/measurement/isTransferFunctionCorrected"])
-
-# measIsSpectralLeakageCorrected(f::MDFFileV1) = false
-# measIsSpectralLeakageCorrected(f::MDFFileV2) = Bool(f["/measurement/isSpectralLeakageCorrected"])
-
-# function measIsBGCorrected(f::MDFFileV1)
-#   if !experimentIsCalibration(f)
-#     return false
-#   else
-#     return true
-#   end
-# end
-# measIsBGCorrected(f::MDFFileV2) = Bool(f["/measurement/isBackgroundCorrected"])
-
-# measIsFrequencySelection(f::MDFFileV1) = false
-# measIsFrequencySelection(f::MDFFileV2) = Bool(f["/measurement/isFrequencySelection"])
-# measFrequencySelection(f::MDFFileV2) = f["/measurement/frequencySelection"]
-
-# measIsSparsityTransformed(f::MDFFileV1) = false
-# function measIsSparsityTransformed(f::MDFFileV2)
-#   if haskey(f.file, "/measurement/isSparsityTransformed")
-#     Bool(f["/measurement/isSparsityTransformed"])
-#   else
-#     return false
-#   end
-# end
-
-# function measIsFastFrameAxis(f::MDFFileV1)
-#   if !experimentIsCalibration(f)
-#     return false
-#   else
-#     return true
-#   end
-# end
-
-# function measIsFastFrameAxis(f::MDFFileV2)
-#   if haskey(f.file, "/measurement/isFastFrameAxis")
-#     return Bool(f["/measurement/isFastFrameAxis"])
-#   else
-#     @warn "/measurement/isFastFrameAxis missing in MDF data set. `measIsFastFrameAxis` returning false per default."
-#     return false
-#   end
-# end
-
-# function measIsFramePermutation(f::MDFFileV1)
-#   if !experimentIsCalibration(f)
-#     return false
-#   else
-#     return true
-#   end
-# end
-# measIsFramePermutation(f::MDFFileV2) = Bool(f["/measurement/isFramePermutation"])
-# measIsBGFrame(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
-# measIsBGFrame(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundFrame"])
-# measFramePermutation(f::MDFFileV1) = nothing
-# measFramePermutation(f::MDFFileV2) = f["/measurement/framePermutation"]
-# fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
-
-# measIsCalibProcessed(f::MDFFile) = measIsFramePermutation(f) && 
-#                                     measIsFourierTransformed(f) &&
-#                                     measIsFastFrameAxis(f)
-
-# #calibrations
-# calibSNR(f::MDFFileV1) = addTrailingSingleton(f["/calibration/snrFD"],3)
-# calibSNR(f::MDFFileV2) = f["/calibration/snr"]
-# calibFov(f::MDFFile) = f["/calibration/fieldOfView"]
-# calibFovCenter(f::MDFFile) = f["/calibration/fieldOfViewCenter"]
-# calibSize(f::MDFFile) = f["/calibration/size"]
-# calibOrder(f::MDFFile) = f["/calibration/order"]
-# calibOffsetField(f::MDFFile) = f["/calibration/offsetField"]
-# calibDeltaSampleSize(f::MDFFile) = f["/calibration/deltaSampleSize",[0.0,0.0,0.0]]
-# calibMethod(f::MDFFile) = f["/calibration/method"]
-# calibIsMeanderingGrid(f::MDFFile) = Bool(f["/calibration/isMeanderingGrid", 0])
-# calibPositions(f::MDFFile) = f["/calibration/positions"]
-
-# # reconstruction results
-# recoData(f::MDFFileV1) = addLeadingSingleton(
-#           f[ "/reconstruction/data"], 3)
-# recoData(f::MDFFileV2) = f["/reconstruction/data"]
-# recoFov(f::MDFFile)::Vector{Float64} = f["/reconstruction/fieldOfView"]
-# recoFovCenter(f::MDFFile)::Vector{Float64} = f["/reconstruction/fieldOfViewCenter"]
-# recoSize(f::MDFFile)::Vector{Int64} = f["/reconstruction/size"]
-# recoOrder(f::MDFFile) = f["/reconstruction/order"]
-# recoPositions(f::MDFFile) = f["/reconstruction/positions"]
-
 # # this is non-standard
 # function recoParameters(f::MDFFile)
 #   if !haskey(f.file, "/reconstruction/_parameters")
@@ -946,5 +1229,4 @@ end
 #   end
 # end
 
-# # additional functions that should be implemented by an MPIFile
-# filepath(f::MDFFile) = "RAM" # Yes, this is a bit weird, but has to be implemented
+filepath(mdf::MDFv2InMemory) = nothing # Has to be implemented...

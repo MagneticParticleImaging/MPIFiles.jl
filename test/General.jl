@@ -23,7 +23,10 @@ saveasMDF(fnMeasV2, measBruker)#, frames=1:100) <- TODO test this
 mdfv2 = MPIFile(fnMeasV2)
 @test typeof(mdfv2) <: MDFFileV2
 
-for mdf in (measBruker,mdfv2)
+#mdfv2InMemory = MDFv2InMemory(mdfv2)
+#@test typeof(mdfv2InMemory) <: MDFv2InMemory
+
+for mdf in (measBruker, mdfv2)#, mdfv2InMemory)
   @info "Test $mdf"
   @test studyName(mdf) == "Wuerfelphantom"
   @test studyNumber(mdf) == 1
