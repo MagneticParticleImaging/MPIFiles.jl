@@ -1,5 +1,11 @@
+export Reconstruction, addReco, getReco, getRecons, findReco
 
-####### Reconstruction Store MDF ###################
+# TODO: make store a member and remove path
+mutable struct Reconstruction
+  path::String
+  num::Int64
+  params::Dict
+end
 
 function getReco(d::MDFDatasetStore, study::Study, exp::Experiment, recoNum::Int64)
   path = joinpath(d.path, "reconstructions", getMDFStudyFolderName(study), string(exp.num), string(recoNum))
@@ -71,7 +77,7 @@ end
 function save(reco::Reconstruction)
   h5open(reco.path, "r+") do file
     if haskey(file, "/reconstruction/_parameters")
-      o_delete(file, "/reconstruction/_parameters")
+      delete_object(file, "/reconstruction/_parameters")
     end
     saveParams(file, "/reconstruction/_parameters", reco.params)
   end

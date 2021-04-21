@@ -8,7 +8,7 @@ storeA = BrukerDatasetStore(joinpath(datadir, "BrukerStore"))
 @test readonly(storeA) == true
 
 studiesA = getStudies(storeA)
-@test id.(studiesA) == ["SF", "Wuerfelphantom", "Size Distributions", "EasyAxisContrast"]
+@test [s.name for s in studiesA] == ["SF", "Wuerfelphantom", "Size Distributions", "EasyAxisContrast"]
 
 # MDF store
 

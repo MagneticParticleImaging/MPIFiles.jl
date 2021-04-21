@@ -1,3 +1,5 @@
+export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir
+
 struct MDFDatasetStore <: DatasetStore
   path::String
 
@@ -92,4 +94,18 @@ function Base.empty!(d::MDFDatasetStore)
   remove.(studies)
   rm(calibdir(d), recursive=true)
   mkpath(calibdir(d))
+end
+
+
+function getNewCalibNum(d::MDFDatasetStore)
+  return getNewNumInFolder(calibdir(d))
+end
+
+function getNewCalibPath(d::MDFDatasetStore)
+    calibNum = getNewCalibNum(d)
+    path = joinpath(calibdir(d),string(calibNum)*".mdf")
+    # touch new mdf file
+    touch(path)
+    try_chmod(path, 0o660)
+    return path
 end

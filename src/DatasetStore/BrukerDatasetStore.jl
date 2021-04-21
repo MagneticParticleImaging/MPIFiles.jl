@@ -1,3 +1,5 @@
+export BrukerDatasetStore, BrukerStore, findBrukerFiles, getNewCalibNum
+
 struct BrukerDatasetStore <: DatasetStore
   path::String
 end

@@ -1,5 +1,4 @@
-
-#############################################
+export generateSFDatabase, loadSFDatabase
 
 function findSFFiles(d::BrukerDatasetStore)
   studies = readdir(d.path)
