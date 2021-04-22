@@ -50,11 +50,16 @@ function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false,
   return exportpath
 end
 
-function exportData(s::Study, mdf::MDFDatasetStore; kargs...)
+function exportData(s::Study, mdf::MDFDatasetStore; 
+                    nums::Vector{Int}=zeros(Int,0),
+                    kargs...)
   exps = getExperiments(s)
   for e in exps
-    exportData(e, mdf; kargs...)
+    # nums indicates which experiments are exported
+    (length(nums) == 0 || e.num in nums) && exportData(e, mdf; kargs...)
   end
+
+  return nothing
 end
 
 function exportData(store::D, mdf::MDFDatasetStore; kargs...) where D<:DatasetStore

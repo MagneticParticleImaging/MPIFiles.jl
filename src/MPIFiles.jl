@@ -167,7 +167,7 @@ abstract type MPIFile end
 @mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
 @mustimplement measIsFourierTransformed(f::MPIFile)
 @mustimplement measIsTFCorrected(f::MPIFile)
-@mustimplement measIsFrequencySelecton(f::MPIFile)
+@mustimplement measIsFrequencySelection(f::MPIFile)
 @mustimplement measIsBGCorrected(f::MPIFile)
 @mustimplement measIsFastFrameAxis(f::MPIFile)
 @mustimplement measIsFramePermutation(f::MPIFile)
