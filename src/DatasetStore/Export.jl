@@ -1,6 +1,7 @@
 export exportData, makeTarGzip, createArtifact
 
-function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false, storeForwardRef=false, kargs...)
+function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false, 
+                    storeForwardRef=false, keepExpNum=false, kargs...)
   # pretend to be a measurement to enforce loading data from time domain in case post processed data is not available
   # in case of compression isCalib=false right now does not work, thus we disable it.
   
@@ -21,8 +22,14 @@ function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false, storeFor
     subject = experimentSubject(f)
     date = studyTime(f)
     s = Study(mdf, name; date=date, subject=subject)
-    exportpath = getNewExperimentPath(s)
-    saveasMDF(exportpath, f; kargs...)
+    if keepExpNum  
+      expNum = experimentNumber(f) # or e.num
+      exportpath = joinpath(path(s),string(expNum)*".mdf")
+    else
+      expNum = getNewExperimentNum(s)
+      exportpath = getNewExperimentPath(s)
+    end
+    saveasMDF(exportpath, f; experimentNumber = expNum, kargs...)
     @info "Measurement data from $path successfully exported to $exportpath." 
   end
 

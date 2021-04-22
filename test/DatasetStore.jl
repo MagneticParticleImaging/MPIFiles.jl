@@ -34,11 +34,16 @@ empty!(storeB)
 
 
 # Now lets copy over the Bruker studies
-exportData(storeA, storeB)
+exportData(storeA, storeB, keepExpNum=true)
 storeC = MDFDatasetStore(joinpath(tmpdir, "MDFStoreB"))
 empty!(storeC)
 exportData(storeB, storeC, SNRThresh=4.0)
 createArtifact(storeB, "https://")
+
+studiesB = getStudies(storeB)
+studiesC = getStudies(storeC)
+@test getExperiments(studiesB[2])[1].num == 18
+@test getExperiments(studiesC[2])[1].num == 1
 
 # Experiment handling
 
@@ -48,6 +53,6 @@ createArtifact(storeB, "https://")
 
 
 # Calibration handling
-@info getNewCalibNum(storeB) 
+@test getNewCalibNum(storeB) == 3
 
 end
