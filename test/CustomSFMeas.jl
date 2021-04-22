@@ -1,7 +1,7 @@
 @testset "Testing Custom SF and Meas submodule" begin
 
-customSF = joinpath(datadir,"BrukerStore/20200603_172811_EasyAxisContrast_1_1/245")
-customMeas = joinpath(datadir,"BrukerStore/20200603_172811_EasyAxisContrast_1_1/247")
+customSF = joinpath(datadir,"BrukerStore","20200603_172811_EasyAxisContrast_1_1","245")
+customMeas = joinpath(datadir,"BrukerStore","20200603_172811_EasyAxisContrast_1_1","247")
 
 fnCustomSF_FF = joinpath(datadir,"mdf","customSystemMatrixFF.mdf")
 
