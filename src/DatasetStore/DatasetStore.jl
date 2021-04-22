@@ -4,8 +4,12 @@ include("Utils.jl")
 
 abstract type DatasetStore end
 
+# mandatory functions
 @mustimplement studydir(::DatasetStore)
 @mustimplement readonly(::DatasetStore)
+
+# functions for writable store
+@mustimplement Base.empty!(d::DatasetStore)
 
 include("Study.jl")
 include("Experiment.jl")

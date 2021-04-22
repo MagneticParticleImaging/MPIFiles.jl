@@ -4,7 +4,9 @@ struct BrukerDatasetStore <: DatasetStore
   path::String
 end
 
-const BrukerStore = BrukerDatasetStore("/opt/mpidata")
+if ispath("/opt/mpidata")
+  const BrukerStore = BrukerDatasetStore("/opt/mpidata")
+end
 
 path(e::Experiment{BrukerDatasetStore}) = joinpath( path(e.study), string(e.num) )
 path(s::Study{BrukerDatasetStore}, numExp::Integer) = joinpath(path(s),string(numExp))
