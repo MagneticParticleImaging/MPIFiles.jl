@@ -1,5 +1,4 @@
-
-#############################################
+export generateSFDatabase, loadSFDatabase
 
 function findSFFiles(d::BrukerDatasetStore)
   studies = readdir(d.path)
@@ -30,7 +29,7 @@ end
 function findSFFiles(d::MDFDatasetStore)
   bfiles = String[]
 
-  path = joinpath(s.path,"calibrations/")
+  path = joinpath(d.path,"calibrations/")
 
   files = readdir(path)
 
@@ -46,7 +45,7 @@ function findSFFiles(d::MDFDatasetStore)
     end
   end
 
-  bfiles
+  return bfiles
 end
 
 

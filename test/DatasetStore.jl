@@ -8,7 +8,7 @@ storeA = BrukerDatasetStore(joinpath(datadir, "BrukerStore"))
 @test readonly(storeA) == true
 
 studiesA = getStudies(storeA)
-@test id.(studiesA) == ["SF", "Wuerfelphantom", "Size Distributions", "EasyAxisContrast"]
+@test [s.name for s in studiesA] == ["SF", "Wuerfelphantom", "Size Distributions", "EasyAxisContrast"]
 
 # MDF store
 
@@ -34,10 +34,28 @@ empty!(storeB)
 
 
 # Now lets copy over the Bruker studies
-exportData(storeA, storeB)
+exportData(storeA, storeB, keepExpNum=true)
 storeC = MDFDatasetStore(joinpath(tmpdir, "MDFStoreB"))
 empty!(storeC)
 exportData(storeB, storeC, SNRThresh=4.0)
+createArtifact(storeB, "https://")
+
+studiesB = getStudies(storeB)
+studiesC = getStudies(storeC)
+@test getExperiments(studiesB[2])[1].num == 18
+@test getExperiments(studiesC[2])[1].num == 1
+
+# Next we test changing parameters and study names.
+s = studiesC[2]
+@test validate(s)
+changeStudy(s, "NewStudyName")
+studiesD = getStudies(storeC)
+sNew = studiesD[end]
+@test validate(sNew)
+@test sNew.name == "NewStudyName"
+enforceStudy(sNew)
+@test validate(sNew)
+
 
 # Experiment handling
 
@@ -47,6 +65,6 @@ exportData(storeB, storeC, SNRThresh=4.0)
 
 
 # Calibration handling
-@info getNewCalibNum(storeB) == 1
+@test getNewCalibNum(storeB) == 3
 
 end

@@ -1,8 +1,12 @@
+export BrukerDatasetStore, BrukerStore, findBrukerFiles, getNewCalibNum
+
 struct BrukerDatasetStore <: DatasetStore
   path::String
 end
 
-const BrukerStore = BrukerDatasetStore("/opt/mpidata")
+if ispath("/opt/mpidata")
+  const BrukerStore = BrukerDatasetStore("/opt/mpidata")
+end
 
 path(e::Experiment{BrukerDatasetStore}) = joinpath( path(e.study), string(e.num) )
 path(s::Study{BrukerDatasetStore}, numExp::Integer) = joinpath(path(s),string(numExp))
@@ -109,8 +113,8 @@ else
       if isdir(joinpath(path,file))
        try
         if isfile(joinpath(path,file,"acqp")) &&
-           isfile(joinpath(candidatePath,"method")) &&
-           isfile(joinpath(candidatePath,"visu_pars"))
+           isfile(joinpath(path,file,"method")) &&
+           isfile(joinpath(path,file,"visu_pars"))
           push!(bfiles, joinpath(path,file))
         else
           rfiles = findBrukerFiles(joinpath(path,file))

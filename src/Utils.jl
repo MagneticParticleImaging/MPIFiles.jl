@@ -1,4 +1,4 @@
-#export makeAxisArray
+export changeParam
 
 # Support for handling complex datatypes in HDF5 files
 function writeComplexArray(file, dataset, A::AbstractArray{Complex{T},D}) where {T,D}
@@ -42,12 +42,21 @@ function readComplexArray(file::HDF5.File, dataset)
   return A
 end
 
-function readComplexArray(filename::String, dataset)
+function readComplexArray(filename::AbstractString, dataset)
   h5open(filename, "r") do file
     return readComplexArray(file, dataset)
   end
 end
 
+function changeParam(filename::AbstractString, paramName::AbstractString, paramValue)
+  GC.gc()
+  h5open(filename, "r+") do file
+	  if haskey(file, paramName)
+      delete_object(file, paramName)
+    end
+    write(file, paramName, paramValue)
+  end
+end
 
 function makeAxisArray(array::Array{T,5}, pixelspacing, offset, dt) where T
   N = size(array)

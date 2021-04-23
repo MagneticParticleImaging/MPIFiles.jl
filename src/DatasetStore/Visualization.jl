@@ -1,5 +1,10 @@
+export Visualization, getVisus, getVisuPath, addVisu
 
-####### Visualization Store #######
+mutable struct Visualization
+  path::String
+  num::Int64
+  params::Dict
+end
 
 function getVisu(d::MDFDatasetStore, study::Study, exp::Experiment, reco::Reconstruction, numVisu)
 
@@ -45,7 +50,7 @@ end
 function remove(visu::Visualization)
   h5open(visu.path, "r+") do file
     if haskey(file, string(visu.num))
-      o_delete(file, string(visu.num))
+      delete_object(file, string(visu.num))
     end
   end
 end
@@ -57,7 +62,7 @@ function save(visu::Visualization)
     file = h5open(visu.path, "w")
   end
   if haskey(file, string(visu.num))
-    o_delete(file, string(visu.num))
+    delete_object(file, string(visu.num))
   end
   saveParams(file, string(visu.num), visu.params)
   close(file)

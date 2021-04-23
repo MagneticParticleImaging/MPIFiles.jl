@@ -1,3 +1,5 @@
+export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir
+
 struct MDFDatasetStore <: DatasetStore
   path::String
 
@@ -12,13 +14,16 @@ struct MDFDatasetStore <: DatasetStore
   end
 end
 
-const MDFStore = MDFDatasetStore("/opt/data/Bruker")
-
+if ispath("/opt/mpidata/Bruker")
+  const MDFStore = MDFDatasetStore("/opt/data/Bruker")
+end
 path(e::Experiment{MDFDatasetStore}) = joinpath( path(e.study), string(e.num)*".mdf" )
 path(s::Study{MDFDatasetStore}, numExp::Integer) = joinpath(path(s),string(numExp)*".mdf")
-iscalib(e::Experiment{MDFDatasetStore}) = e.study.foldername == "../calibrations"
-
+iscalib(e::Experiment{MDFDatasetStore}) = e.study.foldername == 
+                             ".."*Base.Filesystem.path_separator*"calibrations"
 readonly(::MDFDatasetStore) = false
+changeParam(e::Experiment{MDFDatasetStore}, paramName::AbstractString, paramValue) =
+               changeParam(path(e), paramName, paramValue)
 
 studydir(d::MDFDatasetStore) = joinpath(d.path,"measurements")
 calibdir(d::MDFDatasetStore) = joinpath(d.path,"calibrations")
@@ -47,7 +52,8 @@ function getStudy(d::MDFDatasetStore, studyfolder::String)
 end
 
 function getCalibStudy(d::MDFDatasetStore)
-  return Study(d, "calibrations"; foldername="../calibrations") 
+  return Study(d, "calibrations"; 
+       foldername=".."*Base.Filesystem.path_separator*"calibrations") 
 end
 
 function getExperiments(s::Study{MDFDatasetStore})
@@ -92,4 +98,18 @@ function Base.empty!(d::MDFDatasetStore)
   remove.(studies)
   rm(calibdir(d), recursive=true)
   mkpath(calibdir(d))
+end
+
+
+function getNewCalibNum(d::MDFDatasetStore)
+  return getNewNumInFolder(calibdir(d))
+end
+
+function getNewCalibPath(d::MDFDatasetStore)
+    calibNum = getNewCalibNum(d)
+    path = joinpath(calibdir(d),string(calibNum)*".mdf")
+    # touch new mdf file
+    touch(path)
+    try_chmod(path, 0o660)
+    return path
 end

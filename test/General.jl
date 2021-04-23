@@ -1,8 +1,8 @@
 @testset "Testing General submodule" begin
 
-  fnMeasBruker = joinpath(datadir,"BrukerStore/20150915_102110_Wuerfelphantom_1_1/18")
-  fnSMBruker = joinpath(datadir,"BrukerStore/20141121_130749_CalibrationScans_1_1/76")
-  fnSM1DBruker = joinpath(datadir,"BrukerStore/20170807_142514_Service_1_1/89")
+  fnMeasBruker = joinpath(datadir,"BrukerStore","20150915_102110_Wuerfelphantom_1_1","18")
+  fnSMBruker = joinpath(datadir,"BrukerStore","20141121_130749_CalibrationScans_1_1","76")
+  fnSM1DBruker = joinpath(datadir,"BrukerStore","20170807_142514_Service_1_1","89")
 
 
   fnMeasV1 = joinpath(tmpdir,"mdf","measurement_V1.mdf")
@@ -212,7 +212,7 @@
     smv6 = MPIFile(fnSMV6)
 
     S1 = getSystemMatrix(smv6, freq)
-      
+
     relativeDeviation = zeros(Float32,length(freq))
     for f in 1:length(freq)
       relativeDeviation[f] = norm(S1[:,f]-S2[:,f])/norm(S2[:,f])
@@ -277,21 +277,21 @@ end
 	numF = acqNumFrames(mdf)
 	numA = acqNumAverages(mdf)
 	numAverages = 500
-	
+
 	# test exceptions, where no averaging should be done
 	@test_throws DomainError blockAverage(avgMeasPath, mdf, 41)
-	
+
 	# average data
 	blockAverage(avgMeasPath, mdf, numAverages)
 	mdfavg = MPIFile(avgMeasPath)
-	
+
 	# test averaged data
 	@test mean(measData(mdf),dims=4) ≈ measData(mdfavg)
-	
+
 	# test new acquisition parameters
 	@test acqNumFrames(mdfavg) == div(numF,numAverages)
 	@test acqNumAverages(mdfavg) == numA*numAverages
-	
+
 	# test new measurement parameters
 	@test [any(measIsBGFrame(mdf))] == measIsBGFrame(mdfavg)
 end
