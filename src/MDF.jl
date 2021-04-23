@@ -89,19 +89,19 @@ end
 
 
 # general parameters
-version(f::MDFFile)::VersionNumber = VersionNumber( f["/version"] )
-uuid(f::MDFFile)::UUID = UUID(f["/uuid"])
-time(f::MDFFileV1)::DateTime = DateTime( f["/date"] )
-time(f::MDFFileV2)::DateTime = DateTime( f["/time"] )
+version(f::MDFFile)::Union{VersionNumber, Missing} = @keyrequired VersionNumber( f["/version"] )
+uuid(f::MDFFile)::Union{UUID, Missing} = @keyrequired UUID(f["/uuid"])
+time(f::MDFFileV1)::Union{DateTime, Missing} = @keyrequired DateTime( f["/date"] )
+time(f::MDFFileV2)::Union{DateTime, Missing} = @keyrequired DateTime( f["/time"] )
 
 # study parameters
-studyName(f::MDFFile)::String = f["/study/name"]
-studyNumber(f::MDFFileV1)::Int = 0
-studyNumber(f::MDFFileV2)::Int = f["/study/number"]
+studyName(f::MDFFile)::Union{String, Missing} = @keyrequired f["/study/name"]
+studyNumber(f::MDFFileV1)::Union{Int, Missing} = 0
+studyNumber(f::MDFFileV2)::Union{Int, Missing} = @keyrequired f["/study/number"]
 studyUuid(f::MDFFileV1) = nothing
-studyUuid(f::MDFFileV2) = UUID(f["/study/uuid"])
-studyDescription(f::MDFFileV1)::String = "n.a."
-studyDescription(f::MDFFileV2)::String = f["/study/description"]
+studyUuid(f::MDFFileV2) = @keyrequired UUID(f["/study/uuid"])
+studyDescription(f::MDFFileV1)::Union{String, Missing} = "n.a."
+studyDescription(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/study/description"]
 function studyTime(f::MDFFile)
   t = f["/study/time"]
   if typeof(t)==String
@@ -112,18 +112,18 @@ function studyTime(f::MDFFile)
 end
 
 # experiment parameters
-experimentName(f::MDFFileV1)::String = "n.a."
-experimentName(f::MDFFileV2)::String = f["/experiment/name"]
-experimentNumber(f::MDFFileV1)::Int64 = parse(Int64, f["/study/experiment"])
-experimentNumber(f::MDFFileV2)::Int64 = f["/experiment/number"]
+experimentName(f::MDFFileV1)::Union{String, Missing} = "n.a."
+experimentName(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/experiment/name"]
+experimentNumber(f::MDFFileV1)::Union{Int64, Missing} = @keyrequired parse(Int64, f["/study/experiment"])
+experimentNumber(f::MDFFileV2)::Union{Int64, Missing} = @keyrequired f["/experiment/number"]
 experimentUuid(f::MDFFileV1) = nothing
-experimentUuid(f::MDFFileV2) = UUID(f["/experiment/uuid"])
-experimentDescription(f::MDFFileV1)::String = f["/study/description"]
-experimentDescription(f::MDFFileV2)::String = f["/experiment/description"]
-experimentSubject(f::MDFFileV1)::String = f["/study/subject"]
-experimentSubject(f::MDFFileV2)::String = f["/experiment/subject"]
-experimentIsSimulation(f::MDFFileV2)::Bool = Bool( f["/experiment/isSimulation"] )
-experimentIsSimulation(f::MDFFileV1)::Bool = Bool( f["/study/simulation"] )
+experimentUuid(f::MDFFileV2) = @keyrequired UUID(f["/experiment/uuid"])
+experimentDescription(f::MDFFileV1)::Union{String, Missing} = @keyrequired f["/study/description"]
+experimentDescription(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/experiment/description"]
+experimentSubject(f::MDFFileV1)::Union{String, Missing} = @keyrequired f["/study/subject"]
+experimentSubject(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/experiment/subject"]
+experimentIsSimulation(f::MDFFileV2)::Union{Bool, Missing} = @keyrequired Bool( f["/experiment/isSimulation"] )
+experimentIsSimulation(f::MDFFileV1)::Union{Bool, Missing} = @keyrequired Bool( f["/study/simulation"] )
 experimentIsCalibration(f::MDFFile)::Bool = haskey(f.file, "/calibration")
 experimentHasReconstruction(f::MDFFile)::Bool = haskey(f.file, "/reconstruction")
 experimentHasMeasurement(f::MDFFileV1)::Bool = haskey(f.file, "/measurement") ||
@@ -134,16 +134,16 @@ _makeStringArray(s::String) = [s]
 _makeStringArray(s::Vector{T}) where {T<:AbstractString} = s
 
 # tracer parameters
-tracerName(f::MDFFileV1)::Vector{String} = [f["/tracer/name"]]
-tracerName(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/name"])
-tracerBatch(f::MDFFileV1)::Vector{String} = [f["/tracer/batch"]]
-tracerBatch(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/batch"])
-tracerVolume(f::MDFFileV1)::Vector{Float64} = [f["/tracer/volume"]]
-tracerVolume(f::MDFFileV2)::Vector{Float64} = [f["/tracer/volume"]...]
-tracerConcentration(f::MDFFileV1)::Vector{Float64} = [f["/tracer/concentration"]]
-tracerConcentration(f::MDFFileV2)::Vector{Float64} = [f["/tracer/concentration"]...]
-tracerSolute(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/solute"])
-tracerSolute(f::MDFFileV1)::Vector{String} = ["Fe"]
+tracerName(f::MDFFileV1)::Union{Vector{String}, Missing} = @keyrequired [f["/tracer/name"]]
+tracerName(f::MDFFileV2)::Union{Vector{String}, Missing} = @keyrequired _makeStringArray(f["/tracer/name"])
+tracerBatch(f::MDFFileV1)::Union{Vector{String}, Missing} = @keyrequired [f["/tracer/batch"]]
+tracerBatch(f::MDFFileV2)::Union{Vector{String}, Missing} = @keyrequired _makeStringArray(f["/tracer/batch"])
+tracerVolume(f::MDFFileV1)::Union{Vector{Float64}, Missing} = @keyrequired [f["/tracer/volume"]]
+tracerVolume(f::MDFFileV2)::Union{Vector{Float64}, Missing} = @keyrequired [f["/tracer/volume"]...]
+tracerConcentration(f::MDFFileV1)::Union{Vector{Float64}, Missing} = @keyrequired [f["/tracer/concentration"]]
+tracerConcentration(f::MDFFileV2)::Union{Vector{Float64}, Missing} = @keyrequired [f["/tracer/concentration"]...]
+tracerSolute(f::MDFFileV2)::Union{Vector{String}, Missing} = @keyrequired _makeStringArray(f["/tracer/solute"])
+tracerSolute(f::MDFFileV1)::Union{Vector{String}, Missing} = ["Fe"]
 function tracerInjectionTime(f::MDFFile)::Vector{DateTime}
   p = typeof(f) <: MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
   if f[p] == nothing
@@ -157,22 +157,23 @@ function tracerInjectionTime(f::MDFFile)::Vector{DateTime}
   end
 end
 #tracerInjectionTime(f::MDFFileV2) = DateTime( f["/tracer/injectionTime"] )
-tracerVendor(f::MDFFileV1)::Vector{String} = [f["/tracer/vendor"]]
-tracerVendor(f::MDFFileV2)::Vector{String} = _makeStringArray(f["/tracer/vendor"])
+tracerVendor(f::MDFFileV1)::Union{Vector{String}, Missing} = @keyrequired [f["/tracer/vendor"]]
+tracerVendor(f::MDFFileV2)::Union{Vector{String}, Missing} = @keyrequired _makeStringArray(f["/tracer/vendor"])
 
 # scanner parameters
-scannerFacility(f::MDFFile)::String = f["/scanner/facility"]
-scannerOperator(f::MDFFile)::String = f["/scanner/operator"]
-scannerManufacturer(f::MDFFile)::String = f["/scanner/manufacturer"]
-scannerName(f::MDFFileV1)::String = f["/scanner/model"]
-scannerName(f::MDFFileV2)::String = f["/scanner/name", ""]
-scannerTopology(f::MDFFile)::String = f["/scanner/topology"]
+scannerBoreSize(f::MDFFile)::Union{String, Nothing} = @keyoptional f["/scanner/boreSize"]
+scannerFacility(f::MDFFile)::Union{String, Missing} = @keyrequired f["/scanner/facility"]
+scannerOperator(f::MDFFile)::Union{String, Missing} = @keyrequired f["/scanner/operator"]
+scannerManufacturer(f::MDFFile)::Union{String, Missing} = @keyrequired f["/scanner/manufacturer"]
+scannerName(f::MDFFileV1)::Union{String, Missing} = @keyrequired f["/scanner/model"]
+scannerName(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/scanner/name", ""]
+scannerTopology(f::MDFFile)::Union{String, Missing} = @keyrequired f["/scanner/topology"]
 
 # acquisition parameters
-acqStartTime(f::MDFFileV1)::DateTime = DateTime( f["/acquisition/time"] )
-acqStartTime(f::MDFFileV2)::DateTime = DateTime( f["/acquisition/startTime"] )
-acqNumAverages(f::MDFFileV1)::Int = f["/acquisition/drivefield/averages"]
-acqNumAverages(f::MDFFileV2)::Int = f["/acquisition/numAverages",1]
+acqStartTime(f::MDFFileV1)::Union{DateTime, Nothing} = @keyoptional DateTime( f["/acquisition/time"] )
+acqStartTime(f::MDFFileV2)::Union{DateTime, Nothing} = @keyoptional DateTime( f["/acquisition/startTime"] )
+acqNumAverages(f::MDFFileV1)::Union{Int, Missing} = @keyrequired f["/acquisition/drivefield/averages"]
+acqNumAverages(f::MDFFileV2)::Union{Int, Missing} = @keyrequired f["/acquisition/numAverages",1]
 function acqNumFrames(f::MDFFileV1)::Int
   if experimentIsCalibration(f)
     return size(f.mmap_measData,2)
@@ -180,12 +181,12 @@ function acqNumFrames(f::MDFFileV1)::Int
     return f["/acquisition/numFrames"]
   end
 end
-acqNumFrames(f::MDFFileV2)::Int = f["/acquisition/numFrames"]
-acqNumPeriodsPerFrame(f::MDFFileV1)::Int = 1
-acqNumPeriodsPerFrame(f::MDFFileV2)::Int = f["/acquisition/numPeriods",1]
+acqNumFrames(f::MDFFileV2)::Union{Int, Missing} = @keyrequired f["/acquisition/numFrames"]
+acqNumPeriodsPerFrame(f::MDFFileV1)::Union{Int, Missing} = 1
+acqNumPeriodsPerFrame(f::MDFFileV2)::Union{Int, Missing} = @keyrequired f["/acquisition/numPeriods",1]
 
-acqGradient(f::MDFFileV1)::Array{Float64,4} = reshape(Matrix(Diagonal(f["/acquisition/gradient"])), 3,3,1,1)
-function acqGradient(f::MDFFileV2)::Array{Float64,4} 
+acqGradient(f::MDFFileV1)::Union{Array{Float64,4}, Nothing} = @keyoptional reshape(Matrix(Diagonal(f["/acquisition/gradient"])), 3,3,1,1)
+function acqGradient(f::MDFFileV2)::Union{Array{Float64,4}, Nothing}
   G = f["/acquisition/gradient"]
   if ndims(G) == 4
    return G
@@ -198,8 +199,8 @@ function acqGradient(f::MDFFileV2)::Array{Float64,4}
   end
 end
 
-acqOffsetField(f::MDFFileV1)::Array{Float64,3} = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
-function acqOffsetField(f::MDFFileV2)::Array{Float64,3} 
+acqOffsetField(f::MDFFileV1)::Union{Array{Float64,3}, Nothing} = @keyoptional f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
+function acqOffsetField(f::MDFFileV2)::Union{Array{Float64,3}, Nothing}
   H = f["/acquisition/offsetField", reshape([0.0,0.0,0.0],3,1,1)  ]
   if ndims(H) == 3
    return H
@@ -209,26 +210,34 @@ function acqOffsetField(f::MDFFileV2)::Array{Float64,3}
 end
 
 # drive-field parameters
-dfNumChannels(f::MDFFile)::Int = f["/acquisition/drivefield/numChannels"]
-dfStrength(f::MDFFileV1)::Array{Float64,3} = addTrailingSingleton( addLeadingSingleton(
+dfNumChannels(f::MDFFile)::Union{Int, Missing} = @keyrequired f["/acquisition/drivefield/numChannels"]
+dfStrength(f::MDFFileV1)::Union{Array{Float64,3}, Missing} = @keyrequired addTrailingSingleton( addLeadingSingleton(
          f["/acquisition/drivefield/strength"], 2), 3)
-dfStrength(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/drivefield/strength"]
-dfPhase(f::MDFFileV1)::Array{Float64,3} = dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
-dfPhase(f::MDFFileV2)::Array{Float64,3} = f["/acquisition/drivefield/phase"]
-dfBaseFrequency(f::MDFFile)::Float64 = f["/acquisition/drivefield/baseFrequency"]
-dfCustomWaveform(f::MDFFileV2)::String = f["/acquisition/drivefield/customWaveform"]
-dfDivider(f::MDFFileV1) = addTrailingSingleton(
+dfStrength(f::MDFFileV2)::Union{Array{Float64,3}, Missing} = @keyrequired f["/acquisition/drivefield/strength"]
+dfPhase(f::MDFFileV1)::Union{Array{Float64,3}, Missing} = dfStrength(f) .*0 .+  1.5707963267948966 # Bruker specific!
+dfPhase(f::MDFFileV2)::Union{Array{Float64,3}, Missing} = @keyrequired f["/acquisition/drivefield/phase"]
+dfBaseFrequency(f::MDFFile)::Union{Float64, Missing} = @keyrequired f["/acquisition/drivefield/baseFrequency"]
+dfCustomWaveform(f::MDFFileV2)::Union{String, Nothing} = @keyoptional f["/acquisition/drivefield/customWaveform"]
+dfDivider(f::MDFFileV1) = @keyrequired addTrailingSingleton(
                 f["/acquisition/drivefield/divider"],2)
 dfDivider(f::MDFFileV2) = f["/acquisition/drivefield/divider"]
-dfWaveform(f::MDFFileV1)::String = "sine"
-dfWaveform(f::MDFFileV2)::String = f["/acquisition/drivefield/waveform"]
-dfCycle(f::MDFFile)::Float64 = f["/acquisition/drivefield/cycle"]
-dfCycle(f::MDFFileV1)::Float64 = f["/acquisition/drivefield/period"]
+dfWaveform(f::MDFFileV1) = "sine"
+function dfWaveform(f::MDFFileV2)::Union{Array{String, 2}, Missing}
+  value = @keyrequired f["/acquisition/drivefield/waveform"]
+  if typeof(value) == String # Fix wrong implementation of specs downstream!
+    return fill(value, (1, 1))
+  else
+    return value # This should be an 2D array of strings or missing
+  end
+end
+
+dfCycle(f::MDFFile)::Union{Float64, Missing} = @keyrequired f["/acquisition/drivefield/cycle"]
+dfCycle(f::MDFFileV1)::Union{Float64, Missing} = @keyrequired f["/acquisition/drivefield/period"]
 
 # receiver parameters
-rxNumChannels(f::MDFFile)::Int64 = f["/acquisition/receiver/numChannels"]
-rxBandwidth(f::MDFFile)::Float64 = f["/acquisition/receiver/bandwidth"]
-rxNumSamplingPoints(f::MDFFile)::Int64 = f["/acquisition/receiver/numSamplingPoints"]
+rxNumChannels(f::MDFFile)::Union{Int64, Missing} = @keyrequired f["/acquisition/receiver/numChannels"]
+rxBandwidth(f::MDFFile)::Union{Float64, Missing} = @keyrequired f["/acquisition/receiver/bandwidth"]
+rxNumSamplingPoints(f::MDFFile)::Union{Int64, Missing}= @keyrequired f["/acquisition/receiver/numSamplingPoints"]
 function rxTransferFunction(f::MDFFile)
   parameter = "/acquisition/receiver/transferFunction"
   if haskey(f.file, parameter)
@@ -249,12 +258,12 @@ function rxHasTransferFunction(f::MDFFile)
   haskey(f.file, "/acquisition/receiver/transferFunction")
 end
 rxInductionFactor(f::MDFFileV1) = nothing
-rxInductionFactor(f::MDFFileV2) = f["/acquisition/receiver/inductionFactor"]
+rxInductionFactor(f::MDFFileV2) = @keyrequired f["/acquisition/receiver/inductionFactor"]
 
-rxUnit(f::MDFFileV1)::String = "a.u."
-rxUnit(f::MDFFileV2)::String = f["/acquisition/receiver/unit"]
+rxUnit(f::MDFFileV1)::Union{String, Missing} = "a.u."
+rxUnit(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/acquisition/receiver/unit"]
 rxDataConversionFactor(f::MDFFileV1) = repeat([1.0, 0.0], outer=(1,rxNumChannels(f)))
-rxDataConversionFactor(f::MDFFileV2) = f["/acquisition/receiver/dataConversionFactor"]
+rxDataConversionFactor(f::MDFFileV2) = @keyrequired f["/acquisition/receiver/dataConversionFactor"]
 
 # measurements
 function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
@@ -288,46 +297,24 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
   end
 end
 
-function measData(f::MDFFileV2, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
-                  receivers=1:rxNumChannels(f))
+measDataRaw(f::MDFFileV2) = f.mmap_measData
 
-  if measIsFastFrameAxis(f)
-    data = f.mmap_measData[frames, :, receivers, periods]
-    data = reshape(data, length(frames), size(f.mmap_measData,2), length(receivers), length(periods))
-  else
-    data = f.mmap_measData[:, receivers, periods, frames]
-    data = reshape(data, size(f.mmap_measData,1), length(receivers), length(periods), length(frames))
-  end
-  return data
-end
-
+# Functions working on both MDFFilev2 and MDFv2InMemory were moved to MDFCommon.jl
 
 function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
-                  receivers=1:rxNumChannels(f))
+  receivers=1:rxNumChannels(f))
   tdExists = haskey(f.file, "/measurement/dataTD")
 
   if tdExists
-    data = f.mmap_measData[:, receivers, periods]
-    return data
-  else
-    data = f.mmap_measData[:, :, receivers, periods]
-
-    dataFD = reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4)))
-    dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
-    return dataTD
-  end
-end
-
-
-function measDataTDPeriods(f::MDFFileV2, periods=1:acqNumPeriods(f),
-                  receivers=1:rxNumChannels(f))
-  if measIsFastFrameAxis(f)
-    error("measDataTDPeriods can currently not handle transposed data!")
-  end
-
-  data = reshape(f.mmap_measData,Val(3))[:, receivers, periods]
-
+  data = f.mmap_measData[:, receivers, periods]
   return data
+  else
+  data = f.mmap_measData[:, :, receivers, periods]
+
+  dataFD = reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4)))
+  dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
+  return dataTD
+  end
 end
 
 function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
@@ -339,86 +326,6 @@ function systemMatrix(f::MDFFileV1, rows, bgCorrection=true)
   return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3)))
 end
 
-function systemMatrix(f::MDFFileV2, rows, bgCorrection=true)
-  if !haskey(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
-    !measIsFourierTransformed(f)
-    return nothing
-  end
-
-  rows_ = rowsToSubsampledRows(f, rows)
-
-  data_ = reshape(f.mmap_measData, size(f.mmap_measData,1),
-                                   size(f.mmap_measData,2)*size(f.mmap_measData,3),
-                                   size(f.mmap_measData,4))[:, rows_, :]
-  data = reshape(data_, Val(2))
-
-  fgdata = data[measFGFrameIdx(f),:]
-
-  if measIsSparsityTransformed(f)
-    dataBackTrafo = similar(fgdata, prod(calibSize(f)), size(fgdata,2))
-    B = linearOperator(f["/measurement/sparsityTransformation"], calibSize(f))
-
-    tmp = f["/measurement/subsamplingIndices"]
-    subsamplingIndices_ = reshape(tmp, size(tmp,1),
-                                     size(tmp,2)*size(tmp,3),
-                                     size(tmp,4))[:, rows_, :]
-    subsamplingIndices = reshape(subsamplingIndices_, Val(2))
-
-    for l=1:size(fgdata,2)
-      dataBackTrafo[:,l] .= 0.0
-      dataBackTrafo[subsamplingIndices[:,l],l] .= fgdata[:,l]
-      dataBackTrafo[:,l] .= adjoint(B) * vec(dataBackTrafo[:,l])
-    end
-    fgdata = dataBackTrafo
-  end
-
-  if bgCorrection # this assumes equidistent bg frames
-    @debug "Applying bg correction on system matrix (MDF)"
-    bgdata = data[measBGFrameIdx(f),:]
-    blockLen = measBGFrameBlockLengths( invpermute!(measIsBGFrame(f), measFramePermutation(f)) )
-    st = 1
-    for j=1:length(blockLen)
-      bgdata[st:st+blockLen[j]-1,:] .=
-           mean(bgdata[st:st+blockLen[j]-1,:], dims=1)
-      st += blockLen[j]
-    end
-
-    bgdataInterp = interpolate(bgdata, (BSpline(Linear()), NoInterp()))
-    # Cubic does not work for complex numbers
-    origIndex = measFramePermutation(f)
-    M = size(fgdata,1)
-    K = size(bgdata,1)
-    N = M + K
-    for m=1:M
-      alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
-      for k=1:size(fgdata,2)
-        fgdata[m,k] -= bgdataInterp(alpha,k)
-      end
-    end
-  end
-  return fgdata
-end
-
-function systemMatrixWithBG(f::MDFFileV2)
-  if !haskey(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
-      !measIsFourierTransformed(f)
-      return nothing
-  end
-
-  data = f.mmap_measData[:, :, :, :]
-  return data
-end
-
-# This is a special variant used for matrix compression
-function systemMatrixWithBG(f::MDFFileV2, freq)
-  if !haskey(f.file, "/measurement") || !measIsFastFrameAxis(f) ||
-    !measIsFourierTransformed(f)
-    return nothing
-  end
-
-  data = f.mmap_measData[:, freq, :, :]
-  return data
-end
 
 function measIsFourierTransformed(f::MDFFileV1)
   if !experimentIsCalibration(f)
@@ -427,13 +334,13 @@ function measIsFourierTransformed(f::MDFFileV1)
     return true
   end
 end
-measIsFourierTransformed(f::MDFFileV2) = Bool(f["/measurement/isFourierTransformed"])
+measIsFourierTransformed(f::MDFFileV2)::Union{Bool, Missing} = @keyrequired Bool(f["/measurement/isFourierTransformed"])
 
-measIsTFCorrected(f::MDFFileV1) = false
-measIsTFCorrected(f::MDFFileV2) = Bool(f["/measurement/isTransferFunctionCorrected"])
+measIsTFCorrected(f::MDFFileV1)::Union{Bool, Missing} = false
+measIsTFCorrected(f::MDFFileV2)::Union{Bool, Missing} = @keyrequired Bool(f["/measurement/isTransferFunctionCorrected"])
 
-measIsSpectralLeakageCorrected(f::MDFFileV1) = false
-measIsSpectralLeakageCorrected(f::MDFFileV2) = Bool(f["/measurement/isSpectralLeakageCorrected"])
+measIsSpectralLeakageCorrected(f::MDFFileV1)::Union{Bool, Missing} = @keyrequired false
+measIsSpectralLeakageCorrected(f::MDFFileV2)::Union{Bool, Missing} = @keyrequired Bool(f["/measurement/isSpectralLeakageCorrected"])
 
 function measIsBGCorrected(f::MDFFileV1)
   if !experimentIsCalibration(f)
@@ -442,11 +349,11 @@ function measIsBGCorrected(f::MDFFileV1)
     return true
   end
 end
-measIsBGCorrected(f::MDFFileV2) = Bool(f["/measurement/isBackgroundCorrected"])
+measIsBGCorrected(f::MDFFileV2)::Union{Bool, Missing} = @keyrequired Bool(f["/measurement/isBackgroundCorrected"])
 
-measIsFrequencySelection(f::MDFFileV1) = false
-measIsFrequencySelection(f::MDFFileV2) = Bool(f["/measurement/isFrequencySelection"])
-measFrequencySelection(f::MDFFileV2) = f["/measurement/frequencySelection"]
+measIsFrequencySelection(f::MDFFileV1)::Union{Bool, Missing} = false
+measIsFrequencySelection(f::MDFFileV2)::Union{Bool, Missing} = @keyrequired Bool(f["/measurement/isFrequencySelection"])
+measFrequencySelection(f::MDFFileV2)::Union{Vector{Int64}, Nothing} = @keyoptional f["/measurement/frequencySelection"]
 
 measIsSparsityTransformed(f::MDFFileV1) = false
 function measIsSparsityTransformed(f::MDFFileV2)
@@ -481,11 +388,15 @@ function measIsFramePermutation(f::MDFFileV1)
     return true
   end
 end
-measIsFramePermutation(f::MDFFileV2) = Bool(f["/measurement/isFramePermutation"])
-measIsBGFrame(f::MDFFileV1) = zeros(Bool, acqNumFrames(f))
-measIsBGFrame(f::MDFFileV2) = convert(Array{Bool},f["/measurement/isBackgroundFrame"])
-measFramePermutation(f::MDFFileV1) = nothing
-measFramePermutation(f::MDFFileV2) = f["/measurement/framePermutation"]
+measIsFramePermutation(f::MDFFileV2)::Union{Bool, Missing} = @keyrequired Bool(f["/measurement/isFramePermutation"])
+measIsBGFrame(f::MDFFileV1)::Union{Vector{Bool}, Missing} = zeros(Bool, acqNumFrames(f))
+measIsBGFrame(f::MDFFileV2)::Union{Vector{Bool}, Missing} = @keyrequired convert(Array{Bool},f["/measurement/isBackgroundFrame"])
+measFramePermutation(f::MDFFileV1)::Union{Vector{Int64}, Nothing} = nothing
+measFramePermutation(f::MDFFileV2)::Union{Vector{Int64}, Nothing} = @keyoptional f["/measurement/framePermutation"]
+measSparsityTransformation(f::MDFFileV1)::Union{String, Nothing} = nothing
+measSparsityTransformation(f::MDFFileV2)::Union{String, Nothing} = @keyoptional f["/measurement/sparsityTransformation"]
+measSubsamplingIndices(f::MDFFileV2)::Union{Array{Integer, 4}, Nothing} = @keyoptional f["/measurement/subsamplingIndices"]
+
 fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
 
 measIsCalibProcessed(f::MDFFile) = measIsFramePermutation(f) && 
@@ -493,27 +404,28 @@ measIsCalibProcessed(f::MDFFile) = measIsFramePermutation(f) &&
                                    measIsFastFrameAxis(f)
 
 #calibrations
-calibSNR(f::MDFFileV1) = addTrailingSingleton(f["/calibration/snrFD"],3)
-calibSNR(f::MDFFileV2) = f["/calibration/snr"]
-calibFov(f::MDFFile) = f["/calibration/fieldOfView"]
-calibFovCenter(f::MDFFile) = f["/calibration/fieldOfViewCenter"]
-calibSize(f::MDFFile) = f["/calibration/size"]
-calibOrder(f::MDFFile) = f["/calibration/order"]
-calibOffsetField(f::MDFFile) = f["/calibration/offsetField"]
-calibDeltaSampleSize(f::MDFFile) = f["/calibration/deltaSampleSize",[0.0,0.0,0.0]]
-calibMethod(f::MDFFile) = f["/calibration/method"]
-calibIsMeanderingGrid(f::MDFFile) = Bool(f["/calibration/isMeanderingGrid", 0])
-calibPositions(f::MDFFile) = f["/calibration/positions"]
+calibSNR(f::MDFFileV1) = @keyoptional addTrailingSingleton(f["/calibration/snrFD"],3)
+calibSNR(f::MDFFileV2) = @keyoptional f["/calibration/snr"]
+calibFov(f::MDFFile) = @keyoptional f["/calibration/fieldOfView"]
+calibFovCenter(f::MDFFile) = @keyoptional f["/calibration/fieldOfViewCenter"]
+calibSize(f::MDFFile) = @keyoptional f["/calibration/size"]
+calibOrder(f::MDFFile) = @keyoptional f["/calibration/order"]
+calibOffsetField(f::MDFFile) = @keyoptional f["/calibration/offsetField"]
+calibDeltaSampleSize(f::MDFFile) = @keyoptional f["/calibration/deltaSampleSize",[0.0,0.0,0.0]]
+calibMethod(f::MDFFile) = @keyrequired f["/calibration/method"]
+calibIsMeanderingGrid(f::MDFFile) = @keyoptional Bool(f["/calibration/isMeanderingGrid", 0])
+calibPositions(f::MDFFile) = @keyoptional f["/calibration/positions"]
 
 # reconstruction results
-recoData(f::MDFFileV1) = addLeadingSingleton(
-         f[ "/reconstruction/data"], 3)
-recoData(f::MDFFileV2) = f["/reconstruction/data"]
-recoFov(f::MDFFile)::Vector{Float64} = f["/reconstruction/fieldOfView"]
-recoFovCenter(f::MDFFile)::Vector{Float64} = f["/reconstruction/fieldOfViewCenter"]
-recoSize(f::MDFFile)::Vector{Int64} = f["/reconstruction/size"]
-recoOrder(f::MDFFile) = f["/reconstruction/order"]
-recoPositions(f::MDFFile) = f["/reconstruction/positions"]
+recoData(f::MDFFileV1) = @keyrequired addLeadingSingleton(f[ "/reconstruction/data"], 3)
+recoData(f::MDFFileV2) = @keyrequired f["/reconstruction/data"]
+recoFov(f::MDFFile)::Union{Vector{Float64}, Nothing} = @keyoptional f["/reconstruction/fieldOfView"]
+recoFovCenter(f::MDFFile)::Union{Vector{Float64}, Nothing} = @keyoptional f["/reconstruction/fieldOfViewCenter"]
+recoSize(f::MDFFile)::Union{Vector{Int64}, Nothing} = @keyoptional f["/reconstruction/size"]
+recoOrder(f::MDFFile)::Union{String, Nothing} = @keyoptional f["/reconstruction/order"]
+recoPositions(f::MDFFile)::Union{Array{Float64, 2}, Nothing} = @keyoptional f["/reconstruction/positions"]
+recoIsOverscanRegion(f::MDFFileV1)::Union{Vector{Bool}, Nothing} = nothing
+recoIsOverscanRegion(f::MDFFileV2)::Union{Vector{Bool}, Nothing} = @keyoptional f["/reconstruction/isOverscanRegion"]
 
 # this is non-standard
 function recoParameters(f::MDFFile)

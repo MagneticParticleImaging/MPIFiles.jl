@@ -120,6 +120,7 @@ abstract type MPIFile end
 @mustimplement tracerInjectionTime(f::MPIFile)
 
 # scanner parameters
+@mustimplement scannerBoreSize(f::MPIFile)
 @mustimplement scannerFacility(f::MPIFile)
 @mustimplement scannerOperator(f::MPIFile)
 @mustimplement scannerManufacturer(f::MPIFile)
@@ -159,16 +160,19 @@ abstract type MPIFile end
 @mustimplement measData(f::MPIFile)
 @mustimplement measDataTD(f::MPIFile)
 @mustimplement measDataTDPeriods(f::MPIFile, periods)
-@mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
-@mustimplement measIsFourierTransformed(f::MPIFile)
-@mustimplement measIsTFCorrected(f::MPIFile)
-@mustimplement measIsFrequencySelecton(f::MPIFile)
-@mustimplement measIsBGCorrected(f::MPIFile)
-@mustimplement measIsFastFrameAxis(f::MPIFile)
-@mustimplement measIsFramePermutation(f::MPIFile)
-@mustimplement measIsBGFrame(f::MPIFile)
 @mustimplement measFramePermutation(f::MPIFile)
+@mustimplement measFrequencySelection(f::MPIFile)
+@mustimplement measIsBGCorrected(f::MPIFile)
+@mustimplement measIsBGFrame(f::MPIFile)
+@mustimplement measIsFastFrameAxis(f::MPIFile)
+@mustimplement measIsFourierTransformed(f::MPIFile)
+@mustimplement measIsFramePermutation(f::MPIFile)
+@mustimplement measIsFrequencySelection(f::MPIFile)
 @mustimplement measIsSparsityTransformed(f::MPIFile)
+@mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
+@mustimplement measIsTFCorrected(f::MPIFile)
+@mustimplement measSparsityTransformation(f::MPIFile)
+@mustimplement measSubsamplingIndices(f::MPIFile)
 @mustimplement measIsCalibProcessed(b::MPIFile)
 
 # calibrations
@@ -190,6 +194,7 @@ abstract type MPIFile end
 @mustimplement recoSize(f::MPIFile)
 @mustimplement recoOrder(f::MPIFile)
 @mustimplement recoPositions(f::MPIFile)
+@mustimplement recoIsOverscanRegion(f::MPIFile)
 
 # additional functions that should be implemented by an MPIFile
 @mustimplement filepath(f::MPIFile)
@@ -202,9 +207,10 @@ include("FramePermutation.jl")
 
 ### Concrete implementations ###
 include("MDF.jl")
+include("MDFInMemory.jl")
+include("MDFCommon.jl")
 include("Brukerfile.jl")
 include("IMT.jl")
-include("MDFInMemory.jl")
 
 # This dispatches on the file extension and automatically
 # generates the correct type

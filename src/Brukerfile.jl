@@ -354,7 +354,7 @@ dfPhase(b::BrukerFile) = dfStrength(b) .*0 .+  1.5707963267948966 # Bruker speci
 dfBaseFrequency(b::BrukerFile) = 2.5e6
 dfCustomWaveform(b::BrukerFile) = nothing
 dfDivider(b::BrukerFile) = reshape([102; 96; 99],:,1)
-dfWaveform(b::BrukerFile) = "sine"
+dfWaveform(b::BrukerFile) = fill("sine", (1, 1))
 dfCycle(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000 / numSubPeriods(b)
 
 # receiver parameters

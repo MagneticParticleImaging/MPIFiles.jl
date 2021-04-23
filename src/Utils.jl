@@ -60,3 +60,33 @@ function makeAxisArray(array::Array{T,5}, pixelspacing, offset, dt) where T
 end
 
 # RawFile removed see commit https://github.com/MagneticParticleImaging/MPIFiles.jl/commit/c2b49833cc00127770fb2e1f5342883f213ff002
+
+"Macro for making required fields return `missing` instead of a key error."
+macro keyrequired(expr)
+  return quote
+    try
+      $(esc(expr))
+    catch e
+      if isa(e, KeyError)
+        missing
+      else
+        rethrow()
+      end
+    end
+  end
+end
+
+"Macro for making optional fields return `nothing` instead of a key error."
+macro keyoptional(expr)
+  return quote
+    try
+      $(esc(expr))
+    catch e
+      if isa(e, KeyError)
+        nothing
+      else
+        rethrow()
+      end
+    end
+  end
+end
