@@ -1,4 +1,4 @@
-export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir
+export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir, getMDFStore
 
 struct MDFDatasetStore <: DatasetStore
   path::String
@@ -25,6 +25,14 @@ readonly(::MDFDatasetStore) = false
 
 studydir(d::MDFDatasetStore) = joinpath(d.path,"measurements")
 calibdir(d::MDFDatasetStore) = joinpath(d.path,"calibrations")
+
+function getMDFStore(study::Study{MDFDatasetStore})
+    return study.store
+end
+
+function getMDFStore(experiment::Experiment{MDFDatasetStore})
+    return getMDFStore(experiment.study)
+end
 
 function getStudy(d::MDFDatasetStore, studyfolder::String)
   study = nothing

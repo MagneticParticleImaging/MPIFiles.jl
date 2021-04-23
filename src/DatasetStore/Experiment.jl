@@ -1,4 +1,4 @@
-export Experiment, getExperiment, getExperiments, getNewExperimentNum
+export Experiment, getExperiment, getExperiments, getNewExperimentNum, getStudy
 
 # might not be so clever to use an explicit type fields here
 # maybe better a dict
@@ -16,6 +16,10 @@ struct Experiment{D<:DatasetStore}
 end
 
 @mustimplement path(e::Experiment{D}) where D<:DatasetStore
+
+function getStudy(experiment::Experiment)
+    return experiment.study
+end
 
 function getExperiment(s::Study, numExp::Integer)
 
