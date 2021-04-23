@@ -10,6 +10,8 @@ abstract type DatasetStore end
 
 # functions for writable store
 @mustimplement Base.empty!(d::DatasetStore)
+@mustimplement changeParam(exp, paramName::AbstractString, paramValue)
+
 
 include("Study.jl")
 include("Experiment.jl")

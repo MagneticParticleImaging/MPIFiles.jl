@@ -45,6 +45,18 @@ studiesC = getStudies(storeC)
 @test getExperiments(studiesB[2])[1].num == 18
 @test getExperiments(studiesC[2])[1].num == 1
 
+# Next we test changing parameters and study names.
+s = studiesC[2]
+@test validate(s)
+changeStudy(s, "NewStudyName")
+studiesD = getStudies(storeC)
+sNew = studiesD[end]
+@test validate(sNew)
+@test sNew.name == "NewStudyName"
+enforceStudy(sNew)
+@test validate(sNew)
+
+
 # Experiment handling
 
 #exps = getExperiments(storeB, studyA)

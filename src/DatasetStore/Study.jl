@@ -1,4 +1,4 @@
-export Study, getStudy, getStudies
+export Study, getStudy, getStudies, validate, enforceStudy, changeStudy
 
 # The following are base types describing
 # the dataset store at a certain level
@@ -11,15 +11,17 @@ struct Study{D<:DatasetStore}
 end
 
 function Study(store::DatasetStore, name::String; foldername::String="", 
-         date::DateTime = now(), subject::String="") 
+         date::DateTime = now(), subject::String="", createDir=true) 
   #remove Milliseconds
-  date_ = DateTime(split(string(date),".")[1])
+  date_ = trunc(date, Dates.Second)
   if foldername == ""
     foldername = getMDFStudyFolderName(name,date_)
   end
   path = joinpath( studydir(store), foldername )
-  mkpath(path)
-  return Study(store, name, foldername, date_, subject)
+  if createDir
+    mkpath(path)
+  end
+    return Study(store, name, foldername, date_, subject)
 end
 
 path(s::Study) = joinpath( studydir(s.store), s.foldername )
@@ -66,4 +68,42 @@ function getNewExperimentPath(s::Study)
   touch(path_)
   try_chmod(path_, 0o660)
   return path_
+end
+
+
+function changeParam(s::Study, paramName::AbstractString, paramValue) 
+  exps = getExperiments(s)
+  for e in exps
+    changeParam(e, paramName, paramValue)
+  end
+end
+
+function changeStudy(s::Study, newStudyName::AbstractString; date::DateTime = now()) 
+  changeParam(s, "/study/name", newStudyName) 
+  changeParam(s, "/study/time", string(date)) 
+  sNew = Study(s.store, newStudyName, date=date, subject=s.subject, createDir=false)
+  mv(path(s), path(sNew))
+  return 
+end
+
+function validate(s::Study)
+  exps = getExperiments(s)
+  valid = true
+  for e in exps
+    f = MPIFile(path(e), fastMode=true)
+    date1 = trunc(studyTime(f), Dates.Second)
+    date2 = trunc(s.date, Dates.Second)
+    if studyName(f) != s.name || date1 != date2 
+      valid = false
+      @info "file $path(e) is not valid"
+      @show studyName(f), s.name, date1, date2 
+    end
+  end
+  return valid
+end
+
+function enforceStudy(s::Study)
+  changeParam(s, "/study/name", s.name) 
+  changeParam(s, "/study/time", string(s.date)) 
+  return
 end
