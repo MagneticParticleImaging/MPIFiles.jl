@@ -113,8 +113,8 @@ else
       if isdir(joinpath(path,file))
        try
         if isfile(joinpath(path,file,"acqp")) &&
-           isfile(joinpath(candidatePath,"method")) &&
-           isfile(joinpath(candidatePath,"visu_pars"))
+           isfile(joinpath(path,file,"method")) &&
+           isfile(joinpath(path,file,"visu_pars"))
           push!(bfiles, joinpath(path,file))
         else
           rfiles = findBrukerFiles(joinpath(path,file))

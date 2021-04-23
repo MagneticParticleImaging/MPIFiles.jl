@@ -13,7 +13,7 @@ function ishidden(filename::AbstractString)
     s = basename(filename)
     return (!isempty(s) && s[1] == '.')
   else
-    attr = ccall((:GetFileAttributesA), stdcall, Cint, (Ptr{UInt8},),unsafe_string(filename))
+    attr = ccall((:GetFileAttributesA), stdcall, Cint, (Cstring,),filename)
     return attr & 0x2 > 0
   end
 end

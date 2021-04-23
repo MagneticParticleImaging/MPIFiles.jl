@@ -19,9 +19,11 @@ if ispath("/opt/mpidata/Bruker")
 end
 path(e::Experiment{MDFDatasetStore}) = joinpath( path(e.study), string(e.num)*".mdf" )
 path(s::Study{MDFDatasetStore}, numExp::Integer) = joinpath(path(s),string(numExp)*".mdf")
-iscalib(e::Experiment{MDFDatasetStore}) = e.study.foldername == "../calibrations"
-
+iscalib(e::Experiment{MDFDatasetStore}) = e.study.foldername == 
+                             ".."*Base.Filesystem.path_separator*"calibrations"
 readonly(::MDFDatasetStore) = false
+changeParam(e::Experiment{MDFDatasetStore}, paramName::AbstractString, paramValue) =
+               changeParam(path(e), paramName, paramValue)
 
 studydir(d::MDFDatasetStore) = joinpath(d.path,"measurements")
 calibdir(d::MDFDatasetStore) = joinpath(d.path,"calibrations")
@@ -58,7 +60,8 @@ function getStudy(d::MDFDatasetStore, studyfolder::String)
 end
 
 function getCalibStudy(d::MDFDatasetStore)
-  return Study(d, "calibrations"; foldername="../calibrations") 
+  return Study(d, "calibrations"; 
+       foldername=".."*Base.Filesystem.path_separator*"calibrations") 
 end
 
 function getExperiments(s::Study{MDFDatasetStore})

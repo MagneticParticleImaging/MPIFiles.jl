@@ -1,8 +1,8 @@
 @testset "Testing General submodule" begin
 
-fnMeasBruker = joinpath(datadir,"BrukerStore/20150915_102110_Wuerfelphantom_1_1/18")
-fnSMBruker = joinpath(datadir,"BrukerStore/20141121_130749_CalibrationScans_1_1/76")
-fnSM1DBruker = joinpath(datadir,"BrukerStore/20170807_142514_Service_1_1/89")
+fnMeasBruker = joinpath(datadir,"BrukerStore","20150915_102110_Wuerfelphantom_1_1","18")
+fnSMBruker = joinpath(datadir,"BrukerStore","20141121_130749_CalibrationScans_1_1","76")
+fnSM1DBruker = joinpath(datadir,"BrukerStore","20170807_142514_Service_1_1","89")
 
 
 fnMeasV1 = joinpath(tmpdir,"mdf","measurement_V1.mdf")

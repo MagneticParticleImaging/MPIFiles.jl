@@ -40,10 +40,33 @@ empty!(storeC)
 exportData(storeB, storeC, SNRThresh=4.0)
 createArtifact(storeB, "https://")
 
+@test validate(storeA)
+@test validate(storeB)
+@test validate(storeC)
+
 studiesB = getStudies(storeB)
 studiesC = getStudies(storeC)
 @test getExperiments(studiesB[2])[1].num == 18
 @test getExperiments(studiesC[2])[1].num == 1
+
+# export into new/existing Study
+newStudy = Study(storeB, "NewStudy")
+exportData(studiesB[2], storeB, newStudy)
+@info [s.name for s in getStudies(storeB)] 
+@test getExperiments(newStudy)[1].num == 1
+
+
+# Next we test changing parameters and study names.
+s = studiesC[2]
+@test validate(s)
+changeStudy(s, "NewStudyName")
+studiesD = getStudies(storeC)
+sNew = studiesD[end]
+@test validate(sNew)
+@test sNew.name == "NewStudyName"
+enforceStudy(sNew)
+@test validate(sNew)
+
 
 # Experiment handling
 
