@@ -1,6 +1,6 @@
 export exportData, makeTarGzip, createArtifact
 
-function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false, 
+function exportData(e::Experiment, mdf::MDFDatasetStore, study::Union{Nothing,Study}=nothing; logging=false, 
                     storeForwardRef=false, keepExpNum=false, kargs...)
   # pretend to be a measurement to enforce loading data from time domain in case post processed data is not available
   # in case of compression isCalib=false right now does not work, thus we disable it.
@@ -18,10 +18,14 @@ function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false,
     saveasMDF(exportpath, f; applyCalibPostprocessing=true, kargs...)
     @info "Calibration data from $path successfully exported to $exportpath." 
   else
-    name = studyName(f)
-    subject = experimentSubject(f)
-    date = studyTime(f)
-    s = Study(mdf, name; date=date, subject=subject)
+    if study == nothing
+      name = studyName(f)
+      subject = experimentSubject(f)
+      date = studyTime(f)
+      s = Study(mdf, name; date=date, subject=subject)
+    else
+      s = study
+    end
     if keepExpNum  
       expNum = experimentNumber(f) # or e.num
       exportpath = joinpath(path(s),string(expNum)*".mdf")
@@ -50,13 +54,13 @@ function exportData(e::Experiment, mdf::MDFDatasetStore; logging=false,
   return exportpath
 end
 
-function exportData(s::Study, mdf::MDFDatasetStore; 
+function exportData(s::Study, mdf::MDFDatasetStore, args...; 
                     nums::Vector{Int}=zeros(Int,0),
                     kargs...)
   exps = getExperiments(s)
   for e in exps
     # nums indicates which experiments are exported
-    (length(nums) == 0 || e.num in nums) && exportData(e, mdf; kargs...)
+    (length(nums) == 0 || e.num in nums) && exportData(e, mdf, args...; kargs...)
   end
 
   return nothing
@@ -104,4 +108,8 @@ function createArtifact(d::DatasetStore, url="https://")
   end
   bind_artifact!(artifact_toml, name, hash;
                  download_info=[(url, tarball_hash)],lazy=true, force=true)
+end
+
+function validate(d::DatasetStore)
+  return all([validate(s) for s in getStudies(d)])
 end
