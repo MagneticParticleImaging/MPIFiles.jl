@@ -124,7 +124,7 @@ experimentSubject(f::MDFFileV1)::Union{String, Missing} = @keyrequired f["/study
 experimentSubject(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/experiment/subject"]
 experimentIsSimulation(f::MDFFileV2)::Union{Bool, Missing} = @keyrequired Bool( f["/experiment/isSimulation"] )
 experimentIsSimulation(f::MDFFileV1)::Union{Bool, Missing} = @keyrequired Bool( f["/study/simulation"] )
-experimentIsCalibration(f::MDFFile)::Bool = haskey(f.file, "/calibration")
+experimentIsCalibration(f::MDFFile)::Bool = haskey(f.file, "/calibration") && haskey(f.file, "/calibration/method") # Last part is a little workaround for the testcases, since the file somehow contains a `deltaSampleSize` field
 experimentHasReconstruction(f::MDFFile)::Bool = haskey(f.file, "/reconstruction")
 experimentHasMeasurement(f::MDFFileV1)::Bool = haskey(f.file, "/measurement") ||
                                          haskey(f.file, "/calibration")
@@ -415,6 +415,7 @@ calibDeltaSampleSize(f::MDFFile) = @keyoptional f["/calibration/deltaSampleSize"
 calibMethod(f::MDFFile) = @keyrequired f["/calibration/method"]
 calibIsMeanderingGrid(f::MDFFile) = @keyoptional Bool(f["/calibration/isMeanderingGrid", 0])
 calibPositions(f::MDFFile) = @keyoptional f["/calibration/positions"]
+calibTemperatures(f::MDFFile) = @keyoptional f["/calibration/_temperatures"] # non-standard
 
 # reconstruction results
 recoData(f::MDFFileV1) = @keyrequired addLeadingSingleton(f[ "/reconstruction/data"], 3)
@@ -435,6 +436,8 @@ function recoParameters(f::MDFFile)
     return loadParams(f.file, "/reconstruction/_parameters")
   end
 end
+
+auxiliaryData(f::MDFFileV2) = @keyoptional f["/custom/auxiliaryData"]
 
 # additional functions that should be implemented by an MPIFile
 filepath(f::MDFFile) = f.filename

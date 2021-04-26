@@ -823,13 +823,27 @@ end
 
 ### Create getters and setters
 
-customSymbols = [
-  :dfCustomWaveform,
-  :calibIsMeanderingGrid,
-  :rxTransferFunctionFileName
-]
+customSymbols = Dict{Symbol, String}(
+  :dfCustomWaveform => "/acquisition/drivefield/customWaveform",
+  :calibIsMeanderingGrid => "/calibration/isMeanderingGrid",
+  :calibTemperatures => "/calibration/_temperatures",
+  :rxTransferFunctionFileName => "/acquisition/receiver/transferFunctionFileName",
+  :recoParameters => "/reconstruction/_parameters",
+  :auxiliaryData => "/custom/auxiliaryData",
+)
 
-specificationSymbols = Vector{Symbol}()
+specificationSymbols = Dict{Symbol, String}()
+
+aliases = Dict{Symbol, Symbol}(
+  :measIsTransferFunctionCorrected => :measIsTFCorrected,
+  :measIsBackgroundCorrected => :measIsBGCorrected,
+  :measIsBackgroundFrame => :measIsBGFrame,
+  :calibSnr => :calibSNR,
+  :calibFieldOfView => :calibFov,
+  :calibFieldOfViewCenter => :calibFovCenter,
+  :recoFieldOfView => :recoFov,
+  :recoFieldOfViewCenter => :recoFovCenter
+)
 
 prefixes = Dict{String, String}(
   "MDFv2Root" => "",
@@ -864,7 +878,11 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
         functionSymbol = Symbol(prefixes[replace(string(fieldtype), "MPIFiles." => "")]*capitalizedPartFieldname)
 
         # Save symbols for later use in conversion
-        push!(specificationSymbols, functionSymbol)
+        if fieldnameStr != "root"
+          specificationSymbols[functionSymbol] = "/"*fieldnameStr*"/"*partFieldnameStr
+        else
+          specificationSymbols[functionSymbol] = "/"*partFieldnameStr
+        end
 
         @eval begin
           # TODO: Add docstring from struct; I did not yet find a way to retrieve it
@@ -887,6 +905,16 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
             mdf.$fieldname.$partFieldname = value
           end
         end
+
+        # If needed, create aliases
+        if haskey(aliases, functionSymbol)
+          alias = aliases[functionSymbol]
+          @eval begin
+            $(alias)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing} = $(functionSymbol)(mdf)
+            $(alias)(mdf::MDFv2InMemory, value::$partFieldtype) = $(functionSymbol)(mdf, value)
+            $(functionSymbol)(f::MDFFileV2)::Union{$partFieldtype, $missingOrNothing} = $(alias)(f) # Should this be here or in MDF.jl?
+          end
+        end
       else
         # At the moment, this should be a Union
         missingOrNothing = (partFieldtype.b <: MDFv2InMemoryPart) ? partFieldtype.a : partFieldtype.b
@@ -898,7 +926,7 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
           functionSymbol = Symbol(prefixes[replace(string(partFieldtype), "MPIFiles." => "")]*capitalizedSubPartFieldname)
 
           # Save symbols for later use in conversion
-          push!(specificationSymbols, functionSymbol)
+          specificationSymbols[functionSymbol] = "/"*fieldnameStr*"/"*partFieldnameStr*"/"*subPartFieldnameStr
 
           # Create getter and setter for the respective field  within the naming scheme
           @eval begin
@@ -931,43 +959,25 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
               mdf.$fieldname.$partFieldname.$subPartFieldname = value
             end
           end
+
+          # If needed, create aliases
+          if haskey(aliases, functionSymbol)
+            alias = aliases[functionSymbol]
+            @eval begin
+              $(alias)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing} = $(functionSymbol)(mdf)
+              $(alias)(mdf::MDFv2InMemory, value::$partFieldtype) = $(functionSymbol)(mdf, value)
+              $(functionSymbol)(f::MDFFileV2)::Union{$partFieldtype, $missingOrNothing} = $(alias)(f) # Should this be here or in MDF.jl?
+            end
+          end
         end
       end
     end
   end
 end
 
-# Some alias functions are needed
-measIsTFCorrected(mdf::MDFv2InMemory)::Union{Bool, Missing} = measIsTransferFunctionCorrected(mdf)
-measIsTFCorrected(mdf::MDFv2InMemory, value::Bool) = measIsTransferFunctionCorrected(mdf, value)
-measIsTransferFunctionCorrected(f::MDFFileV2)::Union{Bool, Missing} = measIsTFCorrected(f) # Should this be here or in MDF.jl?
-
-measIsBGCorrected(mdf::MDFv2InMemory)::Union{Bool, Missing} = measIsBackgroundCorrected(mdf)
-measIsBGCorrected(mdf::MDFv2InMemory, value::Bool) = measIsBackgroundCorrected(mdf; value)
-measIsBackgroundCorrected(f::MDFFileV2)::Union{Bool, Missing} = measIsBGCorrected(f) # Should this be here or in MDF.jl?
-
-measIsBGFrame(mdf::MDFv2InMemory)::Union{Vector{Bool}, Missing} = measIsBackgroundFrame(mdf)
-measIsBGFrame(mdf::MDFv2InMemory, value::Vector{Bool}) = measIsBackgroundFrame(mdf, value)
-measIsBackgroundFrame(f::MDFFileV2)::Union{Vector{Bool}, Missing} = measIsBGFrame(f) # Should this be here or in MDF.jl?
-
-calibSNR(mdf::MDFv2InMemory)::Union{Array{Float64, 3}, Nothing} = calibSnr(mdf)
-calibSNR(mdf::MDFv2InMemory, value::Array{Float64, 3}) = calibSnr(mdf, value)
-calibSnr(f::MDFFileV2)::Union{Array{Float64, 3}, Nothing} = calibSNR(f) # Should this be here or in MDF.jl?
-
-calibFov(mdf::MDFv2InMemory)::Union{Vector{Float64}, Nothing} = calibFieldOfView(mdf)
-calibFov(mdf::MDFv2InMemory, value::Vector{Float64}) = calibFieldOfView(mdf, value)
-calibFieldOfView(f::MDFFileV2)::Union{Vector{Float64}, Nothing} = calibFov(f)
-
-calibFovCenter(mdf::MDFv2InMemory)::Union{Vector{Float64}, Nothing} = calibFieldOfViewCenter(mdf)
-calibFovCenter(mdf::MDFv2InMemory, value::Vector{Float64}) = calibFieldOfViewCenter(mdf, value)
-calibFieldOfViewCenter(f::MDFFileV2)::Union{Vector{Float64}, Nothing} = calibFovCenter(f)
 
 # The MDF specification uses the plural
 calibOffsetFields(f::MDFFile) = calibOffsetField(f)
-
-recoFieldOfView(f::MDFFile)::Union{Vector{Float64}, Nothing} = recoFov(f)
-recoFieldOfViewCenter(f::MDFFile)::Union{Vector{Float64}, Nothing} = recoFovCenter(f)
-
 
 # And some utility functions
 measIsCalibProcessed(mdf::MDFv2InMemory)::Union{Bool, Missing} = measIsFramePermutation(mdf) && 
@@ -983,42 +993,49 @@ experimentIsCalibration(mdf::MDFv2InMemory)::Bool = !isnothing(mdf.calibration) 
 
 # Creation and conversion
 
-"Create an in-memory MDF from a dict matching the respective function names."
-function inMemoryMDFFromDict(dict::Dict)::MDFv2InMemory
-  mdf = MDFv2InMemory()
+# "Create an in-memory MDF from a dict matching the respective function names."
+# function inMemoryMDFFromDict(dict::Dict{String, Any})::MDFv2InMemory
+#   mdf = MDFv2InMemory()
 
-  for (key, value) in dict
-    functionSymbol = Symbol(key)
-    f = getfield(MPIFiles, functionSymbol)
-    f(mdf, value)
-  end
+#   for (key, value) in dict
+#     functionSymbol = Symbol(key)
+#     f = getfield(MPIFiles, functionSymbol)
+#     f(mdf, value)
+#   end
 
-  return mdf
-end
+#   return mdf
+# end
 
-"Create a dict from an in-memory MDF by matching the respective function names."
-function inMemoryMDFToDict(mdf::MDFv2InMemory)::Dict
-  dict = Dict{String, Any}()
+# "Create a dict from an in-memory MDF by matching the respective function names."
+# function inMemoryMDFToDict(mdf::MDFv2InMemory)::Dict{String, Any}
+#   resultDict = Dict{String, Any}()
 
-  # Add standard-compliant and non-standard fields
-  for functionSymbol in vcat(specificationSymbols, customSymbols)
-    f = getfield(MPIFiles, functionSymbol)
-    result = f(mdf)
-    if !(isnothing(result) || ismissing(result))
-      dict[functionSymbol] = result # Fails for aliases
-    end
-  end
+#   # Add standard-compliant and non-standard fields
+#   for functionSymbol in vcat(specificationSymbols, customSymbols)
+#     f = getfield(MPIFiles, functionSymbol)
+#     result = f(mdf)
+#     if !(isnothing(result) || ismissing(result))
+#       # Conversion uses aliases => replace these symbols with their alias
+#       if haskey(aliases, functionSymbol)
+#         functionSymbol = aliases[functionSymbol]
+#       end
 
-  # Add measurements data
-  dict[:measData] = measDataRaw(mdf)
-end
+#       resultDict[string(functionSymbol)] = result
+#     end
+#   end
 
-"Create an in-memory MDF from an MDFFile."
+#   # Add measurements data
+#   resultDict["measData"] = measDataRaw(mdf)
+
+#   return resultDict
+# end
+
+"Create an in-memory MDF from an MDFFile by calling the corresponding functions."
 function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
   mdf = MDFv2InMemory()
 
   # Add standard-compliant fields
-  for functionSymbol in specificationSymbols
+  for functionSymbol in keys(specificationSymbols)
     f = getfield(MPIFiles, functionSymbol)
     result = f(mdfFile)
     if !(isnothing(result) || ismissing(result))
@@ -1027,7 +1044,7 @@ function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
   end
 
   # Add non-standard fields
-  for functionSymbol in customSymbols
+  for functionSymbol in keys(customSymbols)
     f = getfield(MPIFiles, functionSymbol)
     result = f(mdfFile)
     if !(isnothing(result) || ismissing(result))
@@ -1046,30 +1063,54 @@ function inMemoryMDFToMDFFileV2(filename::String, mdf::MDFv2InMemory)
   saveasMDF(filename, mdf)
 end
 
-"Create an MDFFile from an in-memory MDF."
 function saveasMDF(filename::String, mdf::MDFv2InMemory)
-  dict = inMemoryMDFToDict(mdf)
-  saveasMDF(filename, dict)
+  # file has to be removed if exists. Otherwise h5create fails.
+  isfile(filename) && rm(filename)
+  h5open(filename, "w") do file
+    saveasMDF(file, mdf)
+  end
 end
 
+"Create an MDFFile from an in-memory MDF."
+function saveasMDF(file::HDF5.File, mdf::MDFv2InMemory)
+  for (functionSymbol, key) in merge(customSymbols, specificationSymbols)
+    f = getfield(MPIFiles, functionSymbol)
+    result = f(mdf)
+    if !(isnothing(result) || ismissing(result))
+      # Convert datatypes to something compatible with HDF5
+      if eltype(result) == Bool
+        result = Int8.(result)
+      end
+      if typeof(result) == VersionNumber || typeof(result) == DateTime || typeof(result) == UUID
+        result = string(result)
+      end
+      if eltype(result) == DateTime
+        result = string.(result)
+      end
 
-# This is non-standard (add new non-standard functions to inMemoryMDFFromMDFFileV2 in order to have the custom fields set!)
+      file[key] = result
+    end
+  end
+end
+
+# This is non-standard (add new non-standard functions to `customSymbols` in order to have the custom fields set!)
 dfCustomWaveform(mdf::MDFv2InMemory)::Union{String, Nothing} = @keyoptional mdf.custom["dfCustomWaveform"] # TODO: Should this be a 2D array?
 dfCustomWaveform(mdf::MDFv2InMemory, customWaveform::String) = mdf.custom["dfCustomWaveform"] = customWaveform
 
-calibIsMeanderingGrid(mdf::MDFv2InMemory)::Union{Bool, Nothing} = @keyoptional Bool(mdf.custom["calibIsMeanderingGrid", 0])
+calibIsMeanderingGrid(mdf::MDFv2InMemory)::Union{Bool, Nothing} = @keyoptional Bool(mdf.custom["calibIsMeanderingGrid"])
 calibIsMeanderingGrid(mdf::MDFv2InMemory, meandering::Bool) = mdf.custom["calibIsMeanderingGrid"] = Int(meandering)
 
 rxTransferFunctionFileName(mdf::MDFv2InMemory)::Union{String, Nothing} = @keyoptional mdf.custom["rxTransferFunctionFileName"]
 rxTransferFunctionFileName(mdf::MDFv2InMemory, filename::String) = mdf.custom["rxTransferFunctionFileName"] = filename
 
-function recoParameters(mdf::MDFv2InMemory)
-  if !haskey(f.file, "/reconstruction/_parameters")
-    return nothing
-  else
-    return loadParams(f.file, "/reconstruction/_parameters")
-  end
-end
+recoParameters(mdf::MDFv2InMemory) = @keyoptional mdf.custom["recoParameters"]
+recoParameters(mdf::MDFv2InMemory, parameters) = mdf.custom["recoParameters"] = parameters
+
+calibTemperatures(mdf::MDFv2InMemory) = @keyoptional mdf.custom["calibTemperatures"]
+calibTemperatures(mdf::MDFv2InMemory, calibTemperatures) = mdf.custom["calibTemperatures"] = calibTemperatures
+
+auxiliaryData(mdf::MDFv2InMemory) = @keyoptional mdf.custom["auxiliaryData"]
+auxiliaryData(mdf::MDFv2InMemory, auxiliaryData) = mdf.custom["auxiliaryData"] = auxiliaryData
 
 measDataRaw(mdf::MDFv2InMemory) = mdf.measurement.data
 measDataRaw(mdf::MDFv2InMemory, data) = mdf.measurement.data = data
