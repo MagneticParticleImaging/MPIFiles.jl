@@ -97,6 +97,8 @@ function validate(s::Study)
       valid = false
       @info "file $path(e) is not valid"
       @show studyName(f), s.name, date1, date2 
+    #else
+    #  @info "file $path(e) is valid"
     end
   end
   return valid
