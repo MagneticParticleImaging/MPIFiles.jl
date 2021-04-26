@@ -59,10 +59,10 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
     fgdata = dataBackTrafo
   end
 
-  if bgCorrection # this assumes equidistent bg frames
+  if bgCorrection # this assumes equidistant bg frames
     @debug "Applying bg correction on system matrix (MDF)"
     bgdata = data[measBGFrameIdx(f),:]
-    blockLen = measBGFrameBlockLengths( invpermute!(measIsBGFrame(f), measFramePermutation(f)) )
+    blockLen = measBGFrameBlockLengths( invpermute!(deepcopy(measIsBGFrame(f)), measFramePermutation(f)) ) # Added deepcopy to be side-effect free in in-memory MDF
     st = 1
     for j=1:length(blockLen)
       bgdata[st:st+blockLen[j]-1,:] .=

@@ -29,6 +29,9 @@
 
     for mdf in (measBruker, mdfv2, mdfv2InMemory)
       @info "Test $mdf"
+
+      @test length(mdf) == 1
+
       @test studyName(mdf) == "Wuerfelphantom"
       @test studyNumber(mdf) == 1
       @test studyDescription(mdf) == "n.a."
@@ -132,7 +135,7 @@
     # Bruker specific test
     @test rawDataLengthConsistent(smBruker)
 
-    for sm in (smBruker,smv2,smv3, smInMemory)
+    for sm in (smBruker,smv2,smv3,smInMemory)
       @info "Test $sm"
 
       @test size( systemMatrixWithBG(sm) ) == (1959,817,3,1)
@@ -167,6 +170,7 @@
       freq = filterFrequencies(smBruker,SNRThresh=SNRThresh)
       SBruker = getSystemMatrix(smBruker,frequencies=freq)
       S = getSystemMatrix(sm,frequencies=freq)
+
       relativeDeviation = zeros(Float32,length(freq))
       for f in 1:length(freq)
         relativeDeviation[f] = norm(SBruker[:,f]-S[:,f])/norm(SBruker[:,f])

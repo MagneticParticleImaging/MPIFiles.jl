@@ -59,7 +59,11 @@ for mdf in (mdfv1,mdfv2)
   @test acqOffsetFieldShift(mdf)[:,1,1] == [0.0; 0.0; -0.0]
 
   @test dfNumChannels(mdf) == 3
-  @test dfWaveform(mdf) == "sine"
+  if typeof(mdf) <: MDFFileV2 # Different tests since the implementation of MDFv2 was made standard compliant
+    @test dfWaveform(mdf) == fill("sine", (1, 1))
+  else
+    @test dfWaveform(mdf) == "sine"
+  end
   @test dfStrength(mdf)[:,:,1] == [0.014 0.014 0.0]
   @test dfPhase(mdf)[:,:,1] == [1.5707963267948966 1.5707963267948966 1.5707963267948966]
   @test dfBaseFrequency(mdf) == 2500000.0

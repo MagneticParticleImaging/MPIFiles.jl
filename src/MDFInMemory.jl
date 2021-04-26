@@ -821,7 +821,16 @@ function checkConsistency(mdf::MDFv2InMemory)
   end
 end
 
-# Create getters and setters
+### Create getters and setters
+
+customSymbols = [
+  :dfCustomWaveform,
+  :calibIsMeanderingGrid,
+  :rxTransferFunctionFileName
+]
+
+specificationSymbols = Vector{Symbol}()
+
 prefixes = Dict{String, String}(
   "MDFv2Root" => "",
   "MDFv2Study" => "study",
@@ -854,6 +863,9 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
         end
         functionSymbol = Symbol(prefixes[replace(string(fieldtype), "MPIFiles." => "")]*capitalizedPartFieldname)
 
+        # Save symbols for later use in conversion
+        push!(specificationSymbols, functionSymbol)
+
         @eval begin
           # TODO: Add docstring from struct; I did not yet find a way to retrieve it
           function $(functionSymbol)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing}
@@ -884,6 +896,9 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
           subPartFieldnameStr = string(subPartFieldname)
           capitalizedSubPartFieldname = uppercase(subPartFieldnameStr[1])*subPartFieldnameStr[2:end]
           functionSymbol = Symbol(prefixes[replace(string(partFieldtype), "MPIFiles." => "")]*capitalizedSubPartFieldname)
+
+          # Save symbols for later use in conversion
+          push!(specificationSymbols, functionSymbol)
 
           # Create getter and setter for the respective field  within the naming scheme
           @eval begin
@@ -935,10 +950,6 @@ measIsBGFrame(mdf::MDFv2InMemory)::Union{Vector{Bool}, Missing} = measIsBackgrou
 measIsBGFrame(mdf::MDFv2InMemory, value::Vector{Bool}) = measIsBackgroundFrame(mdf, value)
 measIsBackgroundFrame(f::MDFFileV2)::Union{Vector{Bool}, Missing} = measIsBGFrame(f) # Should this be here or in MDF.jl?
 
-measIsCalibProcessed(mdf::MDFv2InMemory)::Union{Bool, Missing} = measIsFramePermutation(mdf) && 
-                                                                 measIsFourierTransformed(mdf) &&
-                                                                 measIsFastFrameAxis(mdf)
-
 calibSNR(mdf::MDFv2InMemory)::Union{Array{Float64, 3}, Nothing} = calibSnr(mdf)
 calibSNR(mdf::MDFv2InMemory, value::Array{Float64, 3}) = calibSnr(mdf, value)
 calibSnr(f::MDFFileV2)::Union{Array{Float64, 3}, Nothing} = calibSNR(f) # Should this be here or in MDF.jl?
@@ -951,13 +962,18 @@ calibFovCenter(mdf::MDFv2InMemory)::Union{Vector{Float64}, Nothing} = calibField
 calibFovCenter(mdf::MDFv2InMemory, value::Vector{Float64}) = calibFieldOfViewCenter(mdf, value)
 calibFieldOfViewCenter(f::MDFFileV2)::Union{Vector{Float64}, Nothing} = calibFovCenter(f)
 
-calibOffsetFields(f::MDFFile) = calibOffsetField(f) # The MDF specification uses the plural
+# The MDF specification uses the plural
+calibOffsetFields(f::MDFFile) = calibOffsetField(f)
 
 recoFieldOfView(f::MDFFile)::Union{Vector{Float64}, Nothing} = recoFov(f)
 recoFieldOfViewCenter(f::MDFFile)::Union{Vector{Float64}, Nothing} = recoFovCenter(f)
 
 
 # And some utility functions
+measIsCalibProcessed(mdf::MDFv2InMemory)::Union{Bool, Missing} = measIsFramePermutation(mdf) && 
+                                                                 measIsFourierTransformed(mdf) &&
+                                                                 measIsFastFrameAxis(mdf)
+
 experimentHasReconstruction(mdf::MDFv2InMemory)::Bool = !isnothing(mdf.reconstruction)
 experimentHasMeasurement(mdf::MDFv2InMemory)::Bool = !isnothing(mdf.measurement)
 rxHasTransferFunction(mdf::MDFv2InMemory) = !isnothing(mdf.acquisition.receiver.transferFunction)
@@ -972,7 +988,6 @@ function inMemoryMDFFromDict(dict::Dict)::MDFv2InMemory
   mdf = MDFv2InMemory()
 
   for (key, value) in dict
-    # TODO: Will error on custom keys
     functionSymbol = Symbol(key)
     f = getfield(MPIFiles, functionSymbol)
     f(mdf, value)
@@ -985,128 +1000,34 @@ end
 function inMemoryMDFToDict(mdf::MDFv2InMemory)::Dict
   dict = Dict{String, Any}()
 
-  for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InMemory))
-    fieldnameStr = string(fieldname)
-    if !(fieldnameStr == "variables" || fieldnameStr == "custom")
-      # At the moment, this should be a Union
-      fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
-  
-      for (partFieldname, partFieldtype) in zip(fieldnames(fieldtype), fieldtypes(fieldtype))
-        partFieldnameStr = string(partFieldname)
-  
-        # The acquisition group has subgroups, so we need to go deeper there
-        if !(partFieldnameStr == "drivefield" || partFieldnameStr == "receiver")
-          if fieldtype != MDFv2Root
-            capitalizedPartFieldname = uppercase(partFieldnameStr[1])*partFieldnameStr[2:end]
-          else
-            capitalizedPartFieldname = partFieldnameStr
-          end
-  
-          functionName = prefixes[replace(string(fieldtype), "MPIFiles." => "")]*capitalizedPartFieldname
-          functionSymbol = Symbol(functionName)
-          
-          f = getfield(MPIFiles, functionSymbol)
-          dict[functionName] = f(mdf)
-        else
-          # At the moment, this should be a Union
-          partFieldtype = (partFieldtype.b <: MDFv2InMemoryPart) ? partFieldtype.b : partFieldtype.a
-
-          for (subPartFieldname, subPartFieldtype) in zip(fieldnames(partFieldtype), fieldtypes(partFieldtype))
-            subPartFieldnameStr = string(subPartFieldname)
-            capitalizedSubPartFieldname = uppercase(subPartFieldnameStr[1])*subPartFieldnameStr[2:end]
-            functionName = prefixes[replace(string(partFieldtype), "MPIFiles." => "")]*capitalizedSubPartFieldname
-            functionSymbol = Symbol(functionName)
-            
-            f = getfield(MPIFiles, functionSymbol)
-            dict[functionName] = f(mdf)
-          end
-        end
-      end
+  # Add standard-compliant and non-standard fields
+  for functionSymbol in vcat(specificationSymbols, customSymbols)
+    f = getfield(MPIFiles, functionSymbol)
+    result = f(mdf)
+    if !(isnothing(result) || ismissing(result))
+      dict[functionSymbol] = result # Fails for aliases
     end
   end
+
+  # Add measurements data
+  dict[:measData] = measDataRaw(mdf)
 end
 
 "Create an in-memory MDF from an MDFFile."
 function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
   mdf = MDFv2InMemory()
 
-  for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InMemory))
-    fieldnameStr = string(fieldname)
-    if !(fieldnameStr == "variables" || fieldnameStr == "custom")
-      # At the moment, this should be a Union
-      fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
-  
-      for (partFieldname, partFieldtype) in zip(fieldnames(fieldtype), fieldtypes(fieldtype))
-        partFieldnameStr = string(partFieldname)
-  
-        # The acquisition group has subgroups, so we need to go deeper there
-        if !(partFieldnameStr == "drivefield" || partFieldnameStr == "receiver")
-          # The function measData (field `data` of group `/measurement`) has to be implemented directly, so we skip its creation here
-          if partFieldnameStr == "data" && fieldnameStr == "measurement"
-            continue
-          end
-
-          # We don't need prefixes for the `root` group, so we don't capitalize these
-          if fieldtype != MDFv2Root
-            capitalizedPartFieldname = uppercase(partFieldnameStr[1])*partFieldnameStr[2:end]
-          else
-            capitalizedPartFieldname = partFieldnameStr
-          end
-  
-          functionName = prefixes[replace(string(fieldtype), "MPIFiles." => "")]*capitalizedPartFieldname
-          functionSymbol = Symbol(functionName)
-          
-          f = getfield(MPIFiles, functionSymbol)
-          try
-            result = f(mdfFile)
-            if !(isnothing(result) || ismissing(result))
-              f(mdf, result) # Call the setter of an MDFv2InMemory with a getter from an MDFFileV2
-            end
-          catch e
-            if isa(e, MethodError)
-              @warn "The field $partFieldname in $fieldname could not be set since the getter errored."
-              rethrow()
-            else
-              rethrow()
-            end
-          end
-        else
-          # At the moment, this should be a Union
-          partFieldtype = (partFieldtype.b <: MDFv2InMemoryPart) ? partFieldtype.b : partFieldtype.a
-
-          for (subPartFieldname, subPartFieldtype) in zip(fieldnames(partFieldtype), fieldtypes(partFieldtype))
-            subPartFieldnameStr = string(subPartFieldname)
-            capitalizedSubPartFieldname = uppercase(subPartFieldnameStr[1])*subPartFieldnameStr[2:end]
-            functionName = prefixes[replace(string(partFieldtype), "MPIFiles." => "")]*capitalizedSubPartFieldname
-            functionSymbol = Symbol(functionName)
-            
-            f = getfield(MPIFiles, functionSymbol)
-            try
-              result = f(mdfFile)
-              if !(isnothing(result) || ismissing(result))
-                f(mdf, result) # Call the setter of an MDFv2InMemory with a getter from an MDFFileV2
-              end
-            catch e
-              if isa(e, MethodError)
-                @warn "The field $subPartFieldname in $partFieldname in $fieldname could not be set since the getter errored."
-                rethrow()
-              else
-                rethrow()
-              end
-            end
-          end
-        end
-      end
+  # Add standard-compliant fields
+  for functionSymbol in specificationSymbols
+    f = getfield(MPIFiles, functionSymbol)
+    result = f(mdfFile)
+    if !(isnothing(result) || ismissing(result))
+      f(mdf, result) # Call the setter of an MDFv2InMemory with a getter from an MDFFileV2
     end
   end
 
   # Add non-standard fields
-  symbols = [
-    :dfCustomWaveform,
-    :calibIsMeanderingGrid,
-    :rxTransferFunctionFileName
-  ]
-  for functionSymbol in symbols
+  for functionSymbol in customSymbols
     f = getfield(MPIFiles, functionSymbol)
     result = f(mdfFile)
     if !(isnothing(result) || ismissing(result))
@@ -1115,7 +1036,6 @@ function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
   end
 
   # Add measurements data
-  @info "data" typeof(mdfFile.mmap_measData)
   measDataRaw(mdf, mdfFile.mmap_measData)
 
   return mdf
