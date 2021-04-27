@@ -1,3 +1,32 @@
+"Check assertions on fields of an in-memory MDF by replacing it temporarily."
+function test_mdf_replacement(mdf::MDFv2InMemory, getter::Symbol, replacement, message::String)
+  # First check if the file is consistent
+  @test checkConsistency(mdf)
+
+  # Replace the field
+  f = getfield(MPIFiles, getter)
+  temp = f(mdf)
+  f(mdf, replacement)
+
+  let err = nothing
+    try
+      checkConsistency(mdf)
+    catch err
+
+    end
+
+    @test err isa AssertionError
+    
+    # We want the test to error but not to failed
+    if !isnothing(err)
+      @test err.msg == message
+    end
+  end
+
+  # Change it back
+  f(mdf, temp)
+end
+
 @testset "Testing MDFInMemory" begin
   fnMeasBruker = joinpath(datadir,"BrukerStore","20150915_102110_Wuerfelphantom_1_1","18")
   fnSMBruker = joinpath(datadir,"BrukerStore","20141121_130749_CalibrationScans_1_1","76")
@@ -173,6 +202,298 @@
       end
       # test if relative deviation for most of the frequency components is below 0.003
       @test quantile(relativeDeviation,0.95)<0.003
+    end
+  end
+
+  @testset "Consistency" begin
+    A = 1 # tracer materials/injections for multi-color MPI
+    N = 2 # acquired frames (N = O + E), same as a spatial position for calibration
+    E = 1 # acquired background frames (E = N − O)
+    O = 1 # acquired foreground frames (O = N − E)
+    B = 1 # coefficients stored after sparsity transformation (B \\le O)
+    J = 1 # periods within one frame
+    Y = 1 # partitions of each patch position
+    C = 1 # receive channels
+    D = 1 # drive-field channels
+    F = 1 # frequencies describing the drive-field waveform
+    V = 800 # points sampled at receiver during one drive-field period
+    W = V # sampling points containing processed data (W = V if no frequency selection or bandwidth reduction has been applied)
+    K = Int(V/2 + 1)# frequencies describing the processed data (K = V/2 + 1 if no frequency selection or bandwidth reduction has been applied)
+    Q = 1 # frames in the reconstructed MPI data set
+    P = 1 # voxels in the reconstructed MPI data set
+    S = 1 # channels in the reconstructed MPI data set
+
+    mdf = MDFv2InMemory()
+    mdf.root = MDFv2Root(
+      time=DateTime("2021-04-26T17:12:21.686"),
+      uuid=UUID("946a039e-48de-47ee-957e-a15af437e0be"),
+      version=VersionNumber("2.1.0")
+    )
+    mdf.study = MDFv2Study(
+      description = "n.a.",
+      name = "n.a.",
+      number = 1,
+      time = DateTime("2021-04-26T17:12:21.686"),
+      uuid = UUID("f2f3ae66-2fc3-49f7-91f9-71c1c2dc15e7")
+    )
+    mdf.experiment = MDFv2Experiment(
+      description = "n.a.",
+      isSimulation = true,
+      name = "n.a.",
+      number = 1,
+      subject = "n.a.",
+      uuid = UUID("3076d4bc-a2ef-46ef-8a99-dcd047379b8a")
+    )
+    mdf.tracer = MDFv2Tracer(
+      batch = fill("n.a.", A),
+      concentration = fill(1.0, A),
+      injectionTime = fill(DateTime("2021-04-26T17:12:21.686"), A),
+      name = fill("MyAwesomeTracer", A),
+      solute = fill("n.a.", A),
+      vendor = fill("Me", A),
+      volume = fill(1.0, A),
+    )
+    mdf.scanner = MDFv2Scanner(
+      boreSize = 0.3,
+      facility = "MyAwesomeInstitute",
+      manufacturer = "MeMyselfAndI",
+      name = "MyAwesomeScanner",
+      operator = "JustMe",
+      topology = "FFL" # Of course ;)
+    )
+    drivefield = MDFv2Drivefield(
+      baseFrequency = 40e3,
+      cycle = 1600/40e3,
+      divider = fill(1600, (D, F)),
+      numChannels = D,
+      phase = fill(0.0, (J, D, F)),
+      strength = fill(1.0, (J, D, F)),
+      waveform = fill("sine", (D, F)),
+    )
+    receiver = MDFv2Receiver(
+      bandwidth = 20e3,
+      dataConversionFactor = repeat([1/2^16 0], C),
+      inductionFactor = fill(1.0, C),
+      numChannels = C,
+      numSamplingPoints = V,
+      transferFunction = fill(1+0.5im, (C, K)),
+      unit = "V"
+    )
+    mdf.acquisition = MDFv2Acquisition(
+      gradient = fill(0.0, (J, Y, 3, 3)),
+      numAverages = 1,
+      numFrames = N,
+      numPeriodsPerFrame = J,
+      offsetField = fill(0.0, (J, Y, 3)),
+      startTime = DateTime("2021-04-26T17:12:21.686"),
+      drivefield = drivefield,
+      receiver = receiver
+    )
+    mdf.measurement = MDFv2Measurement(;
+      data = fill(0, (N, J, C, K)),
+      framePermutation = fill(0, N),
+      frequencySelection = collect(1:K),
+      isBackgroundCorrected = true,
+      isBackgroundFrame = vcat(fill(true, E), fill(false, O)),
+      isFastFrameAxis = true,
+      isFourierTransformed = true,
+      isFramePermutation = true,
+      isFrequencySelection = true,
+      isSparsityTransformed = true,
+      isSpectralLeakageCorrected = true,
+      isTransferFunctionCorrected = true,
+      sparsityTransformation = "DCT-I",
+      subsamplingIndices = fill(0, (J, C, K, B))
+    )
+    mdf.calibration = MDFv2Calibration(
+      deltaSampleSize = fill(0.001, 3),
+      fieldOfView = fill(0.2, 3),
+      fieldOfViewCenter = fill(0.0, 3),
+      method = "robot",
+      offsetFields = fill(0.0, (O, 3)),
+      order = "xyz",
+      positions = fill(0.0, (O, 3)),
+      size = [1, 1, 1],
+      snr = fill(0.0, (J, C, K))
+    )
+    mdf.reconstruction = MDFv2Reconstruction(
+      data = fill(0, (Q, P, S)),
+      fieldOfView = fill(0.2, 3),
+      fieldOfViewCenter = fill(0.0, 3),
+      isOverscanRegion = fill(false, P),
+      order = "xyz",
+      positions = fill(0.0, (P, 3)),
+      size = [1, 1, 1]
+    )
+
+    # TODO: As soon as there is a @test_nothrow available, change this.
+    # See also: https://github.com/JuliaLang/julia/issues/18780
+    @test checkConsistency(mdf) # This call has a side-effect on the variables!
+
+    @testset "Derived variables" begin
+      @test mdf.variables.A == A
+      @test mdf.variables.N == N
+      @test mdf.variables.E == E
+      @test mdf.variables.O == O
+      @test mdf.variables.B == B
+      @test mdf.variables.J == J
+      @test mdf.variables.Y == Y
+      @test mdf.variables.C == C
+      @test mdf.variables.D == D
+      @test mdf.variables.F == F
+      @test mdf.variables.V == V
+      @test mdf.variables.W == W
+      @test mdf.variables.K == K
+      @test mdf.variables.Q == Q
+      @test mdf.variables.P == P
+      @test mdf.variables.S == S
+    end
+
+
+
+    @testset "Missing" begin
+      # Structs
+      test_mdf_replacement(mdf, :root, missing, "The field `root` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :study, missing, "The field `study` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :experiment, missing, "The field `experiment` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :scanner, missing, "The field `scanner` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :acquisition, missing, "The field `acquisition` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :drivefield, missing, "The field `drivefield` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :receiver, missing, "The field `receiver` is missing in the given in-memory MDF.")
+      
+      # Root
+      test_mdf_replacement(mdf, :time, missing, "The field `time` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :uuid, missing, "The field `uuid` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :version, missing, "The field `version` is missing in the given in-memory MDF.")
+
+      # Study
+      test_mdf_replacement(mdf, :studyDescription, missing, "The field `description` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :studyName, missing, "The field `name` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :studyNumber, missing, "The field `number` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :studyUuid, missing, "The field `uuid` is missing in the given in-memory MDF.")
+
+      # Experiment
+      test_mdf_replacement(mdf, :experimentDescription, missing, "The field `description` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :experimentIsSimulation, missing, "The field `isSimulation` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :experimentName, missing, "The field `name` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :experimentNumber, missing, "The field `number` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :experimentSubject, missing, "The field `subject` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :experimentUuid, missing, "The field `uuid` is missing in the given in-memory MDF.")
+
+      # Tracer
+      test_mdf_replacement(mdf, :tracerBatch, missing, "The field `batch` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :tracerConcentration, missing, "The field `concentration` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :tracerName, missing, "The field `name` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :tracerSolute, missing, "The field `solute` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :tracerVendor, missing, "The field `vendor` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :tracerVolume, missing, "The field `volume` is missing in the given in-memory MDF.")
+
+      # Scanner
+      test_mdf_replacement(mdf, :scannerFacility, missing, "The field `facility` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :scannerManufacturer, missing, "The field `manufacturer` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :scannerName, missing, "The field `name` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :scannerOperator, missing, "The field `operator` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :scannerTopology, missing, "The field `topology` is missing in the given in-memory MDF.")
+    
+      # Drivefield
+      test_mdf_replacement(mdf, :dfBaseFrequency, missing, "The field `baseFrequency` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :dfCycle, missing, "The field `cycle` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :dfDivider, missing, "The field `divider` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :dfNumChannels, missing, "The field `numChannels` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :dfPhase, missing, "The field `phase` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :dfStrength, missing, "The field `strength` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :dfWaveform, missing, "The field `waveform` is missing in the given in-memory MDF.")
+    
+      # Receiver
+      test_mdf_replacement(mdf, :rxBandwidth, missing, "The field `bandwidth` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :rxNumChannels, missing, "The field `numChannels` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :rxNumSamplingPoints, missing, "The field `numSamplingPoints` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :rxUnit, missing, "The field `unit` is missing in the given in-memory MDF.")
+      
+      # Acquisition
+      test_mdf_replacement(mdf, :acqNumAverages, missing, "The field `numAverages` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :acqNumFrames, missing, "The field `numFrames` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :acqNumPeriodsPerFrame, missing, "The field `numPeriodsPerFrame` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :acqStartTime, missing, "The field `startTime` is missing in the given in-memory MDF.")
+
+      # Measurement
+      #test_mdf_replacement(mdf, :measData, missing, "The field `data` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :measIsBackgroundCorrected, missing, "The field `isBackgroundCorrected` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :measIsBackgroundFrame, missing, "The field `isBackgroundFrame` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :measIsFastFrameAxis, missing, "The field `isFastFrameAxis` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :measIsFourierTransformed, missing, "The field `isFourierTransformed` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :measIsFramePermutation, missing, "The field `isFramePermutation` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :measIsFrequencySelection, missing, "The field `isFrequencySelection` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :measIsSparsityTransformed, missing, "The field `isSparsityTransformed` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :measIsSpectralLeakageCorrected, missing, "The field `isSpectralLeakageCorrected` is missing in the given in-memory MDF.")
+      test_mdf_replacement(mdf, :measIsTransferFunctionCorrected, missing, "The field `isTransferFunctionCorrected` is missing in the given in-memory MDF.")
+      
+      # Calibration
+      test_mdf_replacement(mdf, :calibMethod, missing, "The field `method` is missing in the given in-memory MDF.")
+      
+      # Reconstruction
+      test_mdf_replacement(mdf, :recoData, missing, "The field `data` is missing in the given in-memory MDF.")
+    end
+
+    @testset "Sizes" begin
+      # Tracer
+      test_mdf_replacement(mdf, :tracerBatch, fill("n.a.", A+1), "Inconsistent dimensions in `batch` in `tracer`.")
+      test_mdf_replacement(mdf, :tracerConcentration, fill(1.0, A+1), "Inconsistent dimensions in `concentration` in `tracer`.")
+      test_mdf_replacement(mdf, :tracerInjectionTime, fill(DateTime("2021-04-26T17:12:21.686"), A+1), "Inconsistent dimensions in `injectionTime` in `tracer`.")
+      test_mdf_replacement(mdf, :tracerName, fill("MyAwesomeTracer", A+1), "Inconsistent dimensions in `name` in `tracer`.")
+      test_mdf_replacement(mdf, :tracerSolute, fill("n.a.", A+1), "Inconsistent dimensions in `solute` in `tracer`.")
+      test_mdf_replacement(mdf, :tracerVendor, fill("Me", A+1), "Inconsistent dimensions in `vendor` in `tracer`.") # Works because A has been determined earlier
+      test_mdf_replacement(mdf, :tracerVolume, fill(1.0, A+1), "Inconsistent dimensions in `volume` in `tracer`.")
+
+      # Drivefield
+      test_mdf_replacement(mdf, :dfDivider, fill(1600, (D+1, F)), "Inconsistent dimension D in `divider` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfDivider, fill(1600, (D, F+1)), "Inconsistent dimension F in `divider` in `drivefield`.") # Works because F has been determined earlier
+      test_mdf_replacement(mdf, :dfPhase, fill(0.0, (J+1, D, F)), "Inconsistent dimension J in `phase` in `drivefield`.") # Works because J has been determined earlier
+      test_mdf_replacement(mdf, :dfPhase, fill(0.0, (J, D+1, F)), "Inconsistent dimension D in `phase` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfPhase, fill(0.0, (J, D, F+1)), "Inconsistent dimension F in `phase` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfStrength, fill(1.0, (J+1, D, F)), "Inconsistent dimension J in `strength` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfStrength, fill(1.0, (J, D+1, F)), "Inconsistent dimension D in `strength` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfStrength, fill(1.0, (J, D, F+1)), "Inconsistent dimension F in `strength` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfWaveform, fill("sine", (D+1, F)), "Inconsistent dimension D in `waveform` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfWaveform, fill("sine", (D, F+1)), "Inconsistent dimension F in `waveform` in `drivefield`.")
+
+      # Receiver
+      test_mdf_replacement(mdf, :rxDataConversionFactor, repeat([1/2^16 0], C+1), "Inconsistent dimension C in `dataConversionFactor` in `receiver`.")
+      test_mdf_replacement(mdf, :rxDataConversionFactor, repeat([1/2^16 0 0], C), "Inconsistent second dimension in `dataConversionFactor` in `receiver`.")
+      test_mdf_replacement(mdf, :rxInductionFactor, fill(1.0, C+1), "Inconsistent dimension C in `inductionFactor` in `receiver`.")
+      test_mdf_replacement(mdf, :rxTransferFunction, fill(1+0.5im, (C+1, K)), "Inconsistent dimension C in `transferFunction` in `receiver`.")
+      test_mdf_replacement(mdf, :rxTransferFunction, fill(1+0.5im, (C, K+1)), "Inconsistent dimension K in `transferFunction` in `receiver`.")
+
+      # Measurement
+      test_mdf_replacement(mdf, :measFramePermutation, fill(0, N+1), "Inconsistent dimension N in `framePermutation` in `measurement`.")
+      test_mdf_replacement(mdf, :measFrequencySelection, collect(1:K+1), "Inconsistent dimension K in `frequencySelection` in `measurement`.")
+      test_mdf_replacement(mdf, :measIsBackgroundFrame, vcat(fill(true, E+1), fill(false, O)), "Inconsistent dimension N in `isBackgroundFrame` in `measurement`.")
+      test_mdf_replacement(mdf, :measSparsityTransformation, nothing, "Field `sparsityTransformation` must be set when `isSparsityTransformed` is set in in `measurement`.")
+      
+      # Calibration
+      test_mdf_replacement(mdf, :calibDeltaSampleSize, fill(0.001, 4), "Inconsistent length in `deltaSampleSize` in `calibration`.")
+      test_mdf_replacement(mdf, :calibFieldOfView, fill(0.2, 4), "Inconsistent length in `fieldOfView` in `calibration`.")
+      test_mdf_replacement(mdf, :calibFieldOfViewCenter, fill(0.0, 4), "Inconsistent length in `fieldOfViewCenter` in `calibration`.")
+      test_mdf_replacement(mdf, :calibOffsetFields, fill(0.0, (O+1, 3)), "Inconsistent dimension O in `offsetFields` in `calibration`.")
+      test_mdf_replacement(mdf, :calibOffsetFields, fill(0.0, (O, 4)), "Inconsistent second dimension in `offsetFields` in `calibration`.")
+      test_mdf_replacement(mdf, :calibOrder, "bla", "Wrong `order` of `bla` in `calibration`.")
+      test_mdf_replacement(mdf, :calibPositions, fill(0.0, (O+1, 3)), "Inconsistent dimension O in `positions` in `calibration`.")
+      test_mdf_replacement(mdf, :calibPositions, fill(0.0, (O, 4)), "Inconsistent second dimension in `positions` in `calibration`.")
+      test_mdf_replacement(mdf, :calibSize, [1, 1, 1, 1], "Inconsistent length in `size` in `calibration`.")
+      test_mdf_replacement(mdf, :calibSize, [1, 1, 2], "The product of `size` with `[1, 1, 2]` must equal O.")
+      test_mdf_replacement(mdf, :calibSnr, fill(0.0, (J+1, C, K)), "Inconsistent dimension J in `snr` in `calibration`.")
+      test_mdf_replacement(mdf, :calibSnr, fill(0.0, (J, C+1, K)), "Inconsistent dimension C in `snr` in `calibration`.")
+      test_mdf_replacement(mdf, :calibSnr, fill(0.0, (J, C, K+1)), "Inconsistent dimension K in `snr` in `calibration`.")
+
+      # Reconstruction
+      test_mdf_replacement(mdf, :recoFieldOfView, fill(0.2, 4), "Inconsistent length in `fieldOfView` in `reconstruction`.")
+      test_mdf_replacement(mdf, :recoFieldOfViewCenter, fill(0.0, 4), "Inconsistent length in `fieldOfViewCenter` in `reconstruction`.")
+      test_mdf_replacement(mdf, :recoIsOverscanRegion, fill(false, P+1), "Inconsistent length in `isOverscanRegion` in `reconstruction`.")
+      test_mdf_replacement(mdf, :recoOrder, "bla", "Wrong `order` of `bla` in `reconstruction`.")
+      test_mdf_replacement(mdf, :recoPositions, fill(0.0, (P+1, 3)), "Inconsistent dimension P in `positions` in `reconstruction`.")
+      test_mdf_replacement(mdf, :recoPositions, fill(0.0, (P, 4)), "Inconsistent second dimension in `positions` in `reconstruction`.")
+      test_mdf_replacement(mdf, :recoSize, [1, 1, 1, 1], "Inconsistent length in `size` in `reconstruction`.")
+      test_mdf_replacement(mdf, :recoSize, [1, 1, 2], "The product of `size` with `[1, 1, 2]` must equal P.")
     end
   end
 end

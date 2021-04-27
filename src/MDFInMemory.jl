@@ -44,6 +44,8 @@ mutable struct MDFv2Variables
   Q::Union{Int64, Nothing}
   "voxels in the reconstructed MPI data set"
   P::Union{Int64, Nothing}
+  "channels in the reconstructed MPI data set"
+  S::Union{Int64, Nothing}
 
   function MDFv2Variables()
     return new(nothing, nothing, nothing, nothing, nothing, nothing, nothing,
@@ -269,7 +271,7 @@ mutable struct MDFv2Receiver <: MDFv2InMemoryPart
   physical quantity with corresponding unit of measurement unit; optional"
   dataConversionFactor::Union{Array{Float64, 2}, Nothing}
   "Induction factor mapping the projection of the magnetic moment to the voltage in the receive coil; optional"
-  inductionFactor::Union{Array{Float64, 2}, Nothing}
+  inductionFactor::Union{Vector{Float64}, Nothing}
   "Number of receive channels C"
   numChannels::Union{Int64, Missing}
   "Number of sampling points during one period, denoted by V"
@@ -557,36 +559,60 @@ function defaultMDFv2InMemory()
   )
 end
 
-function checkSizes(part::MDFv2Tracer, variables::MDFv2Variables)
+function check(part::MDFv2Root, variables::MDFv2Variables)
+  @assert part.version > VersionNumber("2") "The version should be at least version 2."
+end
+
+function check(part::MDFv2Study, variables::MDFv2Variables)
+  # nothing to check yet
+end
+
+function check(part::MDFv2Experiment, variables::MDFv2Variables)
+  # nothing to check yet
+end
+
+function check(part::MDFv2Tracer, variables::MDFv2Variables)
   # Init comparison
   if isnothing(variables.A)
     variables.A = length(part.vendor)
   end
 
   # Check if all sizes match
-  for fieldname in fieldnames(T)
+  for fieldname in fieldnames(MDFv2Tracer)
     field = getproperty(part, fieldname)
-    @assert length(field) == variables.A "Inconsistent dimensions in `$fieldname` in `$part`."
+    @assert length(field) == variables.A "Inconsistent dimensions in `$fieldname` in `tracer`."
   end
 end
 
-function checkSizes(part::MDFv2Acquisition, variables::MDFv2Variables)
+function check(part::MDFv2Scanner, variables::MDFv2Variables)
+  # nothing to check yet
+end
+
+function check(part::MDFv2Acquisition, variables::MDFv2Variables)
+  # Pick variables first
+  if isnothing(variables.N)
+    variables.N = part.numFrames
+  end
+  if isnothing(variables.J)
+    variables.J = part.numPeriodsPerFrame
+  end
+
   # Check dimensions of `gradient` field
   if !isnothing(part.gradient)
     if isnothing(variables.J)
       variables.J = size(part.gradient, 1)
     else
-      @assert variables.J == size(part.gradient, 1) "Inconsistent dimension J in `gradient` in `$part`."
+      @assert variables.J == size(part.gradient, 1) "Inconsistent dimension J in `gradient` in `acquisition`."
     end
 
     if isnothing(variables.Y)
       variables.Y = size(part.gradient, 2)
     else
-      @assert variables.Y = size(part.gradient, 1) "Inconsistent dimension Y in `gradient` in `$part`."
+      @assert variables.Y == size(part.gradient, 1) "Inconsistent dimension Y in `gradient` in `acquisition`."
     end
 
-    @assert size(part.gradient, 3) == 3 "Inconsistent third dimension in `gradient` in `$part`."
-    @assert size(part.gradient, 4) == 3 "Inconsistent fourth dimension in `gradient` in `$part`."
+    @assert size(part.gradient, 3) == 3 "Inconsistent third dimension in `gradient` in `acquisition`."
+    @assert size(part.gradient, 4) == 3 "Inconsistent fourth dimension in `gradient` in `acquisition`."
   end
 
   # Check dimensions of `offsetField` field
@@ -594,23 +620,23 @@ function checkSizes(part::MDFv2Acquisition, variables::MDFv2Variables)
     if isnothing(variables.J)
       variables.J = size(part.offsetField, 1)
     else
-      @assert variables.J == size(part.offsetField, 1) "Inconsistent dimension J in `offsetField` in `$part`."
+      @assert variables.J == size(part.offsetField, 1) "Inconsistent dimension J in `offsetField` in `acquisition`."
     end
 
     if isnothing(variables.Y)
       variables.Y = size(part.offsetField, 2)
     else
-      @assert variables.Y == size(part.offsetField, 2) "Inconsistent dimension Y in `offsetField` in `$part`."
+      @assert variables.Y == size(part.offsetField, 2) "Inconsistent dimension Y in `offsetField` in `acquisition`."
     end
 
-    @assert size(part.offsetField, 3) == 3 "Inconsistent third dimension in `offsetField` in `$part`."
+    @assert size(part.offsetField, 3) == 3 "Inconsistent third dimension in `offsetField` in `acquisition`."
   end
 end
 
-function checkSizes(part::MDFv2Drivefield, variables::MDFv2Variables)
+function check(part::MDFv2Drivefield, variables::MDFv2Variables)
   # Pick variables first
   if isnothing(variables.D)
-    variables.D = size(part.divider, 1)
+    variables.D = part.numChannels
   end
   if isnothing(variables.F)
     variables.F = size(part.divider, 2)
@@ -620,146 +646,196 @@ function checkSizes(part::MDFv2Drivefield, variables::MDFv2Variables)
   end
 
   # Then check dimensions for multidimensional fields
-  @assert variables.D == size(part.divider, 1) "Inconsistent dimension D in `divider` in `$part`."
-  @assert variables.F == size(part.divider, 2) "Inconsistent dimension F in `divider` in `$part`."
+  @assert variables.D == size(part.divider, 1) "Inconsistent dimension D in `divider` in `drivefield`."
+  @assert variables.F == size(part.divider, 2) "Inconsistent dimension F in `divider` in `drivefield`."
 
-  @assert variables.J == size(part.phase, 1) "Inconsistent dimension J in `phase` in `$part`."
-  @assert variables.D == size(part.phase, 2) "Inconsistent dimension D in `phase` in `$part`."
-  @assert variables.F == size(part.phase, 3) "Inconsistent dimension F in `phase` in `$part`."
+  @assert variables.J == size(part.phase, 1) "Inconsistent dimension J in `phase` in `drivefield`."
+  @assert variables.D == size(part.phase, 2) "Inconsistent dimension D in `phase` in `drivefield`."
+  @assert variables.F == size(part.phase, 3) "Inconsistent dimension F in `phase` in `drivefield`."
 
-  @assert variables.J == size(part.strength, 1) "Inconsistent dimension J in `strength` in `$part`."
-  @assert variables.D == size(part.strength, 2) "Inconsistent dimension D in `strength` in `$part`."
-  @assert variables.F == size(part.strength, 3) "Inconsistent dimension F in `strength` in `$part`."
+  @assert variables.J == size(part.strength, 1) "Inconsistent dimension J in `strength` in `drivefield`."
+  @assert variables.D == size(part.strength, 2) "Inconsistent dimension D in `strength` in `drivefield`."
+  @assert variables.F == size(part.strength, 3) "Inconsistent dimension F in `strength` in `drivefield`."
 
-  @assert variables.D == size(part.waveform, 1) "Inconsistent dimension D in `waveform` in `$part`."
-  @assert variables.F == size(part.waveform, 2) "Inconsistent dimension F in `waveform` in `$part`."
+  @assert variables.D == size(part.waveform, 1) "Inconsistent dimension D in `waveform` in `drivefield`."
+  @assert variables.F == size(part.waveform, 2) "Inconsistent dimension F in `waveform` in `drivefield`."
 end
 
-function checkSizes(part::MDFv2Receiver, variables::MDFv2Variables)
+function check(part::MDFv2Receiver, variables::MDFv2Variables)
   # C is defined by numChannels
   if isnothing(variables.C)
-    variables.C = numChannels
+    variables.C = part.numChannels
+  end
+  # V is defined by numSamplingPoints
+  if isnothing(variables.V)
+    variables.V = part.numSamplingPoints
   end
 
   if !isnothing(part.dataConversionFactor)
-    @assert variables.C == size(part.dataConversionFactor, 1) "Inconsistent dimension C in `dataConversionFactor` in `$part`."
-    @assert size(part.dataConversionFactor, 2) == 2 "Inconsistent second dimension in `dataConversionFactor` in `$part`."
+    @assert variables.C == size(part.dataConversionFactor, 1) "Inconsistent dimension C in `dataConversionFactor` in `receiver`."
+    @assert size(part.dataConversionFactor, 2) == 2 "Inconsistent second dimension in `dataConversionFactor` in `receiver`."
   end
 
   if !isnothing(part.inductionFactor)
-    @assert variables.C == size(part.inductionFactor, 1) "Inconsistent dimension C in `inductionFactor` in `$part`."
+    @assert variables.C == size(part.inductionFactor, 1) "Inconsistent dimension C in `inductionFactor` in `receiver`."
   end
 
   if !isnothing(part.transferFunction)
-    @assert variables.C == size(part.transferFunction, 1) "Inconsistent dimension C in `transferFunction` in `$part`."
+    @assert variables.C == size(part.transferFunction, 1) "Inconsistent dimension C in `transferFunction` in `receiver`."
 
     if isnothing(variables.K)
       variables.K = size(part.transferFunction, 2)
     else
-      @assert variables.K == size(part.transferFunction, 2) "Inconsistent dimension K in `transferFunction` in `$part`."
+      @assert variables.K == size(part.transferFunction, 2) "Inconsistent dimension K in `transferFunction` in `receiver`."
     end
   end
 end
 
-function checkSizes(part::MDFv2Measurement, variables::MDFv2Variables)
-  # TODO: check data consistency; I don't know how to to that since we can't know all variables
+function check(part::MDFv2Measurement, variables::MDFv2Variables)
+  # TODO: check data consistency; I don't know how to do that since we can't know all variables
   # N × J × C × K or
   # J × C × K × N or
   # N × J × C × W or
   # J × C × W × N or
   # J×C×K×(B+E)
 
-  if part.isFramePermutation
-    if isnothing(variables.K)
-      variables.N = length(part.framePermutation)
+  # N is defined by the length of isBackgroundFrame here; should have been retrieved earlier
+  if isnothing(variables.N)
+    variables.N = length(part.isBackgroundFrame)
+  end
+  # E is defined by the number of `true` values in isBackgroundFrame here; should have been retrieved earlier
+  if isnothing(variables.E)
+    variables.E = length([x for x in part.isBackgroundFrame if x == true])
+  end
+  # E is defined by the number of `false` values in isBackgroundFrame here; should have been retrieved earlier
+  if isnothing(variables.O)
+    variables.O = length([x for x in part.isBackgroundFrame if x == false])
+  end
+  if isnothing(variables.W)
+    if isnothing(variables.V)
+      @warn "Can't determine variable W since variable V is not defined. Should happen in receiver."
     else
-      @assert variables.N == length(part.framePermutation) "Inconsistent dimension N in `framePermutation` in `$part`."
+      variables.W = variables.V
     end
+  end
+
+  if isnothing(variables.J)
+    if !part.isSparsityTransformed
+      @warn "Can't determine variable J for measurement from `subsamplingIndices` since the dataset is not sparsity transformed."
+    else
+      variables.J = size(part.subsamplingIndices, 1)
+    end
+  end
+  if isnothing(variables.C)
+    if !part.isSparsityTransformed
+      @warn "Can't determine variable C for measurement from `subsamplingIndices` since the dataset is not sparsity transformed. Should happen in receiver."
+    else
+      variables.C = size(part.subsamplingIndices, 2)
+    end
+  end
+  if isnothing(variables.K)
+    if !part.isSparsityTransformed
+      @warn "Can't determine variable K for measurement from `subsamplingIndices` since the dataset is not sparsity transformed. Should happen in receiver."
+    else
+      variables.K = size(part.subsamplingIndices, 3)
+    end
+  end
+  if isnothing(variables.B)
+    if !part.isSparsityTransformed
+      @warn "Can't determine variable B for measurement from `subsamplingIndices` since the dataset is not sparsity transformed. Should happen in receiver."
+    else
+      variables.B = size(part.subsamplingIndices, 4)
+    end
+  end
+
+
+  if part.isFramePermutation
+    @assert variables.N == length(part.framePermutation) "Inconsistent dimension N in `framePermutation` in `measurement`."
   end
 
   if part.isFrequencySelection
     if isnothing(variables.K)
       variables.K = length(part.frequencySelection)
     else
-      @assert variables.K == length(part.frequencySelection) "Inconsistent dimension K in `frequencySelection` in `$part`."
+      @assert variables.K == length(part.frequencySelection) "Inconsistent dimension K in `frequencySelection` in `measurement`."
     end
   end
 
-  @assert variables.N == length(part.isBackgroundFrame) "Inconsistent dimension N in `isBackgroundFrame` in `$part`."
+  @assert variables.N == length(part.isBackgroundFrame) "Inconsistent dimension N in `isBackgroundFrame` in `measurement`."
 
   if part.isSparsityTransformed
-    @assert !isnothing(part.sparsityTransformation) "Field `sparsityTransformation` must be set when `isSparsityTransformed` is set in in `$part`."
+    @assert !isnothing(part.sparsityTransformation) "Field `sparsityTransformation` must be set when `isSparsityTransformed` is set in in `measurement`."
   end
 
   if part.isSparsityTransformed
     # J, C, K and B should be defined by now
-    @assert variables.J == size(part.subsamplingIndices, 1) "Inconsistent dimension J in `subsamplingIndices` in `$part`."
-    @assert variables.C == size(part.subsamplingIndices, 2) "Inconsistent dimension C in `subsamplingIndices` in `$part`."
-    @assert variables.K == size(part.subsamplingIndices, 3) "Inconsistent dimension K in `subsamplingIndices` in `$part`."
-    @assert variables.B == size(part.subsamplingIndices, 4) "Inconsistent dimension B in `subsamplingIndices` in `$part`."
+    @assert variables.J == size(part.subsamplingIndices, 1) "Inconsistent dimension J in `subsamplingIndices` in `measurement`."
+    @assert variables.C == size(part.subsamplingIndices, 2) "Inconsistent dimension C in `subsamplingIndices` in `measurement`."
+    @assert variables.K == size(part.subsamplingIndices, 3) "Inconsistent dimension K in `subsamplingIndices` in `measurement`."
+    @assert variables.B == size(part.subsamplingIndices, 4) "Inconsistent dimension B in `subsamplingIndices` in `measurement`."
   end
 end
 
-function checkSizes(part::MDFv2Calibration, variables::MDFv2Variables)
+function check(part::MDFv2Calibration, variables::MDFv2Variables)
   if !isnothing(part.deltaSampleSize)
-    @assert length(part.deltaSampleSize) == 3 "Inconsistent length in `deltaSampleSize` in `$part`."
+    @assert length(part.deltaSampleSize) == 3 "Inconsistent length in `deltaSampleSize` in `calibration`."
   end
 
   if !isnothing(part.fieldOfView)
-    @assert length(part.fieldOfView) == 3 "Inconsistent length in `fieldOfView` in `$part`."
+    @assert length(part.fieldOfView) == 3 "Inconsistent length in `fieldOfView` in `calibration`."
   end
 
   if !isnothing(part.fieldOfViewCenter)
-    @assert length(part.fieldOfViewCenter) == 3 "Inconsistent length in `fieldOfViewCenter` in `$part`."
+    @assert length(part.fieldOfViewCenter) == 3 "Inconsistent length in `fieldOfViewCenter` in `calibration`."
   end
 
   if !isnothing(part.offsetFields)
     if isnothing(variables.O)
       variables.O = size(part.offsetFields, 1)
     else
-      @assert variables.O == size(part.offsetFields, 2) "Inconsistent dimension O in `offsetFields` in `$part`."
+      @assert variables.O == size(part.offsetFields, 1) "Inconsistent dimension O in `offsetFields` in `calibration`."
     end
-    @assert size(part.offsetFields, 2) == 3 "Inconsistent second dimension in `offsetFields` in `$part`."
+    @assert size(part.offsetFields, 2) == 3 "Inconsistent second dimension in `offsetFields` in `calibration`."
   end
 
   if !isnothing(part.order)
-    @assert part.order in ["xyz", "xzy", "yxz", "yzx", "zyx", "zxy"] "Wrong `order` of `$(part.order)` in `$part`."
+    @assert part.order in ["xyz", "xzy", "yxz", "yzx", "zyx", "zxy"] "Wrong `order` of `$(part.order)` in `calibration`."
   end
 
   if !isnothing(part.positions)
     # O must be defined by now
-    @assert variables.O == size(part.positions, 1) "Inconsistent dimension O in `positions` in `$part`."
-    @assert size(part.positions, 2) == 3 "Inconsistent second dimension in `positions` in `$part`."
+    @assert variables.O == size(part.positions, 1) "Inconsistent dimension O in `positions` in `calibration`."
+    @assert size(part.positions, 2) == 3 "Inconsistent second dimension in `positions` in `calibration`."
   end
 
   if !isnothing(part.size)
-    @assert length(part.size) == 3 "Inconsistent length in `size` in `$part`."
+    @assert length(part.size) == 3 "Inconsistent length in `size` in `calibration`."
     # O must be defined by now
-    @assert variables.O == prod(part.size) "The product of `size` with $(part.size) must equal O."
+    @assert variables.O == prod(part.size) "The product of `size` with `$(part.size)` must equal O."
   end
 
   if !isnothing(part.snr)
     if isnothing(variables.J)
       variables.J = size(part.snr, 1)
     else
-      @assert variables.J == size(part.snr, 1) "Inconsistent dimension J in `snr` in `$part`."
+      @assert variables.J == size(part.snr, 1) "Inconsistent dimension J in `snr` in `calibration`."
     end
 
     if isnothing(variables.C)
       variables.C = size(part.snr, 2)
     else
-      @assert variables.C == size(part.snr, 2) "Inconsistent dimension C in `snr` in `$part`."
+      @assert variables.C == size(part.snr, 2) "Inconsistent dimension C in `snr` in `calibration`."
     end
 
     if isnothing(variables.K)
       variables.K = size(part.snr, 3)
     else
-      @assert variables.K == size(part.snr, 3) "Inconsistent dimension K in `snr` in `$part`."
+      @assert variables.K == size(part.snr, 3) "Inconsistent dimension K in `snr` in `calibration`."
     end
   end
 end
 
-function checkSizes(part::MDFv2Reconstruction, variables::MDFv2Variables)
+function check(part::MDFv2Reconstruction, variables::MDFv2Variables)
   # Pick variables first
   if isnothing(variables.Q)
     variables.Q = size(part.data, 1)
@@ -772,38 +848,40 @@ function checkSizes(part::MDFv2Reconstruction, variables::MDFv2Variables)
   end
   
   if !isnothing(part.fieldOfView)
-    @assert length(part.fieldOfView) == 3 "Inconsistent length in `fieldOfView` in `$part`."
+    @assert length(part.fieldOfView) == 3 "Inconsistent length in `fieldOfView` in `reconstruction`."
   end
 
   if !isnothing(part.fieldOfViewCenter)
-    @assert length(part.fieldOfViewCenter) == 3 "Inconsistent length in `fieldOfViewCenter` in `$part`."
+    @assert length(part.fieldOfViewCenter) == 3 "Inconsistent length in `fieldOfViewCenter` in `reconstruction`."
   end
 
   if !isnothing(part.isOverscanRegion)
-    @assert variables.P == length(part.isOverscanRegion) "Inconsistent length in `isOverscanRegion` in `$part`."
+    @assert variables.P == length(part.isOverscanRegion) "Inconsistent length in `isOverscanRegion` in `reconstruction`."
   end
 
   if !isnothing(part.order)
-    @assert part.order in ["xyz", "xzy", "yxz", "yzx", "zyx", "zxy"] "Wrong `order` of `$(part.order)` in `$part`."
+    @assert part.order in ["xyz", "xzy", "yxz", "yzx", "zyx", "zxy"] "Wrong `order` of `$(part.order)` in `reconstruction`."
   end
 
   if !isnothing(part.positions)
-    @assert variables.P == size(part.positions, 1) "Inconsistent dimension P in `positions` in `$part`."
-    @assert size(part.positions, 2) == 3 "Inconsistent second dimension in `positions` in `$part`."
+    @assert variables.P == size(part.positions, 1) "Inconsistent dimension P in `positions` in `reconstruction`."
+    @assert size(part.positions, 2) == 3 "Inconsistent second dimension in `positions` in `reconstruction`."
   end
 
   if !isnothing(part.size)
-    @assert length(part.size) == 3 "Inconsistent length in `size` in `$part`."
+    @assert length(part.size) == 3 "Inconsistent length in `size` in `reconstruction`."
     # P must be defined by now
-    @assert variables.P == prod(part.size) "The product of `size` with $(part.size) must equal O."
+    @assert variables.P == prod(part.size) "The product of `size` with `$(part.size)` must equal P."
   end
 end
 
 "Check for missing fields in MDF parts"
 function checkMissing(part::T) where T <: MDFv2InMemoryPart
   for (fieldname, fieldtype) in zip(fieldnames(T), fieldtypes(T))
-    field = getproperty(part, fieldname)
-    @assert ismissing(field) "The field `$fieldname` in `$part` is missing in the given MDF representation."
+    if fieldtype != MDFv2Variables
+      field = getproperty(part, fieldname)
+      @assert !ismissing(field) "The field `$fieldname` is missing in the given in-memory MDF."
+    end
   end
 end
 
@@ -811,14 +889,29 @@ end
 set and if the dimensions of the fields match"
 function checkConsistency(mdf::MDFv2InMemory)
   for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InMemory))
-    if fieldtype != MDFv2Variables
+    if fieldtype != MDFv2Variables && fieldname != :custom
+      # At the moment, this should be a Union
+      fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
+      @debug "Checking consistency of `$fieldname`."
+
       field = getproperty(mdf, fieldname)
-      @assert ismissing(field) "The field `$fieldname` is missing in the given MDF representation."
+      @assert !ismissing(field) "The field `$fieldname` is missing in the given in-memory MDF."
       
       checkMissing(field)
-      checkSizes(field, mdf.variables)
+      check(field, mdf.variables)
+
+      # Check subgroups of acquisition
+      if fieldtype == MDFv2Acquisition
+        checkMissing(field.drivefield)
+        check(field.drivefield, mdf.variables)
+
+        checkMissing(field.receiver)
+        check(field.receiver, mdf.variables)
+      end
     end
   end
+
+  return true # If no assertions failed, return true for checking in tests
 end
 
 ### Create getters and setters
@@ -865,6 +958,19 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
     missingOrNothing = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.a : fieldtype.b
     fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
 
+    # Create getter and for the whole group
+    @eval begin
+      # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+      function $(fieldname)(mdf::MDFv2InMemory)::Union{$fieldtype, $missingOrNothing}
+        return mdf.$fieldname
+      end
+
+      # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+      function $(fieldname)(mdf::MDFv2InMemory, value::Union{$fieldtype, $missingOrNothing})
+        mdf.$fieldname = value
+      end
+    end
+
     for (partFieldname, partFieldtype) in zip(fieldnames(fieldtype), fieldtypes(fieldtype))
       partFieldnameStr = string(partFieldname)
 
@@ -895,7 +1001,7 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
           end
 
           # TODO: Add docstring from struct; I did not yet find a way to retrieve it
-          function $(functionSymbol)(mdf::MDFv2InMemory, value::$partFieldtype)
+          function $(functionSymbol)(mdf::MDFv2InMemory, value::Union{$partFieldtype, $missingOrNothing})
             # Automatically create fields if they do not exist
             if isnothing(mdf.$fieldname) || ismissing(mdf.$fieldname)
               @debug "Creating field $($fieldnameStr)"
@@ -919,6 +1025,29 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
         # At the moment, this should be a Union
         missingOrNothing = (partFieldtype.b <: MDFv2InMemoryPart) ? partFieldtype.a : partFieldtype.b
         partFieldtype = (partFieldtype.b <: MDFv2InMemoryPart) ? partFieldtype.b : partFieldtype.a
+
+        # Create getter and for the whole group
+        @eval begin
+          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          function $(partFieldname)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing}
+            if !(isnothing(mdf.$fieldname) || ismissing(mdf.$fieldname))
+              return mdf.$fieldname.$partFieldname
+            else
+              return mdf.$fieldname
+            end
+          end
+
+          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          function $(partFieldname)(mdf::MDFv2InMemory, value::Union{$partFieldtype, $missingOrNothing})
+            # Automatically create fields if they do not exist
+            if isnothing(mdf.$fieldname) || ismissing(mdf.$fieldname)
+              @debug "Creating field $($fieldnameStr)"
+              mdf.$fieldname = $fieldtype()
+            end
+            
+            mdf.$fieldname.$partFieldname = value
+          end
+        end
 
         for (subPartFieldname, subPartFieldtype) in zip(fieldnames(partFieldtype), fieldtypes(partFieldtype))
           subPartFieldnameStr = string(subPartFieldname)
@@ -944,7 +1073,7 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
             end
   
             # TODO: Add docstring from struct; I did not yet find a way to retrieve it
-            function $(functionSymbol)(mdf::MDFv2InMemory, value::$subPartFieldtype)
+            function $(functionSymbol)(mdf::MDFv2InMemory, value::Union{$subPartFieldtype, $missingOrNothing})
               # Automatically create fields if they do not exist
               if isnothing(mdf.$fieldname) || ismissing(mdf.$fieldname)
                 @debug "Creating field $($fieldnameStr)"
@@ -965,7 +1094,7 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
             alias = aliases[functionSymbol]
             @eval begin
               $(alias)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing} = $(functionSymbol)(mdf)
-              $(alias)(mdf::MDFv2InMemory, value::$partFieldtype) = $(functionSymbol)(mdf, value)
+              $(alias)(mdf::MDFv2InMemory, value::Union{$partFieldtype, $missingOrNothing}) = $(functionSymbol)(mdf, value)
               $(functionSymbol)(f::MDFFileV2)::Union{$partFieldtype, $missingOrNothing} = $(alias)(f) # Should this be here or in MDF.jl?
             end
           end
