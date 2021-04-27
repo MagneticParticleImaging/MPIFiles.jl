@@ -49,3 +49,4 @@ We welcome community contributions to `MPIFiles.jl`. Simply create a [pull reque
 * [Franziska Werner](https://www.tuhh.de/ibi/people/franziska-werner.html)
 * [Nadine Gdaniec](https://www.tuhh.de/ibi/people/nadine-gdaniec.html)
 * [Marija Boberg](https://www.tuhh.de/ibi/people/marija-boberg.html)
+* [Jonas Schumacher](https://www.imt.uni-luebeck.de/institute/staff/jonas-schumacher.html)
