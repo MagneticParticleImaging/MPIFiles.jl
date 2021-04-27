@@ -348,9 +348,7 @@ end
       @test mdf.variables.P == P
       @test mdf.variables.S == S
     end
-
-
-
+    
     @testset "Missing" begin
       # Structs
       test_mdf_replacement(mdf, :root, missing, "The field `root` is missing in the given in-memory MDF.")

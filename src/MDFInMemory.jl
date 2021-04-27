@@ -1192,7 +1192,7 @@ function inMemoryMDFToMDFFileV2(filename::String, mdf::MDFv2InMemory)
   saveasMDF(filename, mdf)
 end
 
-function saveasMDF(filename::String, mdf::MDFv2InMemory)
+function saveasMDF(filename::String, mdf::MDFv2InMemory; failOnInconsistent::Bool=false)
   # file has to be removed if exists. Otherwise h5create fails.
   isfile(filename) && rm(filename)
   h5open(filename, "w") do file
@@ -1201,7 +1201,17 @@ function saveasMDF(filename::String, mdf::MDFv2InMemory)
 end
 
 "Create an MDFFile from an in-memory MDF."
-function saveasMDF(file::HDF5.File, mdf::MDFv2InMemory)
+function saveasMDF(file::HDF5.File, mdf::MDFv2InMemory; failOnInconsistent::Bool=false)
+  if failOnInconsistent
+    checkConsistency(mdf)
+  else
+    try
+      checkConsistency(mdf)
+    catch e
+      @warn "There is an inconsistency in the given in-memory MDF. The message is: `$(e.msg)`."
+    end
+  end
+
   for (functionSymbol, key) in merge(customSymbols, specificationSymbols)
     f = getfield(MPIFiles, functionSymbol)
     result = f(mdf)
