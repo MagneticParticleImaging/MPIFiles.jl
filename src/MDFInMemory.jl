@@ -878,7 +878,7 @@ end
 "Check for missing fields in MDF parts"
 function checkMissing(part::T) where T <: MDFv2InMemoryPart
   for (fieldname, fieldtype) in zip(fieldnames(T), fieldtypes(T))
-    if fieldtype != MDFv2Variables
+    if !(fieldtype == MDFv2Variables)
       field = getproperty(part, fieldname)
       @assert !ismissing(field) "The field `$fieldname` is missing in the given in-memory MDF."
     end
@@ -889,7 +889,7 @@ end
 set and if the dimensions of the fields match"
 function checkConsistency(mdf::MDFv2InMemory)
   for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InMemory))
-    if fieldtype != MDFv2Variables && fieldname != :custom
+    if !(fieldtype == MDFv2Variables || fieldname == :custom)
       # At the moment, this should be a Union
       fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
       @debug "Checking consistency of `$fieldname`."
@@ -1236,7 +1236,7 @@ function saveasMDF(file::HDF5.File, mdf::MDFv2InMemory; failOnInconsistent::Bool
       if eltype(result) == Bool
         result = Int8.(result)
       end
-      if typeof(result) == VersionNumber || typeof(result) == DateTime || typeof(result) == UUID
+      if result isa VersionNumber || result isa DateTime || result isa UUID
         result = string(result)
       end
       if eltype(result) == DateTime

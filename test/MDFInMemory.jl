@@ -16,11 +16,7 @@ function test_mdf_replacement(mdf::MDFv2InMemory, getter::Symbol, replacement, m
     end
 
     @test err isa AssertionError
-    
-    # We want the test to error but not to failed
-    if !isnothing(err)
-      @test err.msg == message
-    end
+    @test err.msg == message
   end
 
   # Change it back
