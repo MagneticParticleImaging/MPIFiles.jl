@@ -351,7 +351,7 @@ defaultMDFv2Acquisition() = MDFv2Acquisition(drivefield=defaultMDFv2Drivefield()
 "Measurement group of an in-memory MDF"
 mutable struct MDFv2Measurement <: MDFv2InMemoryPart
   "Measured data at a specific processing stage"
-  data::Union{Any, Missing} # This is bad, but I am not sure how to be more concrete here; Type the whole struct with T where T <: Number?
+  data::Union{AbstractArray{<:Number, 4}, Missing}
   "Indices of original frame order; optional if !isFramePermutation"
   framePermutation::Union{Vector{Int64}, Nothing}
   "Indices of selected frequency components; optional if !isFrequencySelection"
