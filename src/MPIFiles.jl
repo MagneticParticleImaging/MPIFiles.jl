@@ -72,18 +72,21 @@ export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
 
 # measurements
 export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
-       measIsBGCorrected, measIsFastFrameAxis,
+       measIsTranferFunctionCorrected,
+       measIsBGCorrected, measIsBackgroundCorrected, measIsFastFrameAxis,
        measIsFramePermutation, measIsFrequencySelection,
-       measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation,
+       measIsBGFrame, measIsBackgroundFrame, measIsSpectralLeakageCorrected, measFramePermutation,
        measFrequencySelection, measIsSparsityTransformed, measIsCalibProcessed
 
 # calibrations
-export calibSNR, calibFov, calibFovCenter, calibSize,
-       calibOrder, calibPositions, calibOffsetField, calibDeltaSampleSize,
+export calibSNR, calibSnr, calibFov, calibFieldOfView, calibFovCenter,
+       calibFieldOfViewCenter, calibSize, calibOrder, calibPositions,
+       calibOffsetField, calibDeltaSampleSize,
        calibMethod, calibIsMeanderingGrid
 
 # reconstruction results
-export recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions
+export recoData, recoFov, recoFieldOfView, recoFovCenter, recoFieldOfViewCenter,
+       recoSize, recoOrder, recoPositions
 
 # additional functions that should be implemented by an MPIFile
 export filepath, systemMatrixWithBG, systemMatrix

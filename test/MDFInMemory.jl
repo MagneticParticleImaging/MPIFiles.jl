@@ -27,7 +27,7 @@ function test_mdf_replacement(mdf::MDFv2InMemory, getter::Symbol, replacement, m
   f(mdf, temp)
 end
 
-@testset "Testing MDFInMemory" begin
+@testset "MDFInMemory" begin
   fnMeasBruker = joinpath(datadir,"BrukerStore","20150915_102110_Wuerfelphantom_1_1","18")
   fnSMBruker = joinpath(datadir,"BrukerStore","20141121_130749_CalibrationScans_1_1","76")
   fnSM1DBruker = joinpath(datadir,"BrukerStore","20170807_142514_Service_1_1","89")
@@ -60,7 +60,8 @@ end
       mdfv2InMemory = MDFv2InMemory(mdfv2)
       @test typeof(mdfv2InMemory) <: MDFv2InMemory
 
-      saveasMDF(fnMeasV2_converted, mdfv2InMemory)
+      message = "There is an inconsistency in the given in-memory MDF. The message is: `Inconsistent dimension J in `gradient` in `acquisition`.`."
+      @test_logs (:warn, message) saveasMDF(fnMeasV2_converted, mdfv2InMemory)
 
       mdf = MPIFile(fnMeasV2_converted)
       @test typeof(mdf) <: MDFFileV2
@@ -128,6 +129,13 @@ end
       @test size( measDataTDPeriods(mdf) ) == (1632,3,500)
       @test size( measDataTDPeriods(mdf, 101:200) ) == (1632,3,100)
 
+      # Utility functions
+      @test measIsCalibProcessed(mdf) == false
+      @test experimentHasReconstruction(mdf) == false
+      @test experimentHasMeasurement(mdf) == true
+      @test rxHasTransferFunction(mdf) == true
+      @test experimentIsCalibration(mdf) == false
+
       N = acqNumFrames(mdf)
 
       @test size(getMeasurements(mdf, numAverages=1,
@@ -184,6 +192,13 @@ end
       @test calibDeltaSampleSize(sm) == [0.0, 0.0, 0.0] #[0.001; 0.001; 0.001]
       @test calibMethod(sm) == "robot"
 
+      # Utility functions
+      @test measIsCalibProcessed(sm) == true
+      @test experimentHasReconstruction(sm) == false
+      @test experimentHasMeasurement(sm) == true
+      @test rxHasTransferFunction(sm) == true
+      @test experimentIsCalibration(sm) == true
+
       @test size(filterFrequencies(sm, SNRThresh = 5)) == (147,)
       #@test size(filterFrequencies(sm, numUsedFreqs = 100)) == (100,) # not working
 
@@ -202,6 +217,77 @@ end
       end
       # test if relative deviation for most of the frequency components is below 0.003
       @test quantile(relativeDeviation,0.95)<0.003
+    end
+  end
+
+  @testset "Defaults" begin
+    mdf = defaultMDFv2InMemory()
+
+    @test typeof(time(mdf)) == DateTime
+    @test typeof(uuid(mdf)) == UUID
+    @test version(mdf) == VersionNumber("2.1.0")
+    @test rxUnit(mdf) == "V"
+  end
+
+  @testset "Dict" begin
+    @testset "String keys" begin
+      dict = Dict{String, Any}()
+      dict["dfBaseFrequency"] = 1600/40e3
+      dict["experimentUuid"] = UUID("946a039e-48de-47ee-957e-a15af437e0be")
+      dict["acqGradient"] = fill(0.0, (1, 1, 3, 3))
+      dict["calibFov"] = fill(0.2, 3)
+
+      mdf = inMemoryMDFFromDict(dict)
+
+      @test dfBaseFrequency(mdf) == 1600/40e3
+      @test experimentUuid(mdf) == UUID("946a039e-48de-47ee-957e-a15af437e0be")
+      @test acqGradient(mdf) == fill(0.0, (1, 1, 3, 3))
+      @test calibFov(mdf) == fill(0.2, 3)
+      @test calibFieldOfView(mdf) == fill(0.2, 3)
+
+      mdf = MDFv2InMemory(dict)
+
+      @test dfBaseFrequency(mdf) == 1600/40e3
+      @test experimentUuid(mdf) == UUID("946a039e-48de-47ee-957e-a15af437e0be")
+      @test acqGradient(mdf) == fill(0.0, (1, 1, 3, 3))
+      @test calibFov(mdf) == fill(0.2, 3)
+      @test calibFieldOfView(mdf) == fill(0.2, 3)
+    end
+
+    @testset "Symbol keys" begin
+      dict = Dict{Symbol, Any}()
+      dict[:dfBaseFrequency] = 1600/40e3
+      dict[:experimentUuid] = UUID("946a039e-48de-47ee-957e-a15af437e0be")
+      dict[:acqGradient] = fill(0.0, (1, 1, 3, 3))
+      dict[:calibFov] = fill(0.2, 3)
+
+      mdf = inMemoryMDFFromDict(dict)
+
+      @test dfBaseFrequency(mdf) == 1600/40e3
+      @test experimentUuid(mdf) == UUID("946a039e-48de-47ee-957e-a15af437e0be")
+      @test acqGradient(mdf) == fill(0.0, (1, 1, 3, 3))
+      @test calibFov(mdf) == fill(0.2, 3)
+      @test calibFieldOfView(mdf) == fill(0.2, 3)
+
+      mdf = MDFv2InMemory(dict)
+
+      @test dfBaseFrequency(mdf) == 1600/40e3
+      @test experimentUuid(mdf) == UUID("946a039e-48de-47ee-957e-a15af437e0be")
+      @test acqGradient(mdf) == fill(0.0, (1, 1, 3, 3))
+      @test calibFov(mdf) == fill(0.2, 3)
+      @test calibFieldOfView(mdf) == fill(0.2, 3)
+    end
+
+    @testset "MDF to Dict" begin
+      mdf = defaultMDFv2InMemory()
+      calibFov(mdf, fill(0.2, 3)) # One alias should be tested
+      dict = inMemoryMDFToDict(mdf)
+
+      @test typeof(dict["time"]) == DateTime
+      @test typeof(dict["uuid"]) == UUID
+      @test dict["version"] == VersionNumber("2.1.0")
+      @test dict["rxUnit"] == "V"
+      @test dict["calibFov"] == fill(0.2, 3)
     end
   end
 

@@ -9,7 +9,7 @@ export defaultMDFv2Root, defaultMDFv2Study, defaultMDFv2Experiment,
        defaultMDFv2Receiver, defaultMDFv2Acquisition, defaultMDFv2Measurement,
        defaultMDFv2Calibration, defaultMDFv2Reconstruction, defaultMDFv2InMemory
 
-export checkConsistency
+export checkConsistency, inMemoryMDFToDict, inMemoryMDFFromDict
 
 abstract type MDFv2InMemoryPart end
 
@@ -346,7 +346,7 @@ mutable struct MDFv2Acquisition <: MDFv2InMemoryPart
   end
 end
 
-defaultMDFv2Acquisition() = MDFv2Acquisition()
+defaultMDFv2Acquisition() = MDFv2Acquisition(drivefield=defaultMDFv2Drivefield(), receiver=defaultMDFv2Receiver())
 
 "Measurement group of an in-memory MDF"
 mutable struct MDFv2Measurement <: MDFv2InMemoryPart
@@ -1122,42 +1122,58 @@ experimentIsCalibration(mdf::MDFv2InMemory)::Bool = !isnothing(mdf.calibration) 
 
 # Creation and conversion
 
-# "Create an in-memory MDF from a dict matching the respective function names."
-# function inMemoryMDFFromDict(dict::Dict{String, Any})::MDFv2InMemory
-#   mdf = MDFv2InMemory()
+"Create an in-memory MDF from a dict matching the respective function names."
+function inMemoryMDFFromDict(dict::Dict{Symbol, Any})::MDFv2InMemory
+  mdf = MDFv2InMemory()
 
-#   for (key, value) in dict
-#     functionSymbol = Symbol(key)
-#     f = getfield(MPIFiles, functionSymbol)
-#     f(mdf, value)
-#   end
+  for (functionSymbol, value) in dict
+    # Conversion uses aliases => replace these symbols with their alias
+    if haskey(aliases, functionSymbol)
+      functionSymbol = aliases[functionSymbol]
+    end
 
-#   return mdf
-# end
+    try
+      f = getfield(MPIFiles, functionSymbol)
+      f(mdf, value)
+    catch e
+      if e isa UndefVarError
+        @warn "The function `$(string(functionSymbol))` corresponding to a key in the given dict could not be found."
+      else
+        rethrow()
+      end
+    end
+  end
 
-# "Create a dict from an in-memory MDF by matching the respective function names."
-# function inMemoryMDFToDict(mdf::MDFv2InMemory)::Dict{String, Any}
-#   resultDict = Dict{String, Any}()
+  return mdf
+end
+inMemoryMDFFromDict(dict::Dict{String, Any})::MDFv2InMemory = inMemoryMDFFromDict(Dict(map(x -> Symbol(x.first)=>x.second, collect(dict))))
 
-#   # Add standard-compliant and non-standard fields
-#   for functionSymbol in vcat(specificationSymbols, customSymbols)
-#     f = getfield(MPIFiles, functionSymbol)
-#     result = f(mdf)
-#     if !(isnothing(result) || ismissing(result))
-#       # Conversion uses aliases => replace these symbols with their alias
-#       if haskey(aliases, functionSymbol)
-#         functionSymbol = aliases[functionSymbol]
-#       end
+"Create a dict from an in-memory MDF by matching the respective function names."
+function inMemoryMDFToDict(mdf::MDFv2InMemory)::Dict{String, Any}
+  resultDict = Dict{String, Any}()
 
-#       resultDict[string(functionSymbol)] = result
-#     end
-#   end
+  # Add standard-compliant and non-standard fields
+  for functionSymbol in vcat(collect(keys(specificationSymbols)), collect(keys(customSymbols)))
+    f = getfield(MPIFiles, functionSymbol)
+    result = f(mdf)
+    if !(isnothing(result) || ismissing(result))
+      # Conversion uses aliases => replace these symbols with their alias
+      if haskey(aliases, functionSymbol)
+        functionSymbol = aliases[functionSymbol]
+      end
 
-#   # Add measurements data
-#   resultDict["measData"] = measDataRaw(mdf)
+      resultDict[string(functionSymbol)] = result
+    end
+  end
 
-#   return resultDict
-# end
+  # Add measurements data
+  resultDict["measData"] = measDataRaw(mdf)
+
+  return resultDict
+end
+
+"Alias to inMemoryMDFToDict()"
+toDict(mdf::MDFv2InMemory)::Dict{String, Any} = inMemoryMDFToDict(mdf)
 
 "Create an in-memory MDF from an MDFFile by calling the corresponding functions."
 function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
@@ -1251,7 +1267,22 @@ calibTemperatures(mdf::MDFv2InMemory, calibTemperatures) = mdf.custom["calibTemp
 auxiliaryData(mdf::MDFv2InMemory) = @keyoptional mdf.custom["auxiliaryData"]
 auxiliaryData(mdf::MDFv2InMemory, auxiliaryData) = mdf.custom["auxiliaryData"] = auxiliaryData
 
-measDataRaw(mdf::MDFv2InMemory) = mdf.measurement.data
-measDataRaw(mdf::MDFv2InMemory, data) = mdf.measurement.data = data
+function measDataRaw(mdf::MDFv2InMemory)
+  if !(isnothing(mdf.measurement))
+    return mdf.measurement.data
+  else
+    return mdf.measurement
+  end
+end
+
+function measDataRaw(mdf::MDFv2InMemory, value)
+  # Automatically create fields if they do not exist
+  if isnothing(mdf.measurement)
+    @debug "Creating field measurement"
+    mdf.measurement = MDFv2Measurement()
+  end
+  
+  mdf.measurement.data = value
+end
 
 filepath(mdf::MDFv2InMemory) = nothing # Has to be implemented...
