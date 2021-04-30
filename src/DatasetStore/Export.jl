@@ -47,7 +47,7 @@ function exportData(e::Experiment, mdf::MDFDatasetStore, study::Union{Nothing,St
   if logging
     # log action
     open("/opt/DataArchiveOptmpidata/convertBrukerToMDF/log.csv", append=true) do io
-      write(io,"$path, $exportpath\n")
+      write(io,"$(path(e)), $exportpath\n")
     end
   end
 
