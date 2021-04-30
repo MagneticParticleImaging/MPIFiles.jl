@@ -73,7 +73,11 @@ function getStudy(d::BrukerDatasetStore, studyfolder::String)
 end
 
 function getExperiments(s::Study{BrukerDatasetStore})
-  files = findBrukerFiles(path(s),1,1) # make me fast
+  @static if Sys.isunix()
+    files = findBrukerFiles(path(s),1,1)
+  else
+    files = findBrukerFiles(path(s))	
+  end
 
   experiments = Experiment[]
 
