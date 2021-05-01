@@ -72,18 +72,21 @@ export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
 
 # measurements
 export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
-       measIsBGCorrected, measIsFastFrameAxis,
+       measIsTranferFunctionCorrected,
+       measIsBGCorrected, measIsBackgroundCorrected, measIsFastFrameAxis,
        measIsFramePermutation, measIsFrequencySelection,
-       measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation,
+       measIsBGFrame, measIsBackgroundFrame, measIsSpectralLeakageCorrected, measFramePermutation,
        measFrequencySelection, measIsSparsityTransformed, measIsCalibProcessed
 
 # calibrations
-export calibSNR, calibFov, calibFovCenter, calibSize,
-       calibOrder, calibPositions, calibOffsetField, calibDeltaSampleSize,
+export calibSNR, calibSnr, calibFov, calibFieldOfView, calibFovCenter,
+       calibFieldOfViewCenter, calibSize, calibOrder, calibPositions,
+       calibOffsetField, calibDeltaSampleSize,
        calibMethod, calibIsMeanderingGrid
 
 # reconstruction results
-export recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions
+export recoData, recoFov, recoFieldOfView, recoFovCenter, recoFieldOfViewCenter,
+       recoSize, recoOrder, recoPositions
 
 # additional functions that should be implemented by an MPIFile
 export filepath, systemMatrixWithBG, systemMatrix
@@ -125,6 +128,7 @@ abstract type MPIFile end
 @mustimplement tracerInjectionTime(f::MPIFile)
 
 # scanner parameters
+@mustimplement scannerBoreSize(f::MPIFile)
 @mustimplement scannerFacility(f::MPIFile)
 @mustimplement scannerOperator(f::MPIFile)
 @mustimplement scannerManufacturer(f::MPIFile)
@@ -164,16 +168,19 @@ abstract type MPIFile end
 @mustimplement measData(f::MPIFile)
 @mustimplement measDataTD(f::MPIFile)
 @mustimplement measDataTDPeriods(f::MPIFile, periods)
-@mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
-@mustimplement measIsFourierTransformed(f::MPIFile)
-@mustimplement measIsTFCorrected(f::MPIFile)
-@mustimplement measIsFrequencySelection(f::MPIFile)
-@mustimplement measIsBGCorrected(f::MPIFile)
-@mustimplement measIsFastFrameAxis(f::MPIFile)
-@mustimplement measIsFramePermutation(f::MPIFile)
-@mustimplement measIsBGFrame(f::MPIFile)
 @mustimplement measFramePermutation(f::MPIFile)
+@mustimplement measFrequencySelection(f::MPIFile)
+@mustimplement measIsBGCorrected(f::MPIFile)
+@mustimplement measIsBGFrame(f::MPIFile)
+@mustimplement measIsFastFrameAxis(f::MPIFile)
+@mustimplement measIsFourierTransformed(f::MPIFile)
+@mustimplement measIsFramePermutation(f::MPIFile)
+@mustimplement measIsFrequencySelection(f::MPIFile)
 @mustimplement measIsSparsityTransformed(f::MPIFile)
+@mustimplement measIsSpectralLeakageCorrected(f::MPIFile)
+@mustimplement measIsTFCorrected(f::MPIFile)
+@mustimplement measSparsityTransformation(f::MPIFile)
+@mustimplement measSubsamplingIndices(f::MPIFile)
 @mustimplement measIsCalibProcessed(b::MPIFile)
 
 # calibrations
@@ -195,6 +202,7 @@ abstract type MPIFile end
 @mustimplement recoSize(f::MPIFile)
 @mustimplement recoOrder(f::MPIFile)
 @mustimplement recoPositions(f::MPIFile)
+@mustimplement recoIsOverscanRegion(f::MPIFile)
 
 # additional functions that should be implemented by an MPIFile
 @mustimplement filepath(f::MPIFile)
@@ -207,6 +215,8 @@ include("FramePermutation.jl")
 
 ### Concrete implementations ###
 include("MDF.jl")
+include("MDFInMemory.jl")
+include("MDFCommon.jl")
 include("Brukerfile.jl")
 include("IMT.jl")
 
