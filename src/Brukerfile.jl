@@ -391,7 +391,7 @@ rxDataConversionFactor(b::BrukerFileMeas) =
 rxDataConversionFactor(b::BrukerFileCalib) =
                  repeat([1.0, 0.0], outer=(1,rxNumChannels(b)))
 
-function rawDataLengthConsistent(b::BrukerFile)
+function rawDataLengthConsistent(b::BrukerFile; verbose=true)
   dataFilename = joinpath(b.path,"rawdata.job0")
   dType = acqNumAverages(b) == 1 ? Int16 : Int32
 
@@ -404,7 +404,7 @@ function rawDataLengthConsistent(b::BrukerFile)
       acqNumPeriodsPerFrame(b)*numFrames*sizeof(dType)
 
   M = filesize(dataFilename)
-  if N != M
+  if N != M && verbose
     @warn "raw data length inconsistent N != M" N M
   end
   return N == M
