@@ -41,7 +41,7 @@ function getExperiment(s::Study, numExp::Integer)
 end
 
 function remove(exp::Experiment)
-  if isfile(exp.path)
-    rm(exp.path)
+  if isfile(path(exp))
+    rm(path(exp))
   end
 end
