@@ -51,6 +51,8 @@ function exportData(e::Experiment, mdf::MDFDatasetStore, study::Union{Nothing,St
     end
   end
 
+  close(f)
+
   return exportpath
 end
 

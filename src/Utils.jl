@@ -49,7 +49,7 @@ function readComplexArray(filename::AbstractString, dataset)
 end
 
 function changeParam(filename::AbstractString, paramName::AbstractString, paramValue)
-  GC.gc()
+  #GC.gc()
   h5open(filename, "r+") do file
 	  if haskey(file, paramName)
       delete_object(file, paramName)

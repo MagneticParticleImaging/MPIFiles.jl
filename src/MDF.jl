@@ -60,6 +60,9 @@ function MDFFile(filename::String, file = h5open(filename,"r"))
   end
 end
 
+Base.close(f::MDFFile) = close(f.file)
+
+
 function h5haskey(filename, parameter)
   return h5open(filename) do file
     haskey(file, parameter)
