@@ -16,7 +16,7 @@ function exportData(e::Experiment, mdf::MDFDatasetStore, study::Union{Nothing,St
   if iscalib(e)
     exportpath = getNewCalibPath(mdf)
     saveasMDF(exportpath, f; applyCalibPostprocessing=true, kargs...)
-    @info "Calibration data from $path successfully exported to $exportpath." 
+    @info "Calibration data from $(path(e)) successfully exported to $exportpath." 
   else
     if study == nothing
       name = studyName(f)
