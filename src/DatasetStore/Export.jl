@@ -34,7 +34,7 @@ function exportData(e::Experiment, mdf::MDFDatasetStore, study::Union{Nothing,St
         exportpath = getNewExperimentPath(s)
       end
       saveasMDF(exportpath, f; experimentNumber = expNum, kargs...)
-      @info "Measurement data from $path successfully exported to $exportpath." 
+      @info "Measurement data from $(path(e)) successfully exported to $exportpath." 
     end
 
     if isdir(path(e)) && storeForwardRef # only if input data is a BrukerFile
