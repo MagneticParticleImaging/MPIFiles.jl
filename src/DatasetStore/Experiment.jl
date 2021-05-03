@@ -25,19 +25,18 @@ function getExperiment(s::Study, numExp::Integer)
 
   path_ = path(s, numExp)
 
-  if ispath(path_)
-    b = MPIFile(path_, fastMode=true)
-  else
+  if !ispath(path_)
     return nothing
   end
-  prefix, ext = splitext(path_)
 
-  exp = Experiment(s, parse(Int64,last(splitdir(prefix))), #why parse experiment number here????, 
+  exp = MPIFile(path_, fastMode=true) do b 
+    prefix, ext = splitext(path_)
+    
+    Experiment(s, parse(Int64,last(splitdir(prefix))), #why parse experiment number here????, 
                       string(experimentName(b)), acqNumFrames(b),
                       round.(1000 .* vec(dfStrength(b)[1,:,1]),digits=2), maximum(abs.(acqGradient(b))),
                       acqNumAverages(b), scannerOperator(b), string(acqStartTime(b)))
-
-  close(b)
+  end
   return exp
 end
 

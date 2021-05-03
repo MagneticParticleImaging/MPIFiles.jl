@@ -7,51 +7,51 @@ function exportData(e::Experiment, mdf::MDFDatasetStore, study::Union{Nothing,St
   
   isCalib = (haskey(kargs, :SNRThresh) || haskey(kargs, :sparsityTrafoRedFactor)) ? true : false
 
-  f = MPIFile(path(e), isCalib=isCalib)
+  exportpath = MPIFile(path(e), isCalib=isCalib) do f
 
-  if !isConvertibleToMDF(f)
-    return ""
-  end
+    if !isConvertibleToMDF(f)
+      return ""
+    end
 
-  if iscalib(e)
-    exportpath = getNewCalibPath(mdf)
-    saveasMDF(exportpath, f; applyCalibPostprocessing=true, kargs...)
-    @info "Calibration data from $(path(e)) successfully exported to $exportpath." 
-  else
-    if study == nothing
-      name = studyName(f)
-      subject = experimentSubject(f)
-      date = studyTime(f)
-      s = Study(mdf, name; date=date, subject=subject)
+    if iscalib(e)
+      exportpath = getNewCalibPath(mdf)
+      saveasMDF(exportpath, f; applyCalibPostprocessing=true, kargs...)
+      @info "Calibration data from $(path(e)) successfully exported to $exportpath." 
     else
-      s = study
+      if study == nothing
+        name = studyName(f)
+        subject = experimentSubject(f)
+        date = studyTime(f)
+        s = Study(mdf, name; date=date, subject=subject)
+      else
+        s = study
+      end
+      if keepExpNum  
+        expNum = experimentNumber(f) # or e.num
+        exportpath = joinpath(path(s),string(expNum)*".mdf")
+      else
+        expNum = getNewExperimentNum(s)
+        exportpath = getNewExperimentPath(s)
+      end
+      saveasMDF(exportpath, f; experimentNumber = expNum, kargs...)
+      @info "Measurement data from $path successfully exported to $exportpath." 
     end
-    if keepExpNum  
-      expNum = experimentNumber(f) # or e.num
-      exportpath = joinpath(path(s),string(expNum)*".mdf")
-    else
-      expNum = getNewExperimentNum(s)
-      exportpath = getNewExperimentPath(s)
-    end
-    saveasMDF(exportpath, f; experimentNumber = expNum, kargs...)
-    @info "Measurement data from $path successfully exported to $exportpath." 
-  end
 
-  if isdir(path(e)) && storeForwardRef # only if input data is a BrukerFile
-    # Store export path in Bruker directory
-    open(joinpath(path(e),"mdf"),write=true) do io
-      write(io, exportpath)
+    if isdir(path(e)) && storeForwardRef # only if input data is a BrukerFile
+      # Store export path in Bruker directory
+      open(joinpath(path(e),"mdf"),write=true) do io
+        write(io, exportpath)
+      end
     end
-  end
 
-  if logging
-    # log action
-    open("/opt/DataArchiveOptmpidata/convertBrukerToMDF/log.csv", append=true) do io
-      write(io,"$(path(e)), $exportpath\n")
+    if logging
+      # log action
+      open("/opt/DataArchiveOptmpidata/convertBrukerToMDF/log.csv", append=true) do io
+        write(io,"$(path(e)), $exportpath\n")
+      end
     end
+    exportpath
   end
-
-  close(f)
 
   return exportpath
 end
@@ -110,6 +110,7 @@ function createArtifact(d::DatasetStore, url="https://")
   end
   bind_artifact!(artifact_toml, name, hash;
                  download_info=[(url, tarball_hash)],lazy=true, force=true)
+  remove_artifact(hash)
 end
 
 function validate(d::DatasetStore)

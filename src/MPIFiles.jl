@@ -259,6 +259,16 @@ function MPIFile(filenames::Vector)
   return map(x->MPIFile(x),filenames)
 end
 
+# For the do block
+function MPIFile(h::Function, args...; kargs...)
+  f = MPIFile(args...; kargs...)
+  try
+      h(f)
+  finally
+      close(f)
+  end
+end
+
 Base.length(f::MPIFile) = 1
 Base.close(f::MPIFile) = nothing
 

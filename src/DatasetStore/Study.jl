@@ -90,17 +90,17 @@ function validate(s::Study)
   exps = getExperiments(s)
   valid = true
   for e in exps
-    f = MPIFile(path(e), fastMode=true)
-    date1 = trunc(studyTime(f), Dates.Second)
-    date2 = trunc(s.date, Dates.Second)
-    if studyName(f) != s.name || date1 != date2 
-      valid = false
-      @info "file $path(e) is not valid"
-      @show studyName(f), s.name, date1, date2 
-    #else
-    #  @info "file $path(e) is valid"
+    MPIFile(path(e), fastMode=true) do f
+      date1 = trunc(studyTime(f), Dates.Second)
+      date2 = trunc(s.date, Dates.Second)
+      if studyName(f) != s.name || date1 != date2 
+        valid = false
+        @info "file $path(e) is not valid"
+        @show studyName(f), s.name, date1, date2 
+      #else
+      #  @info "file $path(e) is valid"
+      end
     end
-    close(f)
   end
   return valid
 end
