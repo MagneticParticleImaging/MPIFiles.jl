@@ -37,6 +37,7 @@ function getExperiment(s::Study, numExp::Integer)
                       round.(1000 .* vec(dfStrength(b)[1,:,1]),digits=2), maximum(abs.(acqGradient(b))),
                       acqNumAverages(b), scannerOperator(b), string(acqStartTime(b)))
 
+  close(b)
   return exp
 end
 

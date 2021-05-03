@@ -29,7 +29,7 @@ end
 
 ### global import list ###
 
-import Base: convert, get, getindex, haskey, iterate, length, ndims, range, read, show, time, write
+import Base: convert, get, getindex, haskey, iterate, length, ndims, range, read, show, time, write, close
 import FileIO: save
 import HDF5: h5read
 import Interpolations: interpolate
@@ -260,6 +260,7 @@ function MPIFile(filenames::Vector)
 end
 
 Base.length(f::MPIFile) = 1
+Base.close(f::MPIFile) = nothing
 
 include("TransferFunction.jl")
 include("MultiMPIFile.jl")

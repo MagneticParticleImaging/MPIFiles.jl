@@ -100,6 +100,7 @@ function validate(s::Study)
     #else
     #  @info "file $path(e) is valid"
     end
+    close(f)
   end
   return valid
 end

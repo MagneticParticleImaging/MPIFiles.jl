@@ -36,7 +36,9 @@ end
 
 function loadRecoData(filename::AbstractString)
   f = MPIFile(filename)
-  return loadRecoData(f)
+  imMeta = loadRecoData(f)
+  close(f)
+  return imMeta
 end
 
 function loadRecoData(f::MDFFile)
