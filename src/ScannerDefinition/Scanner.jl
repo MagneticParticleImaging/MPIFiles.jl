@@ -1,0 +1,6 @@
+
+
+
+mutable struct DeviceDefinition
+  
+end

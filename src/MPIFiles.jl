@@ -22,6 +22,8 @@ using Tar
 using Pkg.PlatformEngines
 using Pkg.GitTools
 using Pkg.Artifacts
+using Unitful
+using UnitfulAngles
 
 if VERSION < v"1.1"
   isnothing(x) = x == nothing
@@ -261,6 +263,6 @@ include("RecoData.jl")
 include("DatasetStore/DatasetStore.jl")
 include("MixingFactors.jl")
 include("Positions/Positions.jl")
-
+include("ScannerDefinition/ScannerDefinition.jl")
 
 end # module
