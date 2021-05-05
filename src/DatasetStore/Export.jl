@@ -98,16 +98,25 @@ function makeTarGzip(d::DatasetStore)
   makeTarGzip(d.path, filename)
 end
 
+function sha256sum(tarball_path)
+  return open(tarball_path, "r") do io
+      return bytes2hex(sha256(io))
+  end
+end
+
 function createArtifact(d::DatasetStore, url="https://")
   makeTarGzip(d)
   tarball = joinpath(splitpath(d.path)...)*".tar.gz" 
+
   artifact_toml = joinpath(d.path, "..", "Artifacts.toml")
-  tarball_hash = bytes2hex(GitTools.blob_hash(tarball))
+  tarball_hash = sha256sum(tarball)
   name = splitpath(d.path)[end]
+  
 
   hash = create_artifact() do artifact_dir
     unpack(tarball, artifact_dir)
   end
+
   bind_artifact!(artifact_toml, name, hash;
                  download_info=[(url, tarball_hash)],lazy=true, force=true)
   remove_artifact(hash)

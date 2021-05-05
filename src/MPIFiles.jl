@@ -22,6 +22,7 @@ using Tar
 using Pkg.PlatformEngines
 using Pkg.GitTools
 using Pkg.Artifacts
+using Inflate, SHA
 
 if VERSION < v"1.1"
   isnothing(x) = x == nothing
