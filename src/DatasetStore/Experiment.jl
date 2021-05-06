@@ -17,6 +17,8 @@ end
 
 @mustimplement path(e::Experiment{D}) where D<:DatasetStore
 
+MPIFile(e::Experiment; kargs...) = MPIFile(path(e); kargs...)
+
 function getStudy(experiment::Experiment)
     return experiment.study
 end

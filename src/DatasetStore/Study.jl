@@ -27,7 +27,7 @@ end
 path(s::Study) = joinpath( studydir(s.store), s.foldername )
 @mustimplement path(s::Study{D}, numExp::Integer) where D<:DatasetStore
 
-function getStudies(d::DatasetStore)
+function getStudies(d::DatasetStore, name::String="")
   s = Study[]
 
   files = readdir( studydir(d) )
@@ -36,7 +36,8 @@ function getStudies(d::DatasetStore)
     if isdir(fullpath) && !ishidden(fullpath)
       try
       study = getStudy(d, file)
-      if study != nothing
+      # return only studies where name is a substring of the studyname
+      if study !== nothing && match(Regex("(?i)"*name), study.name) !== nothing
         push!(s, study)
       end
       catch e
