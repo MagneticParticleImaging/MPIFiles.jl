@@ -165,7 +165,7 @@
       @test size(getSystemMatrix(sm,1:10)) == (1936,10)
       @test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (1936,20)
       @test size(getSystemMatrix(sm,1:10,bgCorrection=true)) == (1936,10)
-      # test on the data level if the conversion was successfull
+      # test on the data level if the conversion was successful
       SNRThresh = 2
       freq = filterFrequencies(smBruker,SNRThresh=SNRThresh)
       SBruker = getSystemMatrix(smBruker,frequencies=freq)
