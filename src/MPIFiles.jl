@@ -263,6 +263,6 @@ include("RecoData.jl")
 include("DatasetStore/DatasetStore.jl")
 include("MixingFactors.jl")
 include("Positions/Positions.jl")
-include("ScannerDefinition/ScannerDefinition.jl")
+include("Sequence.jl")
 
 end # module
