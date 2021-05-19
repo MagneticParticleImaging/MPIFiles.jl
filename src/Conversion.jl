@@ -141,8 +141,10 @@ end
 
 
 function appendBGDataset(params::Dict, filenameBG::String; kargs...)
-  fBG = MPIFile(filenameBG)
-  return appendBGDataset(params, fBG; kargs...)
+  params = MPIFile(filenameBG) do fBG 
+    appendBGDataset(params, fBG; kargs...)
+  end
+  return params
 end
 
 function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
@@ -174,7 +176,10 @@ function isConvertibleToMDF(f::BrukerFile)
 end
 
 function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
-  saveasMDF(filenameOut, MPIFile(filenameIn); kargs...)
+  MPIFile(filenameIn) do f
+    saveasMDF(filenameOut, f; kargs...)
+  end
+  return
 end
 
 function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, enforceConversion=false, kargs...)

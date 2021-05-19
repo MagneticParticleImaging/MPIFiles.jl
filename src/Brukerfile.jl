@@ -354,7 +354,7 @@ dfPhase(b::BrukerFile) = dfStrength(b) .*0 .+  1.5707963267948966 # Bruker speci
 dfBaseFrequency(b::BrukerFile) = 2.5e6
 dfCustomWaveform(b::BrukerFile) = nothing
 dfDivider(b::BrukerFile) = reshape([102; 96; 99],:,1)
-dfWaveform(b::BrukerFile) = "sine"
+dfWaveform(b::BrukerFile) = fill("sine", (1, 1))
 dfCycle(b::BrukerFile) = parse(Float64,b["PVM_MPI_DriveFieldCycle"]) / 1000 / numSubPeriods(b)
 
 # receiver parameters
@@ -391,7 +391,7 @@ rxDataConversionFactor(b::BrukerFileMeas) =
 rxDataConversionFactor(b::BrukerFileCalib) =
                  repeat([1.0, 0.0], outer=(1,rxNumChannels(b)))
 
-function rawDataLengthConsistent(b::BrukerFile)
+function rawDataLengthConsistent(b::BrukerFile; verbose=true)
   dataFilename = joinpath(b.path,"rawdata.job0")
   dType = acqNumAverages(b) == 1 ? Int16 : Int32
 
@@ -404,7 +404,7 @@ function rawDataLengthConsistent(b::BrukerFile)
       acqNumPeriodsPerFrame(b)*numFrames*sizeof(dType)
 
   M = filesize(dataFilename)
-  if N != M
+  if N != M && verbose
     @warn "raw data length inconsistent N != M" N M
   end
   return N == M

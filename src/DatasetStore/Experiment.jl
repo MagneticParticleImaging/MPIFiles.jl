@@ -17,6 +17,8 @@ end
 
 @mustimplement path(e::Experiment{D}) where D<:DatasetStore
 
+MPIFile(e::Experiment; kargs...) = MPIFile(path(e); kargs...)
+
 function getStudy(experiment::Experiment)
     return experiment.study
 end
@@ -25,23 +27,23 @@ function getExperiment(s::Study, numExp::Integer)
 
   path_ = path(s, numExp)
 
-  if ispath(path_)
-    b = MPIFile(path_, fastMode=true)
-  else
+  if !ispath(path_)
     return nothing
   end
-  prefix, ext = splitext(path_)
 
-  exp = Experiment(s, parse(Int64,last(splitdir(prefix))), #why parse experiment number here????, 
+  exp = MPIFile(path_, fastMode=true) do b 
+    prefix, ext = splitext(path_)
+    
+    Experiment(s, parse(Int64,last(splitdir(prefix))), #why parse experiment number here????, 
                       string(experimentName(b)), acqNumFrames(b),
                       round.(1000 .* vec(dfStrength(b)[1,:,1]),digits=2), maximum(abs.(acqGradient(b))),
                       acqNumAverages(b), scannerOperator(b), string(acqStartTime(b)))
-
+  end
   return exp
 end
 
 function remove(exp::Experiment)
-  if isfile(exp.path)
-    rm(exp.path)
+  if isfile(path(exp))
+    rm(path(exp))
   end
 end

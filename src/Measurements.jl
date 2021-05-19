@@ -267,7 +267,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
     J = size(data,1)
     dataF = rfft(data, 1)
-    dataF ./= tf
+    dataF[2:end,:,:,:] ./= tf[2:end,:,:,:]
     @warn "This measurement has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
     if inductionFactor != nothing
        	for k=1:length(inductionFactor)
@@ -309,7 +309,7 @@ function getMeasurementsFD(f::MPIFile, args...;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
-    data ./= tf
+    data[2:end,:,:,:] ./= tf[2:end,:,:,:]
     @warn "This measurement has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
     if inductionFactor != nothing
        	for k=1:length(inductionFactor)

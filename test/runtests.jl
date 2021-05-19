@@ -30,5 +30,6 @@ include("Reco.jl")
 include("IMT.jl")
 include("TransferFunction.jl")
 include("CustomSFMeas.jl")
+include("MDFInMemory.jl")
 
 @info "The unit tests are done!"

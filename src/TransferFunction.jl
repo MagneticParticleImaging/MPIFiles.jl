@@ -165,7 +165,9 @@ function setTF(b::BrukerFile, filenameTF::AbstractString)
   end
 
   if isfile(joinpath(filepath(b),"mdf"))
-    setTF(MPIFile(filepath(b)), filenameTF)
+    MPIFile(filepath(b)) do f
+      setTF(f, filenameTF)
+    end
   end
   return
 end

@@ -83,8 +83,9 @@ function generateSFDatabase(fileList::Vector)
 
   for (k,sf) in enumerate(fileList)
     i=k+1
-    b = MPIFile(sf)
-    _innerGenerateSFDatabase(A,i,sf,b)
+    MPIFile(sf) do f
+    _innerGenerateSFDatabase(A,i,sf,f)
+    end
   end
   return A
 end

@@ -44,7 +44,13 @@ for mdf in (measBruker,mdfv2)
   @test size(acqOffsetFieldShift(mdf)) == (3, 1, 1500)
 
   @test dfNumChannels(mdf) == 3
-  @test dfWaveform(mdf) == "sine"
+
+  if typeof(mdf) <: MDFFileV2 || typeof(mdf) <: MultiMPIFile # Different tests since the implementation of MDFv2 was made standard compliant
+    @test dfWaveform(mdf) == fill("sine", (1, 1))
+  else
+    @warn typeof(mdf)
+    @test dfWaveform(mdf) == "sine"
+  end
   @test dfStrength(mdf)[:,:,1] == [0.014 0.014 0.0]
   @test dfPhase(mdf)[:,:,1] == [1.5707963267948966 1.5707963267948966 1.5707963267948966]
   @test dfBaseFrequency(mdf) == 2500000.0
