@@ -1,6 +1,0 @@
-
-
-
-mutable struct DeviceDefinition
-  
-end

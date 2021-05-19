@@ -1,12 +1,13 @@
 using TOML
 
 export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAWTOOTH_RISING,
-       WAVEFORM_SAWTOOTH_FALLING, TxChannel, ElectricalTxChannel, StepwiseElectricalTxChannel,
+       WAVEFORM_SAWTOOTH_FALLING, toWaveform, TxChannel, ElectricalTxChannel, StepwiseElectricalTxChannel,
        MechanicalTxChannel, ElectricalComponent, PeriodicElectricalComponent,
        SweepElectricalComponent, PeriodicElectricalChannel, EquidistantStepwiseElectricalChannel,
        NonequidistantStepwiseElectricalChannel, MechanicalTranslationChannel,
        StepwiseMechanicalRotationChannel, ContinuousMechanicalRotationChannel,
-       MagneticField, RxChannel, Sequence, sequenceFromTOML, fieldDictToFields
+       MagneticField, RxChannel, Sequence, sequenceFromTOML, fieldDictToFields,
+       electricalTxChannels, mechanicalTxChannels
 
 "Enum describing the existing waveforms."
 @enum Waveform begin
@@ -41,7 +42,7 @@ Base.@kwdef struct PeriodicElectricalComponent <: ElectricalComponent
   divider::Int64
   "Amplitude (peak) of the component for each period of the field. If defined in Tesla, the calibration configured
   in the scanner will be used."
-  amplitude::Vector{Union{typeof(1.0u"T"), typeof(1.0u"V")}}
+  amplitude::Vector{Union{typeof(1.0u"T"), typeof(1.0u"V")}} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
   "Phase of the component for each period of the field."
   phase::Vector{typeof(1.0u"rad")}
 end
@@ -152,7 +153,6 @@ Base.@kwdef struct RxChannel
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
 end
-RxChannel(id::AbstractString) = RxChannel(id=id)
 
 """
 Description of a sequence that can be run by a scanner.
@@ -172,7 +172,7 @@ Base.@kwdef struct Sequence
   "Base frequency for all channels. Mechanical channels are synchronized
   with the electrical ones by referencing the time required for the movement
   against this frequency."
-  baseFrequency::typeof(1u"Hz")
+  baseFrequency::typeof(1.0u"Hz")
   "Flag if the sequence has a continuous or triggered acquisition."
   triggered::Bool = false
 
@@ -224,9 +224,8 @@ end
 function fieldDictToFields(fieldsDict::Dict{String, Any})
   fields = Vector{MagneticField}()
 
-  rootFields = ["safeStart", "safeEnd", "safeError", "control", "decouple"] # Is reflexion better?
+  rootFields = ["safeStart", "safeEnd", "safeError", "control", "decouple"] # Is reflexion better here?
   for (fieldID, fieldDict) in fieldsDict
-    @info "Working on field with ID `$fieldID`."
     splattingDict = Dict{Symbol, Any}()
     channels = Vector{TxChannel}()
     for (channelID, channelDict) in fieldDict
@@ -277,8 +276,6 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
 
       @assert length(amplitude) == length(phase) "The length of amplitude and phase must match."
 
-      @info "test" amplitude phase divider
-
       if divider isa Vector
         push!(splattingDict[:components],
               SweepElectricalComponent(divider=divider,
@@ -319,3 +316,7 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
     @warn "Could not determine type of channel. Channel dict: $channelDict"
   end
 end
+
+electricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: ElectricalTxChannel]
+mechanicalTxChannels(sequence::Sequence)::Vector{MechanicalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: MechanicalTxChannel]
+
