@@ -45,6 +45,8 @@ Base.@kwdef struct PeriodicElectricalComponent <: ElectricalComponent
   amplitude::Vector{Union{typeof(1.0u"T"), typeof(1.0u"V")}} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
   "Phase of the component for each period of the field."
   phase::Vector{typeof(1.0u"rad")}
+  "Waveform of the component."
+  waveform::Waveform = WAVEFORM_SINE
 end
 
 "Sweepable component of an electrical channel with periodic base function."
@@ -57,6 +59,8 @@ Base.@kwdef struct SweepElectricalComponent <: ElectricalComponent
   "Phase of the component for each divider in the sweep. If defined as a vector, it must have the same length
   as `dividers`."
   phase::Vector{typeof(1.0u"rad")}
+  "Waveform of the component."
+  waveform::Waveform = WAVEFORM_SINE
 end
 
 "Electrical channel based on based on periodic base functions."
@@ -65,8 +69,6 @@ Base.@kwdef struct PeriodicElectricalChannel <: ElectricalTxChannel
   id::AbstractString
   "Components added for this channel."
   components::Vector{ElectricalComponent}
-  "Waveform of the channel."
-  waveform::Waveform = WAVEFORM_SINE
   "Offset of the channel. If defined in Tesla, the calibration configured in the scanner will be used."
   offset::Union{typeof(1.0u"T"), typeof(1.0u"V")} = 0.0u"T"
 end
@@ -253,10 +255,6 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
     splattingDict = Dict{Symbol, Any}()
     splattingDict[:id] = channelID
 
-    if haskey(channelDict, "waveform")
-      splattingDict[:waveform] = toWaveform(channelDict["waveform"])
-    end
-
     if haskey(channelDict, "offset")
       splattingDict[:offset] = uparse.(channelDict["offset"]) .|> u"T" # TODO: Fails for Volt!
     end
@@ -274,18 +272,26 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
         phase = repeat(0.0u"rad", length(divider)) # Default phase
       end
 
+      if haskey(component, "waveform")
+        waveform = toWaveform(component["waveform"])
+      else
+        waveform = WAVEFORM_SINE # Default to sine
+      end
+
       @assert length(amplitude) == length(phase) "The length of amplitude and phase must match."
 
       if divider isa Vector
         push!(splattingDict[:components],
               SweepElectricalComponent(divider=divider,
                                        amplitude=amplitude,
-                                       phase=phase))
+                                       phase=phase,
+                                       waveform=waveform))
       else
         push!(splattingDict[:components],
               PeriodicElectricalComponent(divider=divider,
                                           amplitude=amplitude,
-                                          phase=phase))
+                                          phase=phase,
+                                          waveform=waveform))
       end
     end
     return PeriodicElectricalChannel(;splattingDict...)
