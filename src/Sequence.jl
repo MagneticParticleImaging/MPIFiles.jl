@@ -39,7 +39,7 @@ abstract type ElectricalComponent end
 "Component of an electrical channel with periodic base function."
 Base.@kwdef struct PeriodicElectricalComponent <: ElectricalComponent
   "Divider of the component."
-  divider::Int64
+  divider::Integer
   "Amplitude (peak) of the component for each period of the field. If defined in Tesla, the calibration configured
   in the scanner will be used."
   amplitude::Vector{Union{typeof(1.0u"T"), typeof(1.0u"V")}} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
@@ -52,7 +52,7 @@ end
 "Sweepable component of an electrical channel with periodic base function."
 Base.@kwdef struct SweepElectricalComponent <: ElectricalComponent
   "Divider of the component."
-  divider::Vector{Int64}
+  divider::Vector{Integer}
   "Amplitude (peak) of the channel for each divider in the sweep. If defined in Tesla, the calibration configured
   in the scanner will be used. Must have the same dimension as `dividers`."
   amplitude::Vector{Union{typeof(1.0u"T"), typeof(1.0u"V")}}
@@ -78,7 +78,7 @@ Base.@kwdef struct EquidistantStepwiseElectricalChannel <: StepwiseElectricalTxC
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
   "Number of steps per field cycle for every equidistant step."
-  stepsPerCycle::Int64
+  stepsPerCycle::Integer
   "Amplitudes corresponding to the individual steps."
   amplitude::Vector{Union{typeof(1.0u"T"), typeof(1.0u"V")}}
 end
@@ -104,7 +104,7 @@ Base.@kwdef struct MechanicalTranslationChannel <: MechanicalTxChannel
   positions::Vector{typeof(1.0u"m")}
 end
 
-"Mechanical channel with a stepwise rotation."
+"Mechanical channel with a triggered stepwise rotation."
 Base.@kwdef struct StepwiseMechanicalRotationChannel <: MechanicalTxChannel
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
@@ -117,7 +117,7 @@ Base.@kwdef struct ContinuousMechanicalRotationChannel <: MechanicalTxChannel
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
   "Frequency of the mechanical rotation. If defined as a vector, the frequencies can swept."
-  divider::Union{Int64, Vector{Int64}}
+  divider::Union{Integer, Vector{Integer}}
   "Phase of the mechanical rotation. If defined as a vector, the phases will be swept alongside with the frequencies."
   phase::Union{typeof(1.0u"rad"), Vector{typeof(1.0u"rad")}}
 end
@@ -135,8 +135,16 @@ Base.@kwdef struct MagneticField
   "Transmit channels that are used for the field."
   channels::Vector{TxChannel}
 
-  "Flag if the start of the field should be convoluted. Not used for mechanical fields."
+  "Flag if the start of the field should be convoluted.
+  If the DAQ does not support this, it can may fall back
+  to postponing the application of the settings.
+  Not used for mechanical fields."
   safeStart::Bool = true
+  "Flag if a transition of the field should be convoluted.
+  If the DAQ does not support this, it can may fall back
+  to postponing the application of the settings.
+  Not used for mechanical fields."
+  safeTransition::Bool = true
   "Flag if the end of the field should be convoluted. In case of an existing brake on
   a mechanical channel this means a use of the brake."
   safeEnd::Bool = true
@@ -173,7 +181,7 @@ Base.@kwdef struct Sequence
   targetScanner::AbstractString
   "Base frequency for all channels. Mechanical channels are synchronized
   with the electrical ones by referencing the time required for the movement
-  against this frequency."
+  against this frequency. Please note that the latter has uncertainties."
   baseFrequency::typeof(1.0u"Hz")
   "Flag if the sequence has a continuous or triggered acquisition."
   triggered::Bool = false
@@ -182,15 +190,22 @@ Base.@kwdef struct Sequence
   fields::Vector{MagneticField}
 
   "Number of frames to acquire. If `triggered` is true, this number of frames
-  is acquired on every trigger. If `triggered` is false, but the dividers
+  is acquired on every trigger. If `numFrames` is a Vector, each trigger will
+  acquire the given amount of frames.  If `triggered` is false, but the dividers
   are defined as a vector in an electrical channel, every frequency will be
   applied for `numFrames`."
-  numFrames::Int64 = 1
+  numFrames::Union{Integer, Vector{<:Integer}} = 1
   "Number of periods within a frame."
-  numPeriodsPerFrame::Int64 = 1
+  numPeriodsPerFrame::Integer = 1
+  "Number of block averages per period."
+  numAverages::Integer = 1
 
   "Receive channels that are used in the sequence."
   rxChannels::Vector{RxChannel}
+end
+
+function Sequence(filename::AbstractString)
+  return sequenceFromTOML(filename)
 end
 
 function sequenceFromTOML(filename::AbstractString)
@@ -220,13 +235,17 @@ function sequenceFromTOML(filename::AbstractString)
 
   splattingDict[:rxChannels] = RxChannel.(receive["rxChannels"])
 
-  return Sequence(;splattingDict...)
+  sequence =  Sequence(;splattingDict...)
+
+  # TODO: Sanity check on sequence (equal length of triggered vectors etc.)
+
+  return sequence
 end
 
 function fieldDictToFields(fieldsDict::Dict{String, Any})
   fields = Vector{MagneticField}()
 
-  rootFields = ["safeStart", "safeEnd", "safeError", "control", "decouple"] # Is reflexion better here?
+  rootFields = ["safeStart", "safeTransition", "safeEnd", "safeError", "control", "decouple"] # Is reflexion better here?
   for (fieldID, fieldDict) in fieldsDict
     splattingDict = Dict{Symbol, Any}()
     channels = Vector{TxChannel}()
