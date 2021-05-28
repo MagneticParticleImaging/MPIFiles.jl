@@ -892,13 +892,16 @@ function checkConsistency(mdf::MDFv2InMemory)
     if !(fieldtype == MDFv2Variables || fieldname == :custom)
       # At the moment, this should be a Union
       fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
+
       @debug "Checking consistency of `$fieldname`."
 
       field = getproperty(mdf, fieldname)
       @assert !ismissing(field) "The field `$fieldname` is missing in the given in-memory MDF."
-      
-      checkMissing(field)
-      check(field, mdf.variables)
+       
+      if !isnothing(field) # Only optional fields can be `nothing`
+        checkMissing(field)
+        check(field, mdf.variables)
+      end
 
       # Check subgroups of acquisition
       if fieldtype == MDFv2Acquisition
@@ -1224,7 +1227,11 @@ function saveasMDF(file::HDF5.File, mdf::MDFv2InMemory; failOnInconsistent::Bool
     try
       checkConsistency(mdf)
     catch e
-      @warn "There is an inconsistency in the given in-memory MDF. The message is: `$(e.msg)`."
+      if e isa AssertionError
+        @warn "There is an inconsistency in the given in-memory MDF. The message is: `$(e.msg)`."
+      else
+        rethrow()
+      end
     end
   end
 
