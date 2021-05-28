@@ -1,7 +1,7 @@
 using TOML
 
 export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAWTOOTH_RISING,
-       WAVEFORM_SAWTOOTH_FALLING, toWaveform, TxChannel, ElectricalTxChannel, StepwiseElectricalTxChannel,
+       WAVEFORM_SAWTOOTH_FALLING, toWaveform, fromWaveform, TxChannel, ElectricalTxChannel, StepwiseElectricalTxChannel,
        MechanicalTxChannel, ElectricalComponent, PeriodicElectricalComponent,
        SweepElectricalComponent, PeriodicElectricalChannel, EquidistantStepwiseElectricalChannel,
        NonequidistantStepwiseElectricalChannel, MechanicalTranslationChannel,
@@ -28,6 +28,7 @@ waveformRelations = Dict{String, Waveform}(
 )
 
 toWaveform(value::AbstractString) = waveformRelations[value]
+fromWaveform(value::Waveform) = [k for (k, v) in waveformRelations if v == value][1]
 
 abstract type TxChannel end
 abstract type ElectricalTxChannel <: TxChannel end
@@ -182,7 +183,7 @@ Base.@kwdef struct Sequence
   "Base frequency for all channels. Mechanical channels are synchronized
   with the electrical ones by referencing the time required for the movement
   against this frequency. Please note that the latter has uncertainties."
-  baseFrequency::typeof(1.0u"Hz")
+  txBaseFrequency::typeof(1.0u"Hz")
   "Flag if the sequence has a continuous or triggered acquisition."
   triggered::Bool = false
 
@@ -199,6 +200,10 @@ Base.@kwdef struct Sequence
   numPeriodsPerFrame::Integer = 1
   "Number of block averages per period."
   numAverages::Integer = 1
+  "Bandwidth (half the sample rate) of the receiver. In DAQs which decimate the data,
+  this also determines the decimation. Note: this is currently a
+  scalar since the MDF does not allow for multiple sampling rates yet."
+  rxBandwidth::typeof(1.0u"Hz")
 
   "Receive channels that are used in the sequence."
   rxChannels::Vector{RxChannel}
@@ -219,7 +224,8 @@ function sequenceFromTOML(filename::AbstractString)
   splattingDict[:name] = general["name"]
   splattingDict[:description] = general["description"]
   splattingDict[:targetScanner] = general["targetScanner"]
-  splattingDict[:baseFrequency] = uparse(general["baseFrequency"])
+  splattingDict[:txBaseFrequency] = uparse(general["txBaseFrequency"])
+  splattingDict[:rxBandwidth] = uparse(general["rxBandwidth"])
   if haskey(general, "triggered")
     splattingDict[:triggered] = general["triggered"]
   end
@@ -345,3 +351,72 @@ end
 electricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: ElectricalTxChannel]
 mechanicalTxChannels(sequence::Sequence)::Vector{MechanicalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: MechanicalTxChannel]
 
+acqGradient(sequence::Sequence) = nothing # TODO: Implement
+acqNumAverages(sequence::Sequence) = sequence.numAverages
+acqNumFrames(sequence::Sequence) = sum(sequence.numFrames) # TODO: What about triggered sequences?
+acqNumPeriodsPerFrame(sequence::Sequence) = sequence.numPeriodsPerFrame
+acqOffsetField(sequence::Sequence) = nothing # TODO: Implement
+
+dfBaseFrequency(sequence::Sequence) = sequence.txBaseFrequency
+txBaseFrequency(sequence::Sequence) = sequence.txBaseFrequency
+dfCycle(sequence::Sequence) = lcm(dfDivider(sequence))/dfBaseFrequency(sequence)
+
+function dfDivider(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
+  channels = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
+  maxComponents = maximum([length(channel.components) for channel in channels])
+  result = zeros(Int64, (dfNumChannels(sequence), maxComponents))
+  for (channelIdx, channel) in enumerate(channels)
+    for (componentIdx, component) in enumerate(channel.components)
+      result[channelIdx, componentIdx] = component.divider
+    end
+  end
+  return result
+end
+
+dfNumChannels(sequence::Sequence) = length(electricalTxChannels(sequence)) # TODO: How do we integrate the mechanical channels?
+
+function dfPhase(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
+  channels = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
+  maxComponents = maximum([length(channel.components) for channel in channels])
+  numPeriods = length(channels[1].components[1].phase) # Should all be of the same length
+  result = zeros(typeof(1.0u"rad"), (numPeriods, dfNumChannels(sequence), maxComponents))
+  for (channelIdx, channel) in enumerate(channels)
+    for (componentIdx, component) in enumerate(channel.components)
+      for (periodIdx, phase) in enumerate(component.phase)
+        result[periodIdx, channelIdx, componentIdx] = phase
+      end
+    end
+  end
+  return result
+end
+
+function dfStrength(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
+  channels = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
+  maxComponents = maximum([length(channel.components) for channel in channels])
+  numPeriods = length(channels[1].components[1].amplitude) # Should all be of the same length
+  result = zeros(typeof(1.0u"T"), (numPeriods, dfNumChannels(sequence), maxComponents))
+  for (channelIdx, channel) in enumerate(channels)
+    for (componentIdx, component) in enumerate(channel.components)
+      for (periodIdx, strength) in enumerate(component.amplitude) # TODO: What do we do if this is in volt? The conversion factor is with the scanner... Remove the volt version?
+        result[periodIdx, channelIdx, componentIdx] = strength
+      end
+    end
+  end
+  return result
+end
+
+function dfWaveform(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
+  channels = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
+  maxComponents = maximum([length(channel.components) for channel in channels])
+  result = fill(WAVEFORM_SINE, (dfNumChannels(sequence), maxComponents))
+  for (channelIdx, channel) in enumerate(channels)
+    for (componentIdx, component) in enumerate(channel.components)
+      result[channelIdx, componentIdx] = component.waveform
+    end
+  end
+  return result
+end
+
+rxBandwidth(sequence::Sequence) = sequence.rxBandwidth
+rxNumChannels(sequence::Sequence) = length(sequence.rxChannels)
+rxNumSamplingPoints(sequence::Sequence) = round(Int64, ustrip(NoUnits, rxBandwidth(sequence)*2*dfCycle(sequence)))
