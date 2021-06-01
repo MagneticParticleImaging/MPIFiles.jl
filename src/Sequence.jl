@@ -6,8 +6,11 @@ export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAW
        SweepElectricalComponent, PeriodicElectricalChannel, EquidistantStepwiseElectricalChannel,
        NonequidistantStepwiseElectricalChannel, MechanicalTranslationChannel,
        StepwiseMechanicalRotationChannel, ContinuousMechanicalRotationChannel,
-       MagneticField, RxChannel, Sequence, sequenceFromTOML, fieldDictToFields,
-       electricalTxChannels, mechanicalTxChannels
+       MagneticField, RxChannel, AcquisitionSettings, Sequence, sequenceFromTOML, fieldDictToFields,
+       electricalTxChannels, mechanicalTxChannels, acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
+       acqNumAverages, acqNumFrameAverages, acqOffsetField, dfBaseFrequency, txBaseFrequency,
+       txCycle, dfDivider, dfNumChannels, dfPhase, dfStrength, dfWaveform, rxBandwidth,
+       rxNumChannels, rxNumSamplingPoints, rxChannels
 
 "Enum describing the existing waveforms."
 @enum Waveform begin
@@ -41,25 +44,22 @@ abstract type ElectricalComponent end
 Base.@kwdef struct PeriodicElectricalComponent <: ElectricalComponent
   "Divider of the component."
   divider::Integer
-  "Amplitude (peak) of the component for each period of the field. If defined in Tesla, the calibration configured
-  in the scanner will be used."
-  amplitude::Vector{Union{typeof(1.0u"T"), typeof(1.0u"V")}} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
+  "Amplitude (peak) of the component for each period of the field."
+  amplitude::Vector{typeof(1.0u"T")} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
   "Phase of the component for each period of the field."
   phase::Vector{typeof(1.0u"rad")}
   "Waveform of the component."
   waveform::Waveform = WAVEFORM_SINE
 end
 
-"Sweepable component of an electrical channel with periodic base function."
+"Sweepable component of an electrical channel with periodic base function.
+Note: Does not allow for changes in phase since this would make the switch
+between frequencies difficult."
 Base.@kwdef struct SweepElectricalComponent <: ElectricalComponent
   "Divider of the component."
   divider::Vector{Integer}
-  "Amplitude (peak) of the channel for each divider in the sweep. If defined in Tesla, the calibration configured
-  in the scanner will be used. Must have the same dimension as `dividers`."
-  amplitude::Vector{Union{typeof(1.0u"T"), typeof(1.0u"V")}}
-  "Phase of the component for each divider in the sweep. If defined as a vector, it must have the same length
-  as `dividers`."
-  phase::Vector{typeof(1.0u"rad")}
+  "Amplitude (peak) of the channel for each divider in the sweep. Must have the same dimension as `divider`."
+  amplitude::Vector{typeof(1.0u"T")}
   "Waveform of the component."
   waveform::Waveform = WAVEFORM_SINE
 end
@@ -71,7 +71,7 @@ Base.@kwdef struct PeriodicElectricalChannel <: ElectricalTxChannel
   "Components added for this channel."
   components::Vector{ElectricalComponent}
   "Offset of the channel. If defined in Tesla, the calibration configured in the scanner will be used."
-  offset::Union{typeof(1.0u"T"), typeof(1.0u"V")} = 0.0u"T"
+  offset::typeof(1.0u"T") = 0.0u"T"
 end
 
 "Electrical channel with a equidistant stepwise definition of DC amplitudes."
@@ -81,7 +81,7 @@ Base.@kwdef struct EquidistantStepwiseElectricalChannel <: StepwiseElectricalTxC
   "Number of steps per field cycle for every equidistant step."
   stepsPerCycle::Integer
   "Amplitudes corresponding to the individual steps."
-  amplitude::Vector{Union{typeof(1.0u"T"), typeof(1.0u"V")}}
+  amplitude::Union{typeof(1.0u"T")}
 end
 
 "Electrical channel with a non-equidistant stepwise definition of DC amplitudes."
@@ -140,18 +140,18 @@ Base.@kwdef struct MagneticField
   If the DAQ does not support this, it can may fall back
   to postponing the application of the settings.
   Not used for mechanical fields."
-  safeStart::Bool = true
+  safeStartInterval::typeof(1.0u"s") = 0.5u"s"
   "Flag if a transition of the field should be convoluted.
   If the DAQ does not support this, it can may fall back
   to postponing the application of the settings.
   Not used for mechanical fields."
-  safeTransition::Bool = true
+  safeTransitionInterval::typeof(1.0u"s") = 0.5u"s"
   "Flag if the end of the field should be convoluted. In case of an existing brake on
   a mechanical channel this means a use of the brake."
-  safeEnd::Bool = true
+  safeEndInterval::typeof(1.0u"s") = 0.5u"s"
   "Flag if the field should be convoluted down in case of an error. In case of an
   existing brake on a mechanical channel this means a use of the brake."
-  safeError::Bool = true
+  safeErrorInterval::typeof(1.0u"s") = 0.5u"s"
 
   "Flag if the channels of the field should be controlled."
   control::Bool = true
@@ -163,6 +163,28 @@ end
 Base.@kwdef struct RxChannel
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
+end
+
+"Settings for acquiring the sequence."
+Base.@kwdef struct AcquisitionSettings
+  "Number of frames to acquire. If `triggered` is true, this number of frames
+  is acquired on every trigger. If `numFrames` is a Vector, each trigger will
+  acquire the given amount of frames.  If `triggered` is false, but the dividers
+  are defined as a vector in an electrical channel, every frequency will be
+  applied for `numFrames`."
+  numFrames::Union{Integer, Vector{<:Integer}} = 1
+  "Number of periods within a frame."
+  numPeriodsPerFrame::Integer = 1
+  "Number of block averages per period."
+  numAverages::Integer = 1
+  "Number of frames to average blockwise."
+  numFrameAverages::Integer = 1
+  "Bandwidth (half the sample rate) of the receiver. In DAQs which decimate the data,
+  this also determines the decimation. Note: this is currently a
+  scalar since the MDF does not allow for multiple sampling rates yet."
+  bandwidth::typeof(1.0u"Hz")
+  "Receive channels that are used in the sequence."
+  channels::Vector{RxChannel}
 end
 
 """
@@ -183,30 +205,15 @@ Base.@kwdef struct Sequence
   "Base frequency for all channels. Mechanical channels are synchronized
   with the electrical ones by referencing the time required for the movement
   against this frequency. Please note that the latter has uncertainties."
-  txBaseFrequency::typeof(1.0u"Hz")
+  baseFrequency::typeof(1.0u"Hz")
   "Flag if the sequence has a continuous or triggered acquisition."
   triggered::Bool = false
 
   "Magnetic fields defined by the sequence."
   fields::Vector{MagneticField}
 
-  "Number of frames to acquire. If `triggered` is true, this number of frames
-  is acquired on every trigger. If `numFrames` is a Vector, each trigger will
-  acquire the given amount of frames.  If `triggered` is false, but the dividers
-  are defined as a vector in an electrical channel, every frequency will be
-  applied for `numFrames`."
-  numFrames::Union{Integer, Vector{<:Integer}} = 1
-  "Number of periods within a frame."
-  numPeriodsPerFrame::Integer = 1
-  "Number of block averages per period."
-  numAverages::Integer = 1
-  "Bandwidth (half the sample rate) of the receiver. In DAQs which decimate the data,
-  this also determines the decimation. Note: this is currently a
-  scalar since the MDF does not allow for multiple sampling rates yet."
-  rxBandwidth::typeof(1.0u"Hz")
-
-  "Receive channels that are used in the sequence."
-  rxChannels::Vector{RxChannel}
+  "Settings for the acquisition."
+  acquisiton::AcquisitionSettings
 end
 
 function Sequence(filename::AbstractString)
@@ -217,29 +224,39 @@ function sequenceFromTOML(filename::AbstractString)
   sequenceDict = TOML.parsefile(filename)
 
   general = sequenceDict["General"]
-  receive = sequenceDict["Receive"]
+  acquisition = sequenceDict["Acquisition"]
 
   splattingDict = Dict{Symbol, Any}()
 
+  # Main section
   splattingDict[:name] = general["name"]
   splattingDict[:description] = general["description"]
   splattingDict[:targetScanner] = general["targetScanner"]
-  splattingDict[:txBaseFrequency] = uparse(general["txBaseFrequency"])
-  splattingDict[:rxBandwidth] = uparse(general["rxBandwidth"])
+  splattingDict[:baseFrequency] = uparse(general["baseFrequency"])
   if haskey(general, "triggered")
     splattingDict[:triggered] = general["triggered"]
   end
   
+  # Fields
   splattingDict[:fields] = fieldDictToFields(sequenceDict["Fields"])
 
-  if haskey(general, "numFrames")
-    splattingDict[:numFrames] = receive["numFrames"]
+  # Acquisition
+  acqSplattingDict = Dict{Symbol, Any}()
+  if haskey(acquisition, "numFrames")
+    acqSplattingDict[:numFrames] = acquisition["numFrames"]
   end
-  if haskey(general, "numPeriodsPerFrame")
-    splattingDict[:numPeriodsPerFrame] = receive["numPeriodsPerFrame"]
+  if haskey(acquisition, "numPeriodsPerFrame")
+    acqSplattingDict[:numPeriodsPerFrame] = acquisition["numPeriodsPerFrame"]
   end
-
-  splattingDict[:rxChannels] = RxChannel.(receive["rxChannels"])
+  if haskey(acquisition, "numAverages")
+    acqSplattingDict[:numAverages] = acquisition["numAverages"]
+  end
+  if haskey(acquisition, "numFrameAverages")
+    acqSplattingDict[:numFrameAverages] = acquisition["numFrameAverages"]
+  end
+  acqSplattingDict[:bandwidth] = uparse(acquisition["bandwidth"])
+  acqSplattingDict[:channels] = RxChannel.(acquisition["channels"])
+  splattingDict[:acquisiton] = AcquisitionSettings(;acqSplattingDict...)
 
   sequence =  Sequence(;splattingDict...)
 
@@ -281,7 +298,7 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
     splattingDict[:id] = channelID
 
     if haskey(channelDict, "offset")
-      splattingDict[:offset] = uparse.(channelDict["offset"]) .|> u"T" # TODO: Fails for Volt!
+      splattingDict[:offset] = uparse.(channelDict["offset"]) .|> u"T"
     end
 
     splattingDict[:components] = Vector{ElectricalComponent}()
@@ -352,14 +369,16 @@ electricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = [channel
 mechanicalTxChannels(sequence::Sequence)::Vector{MechanicalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: MechanicalTxChannel]
 
 acqGradient(sequence::Sequence) = nothing # TODO: Implement
-acqNumAverages(sequence::Sequence) = sequence.numAverages
-acqNumFrames(sequence::Sequence) = sum(sequence.numFrames) # TODO: What about triggered sequences?
-acqNumPeriodsPerFrame(sequence::Sequence) = sequence.numPeriodsPerFrame
+acqNumFrames(sequence::Sequence) = sequence.acquisiton.numFrames
+acqNumPeriodsPerFrame(sequence::Sequence) = sequence.acquisiton.numPeriodsPerFrame
+acqNumAverages(sequence::Sequence) = sequence.acquisiton.numAverages
+acqNumFrameAverages(sequence::Sequence) = sequence.acquisiton.numFrameAverages
 acqOffsetField(sequence::Sequence) = nothing # TODO: Implement
 
-dfBaseFrequency(sequence::Sequence) = sequence.txBaseFrequency
-txBaseFrequency(sequence::Sequence) = sequence.txBaseFrequency
+dfBaseFrequency(sequence::Sequence) = sequence.baseFrequency
+txBaseFrequency(sequence::Sequence) = dfBaseFrequency(sequence) # Alias, since this might not only concern the drivefield
 dfCycle(sequence::Sequence) = lcm(dfDivider(sequence))/dfBaseFrequency(sequence)
+txCycle(sequence::Sequence) = dfCycle(sequence) # Alias, since this might not only concern the drivefield
 
 function dfDivider(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
   channels = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
@@ -417,6 +436,7 @@ function dfWaveform(sequence::Sequence) # TODO: How do we integrate the mechanic
   return result
 end
 
-rxBandwidth(sequence::Sequence) = sequence.rxBandwidth
-rxNumChannels(sequence::Sequence) = length(sequence.rxChannels)
+rxBandwidth(sequence::Sequence) = sequence.acquisiton.bandwidth
+rxNumChannels(sequence::Sequence) = length(sequence.acquisiton.channels)
 rxNumSamplingPoints(sequence::Sequence) = round(Int64, ustrip(NoUnits, rxBandwidth(sequence)*2*dfCycle(sequence)))
+rxChannels(sequence::Sequence) = sequence.acquisiton.channels
