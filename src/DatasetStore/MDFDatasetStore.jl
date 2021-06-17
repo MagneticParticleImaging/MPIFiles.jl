@@ -8,8 +8,7 @@ struct MDFDatasetStore <: DatasetStore
     mkpath(joinpath(path,"measurements"))
     mkpath(joinpath(path,"reconstructions"))
     mkpath(joinpath(path,"calibrations"))
-    t = @elapsed try_chmod(joinpath(path,"path"), 0o777, recursive=true)
-    @info "chmod MDFStore took $(t) seconds"
+    try_chmod(joinpath(path,"path"), 0o777, recursive=true)
     return new(path)
   end
 end
