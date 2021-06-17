@@ -1,4 +1,4 @@
-export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir, getMDFStore
+export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir, getMDFStore, getCalibStudy
 
 struct MDFDatasetStore <: DatasetStore
   path::String
