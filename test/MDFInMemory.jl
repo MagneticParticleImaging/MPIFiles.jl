@@ -412,6 +412,12 @@ end
     # See also: https://github.com/JuliaLang/julia/issues/18780
     @test checkConsistency(mdf) # This call has a side-effect on the variables!
 
+    # Check if non-required fields make consistency checking fail
+    tracer = mdf.tracer
+    mdf.tracer = nothing
+    @test checkConsistency(mdf)
+    mdf.tracer = tracer
+
     @testset "Derived variables" begin
       @test mdf.variables.A == A
       @test mdf.variables.N == N

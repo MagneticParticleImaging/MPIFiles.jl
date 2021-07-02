@@ -1,4 +1,4 @@
-export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir, getMDFStore
+export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir, getMDFStore, getCalibStudy
 
 struct MDFDatasetStore <: DatasetStore
   path::String
@@ -9,6 +9,7 @@ struct MDFDatasetStore <: DatasetStore
     mkpath(joinpath(path,"measurements"))
     mkpath(joinpath(path,"reconstructions"))
     mkpath(joinpath(path,"calibrations"))
+    #try_chmod(joinpath(path,"path"), 0o777, recursive=true) # we should get rid of this
     return new(path)
   end
 end
