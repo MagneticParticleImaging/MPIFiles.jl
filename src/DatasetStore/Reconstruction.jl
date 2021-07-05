@@ -47,7 +47,6 @@ end
 
 function normalizePathsRecoDict!(d::MDFDatasetStore, recoParams::Dict)
   for key in [:measPath, :SFPath, :emptyMeasPath]
-    @info key
     if haskey(recoParams, key)
       if isa(recoParams[key], AbstractString)
         recoParams[key] = normpath(extendPath(d, recoParams[key]))
@@ -81,11 +80,7 @@ function findReco(d::MDFDatasetStore, study::Study, exp::Experiment, recoParams:
       delete!(reco.params, :reconstructor)
     end
 
-    @show recoParams_
-    @show reco.params
-
     if recoParams_ == reco.params
-      @info "Found Reco $recoNum"
       recoNum = reco.num
     end
   end
