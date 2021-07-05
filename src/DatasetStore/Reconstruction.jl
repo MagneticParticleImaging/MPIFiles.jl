@@ -18,12 +18,56 @@ function getReco(d::MDFDatasetStore, study::Study, exp::Experiment, recoNum::Int
   return r
 end
 
+function extendPath(d::MDFDatasetStore, p::AbstractString)
+  if isabspath(p)
+    return p
+  else
+    A = joinpath(d.path, p)
+    if isfile(A)
+      return A
+    end
+    B = joinpath(d.path, "..", p)
+    if isfile(B)
+      return B
+    end
+    D = splitpath(p)
+    if length(D) > 1
+      C = joinpath(d.path, D[2:end]...)
+      @info D
+      @info d.path
+      @info C
+      if isfile(C)
+        return C
+      end
+    end   
+    error("extendPath could not generate valid path. Something is wrong with
+           the dataset store.") 
+  end
+end
+
+function normalizePathsRecoDict!(d::MDFDatasetStore, recoParams::Dict)
+  for key in [:measPath, :SFPath, :emptyMeasPath]
+    @info key
+    if haskey(recoParams, key)
+      if isa(recoParams[key], AbstractString)
+        recoParams[key] = normpath(extendPath(d, recoParams[key]))
+      elseif isa(recoParams[key], AbstractVector)
+        for l=1:length(recoParams[key])
+          recoParams[key][l] = normpath(extendPath(d, recoParams[key][l]))
+        end
+      end
+    end
+  end
+end
+
 # This functions searches for recoparams and returns the corresponding recoNumber
 # 0 indicates that the set of parameters was not found
 function findReco(d::MDFDatasetStore, study::Study, exp::Experiment, recoParams::Dict)
   recoNum = 0
 
   recoParams_ = deepcopy(recoParams)
+  normalizePathsRecoDict!(d, recoParams_)
+
   # We do not care if the reconstruction has been done by a different
   # user. Therefore, we remove the :reconstructor field
   if haskey(recoParams_, :reconstructor)
@@ -31,10 +75,17 @@ function findReco(d::MDFDatasetStore, study::Study, exp::Experiment, recoParams:
   end
   recons = getRecons(d, study, exp)
   for reco in recons
+    normalizePathsRecoDict!(d, reco.params)
+
     if haskey(reco.params, :reconstructor)
       delete!(reco.params, :reconstructor)
     end
+
+    @show recoParams_
+    @show reco.params
+
     if recoParams_ == reco.params
+      @info "Found Reco $recoNum"
       recoNum = reco.num
     end
   end
