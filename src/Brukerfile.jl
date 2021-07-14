@@ -455,9 +455,9 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
   rmul!(bgdata,1.0/acqNumAverages(b))
   S_ = cat(S,bgdata,dims=1)
   if numSubPeriods(b) == 1
-    return S_
+    return S_[frames,:,:,:]
   else
-    return S_[:,1:numSubPeriods(b):end,:,:]
+    return S_[frames,1:numSubPeriods(b):end,:,:]
   end
 end
 
