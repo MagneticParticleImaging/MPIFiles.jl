@@ -8,7 +8,7 @@ export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAW
        StepwiseMechanicalRotationChannel, ContinuousMechanicalRotationChannel,
        MagneticField, RxChannel, AcquisitionSettings, Sequence, sequenceFromTOML, fieldDictToFields,
        id, offset, components, divider, amplitude, phase, waveform, electricalTxChannels,
-       mechanicalTxChannels, acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
+       mechanicalTxChannels, periodicElectricalTxChannels, acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
        acqNumAverages, acqNumFrameAverages, acqOffsetField, numForegroundTriggers, numBackgroundTriggers,
        numTriggers, numTriggersTotal, dfBaseFrequency, txBaseFrequency,
        txCycle, dfDivider, dfNumChannels, dfPhase, dfStrength, dfWaveform, rxBandwidth,
@@ -443,6 +443,7 @@ isTriggered(sequence::Sequence) = sequence.triggered
 
 electricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: ElectricalTxChannel]
 mechanicalTxChannels(sequence::Sequence)::Vector{MechanicalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: MechanicalTxChannel]
+periodicElectricalTxChannels(sequence::Sequence)::Vector{PeriodicElectricalChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
 
 id(channel::TxChannel) = channel.id
 offset(channel::PeriodicElectricalChannel) = channel.offset
@@ -486,7 +487,7 @@ dfCycle(sequence::Sequence) = lcm(dfDivider(sequence))/dfBaseFrequency(sequence)
 txCycle(sequence::Sequence) = dfCycle(sequence) # Alias, since this might not only concern the drivefield
 
 function dfDivider(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
-  channels = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
+  channels = periodicElectricalTxChannels(sequence)
   maxComponents = maximum([length(channel.components) for channel in channels])
   result = zeros(Int64, (dfNumChannels(sequence), maxComponents))
   for (channelIdx, channel) in enumerate(channels)
@@ -500,7 +501,7 @@ end
 dfNumChannels(sequence::Sequence) = length(electricalTxChannels(sequence)) # TODO: How do we integrate the mechanical channels?
 
 function dfPhase(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
-  channels = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
+  channels = periodicElectricalTxChannels(sequence)
   maxComponents = maximum([length(channel.components) for channel in channels])
   numPeriods = length(channels[1].components[1].phase) # Should all be of the same length
   result = zeros(typeof(1.0u"rad"), (numPeriods, dfNumChannels(sequence), maxComponents))
