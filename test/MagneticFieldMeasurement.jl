@@ -8,13 +8,13 @@
   positions_ = RegularGridPositions(shp, fov, ctr)
 
   gradient = [1.0u"T/m", 1.5u"T/m", 2.0u"T/m"]
-  field_ = fill(0.0u"T", (length(positions_), 3))
+  fields_ = fill(0.0u"T", (length(positions_), 3))
   for (idx, pos) in enumerate(positions_)
-    field_[idx, :] = pos.*gradient
+    fields_[idx, :] = pos.*gradient
   end
   
-  fieldError_ = fill(0.1u"mT" .|> u"T", (length(positions_), 3))
-  fieldFrequency_ = fill(0.0u"Hz", length(positions_))
+  fieldsError_ = fill(0.1u"mT" .|> u"T", (length(positions_), 3))
+  fieldsFrequency_ = fill(0.0u"Hz", length(positions_))
 
   currents_ = fill(1.0u"A", (length(positions_), 3))
   timestamp_ = DateTime("2021-08-25T07:08:21.881")
@@ -27,9 +27,9 @@
   # Test setters
   description(measurement, description_)
   positions(measurement, positions_)
-  field(measurement, field_)
-  fieldError(measurement, fieldError_)
-  fieldFrequency(measurement, fieldFrequency_)
+  fields(measurement, fields_)
+  fieldsError(measurement, fieldsError_)
+  fieldsFrequency(measurement, fieldsFrequency_)
   currents(measurement, currents_)
   timestamp(measurement, timestamp_)
   sensorOffset(measurement, sensorOffset_)
@@ -37,9 +37,9 @@
 
   @test measurement.description == description_
   @test measurement.positions == positions_
-  @test measurement.field == field_
-  @test measurement.fieldError == fieldError_
-  @test measurement.fieldFrequency == fieldFrequency_
+  @test measurement.fields == fields_
+  @test measurement.fieldsError == fieldsError_
+  @test measurement.fieldsFrequency == fieldsFrequency_
   @test measurement.currents == currents_
   @test measurement.timestamp == timestamp_
   @test measurement.sensorOffset == sensorOffset_
@@ -48,9 +48,9 @@
   # Test getters
   @test description(measurement) == description_
   @test positions(measurement) == positions_
-  @test field(measurement) == field_
-  @test fieldError(measurement) == fieldError_
-  @test fieldFrequency(measurement) == fieldFrequency_
+  @test fields(measurement) == fields_
+  @test fieldsError(measurement) == fieldsError_
+  @test fieldsFrequency(measurement) == fieldsFrequency_
   @test currents(measurement) == currents_
   @test timestamp(measurement) == timestamp_
   @test sensorOffset(measurement) == sensorOffset_
@@ -69,9 +69,9 @@
   # Test read data
   @test description(measurementRead) == description_
   @test positions(measurementRead) == positions_
-  @test field(measurementRead) == field_
-  @test fieldError(measurementRead) == fieldError_
-  @test fieldFrequency(measurementRead) == fieldFrequency_
+  @test fields(measurementRead) == fields_
+  @test fieldsError(measurementRead) == fieldsError_
+  @test fieldsFrequency(measurementRead) == fieldsFrequency_
   @test currents(measurementRead) == currents_
   @test timestamp(measurementRead) == timestamp_
   @test sensorOffset(measurementRead) == sensorOffset_

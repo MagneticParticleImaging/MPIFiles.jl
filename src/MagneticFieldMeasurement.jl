@@ -1,4 +1,4 @@
-export MagneticFieldMeasurement, saveMagneticFieldAsHDF5, loadMagneticFieldMeasurement
+export MagneticFieldMeasurement, saveMagneticFieldAsHDF5, loadMagneticFieldMeasurement, loadMagneticField
 
 Base.@kwdef mutable struct MagneticFieldMeasurement
   "Description of the dataset."
@@ -6,11 +6,11 @@ Base.@kwdef mutable struct MagneticFieldMeasurement
   "Positions of the measured field values."
   positions::Union{Positions, Missing} = missing
   "Field values at the specific positions."
-  field::Union{Array{typeof(1.0u"T"), 2}, Missing} = missing
+  fields::Union{Array{typeof(1.0u"T"), 2}, Missing} = missing
   "Error of the measured field values."
-  fieldError::Union{Array{typeof(1.0u"T"), 2}, Nothing} = nothing
+  fieldsError::Union{Array{typeof(1.0u"T"), 2}, Nothing} = nothing
   "Frequency of the measured field."
-  fieldFrequency::Union{Vector{typeof(1.0u"Hz")}, Nothing} = nothing
+  fieldsFrequency::Union{Vector{typeof(1.0u"Hz")}, Nothing} = nothing
   "Applied current while measuring the matching position."
   currents::Union{Array{typeof(1.0u"A"), 2}, Nothing} = nothing
   "Start time of the measurement or, if defined as a vector, the timestamp of the matching position."
@@ -42,16 +42,16 @@ function saveMagneticFieldAsHDF5(measurement::MagneticFieldMeasurement, file::HD
     write(file, "/description", description(measurement))
   end
 
-  if !ismissing(field(measurement))
-    write(file, "/field", ustrip.(field(measurement)))
+  if !ismissing(fields(measurement))
+    write(file, "/fields", ustrip.(fields(measurement)))
   end
 
-  if !isnothing(fieldError(measurement))
-    write(file, "/fieldError", ustrip.(fieldError(measurement)))
+  if !isnothing(fieldsError(measurement))
+    write(file, "/fieldsError", ustrip.(fieldsError(measurement)))
   end
 
-  if !isnothing(fieldFrequency(measurement))
-    write(file, "/fieldFrequency", ustrip.(fieldFrequency(measurement)))
+  if !isnothing(fieldsFrequency(measurement))
+    write(file, "/fieldsFrequency", ustrip.(fieldsFrequency(measurement)))
   end
 
   if !isnothing(currents(measurement))
@@ -81,14 +81,14 @@ function loadMagneticFieldMeasurement(file::HDF5.File)
   splattingDict = Dict{Symbol, Any}()
   splattingDict[:positions] = Positions(file)
 
-  if haskey(file, "field")
-    splattingDict[:field] = read(file, "field")u"T"
+  if haskey(file, "fields")
+    splattingDict[:fields] = read(file, "fields")u"T"
   else
     error("The HDF5 file for a magnetic field measurement must contain a field vector.")
   end
 
   if typeof(splattingDict[:positions]) == MeanderingGridPositions
-    splattingDict[:field] = splattingDict[:field][:, getPermutation(splattingDict[:positions]), :]
+    splattingDict[:fields] = splattingDict[:fields][:, getPermutation(splattingDict[:positions]), :]
     splattingDict[:positions] = splattingDict[:positions].grid
   end
 
@@ -96,12 +96,12 @@ function loadMagneticFieldMeasurement(file::HDF5.File)
     splattingDict[:description] = read(file, "description")
   end
 
-  if haskey(file, "fieldError")
-    splattingDict[:fieldError] = read(file, "fieldError")u"T"
+  if haskey(file, "fieldsError")
+    splattingDict[:fieldsError] = read(file, "fieldsError")u"T"
   end
 
-  if haskey(file, "fieldFrequency")
-    splattingDict[:fieldFrequency] = read(file, "fieldFrequency")u"Hz"
+  if haskey(file, "fieldsFrequency")
+    splattingDict[:fieldsFrequency] = read(file, "fieldsFrequency")u"Hz"
   end
 
   if haskey(file, "currents")
@@ -122,6 +122,9 @@ function loadMagneticFieldMeasurement(file::HDF5.File)
 
   return MagneticFieldMeasurement(;splattingDict...)
 end
+
+# Alias for backwards compatability
+loadMagneticField(filename::String) = loadMagneticFieldMeasurement(filename)
 
 # Create getter and setter for all fields of `MagneticFieldMeasurement`
 for (fieldname, fieldtype) in zip(fieldnames(MagneticFieldMeasurement), fieldtypes(MagneticFieldMeasurement))
