@@ -624,6 +624,16 @@ function ArbitraryPositions(file::HDF5.File)
   return ArbitraryPositions(pos)
 end
 
+# TODO: Specialize to make it faster
+function Base.:(==)(val1::Positions, val2::Positions)
+  for (x, y) in zip(val1, val2)
+    if !(upreferred.(x) == upreferred.(y))
+      return false
+    end
+  end
+
+  return true
+end
 
 # fuction related to looping
 length(tdes::SphericalTDesign) = size(tdes.positions,2)

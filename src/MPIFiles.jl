@@ -283,6 +283,7 @@ include("RecoData.jl")
 include("DatasetStore/DatasetStore.jl")
 include("MixingFactors.jl")
 include("Positions/Positions.jl")
+include("MagneticFieldMeasurement.jl")
 
 
 end # module
