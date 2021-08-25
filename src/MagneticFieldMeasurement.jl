@@ -12,7 +12,7 @@ Base.@kwdef mutable struct MagneticFieldMeasurement
   "Frequency of the measured field."
   fieldFrequency::Union{Vector{typeof(1.0u"Hz")}, Nothing} = nothing
   "Applied current while measuring the matching position."
-  currents::Union{Vector{typeof(1.0u"A")}, Nothing} = nothing # I am not sure, how I should define this field. There can in theory be multiple currents be involved and each can be either AC or DC.
+  currents::Union{Array{typeof(1.0u"A"), 2}, Nothing} = nothing
   "Start time of the measurement or, if defined as a vector, the timestamp of the matching position."
   timestamp::Union{DateTime, Vector{DateTime}, Nothing} = nothing
   "Offset of the hall probe's active areas."
