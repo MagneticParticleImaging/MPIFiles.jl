@@ -1,4 +1,4 @@
-export MagneticFieldMeasurement, saveMagneticFieldAsHDF5, loadMagneticFieldMeasurement, loadMagneticField
+export MagneticFieldMeasurement, saveMagneticFieldAsHDF5, loadMagneticFieldMeasurement, loadMagneticField, addMeasuredPosition
 
 Base.@kwdef mutable struct MagneticFieldMeasurement
   "Description of the dataset."
@@ -13,8 +13,8 @@ Base.@kwdef mutable struct MagneticFieldMeasurement
   fieldsFrequency::Union{Vector{typeof(1.0u"Hz")}, Nothing} = nothing
   "Applied current while measuring the matching position."
   currents::Union{Array{typeof(1.0u"A"), 2}, Nothing} = nothing
-  "Start time of the measurement or, if defined as a vector, the timestamp of the matching position."
-  timestamp::Union{DateTime, Vector{DateTime}, Nothing} = nothing
+  "Timestamp of the matching position."
+  timestamp::Union{Vector{DateTime}, Nothing} = nothing
   "Offset of the hall probe's active areas."
   sensorOffset::Union{Vector{typeof(1.0u"m")}, Nothing} = nothing
   "Temperature at the start of the measurement or, if defined as a vector, the temperature when measuring the matching position."
@@ -123,7 +123,7 @@ function loadMagneticFieldMeasurement(file::HDF5.File)
   return MagneticFieldMeasurement(;splattingDict...)
 end
 
-# Alias for backwards compatability
+# Alias for backwards compatibility
 loadMagneticField(filename::String) = loadMagneticFieldMeasurement(filename)
 
 # Create getter and setter for all fields of `MagneticFieldMeasurement`
@@ -148,5 +148,33 @@ for (fieldname, fieldtype) in zip(fieldnames(MagneticFieldMeasurement), fieldtyp
     function $(fieldname)(measurement::MagneticFieldMeasurement, value::Union{$fieldtype, $missingOrNothing})
       measurement.$fieldname = value
     end
+  end
+end
+
+function addMeasuredPosition(measurement::MagneticFieldMeasurement, pos::Vector; field=nothing, fieldError=nothing, fieldFrequency=nothing, current=nothing, timestamp=nothing, temperature=nothing)
+  idx = posToIdx(pos)
+
+  if !isnothing(field)
+    measurement.fields[idx, :] = field
+  end
+
+  if !isnothing(fieldError)
+    measurement.fieldsError[idx, :] = fieldError
+  end
+
+  if !isnothing(fieldFrequency)
+    measurement.fieldsFrequency[idx, :] = fieldFrequency
+  end
+
+  if !isnothing(current)
+    measurement.currents[idx, :] = current
+  end
+
+  if !isnothing(timestamp)
+    measurement.timestamp[idx] = timestamp
+  end
+
+  if !isnothing(temperature)
+    measurement.temperature[idx] = temperature
   end
 end
