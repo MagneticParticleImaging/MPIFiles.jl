@@ -132,7 +132,7 @@ function addReco(d::MDFDatasetStore, study::Study, exp::Experiment, image)
 
   filepath = joinpath(outputpath, string(recoNum))
 
-  image.recoParams = makeRelativePathsRecoDict!(image.recoParams)
+  makeRelativePathsRecoDict!(image.recoParams)
 
   saveRecoData(filepath*".mdf", image)
   #save(filepath*".jld","recoParams",recoParams)
@@ -168,7 +168,11 @@ function loadParams(reco::Reconstruction)
     else #this needs to go
       @debug "opening legacy file"
       prefix, ext = splitext(reco.path)
-      reco.params = load(prefix*".jld","recoParams")
+        if isfile(prefix*".jld")
+      	  reco.params = load(prefix*".jld","recoParams")
+	else
+	  error("unable to load reco params")
+	end
     end
    end
   end
