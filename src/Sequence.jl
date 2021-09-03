@@ -8,7 +8,8 @@ export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAW
        StepwiseMechanicalRotationChannel, ContinuousMechanicalRotationChannel,
        MagneticField, RxChannel, AcquisitionSettings, Sequence, sequenceFromTOML, fieldDictToFields,
        id, offset, components, divider, amplitude, phase, waveform, electricalTxChannels,
-       mechanicalTxChannels, periodicElectricalTxChannels, acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
+       mechanicalTxChannels, periodicElectricalTxChannels, stepwiseElectricalTxChannels,
+       acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
        acqNumAverages, acqNumFrameAverages, acqOffsetField, numForegroundTriggers, numBackgroundTriggers,
        numTriggers, numTriggersTotal, dfBaseFrequency, txBaseFrequency,
        txCycle, dfDivider, dfNumChannels, dfPhase, dfStrength, dfWaveform, rxBandwidth,
@@ -444,6 +445,9 @@ isTriggered(sequence::Sequence) = sequence.triggered
 electricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: ElectricalTxChannel]
 mechanicalTxChannels(sequence::Sequence)::Vector{MechanicalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: MechanicalTxChannel]
 periodicElectricalTxChannels(sequence::Sequence)::Vector{PeriodicElectricalChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
+stepwiseElectricalTxChannels(sequence::Sequence)::Vector{EquidistantStepwiseElectricalChannel} = 
+  [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: EquidistantStepwiseElectricalChannel]
+
 
 id(channel::TxChannel) = channel.id
 offset(channel::PeriodicElectricalChannel) = channel.offset
@@ -458,7 +462,14 @@ phase(component::SweepElectricalComponent, trigger::Integer=1) = 0.0u"rad"
 waveform(component::ElectricalComponent) = component.waveform
 
 acqGradient(sequence::Sequence) = nothing # TODO: Implement
-acqNumPeriodsPerFrame(sequence::Sequence) = sequence.acquisiton.numPeriodsPerFrame
+function acqNumPeriodsPerFrame(sequence::Sequence)
+  channels = stepwiseElectricalTxChannels(sequence)
+  numPeriods = [ c.stepsPerCycle*length(c.amplitude) for c in channels ]
+  if minimum(numPeriods) != maximum(numPeriods)
+    error("Sequence contains stepwise electrical channels of different length")
+  end
+  return first(numPeriods)
+end
 acqForegroundNumFrames(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numFrames[trigger] : sequence.acquisiton.foreground.numFrames
 acqForegroundNumAverages(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numAverages[trigger] : sequence.acquisiton.foreground.numAverages
 acqForegroundNumFrameAverages(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numFrameAverages[trigger] : sequence.acquisiton.foreground.numFrameAverages

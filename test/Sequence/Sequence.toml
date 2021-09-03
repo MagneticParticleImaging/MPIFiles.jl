@@ -24,8 +24,8 @@ phase = ["0.0rad"]
 waveform = "square"
 
 [Fields.my_df.my_electrical_channel.my_second_component]
-divider = [1000, 1200]
-amplitude = ["0.01T", "0.012T"]
+divider = 1000
+amplitude = ["0.01T"]
 
 [Fields.my_ff]
 safeStartInterval = "0.5s"
