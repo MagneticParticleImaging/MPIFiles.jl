@@ -509,7 +509,7 @@ function dfDivider(sequence::Sequence) # TODO: How do we integrate the mechanica
   return result
 end
 
-dfNumChannels(sequence::Sequence) = length(electricalTxChannels(sequence)) # TODO: How do we integrate the mechanical channels?
+dfNumChannels(sequence::Sequence) = length(periodicElectricalTxChannels(sequence)) # TODO: How do we integrate the mechanical channels?
 
 function dfPhase(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
   channels = periodicElectricalTxChannels(sequence)
