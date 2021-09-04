@@ -470,6 +470,15 @@ function acqNumPeriodsPerFrame(sequence::Sequence)
   end
   return first(numPeriods)
 end
+function acqNumPatches(sequence::Sequence)
+  channels = stepwiseElectricalTxChannels(sequence)
+  numStepsPerCycle = [ c.stepsPerCycle for c in channels ]
+  if minimum(numStepsPerCycle) != maximum(numStepsPerCycle)
+    error("Sequence contains stepwise electrical channels of different length")
+  end
+  return first(numStepsPerCycle)
+end
+acqNumPeriodsPerPatch(sequence::Sequence) = div(acqNumPeriodsPerFrame(sequence),acqNumPatches(sequence))
 acqForegroundNumFrames(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numFrames[trigger] : sequence.acquisiton.foreground.numFrames
 acqForegroundNumAverages(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numAverages[trigger] : sequence.acquisiton.foreground.numAverages
 acqForegroundNumFrameAverages(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numFrameAverages[trigger] : sequence.acquisiton.foreground.numFrameAverages
