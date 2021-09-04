@@ -1,15 +1,15 @@
-export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir, getMDFStore
+export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir, getMDFStore, getCalibStudy
 
 struct MDFDatasetStore <: DatasetStore
   path::String
 
   function MDFDatasetStore(path::String)
+    path = abspath(path)
     mkpath(path)
     mkpath(joinpath(path,"measurements"))
     mkpath(joinpath(path,"reconstructions"))
     mkpath(joinpath(path,"calibrations"))
-    t = @elapsed try_chmod(joinpath(path,"path"), 0o777, recursive=true)
-    @info "chmod MDFStore took $(t) seconds"
+    #try_chmod(joinpath(path,"path"), 0o777, recursive=true) # we should get rid of this
     return new(path)
   end
 end

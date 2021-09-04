@@ -1,7 +1,7 @@
 name = "MPIFiles"
 uuid = "371237a9-e6c1-5201-9adb-3d8cfa78fa9f"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
-version = "0.11.8"
+version = "0.11.14"
 
 [deps]
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
@@ -28,6 +28,21 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 UnitfulAngles = "6fb2a4bd-7999-5318-a3b2-8ad61056cd98"
+
+[compat]
+AxisArrays = "0.3, 0.4"
+CodecZlib = "0.7"
+FileIO = "1.0"
+Graphics = "0.4, 1.0"
+HDF5 = "0.14, 0.15"
+Images = "0.22, 0.23"
+Inflate = "0.1.2"
+Interpolations = "0.12, 0.13"
+SparsityOperators = "0.2.3"
+Unitful = "0.17, 1.2"
+UnitfulAngles = "0.6.1"
+julia = "1.5"
+
 
 [extras]
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
