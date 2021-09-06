@@ -17,7 +17,7 @@
   fieldsFrequency_ = fill(0.0u"Hz", length(positions_))
 
   currents_ = fill(1.0u"A", (length(positions_), 3))
-  timestamp_ = DateTime("2021-08-25T07:08:21.881")
+  timestamp_ = [DateTime("2021-08-25T07:08:21.881"), DateTime("2021-08-25T07:08:23.881")]
   sensorOffset_ = [0.1u"mm", 0.2u"mm", 0.3u"mm"] .|> u"m"
   temperature_ = fill(20.0u"°C", length(positions_))
 

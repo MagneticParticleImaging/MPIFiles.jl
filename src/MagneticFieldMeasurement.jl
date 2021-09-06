@@ -109,7 +109,7 @@ function loadMagneticFieldMeasurement(file::HDF5.File)
   end
 
   if haskey(file, "timestamp")
-    splattingDict[:timestamp] = DateTime(read(file, "timestamp"))
+    splattingDict[:timestamp] = DateTime.(read(file, "timestamp"))
   end
 
   if haskey(file, "sensorOffset")
