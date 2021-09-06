@@ -31,5 +31,7 @@ include("IMT.jl")
 include("TransferFunction.jl")
 include("CustomSFMeas.jl")
 include("MDFInMemory.jl")
+include("MagneticFieldMeasurement.jl")
+
 
 @info "The unit tests are done!"

@@ -176,8 +176,10 @@ function getindex(grid::RegularGridPositions, i::Integer)
     idx = [i]
   elseif length(grid.shape) == 2
     idx = collect(Tuple((CartesianIndices(tuple(grid.shape[1],grid.shape[2])))[i]))
-  else
+  elseif length(grid.shape) == 3
     idx = collect(Tuple((CartesianIndices(tuple(grid.shape[1],grid.shape[2],grid.shape[3])))[i]))
+  else
+    idx = collect(Tuple((CartesianIndices(tuple(grid.shape...)))[i]))
   end
 
   for d=1:length(idx)
@@ -303,10 +305,11 @@ end
 
 function indexPermutation(grid::MeanderingGridPositions, i::Integer)
   dims = tuple(shape(grid)...)
+  ndims = length(dims)
   idx = collect(Tuple(CartesianIndices(dims)[i]))
-    for d=2:3
-      if isodd(sum(idx[d:3])-length(idx[d:3]))
-      idx[d-1] = shape(grid)[d-1] + 1 - idx[d-1]
+    for d=1:ndims-1
+      if isodd(sum(idx[d+1:end])-(ndims-d))
+      idx[d] = -idx[d] + shape(grid)[d] + 1
     end
   end
   linidx = (LinearIndices(dims))[idx...]
@@ -621,6 +624,16 @@ function ArbitraryPositions(file::HDF5.File)
   return ArbitraryPositions(pos)
 end
 
+# TODO: Specialize to make it faster
+function Base.:(==)(val1::Positions, val2::Positions)
+  for (x, y) in zip(val1, val2)
+    if !(upreferred.(x) == upreferred.(y))
+      return false
+    end
+  end
+
+  return true
+end
 
 # fuction related to looping
 length(tdes::SphericalTDesign) = size(tdes.positions,2)
