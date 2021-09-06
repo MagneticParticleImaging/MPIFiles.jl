@@ -155,26 +155,50 @@ function addMeasuredPosition(measurement::MagneticFieldMeasurement, pos::Vector;
   idx = posToIdx(pos)
 
   if !isnothing(field)
+    if ismissing(measurement.fields)
+      measurement.fields = fill(0.0u"T", (length(measurement.positions), 3))
+    end
+
     measurement.fields[idx, :] = field
   end
 
   if !isnothing(fieldError)
+    if isnothing(measurement.fieldError)
+      measurement.fieldError = fill(0.0u"T", (length(measurement.positions), 3))
+    end
+
     measurement.fieldsError[idx, :] = fieldError
   end
 
   if !isnothing(fieldFrequency)
+    if isnothing(measurement.fieldFrequency)
+      measurement.fieldsFrequency = fill(0.0u"Hz", length(measurement.positions))
+    end
+
     measurement.fieldsFrequency[idx, :] = fieldFrequency
   end
 
   if !isnothing(current)
+    if isnothing(measurement.currents)
+      measurement.currents = fill(0.0u"A", (length(measurement.positions), length(current)))
+    end
+    
     measurement.currents[idx, :] = current
   end
 
   if !isnothing(timestamp)
+    if isnothing(measurement.timestamp)
+      measurement.timestamp = fill(now(), length(measurement.positions))
+    end
+
     measurement.timestamp[idx] = timestamp
   end
 
   if !isnothing(temperature)
+    if isnothing(measurement.temperature)
+      measurement.temperature = fill(-273.0u"°C", length(measurement.positions))
+    end
+
     measurement.temperature[idx] = temperature
   end
 end
