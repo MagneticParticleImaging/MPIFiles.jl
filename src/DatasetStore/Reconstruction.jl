@@ -20,15 +20,15 @@ end
 
 function extendPath(d::MDFDatasetStore, p::AbstractString)
   if isabspath(p)
-    return p
+    return normpath(p)
   else
     A = joinpath(d.path, p)
     if isfile(A)
-      return A
+      return normpath(A)
     end
     B = joinpath(d.path, "..", p)
     if isfile(B)
-      return B
+      return normpath(B)
     end
     D = splitpath(p)
     if length(D) > 1
@@ -37,7 +37,7 @@ function extendPath(d::MDFDatasetStore, p::AbstractString)
       @info d.path
       @info C
       if isfile(C)
-        return C
+        return normpath(C)
       end
     end   
     error("extendPath could not generate valid path. Something is wrong with
@@ -53,6 +53,33 @@ function normalizePathsRecoDict!(d::MDFDatasetStore, recoParams::Dict)
       elseif isa(recoParams[key], AbstractVector)
         for l=1:length(recoParams[key])
           recoParams[key][l] = normpath(extendPath(d, recoParams[key][l]))
+        end
+      end
+    end
+  end
+end
+
+function splitOffStorePath(path, foldername)
+  s = splitpath(path)
+  i = findfirst(s .== foldername)
+  if i != nothing
+    return joinpath(s[i:end]...)
+  else
+    return path
+  end
+end
+
+function makeRelativePathsRecoDict!(recoParams::Dict)
+  coll = Dict((:measPath => "measurements"), (:SFPath => "calibrations"), 
+              (:emptyMeasPath => "measurements"))
+
+  for (key,foldername) in coll
+    if haskey(recoParams, key)
+      if isa(recoParams[key], AbstractString)
+        recoParams[key] = splitOffStorePath(recoParams[key],foldername)
+      elseif isa(recoParams[key], AbstractVector)
+        for l=1:length(recoParams[key])
+          recoParams[key][l] = splitOffStorePath(recoParams[key][l],foldername)
         end
       end
     end
@@ -105,6 +132,8 @@ function addReco(d::MDFDatasetStore, study::Study, exp::Experiment, image)
 
   filepath = joinpath(outputpath, string(recoNum))
 
+  makeRelativePathsRecoDict!(image.recoParams)
+
   saveRecoData(filepath*".mdf", image)
   #save(filepath*".jld","recoParams",recoParams)
 end
@@ -139,7 +168,11 @@ function loadParams(reco::Reconstruction)
     else #this needs to go
       @debug "opening legacy file"
       prefix, ext = splitext(reco.path)
-      reco.params = load(prefix*".jld","recoParams")
+        if isfile(prefix*".jld")
+      	  reco.params = load(prefix*".jld","recoParams")
+	else
+	  error("unable to load reco params")
+	end
     end
    end
   end

@@ -87,14 +87,24 @@ function RegularGridPositions(file::HDF5.File)
   shape = read(file, "/positionsShape")
   fov = read(file, "/positionsFov")*Unitful.m
   center = read(file, "/positionsCenter")*Unitful.m
-  return RegularGridPositions(shape,fov,center)
+
+  return RegularGridPositions(shape, fov, center)
 end
 
 function RegularGridPositions(params::Dict)
   shape = params["positionsShape"]
-  fov = params["positionsFov"]*Unitful.m
-  center = params["positionsCenter"]*Unitful.m
-  return RegularGridPositions(shape,fov,center)
+
+  fov = params["positionsFov"]
+  if !(eltype(fov) <: Quantity)
+    fov = fov.*Unitful.m
+  end
+
+  center = params["positionsCenter"]
+  if !(eltype(center) <: Quantity)
+    center = center.*Unitful.m
+  end
+
+  return RegularGridPositions(shape, fov, center)
 end
 
 # Find a joint grid
@@ -251,8 +261,17 @@ end
 
 function ChebyshevGridPositions(params::Dict)
   shape = params["positionsShape"]
-  fov = params["positionsFov"]*Unitful.m
-  center = params["positionsCenter"]*Unitful.m
+
+  fov = params["positionsFov"]
+  if !(eltype(fov) <: Quantity)
+    fov = fov.*Unitful.m
+  end
+
+  center = params["positionsCenter"]
+  if !(eltype(center) <: Quantity)
+    center = center.*Unitful.m
+  end
+
   return ChebyshevGridPositions(shape,fov,center)
 end
 
@@ -355,7 +374,12 @@ end
 
 function BreakpointGridPositions(params::Dict)
   typ = params["positionsType"]
-  breakpointPosition = params["positionsBreakpoint"] * Unitful.m
+
+  breakpointPosition = params["positionsBreakpoint"]
+  if !(eltype(breakpointPosition) <: Quantity)
+    breakpointPosition = breakpointPosition.*Unitful.m
+  end
+
   breakpointIndices = params["indicesBreakpoint"]
 
   if typ == "MeanderingGridPositions"
