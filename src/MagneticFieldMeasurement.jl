@@ -152,30 +152,30 @@ for (fieldname, fieldtype) in zip(fieldnames(MagneticFieldMeasurement), fieldtyp
 end
 
 function addMeasuredPosition(measurement::MagneticFieldMeasurement, pos::Vector; field=nothing, fieldError=nothing, fieldFrequency=nothing, current=nothing, timestamp=nothing, temperature=nothing)
-  idx = posToIdx(pos)
+  idx = posToLinIdx(measurement.positions, pos)
 
   if !isnothing(field)
     if ismissing(measurement.fields)
       measurement.fields = fill(0.0u"T", (length(measurement.positions), 3))
     end
 
-    measurement.fields[idx, :] = field
+    measurement.fields[idx, :] .= field
   end
 
   if !isnothing(fieldError)
-    if isnothing(measurement.fieldError)
-      measurement.fieldError = fill(0.0u"T", (length(measurement.positions), 3))
+    if isnothing(measurement.fieldsError)
+      measurement.fieldsError = fill(0.0u"T", (length(measurement.positions), 3))
     end
 
-    measurement.fieldsError[idx, :] = fieldError
+    measurement.fieldsError[idx, :] .= fieldError
   end
 
   if !isnothing(fieldFrequency)
-    if isnothing(measurement.fieldFrequency)
+    if isnothing(measurement.fieldsFrequency)
       measurement.fieldsFrequency = fill(0.0u"Hz", length(measurement.positions))
     end
 
-    measurement.fieldsFrequency[idx, :] = fieldFrequency
+    measurement.fieldsFrequency[idx] = fieldFrequency
   end
 
   if !isnothing(current)
@@ -183,7 +183,7 @@ function addMeasuredPosition(measurement::MagneticFieldMeasurement, pos::Vector;
       measurement.currents = fill(0.0u"A", (length(measurement.positions), length(current)))
     end
     
-    measurement.currents[idx, :] = current
+    measurement.currents[idx, :] .= current
   end
 
   if !isnothing(timestamp)
