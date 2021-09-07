@@ -21,7 +21,6 @@ mkpath(joinpath(tmpdir,"positions"))
 mkpath(joinpath(tmpdir,"transferFunction"))
 
 include("Sequence/Sequence.jl")
-#=include("DatasetStore.jl")
 include("General.jl")
 include("Cartesian.jl")
 include("Positions.jl")
@@ -31,6 +30,7 @@ include("Reco.jl")
 include("IMT.jl")
 include("TransferFunction.jl")
 include("CustomSFMeas.jl")
-include("MDFInMemory.jl")=#
+include("MDFInMemory.jl")
+include("MagneticFieldMeasurement.jl")
 
 @info "The unit tests are done!"

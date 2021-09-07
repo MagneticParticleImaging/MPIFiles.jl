@@ -961,7 +961,7 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
     missingOrNothing = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.a : fieldtype.b
     fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
 
-    # Create getter and for the whole group
+    # Create getter and setter for the whole group
     @eval begin
       # TODO: Add docstring from struct; I did not yet find a way to retrieve it
       function $(fieldname)(mdf::MDFv2InMemory)::Union{$fieldtype, $missingOrNothing}
