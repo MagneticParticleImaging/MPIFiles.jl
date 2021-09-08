@@ -3,12 +3,13 @@ using TOML
 export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAWTOOTH_RISING,
        WAVEFORM_SAWTOOTH_FALLING, toWaveform, fromWaveform, TxChannel, ElectricalTxChannel, StepwiseElectricalTxChannel,
        MechanicalTxChannel, ElectricalComponent, PeriodicElectricalComponent,
-       SweepElectricalComponent, PeriodicElectricalChannel, EquidistantStepwiseElectricalChannel,
-       NonequidistantStepwiseElectricalChannel, MechanicalTranslationChannel,
+       SweepElectricalComponent, PeriodicElectricalChannel, StepwiseElectricalChannel,
+       ContinuousElectricalChannel, MechanicalTranslationChannel,
        StepwiseMechanicalRotationChannel, ContinuousMechanicalRotationChannel,
        MagneticField, RxChannel, AcquisitionSettings, Sequence, sequenceFromTOML, fieldDictToFields,
        id, offset, components, divider, amplitude, phase, waveform, electricalTxChannels,
-       mechanicalTxChannels, periodicElectricalTxChannels, acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
+       mechanicalTxChannels, periodicElectricalTxChannels, acyclicElectricalTxChannels,
+       acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
        acqNumAverages, acqNumFrameAverages, acqOffsetField, numForegroundTriggers, numBackgroundTriggers,
        numTriggers, numTriggersTotal, dfBaseFrequency, txBaseFrequency,
        txCycle, dfDivider, dfNumChannels, dfPhase, dfStrength, dfWaveform, rxBandwidth,
@@ -36,9 +37,28 @@ waveformRelations = Dict{String, Waveform}(
 toWaveform(value::AbstractString) = waveformRelations[value]
 fromWaveform(value::Waveform) = [k for (k, v) in waveformRelations if v == value][1]
 
+function value(w::Waveform, arg_)
+  arg = mod(arg_, 1)
+  if w == WAVEFORM_SINE
+    return sin(2*pi*arg)
+  elseif w == WAVEFORM_SQUARE
+    return arg < 0.5 ? 1.0 : -1.0
+  elseif w == WAVEFORM_TRIANGLE
+    if arg < 1/4
+      return 4*arg
+    elseif arg < 3/4
+      return 2-4*arg
+    else 
+      return -4+4*arg
+    end
+  else
+    error("waveform $(w) not supported!")
+  end
+end
+
 abstract type TxChannel end
 abstract type ElectricalTxChannel <: TxChannel end
-abstract type StepwiseElectricalTxChannel <: ElectricalTxChannel end
+abstract type AcyclicElectricalTxChannel <: ElectricalTxChannel end
 abstract type MechanicalTxChannel <: TxChannel end
 
 abstract type ElectricalComponent end
@@ -67,7 +87,8 @@ Base.@kwdef struct SweepElectricalComponent <: ElectricalComponent
   waveform::Waveform = WAVEFORM_SINE
 end
 
-"Electrical channel based on based on periodic base functions."
+"""Electrical channel based on based on periodic base functions. Only the
+PeriodicElectricalChannel counts for the cycle length calculation"""
 Base.@kwdef struct PeriodicElectricalChannel <: ElectricalTxChannel
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
@@ -77,23 +98,35 @@ Base.@kwdef struct PeriodicElectricalChannel <: ElectricalTxChannel
   offset::Union{typeof(1.0u"T"), typeof(1.0u"V")} = 0.0u"T"
 end
 
-"Electrical channel with a equidistant stepwise definition of DC amplitudes."
-Base.@kwdef struct EquidistantStepwiseElectricalChannel <: StepwiseElectricalTxChannel
+"Electrical channel with a stepwise definition of values."
+Base.@kwdef struct StepwiseElectricalChannel <: AcyclicElectricalTxChannel
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
-  "Number of steps per field cycle for every equidistant step."
-  stepsPerCycle::Integer
-  "Amplitudes corresponding to the individual steps."
-  amplitude::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"V")}}
+  "Divider of the component."
+  divider::Integer
+  "values corresponding to the individual steps."
+  values::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"V")}}
 end
 
-"Electrical channel with a non-equidistant stepwise definition of DC amplitudes."
-Base.@kwdef struct NonequidistantStepwiseElectricalChannel <: StepwiseElectricalTxChannel
+"Electrical channel with a stepwise definition of values."
+Base.@kwdef struct ContinuousElectricalChannel <: AcyclicElectricalTxChannel
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
-  "Amplitudes corresponding to the individual steps defined in a CSV file."
-  sampleFilename::AbstractString
+  "Divider of sampling frequency."
+  dividerSteps::Integer
+  "Divider of the component."
+  divider::Integer
+  "Amplitude (peak) of the component for each period of the field."
+  amplitude::Union{typeof(1.0u"T"), typeof(1.0u"V")} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
+  "Phase of the component for each period of the field."
+  phase::typeof(1.0u"rad")
+  "Offset of the channel. If defined in Tesla, the calibration configured in the scanner will be used."
+  offset::Union{typeof(1.0u"T"), typeof(1.0u"V")} = 0.0u"T"
+  "Waveform of the component."
+  waveform::Waveform = WAVEFORM_SINE
 end
+
+
 
 "Mechanical channel describing a translational movement."
 Base.@kwdef struct MechanicalTranslationChannel <: MechanicalTxChannel
@@ -400,8 +433,40 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
       end
     end
     return PeriodicElectricalChannel(;splattingDict...)
-  elseif haskey(channelDict, "stepsPerCycle") && haskey(channelDict, "amplitude")
-    stepsPerCycle = channelDict["stepsPerCycle"]
+  elseif  haskey(channelDict, "values")
+    divider = channelDict["divider"]
+    values = uparse.(channelDict["values"])
+    if eltype(values) <: Unitful.Voltage
+      values = values .|> u"V"
+    elseif eltype(values) <: Unitful.BField
+      values = values .|> u"T"
+    else
+      error("The value has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
+    end
+
+    if mod(divider, length(values)) != 0
+      error("The divider $(divider) needs to be a multiple of the $(length(values))")
+    end
+
+    return StepwiseElectricalChannel(;id=channelID, divider, values)
+  elseif haskey(channelDict, "offset") && haskey(channelDict, "divider")
+
+    offset = uparse.(channelDict["offset"])
+    if eltype(offset) <: Unitful.Voltage
+      offset = offset .|> u"V"
+    elseif eltype(offset) <: Unitful.BField
+      offset = offset .|> u"T"
+    else
+      error("The value for an offset has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
+    end
+
+    dividerSteps = channelDict["dividerSteps"]
+    divider = channelDict["divider"]
+
+    if mod(divider, dividerSteps) != 0
+      error("The divider $(divider) needs to be a multiple of the dividerSteps $(dividerSteps)")
+    end
+
     amplitude = uparse.(channelDict["amplitude"])
     if eltype(amplitude) <: Unitful.Voltage
       amplitude = amplitude .|> u"V"
@@ -410,12 +475,21 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
     else
       error("The value for an amplitude has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
     end
+      
+    if haskey(channelDict, "phase")
+      phase = uparse.(channelDict["phase"])
+    else
+      phase = 0.0u"rad"  # Default phase
+    end
 
-    return EquidistantStepwiseElectricalChannel(id=channelID, stepsPerCycle=stepsPerCycle, amplitude=amplitude)
-  elseif haskey(channelDict, "sampleFilename")
-    sampleFilename = channelDict["sampleFilename"]
+    if haskey(channelDict, "waveform")
+      waveform = toWaveform(channelDict["waveform"])
+    else
+      waveform = WAVEFORM_SINE # Default to sine
+    end
 
-    return NonequidistantStepwiseElectricalChannel(id=channelID, sampleFilename=sampleFilename)
+    @assert length(amplitude) == length(phase) "The length of amplitude and phase must match."
+    return ContinuousElectricalChannel(;id=channelID, divider, offset, waveform, amplitude, phase, dividerSteps)
   elseif haskey(channelDict, "speed") && haskey(channelDict, "positions")
     speed = uparse(channelDict["speed"])
     positions = uparse.(channelDict["positions"])
@@ -444,6 +518,9 @@ isTriggered(sequence::Sequence) = sequence.triggered
 electricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: ElectricalTxChannel]
 mechanicalTxChannels(sequence::Sequence)::Vector{MechanicalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: MechanicalTxChannel]
 periodicElectricalTxChannels(sequence::Sequence)::Vector{PeriodicElectricalChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
+acyclicElectricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = 
+  [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: StepwiseElectricalChannel || typeof(channel) <: ContinuousElectricalChannel]
+
 
 id(channel::TxChannel) = channel.id
 offset(channel::PeriodicElectricalChannel) = channel.offset
@@ -458,7 +535,38 @@ phase(component::SweepElectricalComponent, trigger::Integer=1) = 0.0u"rad"
 waveform(component::ElectricalComponent) = component.waveform
 
 acqGradient(sequence::Sequence) = nothing # TODO: Implement
-acqNumPeriodsPerFrame(sequence::Sequence) = sequence.acquisiton.numPeriodsPerFrame
+
+
+values(channel::StepwiseElectricalChannel) = channel.values
+function values(channel::ContinuousElectricalChannel)
+  numPatches = div(channel.divider, channel.dividerSteps)
+  return [channel.offset + channel.amplitude*
+                   value(channel.waveform, p/numPatches+channel.phase/(2*pi)) 
+                       for p=0:(numPatches-1)]
+end
+
+function acqNumPeriodsPerFrame(sequence::Sequence)
+  channels = acyclicElectricalTxChannels(sequence)
+  samplesPerCycle = lcm(dfDivider(sequence))
+  numPeriods = [ div(c.divider,samplesPerCycle) for c in channels ]
+
+  if minimum(numPeriods) != maximum(numPeriods)
+    error("Sequence contains acyclic electrical channels of different length: $(numPeriods)")
+  end
+  return first(numPeriods)
+end
+function acqNumPeriodsPerPatch(sequence::Sequence)
+  channels = acyclicElectricalTxChannels(sequence)
+  samplesPerCycle = lcm(dfDivider(sequence))
+  stepsPerCycle = [ typeof(c) <: StepwiseElectricalChannel ? 
+                             div(c.divider,length(c.values)*samplesPerCycle) : 
+                             div(c.dividerSteps,samplesPerCycle) for c in channels ]
+  if minimum(stepsPerCycle) != maximum(stepsPerCycle)
+    error("Sequence contains acyclic electrical channels of different length: $(stepsPerCycle)")
+  end
+  return first(stepsPerCycle)
+end
+acqNumPatches(sequence::Sequence) = div(acqNumPeriodsPerFrame(sequence),acqNumPeriodsPerPatch(sequence))
 acqForegroundNumFrames(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numFrames[trigger] : sequence.acquisiton.foreground.numFrames
 acqForegroundNumAverages(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numAverages[trigger] : sequence.acquisiton.foreground.numAverages
 acqForegroundNumFrameAverages(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numFrameAverages[trigger] : sequence.acquisiton.foreground.numFrameAverages
@@ -498,7 +606,7 @@ function dfDivider(sequence::Sequence) # TODO: How do we integrate the mechanica
   return result
 end
 
-dfNumChannels(sequence::Sequence) = length(electricalTxChannels(sequence)) # TODO: How do we integrate the mechanical channels?
+dfNumChannels(sequence::Sequence) = length(periodicElectricalTxChannels(sequence)) # TODO: How do we integrate the mechanical channels?
 
 function dfPhase(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
   channels = periodicElectricalTxChannels(sequence)
