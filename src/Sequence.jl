@@ -523,6 +523,7 @@ acyclicElectricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} =
 
 
 id(channel::TxChannel) = channel.id
+id(channel::RxChannel) = channel.id
 offset(channel::PeriodicElectricalChannel) = channel.offset
 
 # Periodic components
