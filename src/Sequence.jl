@@ -10,8 +10,7 @@ export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAW
        id, offset, components, divider, amplitude, phase, waveform, electricalTxChannels,
        mechanicalTxChannels, periodicElectricalTxChannels, acyclicElectricalTxChannels,
        acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
-       acqNumAverages, acqNumFrameAverages, acqOffsetField, numForegroundTriggers, numBackgroundTriggers,
-       numTriggers, numTriggersTotal, dfBaseFrequency, txBaseFrequency,
+       acqNumAverages, acqNumFrameAverages, acqOffsetField, dfBaseFrequency, txBaseFrequency,
        txCycle, dfDivider, dfNumChannels, dfPhase, dfStrength, dfWaveform, rxBandwidth,
        rxNumChannels, rxNumSamplingPoints, rxNumSamplesPerPeriod, rxChannels,
        needsControl, needsDecoupling, needsControlOrDecoupling
@@ -201,34 +200,8 @@ Base.@kwdef struct RxChannel
   id::AbstractString
 end
 
-"Settings for acquisition on a given trigger."
-struct AcquisitionTriggerSettings{N}
-  "Number of frames to acquire. If `triggered` is true, this number of frames
-  is acquired on every trigger. If `numFrames` is a tuple, each trigger will
-  acquire the given amount of frames.  If `triggered` is false, but the dividers
-  are defined as a vector in an electrical channel, every frequency will be
-  applied for `numFrames`."
-  numFrames::Union{Integer, NTuple{N, <:Integer}}
-  "Number of block averages per period."
-  numAverages::Union{Integer, NTuple{N, <:Integer}}
-  "Number of frames to average blockwise."
-  numFrameAverages::Union{Integer, NTuple{N, <:Integer}}
-
-  # I am not completely sure, why I can't do this directly, but having default
-  # values on the fields makes the type definition fail
-  function AcquisitionTriggerSettings(;
-      numFrames::Union{Integer, NTuple{N, <:Integer}} = 1,
-      numAverages::Union{Integer, NTuple{N, <:Integer}} = 1,
-      numFrameAverages::Union{Integer, NTuple{N, <:Integer}} = 1
-    ) where {N}
-    
-    N2 = maximum([length(numFrames), length(numAverages), length(numFrameAverages)])
-    new{N2}(numFrames, numAverages, numFrameAverages)
-  end
-end
-
 "Settings for acquiring the sequence."
-Base.@kwdef struct AcquisitionSettings
+Base.@kwdef mutable struct AcquisitionSettings
   "Receive channels that are used in the sequence."
   channels::Vector{RxChannel}
   "Bandwidth (half the sample rate) of the receiver. In DAQs which decimate the data,
@@ -237,11 +210,14 @@ Base.@kwdef struct AcquisitionSettings
   bandwidth::typeof(1.0u"Hz")
   "Number of periods within a frame."
   numPeriodsPerFrame::Integer = 1
-  
-  "Setting for foreground triggers."
-  foreground::AcquisitionTriggerSettings = AcquisitionTriggerSettings()
-  "Setting for background triggers."
-  background::AcquisitionTriggerSettings = AcquisitionTriggerSettings()
+  "Number of frames to acquire"
+  numFrames::Integer = 1
+  "Number of block averages per period."
+  numAverages::Integer = 1
+  "Number of frames to average blockwise."
+  numFrameAverages::Integer = 1
+  "Flag for background measurement"
+  isBackground::Bool = false
 end
 
 """
@@ -305,23 +281,14 @@ function sequenceFromTOML(filename::AbstractString)
   if haskey(acquisition, "numPeriodsPerFrame")
     acqSplattingDict[:numPeriodsPerFrame] = acquisition["numPeriodsPerFrame"]
   end
-
-  # Acquisition: Triggers
-  for (symbol_, key) in [(:foreground, "Foreground"), (:background, "Background")]
-    triggerPart = acquisition[key]
-    acqTriggerSplattingDict = Dict{Symbol, Any}()
-    
-    if haskey(triggerPart, "numFrames")
-      acqTriggerSplattingDict[:numFrames] = triggerPart["numFrames"]
-    end
-    if haskey(triggerPart, "numAverages")
-      acqTriggerSplattingDict[:numAverages] = triggerPart["numAverages"]
-    end
-    if haskey(triggerPart, "numFrameAverages")
-      acqTriggerSplattingDict[:numFrameAverages] = triggerPart["numFrameAverages"]
-    end
-
-    acqSplattingDict[symbol_] = AcquisitionTriggerSettings(;acqTriggerSplattingDict...)
+  if haskey(acquisition, "numFrames")
+    acqSplattingDict[:numFrames] = acquisition["numFrames"]
+  end
+  if haskey(acquisition, "numAverages")
+    acqSplattingDict[:numAverages] = acquisition["numAverages"]
+  end
+  if haskey(acquisition, "numFrameAverages")
+    acqSplattingDict[:numFrameAverages] = acquisition["numFrameAverages"]
   end
 
   splattingDict[:acquisiton] = AcquisitionSettings(;acqSplattingDict...)
@@ -523,6 +490,7 @@ acyclicElectricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} =
 
 
 id(channel::TxChannel) = channel.id
+id(channel::RxChannel) = channel.id
 offset(channel::PeriodicElectricalChannel) = channel.offset
 
 # Periodic components
@@ -567,27 +535,23 @@ function acqNumPeriodsPerPatch(sequence::Sequence)
   return first(stepsPerCycle)
 end
 acqNumPatches(sequence::Sequence) = div(acqNumPeriodsPerFrame(sequence),acqNumPeriodsPerPatch(sequence))
-acqForegroundNumFrames(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numFrames[trigger] : sequence.acquisiton.foreground.numFrames
-acqForegroundNumAverages(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numAverages[trigger] : sequence.acquisiton.foreground.numAverages
-acqForegroundNumFrameAverages(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.foreground.numFrameAverages[trigger] : sequence.acquisiton.foreground.numFrameAverages
-acqBackgroundNumFrames(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.background.numFrames[trigger] : sequence.acquisiton.background.numFrames
-acqBackgroundNumAverages(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.background.numAverages[trigger] : sequence.acquisiton.background.numAverages
-acqBackgroundNumFrameAverages(sequence::Sequence, trigger::Integer=1) = trigger>1 ? sequence.acquisiton.background.numFrameAverages[trigger] : sequence.acquisiton.background.numFrameAverages
-acqNumFrames(sequence::Sequence, trigger::Integer=1, isBackground::Bool=false) = isBackground ? acqBackgroundNumFrames(sequence, trigger) : acqForegroundNumFrames(sequence, trigger)
-acqNumAverages(sequence::Sequence, trigger::Integer=1, isBackground::Bool=false) = isBackground ? acqBackgroundNumAverages(sequence, trigger) : acqForegroundNumAverages(sequence, trigger)
-acqNumFrameAverages(sequence::Sequence, trigger::Integer=1, isBackground::Bool=false) = isBackground ? acqBackgroundNumFrameAverages(sequence, trigger) : acqForegroundNumFrameAverages(sequence, trigger)
+function acqNumFrames(sequence::Sequence, val)
+  sequence.acquisiton.numFrames = val
+end
+acqNumFrames(sequence::Sequence) = sequence.acquisiton.numFrames
+function acqNumAverages(sequence::Sequence, val)
+  sequence.acquisiton.numAverages = val
+end
+acqNumAverages(sequence::Sequence) = sequence.acquisiton.numAverages
+function acqNumFrameAverages(sequence::Sequence, val)
+  sequence.acquisiton.numFrameAverages = val
+end
+acqNumFrameAverages(sequence::Sequence) = sequence.acquisiton.numFrameAverages
+function isBackground(sequence::Sequence, val)
+  sequence.acquisiton.isBackground = val
+end
+isBackground(sequence::Sequence) = sequence.acquisiton.isBackground
 acqOffsetField(sequence::Sequence) = nothing # TODO: Implement
-
-function numForegroundTriggers(sequence::Sequence)
-  part = sequence.acquisiton.foreground
-  return maximum([length(part.numFrames), length(part.numAverages), length(part.numFrameAverages)])
-end
-function numBackgroundTriggers(sequence::Sequence)
-  part = sequence.acquisiton.background
-  return maximum([length(part.numFrames), length(part.numAverages), length(part.numFrameAverages)])
-end
-numTriggers(sequence::Sequence, isBackground::Bool=false) = isBackground ? numBackgroundTriggers(sequence) : numForegroundTriggers(sequence)
-numTriggersTotal(sequence::Sequence) = numForegroundTriggers(sequence)+numBackgroundTriggers(sequence)
 
 dfBaseFrequency(sequence::Sequence) = sequence.baseFrequency
 txBaseFrequency(sequence::Sequence) = dfBaseFrequency(sequence) # Alias, since this might not only concern the drivefield
