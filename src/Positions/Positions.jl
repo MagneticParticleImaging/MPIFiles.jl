@@ -574,6 +574,16 @@ function write(file::HDF5.File, positions::SphericalTDesign)
   write(file, "/positionsTDesignRadius", Float64.(ustrip.(uconvert.(Unitful.m, positions.radius))) )
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
 end
+					
+function toDict(positions::SphericalTDesign)
+  params = Dict{String,Any}()
+  params["positionsType"] = "SphericalTDesign"
+  params["positionsTDesignT"] = positions.T
+  params["positionsTDesignN"] = size(positions.positions,2)
+  params["positionsTDesignRadius"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.radius)))
+  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
+  return params
+end					
 
 getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] + tdes.center
 
