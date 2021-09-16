@@ -294,4 +294,18 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   for (i,p) in enumerate(caG)
     @test p == caG[i]
   end
+
+  @testset "Squared positions regression test" begin
+    # When supplying a dict already equipped with Unitful units, the positions were squared
+    params = Dict{String, Any}()
+    params["positionsShape"] = [3, 3, 3]
+    params["positionsFov"] = [3.0u"mm", 3.0u"mm", 3.0u"mm"]
+    params["positionsCenter"] = [0.0u"mm", 0.0u"mm", 0.0u"mm"]
+
+    positions = RegularGridPositions(params)
+    @test eltype(positions[1]) <: Unitful.Length
+
+    positions = ChebyshevGridPositions(params)
+    @test eltype(positions[1]) <: Unitful.Length
+  end
 end
