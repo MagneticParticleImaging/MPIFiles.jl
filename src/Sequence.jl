@@ -616,7 +616,7 @@ end
 
 rxBandwidth(sequence::Sequence) = sequence.acquisiton.bandwidth
 rxNumChannels(sequence::Sequence) = length(rxChannels(sequence))
-rxNumSamplingPoints(sequence::Sequence) = round(Int64, upreferred(rxBandwidth(sequence)*2*dfCycle(sequence)))
+rxNumSamplingPoints(sequence::Sequence) = round(Int64, upreferred(rxBandwidth(sequence)*dfCycle(sequence)))
 rxNumSamplesPerPeriod(sequence::Sequence) = rxNumSamplingPoints(sequence)
 rxChannels(sequence::Sequence) = sequence.acquisiton.channels
 
