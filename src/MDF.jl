@@ -186,11 +186,19 @@ function acqNumFrames(f::MDFFileV1)::Int
 end
 acqNumFrames(f::MDFFileV2)::Union{Int, Missing} = @keyrequired f["/acquisition/numFrames"]
 acqNumPeriodsPerFrame(f::MDFFileV1)::Union{Int, Missing} = 1
-acqNumPeriodsPerFrame(f::MDFFileV2)::Union{Int, Missing} = @keyrequired f["/acquisition/numPeriods",1]
+function acqNumPeriodsPerFrame(f::MDFFileV2)::Union{Int, Missing}
+  if haskey(f.file, "/acquisition/numPeriodsPerFrame")
+    return f["/acquisition/numPeriodsPerFrame"]
+  elseif haskey(f.file, "/acquisition/numPeriods")
+    return f["/acquisition/numPeriods"]
+  else
+    return 1
+  end
+end
 
 acqGradient(f::MDFFileV1)::Union{Array{Float64,4}, Nothing} = @keyoptional reshape(Matrix(Diagonal(f["/acquisition/gradient"])), 3,3,1,1)
 function acqGradient(f::MDFFileV2)::Union{Array{Float64,4}, Nothing}
-  G = f["/acquisition/gradient"]
+  G = f["/acquisition/gradient", Matrix(Diagonal([1.0,1.0,-2.0]))]
   if ndims(G) == 4
    return G
   elseif ndims(G) == 3 # for corrupt files
