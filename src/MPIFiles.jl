@@ -25,6 +25,7 @@ using Pkg.Artifacts
 using Unitful
 using UnitfulAngles
 using Inflate, SHA
+using StableRNGs
 
 if VERSION < v"1.1"
   isnothing(x) = x == nothing

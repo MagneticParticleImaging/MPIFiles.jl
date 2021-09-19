@@ -1,4 +1,4 @@
-export Experiment, getExperiment, getExperiments, getNewExperimentNum, getStudy
+export Experiment, getExperiment, getExperiments, getNewExperimentNum, getNewExperimentPath, getStudy
 
 # might not be so clever to use an explicit type fields here
 # maybe better a dict

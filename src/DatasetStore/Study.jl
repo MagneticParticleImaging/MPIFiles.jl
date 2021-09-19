@@ -8,6 +8,13 @@ struct Study{D<:DatasetStore}
   foldername::String
   date::DateTime
   subject::String
+  uuid::UUID
+end
+
+function Study(store::DatasetStore, name::String, foldername::String, date::DateTime, subject::String)
+  rng = StableRNG(hash(foldername)) 
+  uuid = uuid4(rng)
+  return Study(store, name, foldername, date, subject, uuid)
 end
 
 function Study(store::DatasetStore, name::String; foldername::String="", 
@@ -21,7 +28,9 @@ function Study(store::DatasetStore, name::String; foldername::String="",
   if createDir
     mkpath(path)
   end
-    return Study(store, name, foldername, date_, subject)
+  rng = StableRNG(hash(foldername)) 
+  uuid = uuid4(rng)
+  return Study(store, name, foldername, date_, subject)
 end
 
 path(s::Study) = joinpath( studydir(s.store), s.foldername )
