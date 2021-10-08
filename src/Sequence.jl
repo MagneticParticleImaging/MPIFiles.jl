@@ -246,7 +246,7 @@ Base.@kwdef struct Sequence
   fields::Vector{MagneticField}
 
   "Settings for the acquisition."
-  acquisiton::AcquisitionSettings
+  acquisition::AcquisitionSettings
 end
 
 function Sequence(filename::AbstractString)
@@ -291,7 +291,7 @@ function sequenceFromTOML(filename::AbstractString)
     acqSplattingDict[:numFrameAverages] = acquisition["numFrameAverages"]
   end
 
-  splattingDict[:acquisiton] = AcquisitionSettings(;acqSplattingDict...)
+  splattingDict[:acquisition] = AcquisitionSettings(;acqSplattingDict...)
 
   sequence =  Sequence(;splattingDict...)
 
@@ -536,21 +536,21 @@ function acqNumPeriodsPerPatch(sequence::Sequence)
 end
 acqNumPatches(sequence::Sequence) = div(acqNumPeriodsPerFrame(sequence),acqNumPeriodsPerPatch(sequence))
 function acqNumFrames(sequence::Sequence, val)
-  sequence.acquisiton.numFrames = val
+  sequence.acquisition.numFrames = val
 end
-acqNumFrames(sequence::Sequence) = sequence.acquisiton.numFrames
+acqNumFrames(sequence::Sequence) = sequence.acquisition.numFrames
 function acqNumAverages(sequence::Sequence, val)
-  sequence.acquisiton.numAverages = val
+  sequence.acquisition.numAverages = val
 end
-acqNumAverages(sequence::Sequence) = sequence.acquisiton.numAverages
+acqNumAverages(sequence::Sequence) = sequence.acquisition.numAverages
 function acqNumFrameAverages(sequence::Sequence, val)
-  sequence.acquisiton.numFrameAverages = val
+  sequence.acquisition.numFrameAverages = val
 end
-acqNumFrameAverages(sequence::Sequence) = sequence.acquisiton.numFrameAverages
+acqNumFrameAverages(sequence::Sequence) = sequence.acquisition.numFrameAverages
 function isBackground(sequence::Sequence, val)
-  sequence.acquisiton.isBackground = val
+  sequence.acquisition.isBackground = val
 end
-isBackground(sequence::Sequence) = sequence.acquisiton.isBackground
+isBackground(sequence::Sequence) = sequence.acquisition.isBackground
 acqOffsetField(sequence::Sequence) = nothing # TODO: Implement
 
 dfBaseFrequency(sequence::Sequence) = sequence.baseFrequency
@@ -614,11 +614,11 @@ function dfWaveform(sequence::Sequence) # TODO: How do we integrate the mechanic
   return result
 end
 
-rxBandwidth(sequence::Sequence) = sequence.acquisiton.bandwidth
+rxBandwidth(sequence::Sequence) = sequence.acquisition.bandwidth
 rxNumChannels(sequence::Sequence) = length(rxChannels(sequence))
-rxNumSamplingPoints(sequence::Sequence) = round(Int64, upreferred(rxBandwidth(sequence)*2*dfCycle(sequence)))
+rxNumSamplingPoints(sequence::Sequence) = round(Int64, upreferred(rxBandwidth(sequence)*dfCycle(sequence)))
 rxNumSamplesPerPeriod(sequence::Sequence) = rxNumSamplingPoints(sequence)
-rxChannels(sequence::Sequence) = sequence.acquisiton.channels
+rxChannels(sequence::Sequence) = sequence.acquisition.channels
 
 needsControl(sequence::Sequence) = any([field.control for field in sequence.fields])
 needsDecoupling(sequence::Sequence) = any([field.decouple for field in sequence.fields])

@@ -1217,6 +1217,7 @@ function saveasMDF(filename::String, mdf::MDFv2InMemory; failOnInconsistent::Boo
   h5open(filename, "w") do file
     saveasMDF(file, mdf)
   end
+  return filename
 end
 
 "Create an MDFFile from an in-memory MDF."
