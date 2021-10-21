@@ -64,6 +64,7 @@ abstract type ElectricalComponent end
 
 "Component of an electrical channel with periodic base function."
 Base.@kwdef struct PeriodicElectricalComponent <: ElectricalComponent
+  id::AbstractString
   "Divider of the component."
   divider::Integer
   "Amplitude (peak) of the component for each period of the field."
@@ -358,9 +359,9 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
     end
 
     splattingDict[:components] = Vector{ElectricalComponent}()
-    components = [v for (k, v) in channelDict if v isa Dict]
+    components = [(k, v) for (k, v) in channelDict if v isa Dict]
     
-    for component in components
+    for (compId, component) in components
       divider = component["divider"]
 
       amplitude = uparse.(component["amplitude"])
@@ -393,7 +394,8 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
                                        waveform=waveform))
       else
         push!(splattingDict[:components],
-              PeriodicElectricalComponent(divider=divider,
+              PeriodicElectricalComponent(id=compId, 
+                                          divider=divider,
                                           amplitude=amplitude,
                                           phase=phase,
                                           waveform=waveform))
@@ -501,6 +503,7 @@ amplitude(component::SweepElectricalComponent; trigger::Integer=1) = component.a
 phase(component::PeriodicElectricalComponent, trigger::Integer=1) = component.phase[trigger]
 phase(component::SweepElectricalComponent, trigger::Integer=1) = 0.0u"rad"
 waveform(component::ElectricalComponent) = component.waveform
+id(component::PeriodicElectricalComponent) = component.id
 
 acqGradient(sequence::Sequence) = nothing # TODO: Implement
 
