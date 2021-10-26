@@ -11,7 +11,7 @@ export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAW
        mechanicalTxChannels, periodicElectricalTxChannels, acyclicElectricalTxChannels,
        acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
        acqNumAverages, acqNumFrameAverages, acqOffsetField, dfBaseFrequency, txBaseFrequency,
-       txCycle, dfDivider, dfNumChannels, dfPhase, dfStrength, dfWaveform, rxBandwidth, rxSamplingRate
+       txCycle, dfDivider, dfNumChannels, dfPhase, dfStrength, dfWaveform, rxBandwidth, rxSamplingRate,
        rxNumChannels, rxNumSamplingPoints, rxNumSamplesPerPeriod, rxChannels,
        needsControl, needsDecoupling, needsControlOrDecoupling
 
@@ -47,7 +47,7 @@ function value(w::Waveform, arg_)
       return 4*arg
     elseif arg < 3/4
       return 2-4*arg
-    else 
+    else
       return -4+4*arg
     end
   else
@@ -270,13 +270,13 @@ function sequenceFromTOML(filename::AbstractString)
   if haskey(general, "triggered")
     splattingDict[:triggered] = general["triggered"]
   end
-  
+
   # Fields
   splattingDict[:fields] = fieldDictToFields(sequenceDict["Fields"])
 
   # Acquisition
   acqSplattingDict = Dict{Symbol, Any}()
-  
+
   acqSplattingDict[:channels] = RxChannel.(acquisition["channels"])
   acqSplattingDict[:bandwidth] = uparse(acquisition["bandwidth"])
   if haskey(acquisition, "numPeriodsPerFrame")
@@ -318,7 +318,7 @@ function fieldDictToFields(fieldsDict::Dict{String, Any})
     end
     splattingDict[:id] = fieldID
     splattingDict[:channels] = channels
-    
+
     if haskey(fieldDict, "safeStartInterval")
       splattingDict[:safeStartInterval] = uparse(fieldDict["safeStartInterval"])
     end
@@ -360,7 +360,7 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
 
     splattingDict[:components] = Vector{ElectricalComponent}()
     components = [(k, v) for (k, v) in channelDict if v isa Dict]
-    
+
     for (compId, component) in components
       divider = component["divider"]
 
@@ -372,7 +372,7 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
       else
         error("The value for an amplitude has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
       end
-      
+
       if haskey(component, "phase")
         phase = uparse.(component["phase"])
       else
@@ -394,7 +394,7 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
                                        waveform=waveform))
       else
         push!(splattingDict[:components],
-              PeriodicElectricalComponent(id=compId, 
+              PeriodicElectricalComponent(id=compId,
                                           divider=divider,
                                           amplitude=amplitude,
                                           phase=phase,
@@ -444,7 +444,7 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
     else
       error("The value for an amplitude has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
     end
-      
+
     if haskey(channelDict, "phase")
       phase = uparse.(channelDict["phase"])
     else
@@ -487,7 +487,7 @@ isTriggered(sequence::Sequence) = sequence.triggered
 electricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: ElectricalTxChannel]
 mechanicalTxChannels(sequence::Sequence)::Vector{MechanicalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: MechanicalTxChannel]
 periodicElectricalTxChannels(sequence::Sequence)::Vector{PeriodicElectricalChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
-acyclicElectricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = 
+acyclicElectricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} =
   [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: StepwiseElectricalChannel || typeof(channel) <: ContinuousElectricalChannel]
 
 
@@ -532,7 +532,7 @@ values(channel::StepwiseElectricalChannel) = channel.values
 function values(channel::ContinuousElectricalChannel)
   numPatches = div(channel.divider, channel.dividerSteps)
   return [channel.offset + channel.amplitude*
-                   value(channel.waveform, p/numPatches+channel.phase/(2*pi)) 
+                   value(channel.waveform, p/numPatches+channel.phase/(2*pi))
                        for p=0:(numPatches-1)]
 end
 
@@ -549,8 +549,8 @@ end
 function acqNumPeriodsPerPatch(sequence::Sequence)
   channels = acyclicElectricalTxChannels(sequence)
   samplesPerCycle = lcm(dfDivider(sequence))
-  stepsPerCycle = [ typeof(c) <: StepwiseElectricalChannel ? 
-                             div(c.divider,length(c.values)*samplesPerCycle) : 
+  stepsPerCycle = [ typeof(c) <: StepwiseElectricalChannel ?
+                             div(c.divider,length(c.values)*samplesPerCycle) :
                              div(c.dividerSteps,samplesPerCycle) for c in channels ]
   if minimum(stepsPerCycle) != maximum(stepsPerCycle)
     error("Sequence contains acyclic electrical channels of different length: $(stepsPerCycle)")
@@ -640,7 +640,7 @@ end
 rxBandwidth(sequence::Sequence) = sequence.acquisition.bandwidth
 rxSamplingRate(sequence::Sequence) = 2 * sequence.acquisition.bandwidth
 rxNumChannels(sequence::Sequence) = length(rxChannels(sequence))
-rxNumSamplingPoints(sequence::Sequence) = round(Int64, upreferred(rxBandwidth(sequence)*dfCycle(sequence)))
+rxNumSamplingPoints(sequence::Sequence) = round(Int64, upreferred(rxSamplingRate(sequence)*dfCycle(sequence)))
 rxNumSamplesPerPeriod(sequence::Sequence) = rxNumSamplingPoints(sequence)
 rxChannels(sequence::Sequence) = sequence.acquisition.channels
 
