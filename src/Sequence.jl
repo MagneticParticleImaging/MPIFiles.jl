@@ -11,7 +11,7 @@ export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAW
        mechanicalTxChannels, periodicElectricalTxChannels, acyclicElectricalTxChannels,
        acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
        acqNumAverages, acqNumFrameAverages, acqOffsetField, dfBaseFrequency, txBaseFrequency,
-       txCycle, dfDivider, dfNumChannels, dfPhase, dfStrength, dfWaveform, rxBandwidth,
+       txCycle, dfDivider, dfNumChannels, dfPhase, dfStrength, dfWaveform, rxBandwidth, rxSamplingRate
        rxNumChannels, rxNumSamplingPoints, rxNumSamplesPerPeriod, rxChannels,
        needsControl, needsDecoupling, needsControlOrDecoupling
 
@@ -638,6 +638,7 @@ function dfWaveform(sequence::Sequence) # TODO: How do we integrate the mechanic
 end
 
 rxBandwidth(sequence::Sequence) = sequence.acquisition.bandwidth
+rxSamplingRate(sequence::Sequence) = 2 * sequence.acquisition.bandwidth
 rxNumChannels(sequence::Sequence) = length(rxChannels(sequence))
 rxNumSamplingPoints(sequence::Sequence) = round(Int64, upreferred(rxBandwidth(sequence)*dfCycle(sequence)))
 rxNumSamplesPerPeriod(sequence::Sequence) = rxNumSamplingPoints(sequence)
