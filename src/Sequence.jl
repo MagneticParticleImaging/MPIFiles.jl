@@ -7,7 +7,7 @@ export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAW
        ContinuousElectricalChannel, MechanicalTranslationChannel,
        StepwiseMechanicalRotationChannel, ContinuousMechanicalRotationChannel,
        MagneticField, RxChannel, AcquisitionSettings, Sequence, sequenceFromTOML, fieldDictToFields,
-       id, offset, components, divider, amplitude, phase, waveform, electricalTxChannels,
+       id, offset, components, divider, amplitude, amplitude!, phase, phase!, waveform, electricalTxChannels,
        mechanicalTxChannels, periodicElectricalTxChannels, acyclicElectricalTxChannels,
        acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
        acqNumAverages, acqNumFrameAverages, acqOffsetField, dfBaseFrequency, txBaseFrequency,
@@ -499,11 +499,31 @@ offset(channel::PeriodicElectricalChannel) = channel.offset
 components(channel::PeriodicElectricalChannel) = channel.components
 divider(component::ElectricalComponent, trigger::Integer=1) = length(component.divider) == 1 ? component.divider[1] : component.divider[trigger]
 amplitude(component::PeriodicElectricalComponent; period::Integer=1) = component.amplitude[period]
+amplitude!(component::PeriodicElectricalComponent, value::Union{typeof(1.0u"T"),typeof(1.0u"V")}; period::Integer=1) = component.amplitude[period] = value
 amplitude(component::SweepElectricalComponent; trigger::Integer=1) = component.amplitude[period]
 phase(component::PeriodicElectricalComponent, trigger::Integer=1) = component.phase[trigger]
+phase!(component::PeriodicElectricalComponent, value::typeof(1.0u"rad"); period::Integer=1) = component.phase[period] = value
 phase(component::SweepElectricalComponent, trigger::Integer=1) = 0.0u"rad"
 waveform(component::ElectricalComponent) = component.waveform
 id(component::PeriodicElectricalComponent) = component.id
+
+function amplitude!(channel::PeriodicElectricalChannel, componentId::AbstractString, value::Union{typeof(1.0u"T"),typeof(1.0u"V")}; period::Integer=1)
+  index = findfirst(x -> id(x) == componentId, channel.components)
+  if !isnothing(index)
+    amplitude!(channel.components[index], value, period = period)
+  else
+    throw(ArgumentError("Channel $(id(channel)) has no component with id $componentid"))
+  end
+end
+
+function phase!(channel::PeriodicElectricalChannel, componentId::AbstractString, value::typeof(1.0u"rad"); period::Integer=1)
+  index = findfirst(x -> id(x) == componentId, channel.components)
+  if !isnothing(index)
+    phase!(channel.components[index], value, period = period)
+  else
+    throw(ArgumentError("Channel $(id(channel)) has no component with id $componentid"))
+  end
+end
 
 acqGradient(sequence::Sequence) = nothing # TODO: Implement
 
