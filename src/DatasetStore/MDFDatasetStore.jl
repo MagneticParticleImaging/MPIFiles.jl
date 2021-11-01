@@ -4,7 +4,7 @@ struct MDFDatasetStore <: DatasetStore
   path::String
 
   function MDFDatasetStore(path::String)
-    path = abspath(path)
+    path = abspath(expanduser(path))
     mkpath(path)
     mkpath(joinpath(path,"measurements"))
     mkpath(joinpath(path,"reconstructions"))
