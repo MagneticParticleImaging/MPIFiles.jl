@@ -362,12 +362,12 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Periodi
 
   if haskey(channelDict, "offset")
     tmp = uparse.(channelDict["offset"])
-    if eltype(tmp) <: Unitful.Voltage
-      tmp = tmp .|> u"V"
+    if eltype(tmp) <: Unitful.Current
+      tmp = tmp .|> u"A"
     elseif eltype(tmp) <: Unitful.BField
       tmp = tmp .|> u"T"
     else
-      error("The value for an offset has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
+      error("The value for an offset has to be either given as a current or in tesla. You supplied the type `$(eltype(tmp))`.")
     end
     splattingDict[:offset] = tmp
   end
@@ -384,7 +384,7 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Periodi
     elseif eltype(amplitude) <: Unitful.BField
       amplitude = amplitude .|> u"T"
     else
-      error("The value for an amplitude has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
+      error("The value for an amplitude has to be either given as a current or in tesla. You supplied the type `$(eltype(tmp))`.")
     end
 
     if haskey(component, "phase")
@@ -421,12 +421,12 @@ end
 function createFieldChannel(channelID::AbstractString, channelType::Type{StepwiseElectricalChannel}, channelDict::Dict{String, Any})
   divider = channelDict["divider"]
   values = uparse.(channelDict["values"])
-  if eltype(values) <: Unitful.Voltage
-    values = values .|> u"V"
+  if eltype(values) <: Unitful.Current
+    values = values .|> u"A"
   elseif eltype(values) <: Unitful.BField
     values = values .|> u"T"
   else
-    error("The values have to be either given as a voltage or in tesla. You supplied the type `$(eltype(values))`.")
+    error("The values have to be either given as a current or in tesla. You supplied the type `$(eltype(values))`.")
   end
 
   if mod(divider, length(values)) != 0
