@@ -23,6 +23,7 @@ using Pkg.PlatformEngines
 using Pkg.GitTools
 using Pkg.Artifacts
 using Unitful
+using InteractiveUtils
 using UnitfulAngles
 using Inflate, SHA
 using StableRNGs

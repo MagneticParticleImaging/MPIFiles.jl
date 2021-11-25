@@ -339,143 +339,160 @@ function fieldDictToFields(fieldsDict::Dict{String, Any})
   return fields
 end
 
+# TODO further remove redundant code in channel creation
 function createFieldChannel(channelID::AbstractString, channelDict::Dict{String, Any})
   # If the channel has further dicts this means it has components and therefore is a PeriodicElectricalChannel
-  if any([v isa Dict for (k, v) in channelDict])
-    # PeriodicElectricalChannel has optional fields, therefore we go the splatting route
-    splattingDict = Dict{Symbol, Any}()
-    splattingDict[:id] = channelID
-
-    if haskey(channelDict, "offset")
-      tmp = uparse.(channelDict["offset"])
-      if eltype(tmp) <: Unitful.Voltage
-        tmp = tmp .|> u"V"
-      elseif eltype(tmp) <: Unitful.BField
-        tmp = tmp .|> u"T"
-      else
-        error("The value for an offset has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
-      end
-      splattingDict[:offset] = tmp
-    end
-
-    splattingDict[:components] = Vector{ElectricalComponent}()
-    components = [(k, v) for (k, v) in channelDict if v isa Dict]
-
-    for (compId, component) in components
-      divider = component["divider"]
-
-      amplitude = uparse.(component["amplitude"])
-      if eltype(amplitude) <: Unitful.Current
-        amplitude = amplitude .|> u"A"
-      elseif eltype(amplitude) <: Unitful.BField
-        amplitude = amplitude .|> u"T"
-      else
-        error("The value for an amplitude has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
-      end
-
-      if haskey(component, "phase")
-        phase = uparse.(component["phase"])
-      else
-        phase = fill(0.0u"rad", length(divider)) # Default phase
-      end
-
-      if haskey(component, "waveform")
-        waveform = toWaveform(component["waveform"])
-      else
-        waveform = WAVEFORM_SINE # Default to sine
-      end
-
-      @assert length(amplitude) == length(phase) "The length of amplitude and phase must match."
-
-      if divider isa Vector
-        push!(splattingDict[:components],
-              SweepElectricalComponent(divider=divider,
-                                       amplitude=amplitude,
-                                       waveform=waveform))
-      else
-        push!(splattingDict[:components],
-              PeriodicElectricalComponent(id=compId,
-                                          divider=divider,
-                                          amplitude=amplitude,
-                                          phase=phase,
-                                          waveform=waveform))
-      end
-    end
-    return PeriodicElectricalChannel(;splattingDict...)
-  elseif  haskey(channelDict, "values")
-    divider = channelDict["divider"]
-    values = uparse.(channelDict["values"])
-    if eltype(values) <: Unitful.Voltage
-      values = values .|> u"V"
-    elseif eltype(values) <: Unitful.BField
-      values = values .|> u"T"
+  if haskey(channelDict, "type")
+    type = pop!(channelDict, "type")
+    knownChannels = concreteSubtypes(TxChannel)
+    index = findfirst(x -> x == type, string.(knownChannels))
+    if !isnothing(index) 
+      createFieldChannel(channelID, knownChannels[index], channelDict)
     else
-      error("The value has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
+      error("Channel $channelID has an unknown channel type $type")
     end
+  else
+    error("Channel $channelID has no type field")
+  end
+end
 
-    if mod(divider, length(values)) != 0
-      error("The divider $(divider) needs to be a multiple of the $(length(values))")
-    end
+function createFieldChannel(channelID::AbstractString, channelType::Type{PeriodicElectricalChannel}, channelDict::Dict{String, Any})
+  splattingDict = Dict{Symbol, Any}()
+  splattingDict[:id] = channelID
 
-    return StepwiseElectricalChannel(;id=channelID, divider, values)
-  elseif haskey(channelDict, "offset") && haskey(channelDict, "divider")
-
-    offset = uparse.(channelDict["offset"])
-    if eltype(offset) <: Unitful.Current
-      offset = offset .|> u"A"
-    elseif eltype(offset) <: Unitful.BField
-      offset = offset .|> u"T"
+  if haskey(channelDict, "offset")
+    tmp = uparse.(channelDict["offset"])
+    if eltype(tmp) <: Unitful.Voltage
+      tmp = tmp .|> u"V"
+    elseif eltype(tmp) <: Unitful.BField
+      tmp = tmp .|> u"T"
     else
-      error("The value for an offset has to be either given as a current or in tesla. You supplied the type `$(eltype(tmp))`.")
+      error("The value for an offset has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
     end
+    splattingDict[:offset] = tmp
+  end
 
-    dividerSteps = channelDict["dividerSteps"]
-    divider = channelDict["divider"]
+  splattingDict[:components] = Vector{ElectricalComponent}()
+  components = [(k, v) for (k, v) in channelDict if v isa Dict]
 
-    if mod(divider, dividerSteps) != 0
-      error("The divider $(divider) needs to be a multiple of the dividerSteps $(dividerSteps)")
-    end
+  for (compId, component) in components
+    divider = component["divider"]
 
-    amplitude = uparse.(channelDict["amplitude"])
+    amplitude = uparse.(component["amplitude"])
     if eltype(amplitude) <: Unitful.Current
       amplitude = amplitude .|> u"A"
     elseif eltype(amplitude) <: Unitful.BField
       amplitude = amplitude .|> u"T"
     else
-      error("The value for an amplitude has to be either given as a current or in tesla. You supplied the type `$(eltype(tmp))`.")
+      error("The value for an amplitude has to be either given as a voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
     end
 
-    if haskey(channelDict, "phase")
-      phase = uparse.(channelDict["phase"])
+    if haskey(component, "phase")
+      phase = uparse.(component["phase"])
     else
-      phase = 0.0u"rad"  # Default phase
+      phase = fill(0.0u"rad", length(divider)) # Default phase
     end
 
-    if haskey(channelDict, "waveform")
-      waveform = toWaveform(channelDict["waveform"])
+    if haskey(component, "waveform")
+      waveform = toWaveform(component["waveform"])
     else
       waveform = WAVEFORM_SINE # Default to sine
     end
 
     @assert length(amplitude) == length(phase) "The length of amplitude and phase must match."
-    return ContinuousElectricalChannel(;id=channelID, divider, offset, waveform, amplitude, phase, dividerSteps)
-  elseif haskey(channelDict, "speed") && haskey(channelDict, "positions")
-    speed = uparse(channelDict["speed"])
-    positions = uparse.(channelDict["positions"])
 
-    return MechanicalTranslationChannel(id=channelID, speed=speed, positions=positions)
-  elseif haskey(channelDict, "stepAngle")
-    stepAngle = uconvert.(u"rad", uparse.(channelDict["stepAngle"]))
-
-    return StepwiseMechanicalRotationChannel(id=channelID, stepAngle=stepAngle)
-  elseif haskey(channelDict, "divider") && haskey(channelDict, "phase")
-    divider = Int64.(channelDict["divider"])
-    phase = uconvert.(u"rad", uparse.(channelDict["phase"]))
-
-    return ContinuousMechanicalRotationChannel(id=channelID, divider=divider, phase=phase)
-  else
-    @warn "Could not determine type of channel. Channel dict: $channelDict"
+    if divider isa Vector
+      push!(splattingDict[:components],
+            SweepElectricalComponent(divider=divider,
+                                     amplitude=amplitude,
+                                     waveform=waveform))
+    else
+      push!(splattingDict[:components],
+            PeriodicElectricalComponent(id=compId,
+                                        divider=divider,
+                                        amplitude=amplitude,
+                                        phase=phase,
+                                        waveform=waveform))
+    end
   end
+  return PeriodicElectricalChannel(;splattingDict...)
+end
+
+function createFieldChannel(channelID::AbstractString, channelType::Type{StepwiseElectricalChannel}, channelDict::Dict{String, Any})
+  divider = channelDict["divider"]
+  values = uparse.(channelDict["values"])
+  if eltype(values) <: Unitful.Voltage
+    values = values .|> u"V"
+  elseif eltype(values) <: Unitful.BField
+    values = values .|> u"T"
+  else
+    error("The values have to be either given as a voltage or in tesla. You supplied the type `$(eltype(values))`.")
+  end
+
+  if mod(divider, length(values)) != 0
+    error("The divider $(divider) needs to be a multiple of the $(length(values))")
+  end
+
+  return StepwiseElectricalChannel(;id=channelID, divider, values)
+end
+
+function createFieldChannel(channelID::AbstractString, channelType::Type{ContinuousElectricalChannel}, channelDict::Dict{String, Any})
+  offset = uparse.(channelDict["offset"])
+  if eltype(offset) <: Unitful.Current
+    offset = offset .|> u"A"
+  elseif eltype(offset) <: Unitful.BField
+    offset = offset .|> u"T"
+  else
+    error("The value for an offset has to be either given as a current or in tesla. You supplied the type `$(eltype(offset))`.")
+  end
+
+  dividerSteps = channelDict["dividerSteps"]
+  divider = channelDict["divider"]
+
+  if mod(divider, dividerSteps) != 0
+    error("The divider $(divider) needs to be a multiple of the dividerSteps $(dividerSteps)")
+  end
+
+  amplitude = uparse.(channelDict["amplitude"])
+  if eltype(amplitude) <: Unitful.Current
+    amplitude = amplitude .|> u"A"
+  elseif eltype(amplitude) <: Unitful.BField
+    amplitude = amplitude .|> u"T"
+  else
+    error("The value for an amplitude has to be either given as a current or in tesla. You supplied the type `$(eltype(amplitude))`.")
+  end
+
+  if haskey(channelDict, "phase")
+    phase = uparse.(channelDict["phase"])
+  else
+    phase = 0.0u"rad"  # Default phase
+  end
+
+  if haskey(channelDict, "waveform")
+    waveform = toWaveform(channelDict["waveform"])
+  else
+    waveform = WAVEFORM_SINE # Default to sine
+  end
+
+  @assert length(amplitude) == length(phase) "The length of amplitude and phase must match."
+  return ContinuousElectricalChannel(;id=channelID, divider, offset, waveform, amplitude, phase, dividerSteps)
+end
+
+function createFieldChannel(channelID::AbstractString, channelType::Type{MechanicalTranslationChannel}, channelDict::Dict{String, Any})
+  speed = uparse(channelDict["speed"])
+  positions = uparse.(channelDict["positions"])
+  return MechanicalTranslationChannel(id=channelID, speed=speed, positions=positions)
+end
+
+function createFieldChannel(channelID::AbstractString, channelType::Type{StepwiseMechanicalRotationChannel}, channelDict::Dict{String, Any})
+  stepAngle = uconvert.(u"rad", uparse.(channelDict["stepAngle"]))
+  return StepwiseMechanicalRotationChannel(id=channelID, stepAngle=stepAngle)
+end
+
+function createFieldChannel(channelID::AbstractString, channelType::Type{ContinuousMechanicalRotationChannel}, channelDict::Dict{String, Any})
+  divider = Int64.(channelDict["divider"])
+  phase = uconvert.(u"rad", uparse.(channelDict["phase"]))
+  return ContinuousMechanicalRotationChannel(id=channelID, divider=divider, phase=phase)
 end
 
 name(sequence::Sequence) = sequence.name

@@ -99,3 +99,14 @@ macro keyoptional(expr)
     end
   end
 end
+
+function concreteSubtypes(type::DataType)
+  subtypes_ = subtypes(type)
+  # Only add filtered ones but check all subtypes
+  allSubtypes = filter(x -> !isabstracttype(x), subtypes_)
+  for subtype in subtypes_
+    subsubtypes_ = concreteSubtypes(subtype)
+    allSubtypes = vcat(allSubtypes, subsubtypes_)
+  end
+  return allSubtypes
+end
