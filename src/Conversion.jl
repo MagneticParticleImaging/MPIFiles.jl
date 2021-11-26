@@ -734,7 +734,7 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
   # acquisition parameters
   write(file, "/acquisition/numAverages",  params[:acqNumAverages])
   write(file, "/acquisition/numFrames", get(params,:acqNumFrames,1))
-  write(file, "/acquisition/numPeriods", get(params,:acqNumPeriodsPerFrame,1))
+  write(file, "/acquisition/numPeriodsPerFrame", get(params,:acqNumPeriodsPerFrame,1))
   write(file, "/acquisition/startTime", "$( get(params,:acqStartTime, Dates.unix2datetime(time())) )")
 
   writeIfAvailable(file, "/acquisition/gradient", params, :acqGradient)

@@ -22,7 +22,11 @@ using Tar
 using Pkg.PlatformEngines
 using Pkg.GitTools
 using Pkg.Artifacts
+using Unitful
+using InteractiveUtils
+using UnitfulAngles
 using Inflate, SHA
+using StableRNGs
 
 if VERSION < v"1.1"
   isnothing(x) = x == nothing
@@ -73,7 +77,7 @@ export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
 
 # measurements
 export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
-       measIsTranferFunctionCorrected,
+       measIsTransferFunctionCorrected,
        measIsBGCorrected, measIsBackgroundCorrected, measIsFastFrameAxis,
        measIsFramePermutation, measIsFrequencySelection,
        measIsBGFrame, measIsBackgroundFrame, measIsSpectralLeakageCorrected, measFramePermutation,
@@ -283,6 +287,7 @@ include("RecoData.jl")
 include("DatasetStore/DatasetStore.jl")
 include("MixingFactors.jl")
 include("Positions/Positions.jl")
-
+include("Sequence.jl")
+include("MagneticFieldMeasurement.jl")
 
 end # module
