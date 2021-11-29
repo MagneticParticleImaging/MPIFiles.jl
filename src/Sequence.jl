@@ -4,7 +4,7 @@ export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAW
        WAVEFORM_SAWTOOTH_FALLING, toWaveform, fromWaveform, TxChannel, ElectricalTxChannel, StepwiseElectricalTxChannel,
        MechanicalTxChannel, ElectricalComponent, PeriodicElectricalComponent,
        SweepElectricalComponent, PeriodicElectricalChannel, StepwiseElectricalChannel,
-       ContinuousElectricalChannel, MechanicalTranslationChannel,
+       ContinuousElectricalChannel, ContinuousMechanicalTranslationChannel, StepwiseMechanicalTranslationChannel,
        StepwiseMechanicalRotationChannel, ContinuousMechanicalRotationChannel,
        MagneticField, RxChannel, AcquisitionSettings, Sequence, sequenceFromTOML, fieldDictToFields,
        id, offset, components, divider, amplitude, amplitude!, phase, phase!, waveform, electricalTxChannels,
@@ -55,12 +55,27 @@ function value(w::Waveform, arg_)
   end
 end
 
+abstract type TxChannelType end
+struct ContinuousTxChannel <: TxChannelType end
+struct StepwiseTxChannel <: TxChannelType end
+
 abstract type TxChannel end
 abstract type ElectricalTxChannel <: TxChannel end
 abstract type AcyclicElectricalTxChannel <: ElectricalTxChannel end
 abstract type MechanicalTxChannel <: TxChannel end
 
 abstract type ElectricalComponent end
+
+channeltype(::Type{<:TxChannelType}) = ContinuousTxChannel() #fall-back, by default everything is continuous
+
+isContinuous(channelType::T) where T = isContinuous(channeltype(T), channelType)
+isStepwise(channelType::T) where T = isStepwise(channeltype(T), channelType)
+
+isContinuous(::ContinuousTxChannel, channel) = true
+isContinuous(::StepwiseTxChannel, channel) = false
+
+isStepwise(::ContinuousTxChannel, channel) = false
+isStepwise(::StepwiseTxChannel, channel) = true
 
 "Component of an electrical channel with periodic base function."
 Base.@kwdef struct PeriodicElectricalComponent <: ElectricalComponent
@@ -98,6 +113,8 @@ Base.@kwdef struct PeriodicElectricalChannel <: ElectricalTxChannel
   offset::Union{typeof(1.0u"T"), typeof(1.0u"V")} = 0.0u"T"
 end
 
+channeltype(::Type{<:PeriodicElectricalChannel}) = ContinuousTxChannel()
+
 "Electrical channel with a stepwise definition of values."
 Base.@kwdef struct StepwiseElectricalChannel <: AcyclicElectricalTxChannel
   "ID corresponding to the channel configured in the scanner."
@@ -108,8 +125,10 @@ Base.@kwdef struct StepwiseElectricalChannel <: AcyclicElectricalTxChannel
   values::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"A")}}
 end
 
+channeltype(::Type{<:StepwiseElectricalChannel}) = StepwiseTxChannel()
+
 "Electrical channel with a stepwise definition of values."
-Base.@kwdef struct ContinuousElectricalChannel <: AcyclicElectricalTxChannel
+Base.@kwdef struct ContinuousElectricalChannel <: AcyclicElectricalTxChannel # TODO: Why is this named continuous?
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
   "Divider of sampling frequency."
@@ -126,20 +145,31 @@ Base.@kwdef struct ContinuousElectricalChannel <: AcyclicElectricalTxChannel
   waveform::Waveform = WAVEFORM_SINE
 end
 
+channeltype(::Type{<:ContinuousElectricalChannel}) = StepwiseTxChannel()
 
+"Mechanical channel describing a continuous translational movement."
+Base.@kwdef struct ContinuousMechanicalTranslationChannel <: MechanicalTxChannel
+  "ID corresponding to the channel configured in the scanner."
+  id::AbstractString
+  "Speed of the channel."
+  speed::typeof(1.0u"m/s")
+  "Positions that define the endpoints of the movement."
+  positions::Tuple{typeof(1.0u"m"), typeof(1.0u"m")}
+end
 
-"Mechanical channel describing a translational movement."
-Base.@kwdef struct MechanicalTranslationChannel <: MechanicalTxChannel
+channeltype(::Type{<:ContinuousMechanicalTranslationChannel}) = ContinuousTxChannel()
+
+"Mechanical channel describing a stepwise translational movement."
+Base.@kwdef struct StepwiseMechanicalTranslationChannel <: MechanicalTxChannel
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
   "Speed of the channel. If defined as a vector, this must have a length of length(positions)-1."
   speed::Union{typeof(1.0u"m/s"), Vector{typeof(1.0u"m/s")}}
-  "Positions that define the endpoints of the movement. The movement is
-  repeated after reaching the second endpoint. If the vector contains
-  more than two positions, the positions can be moved to in a step-wise
-  fashion by using triggers."
+  "Positions that define the steps of the movement."
   positions::Vector{typeof(1.0u"m")}
 end
+
+channeltype(::Type{<:StepwiseMechanicalTranslationChannel}) = StepwiseTxChannel()
 
 "Mechanical channel with a triggered stepwise rotation."
 Base.@kwdef struct StepwiseMechanicalRotationChannel <: MechanicalTxChannel
@@ -148,6 +178,8 @@ Base.@kwdef struct StepwiseMechanicalRotationChannel <: MechanicalTxChannel
   "Step angle of the mechanical rotation. If defined as a vector, the steps can be non-equidistant."
   stepAngle::Union{typeof(1.0u"rad"), Vector{typeof(1.0u"rad")}}
 end
+
+channeltype(::Type{<:StepwiseMechanicalRotationChannel}) = StepwiseTxChannel()
 
 "Mechanical channel with a continuous rotation."
 Base.@kwdef struct ContinuousMechanicalRotationChannel <: MechanicalTxChannel
@@ -158,6 +190,8 @@ Base.@kwdef struct ContinuousMechanicalRotationChannel <: MechanicalTxChannel
   "Phase of the mechanical rotation. If defined as a vector, the phases will be swept alongside with the frequencies."
   phase::Union{typeof(1.0u"rad"), Vector{typeof(1.0u"rad")}}
 end
+
+channeltype(::Type{<:ContinuousMechanicalRotationChannel}) = ContinuousTxChannel()
 
 """
 Description of a magnetic field.
@@ -478,7 +512,13 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Continu
   return ContinuousElectricalChannel(;id=channelID, divider, offset, waveform, amplitude, phase, dividerSteps)
 end
 
-function createFieldChannel(channelID::AbstractString, channelType::Type{MechanicalTranslationChannel}, channelDict::Dict{String, Any})
+function createFieldChannel(channelID::AbstractString, channelType::Type{ContinuousMechanicalTranslationChannel}, channelDict::Dict{String, Any})
+  speed = uparse(channelDict["speed"])
+  positions = uparse.(channelDict["positions"])
+  return MechanicalTranslationChannel(id=channelID, speed=speed, positions=positions)
+end
+
+function createFieldChannel(channelID::AbstractString, channelType::Type{StepwiseMechanicalTranslationChannel}, channelDict::Dict{String, Any})
   speed = uparse(channelDict["speed"])
   positions = uparse.(channelDict["positions"])
   return MechanicalTranslationChannel(id=channelID, speed=speed, positions=positions)
