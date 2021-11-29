@@ -1,7 +1,7 @@
 include("Jcampdx.jl")
 
 export BrukerFile, BrukerFileMeas, BrukerFileCalib, BrukerFileFast, latin1toutf8,
-       sfPath, rawDataLengthConsistent
+       sfPath, rawDataLengthConsistent,getBV
 
 function latin1toutf8(str::AbstractString)
   buff = Char[]
@@ -736,3 +736,16 @@ function deltaSampleVolume(b::BrukerFile)
  V = parse(Float64, b["PVM_MPI_TracerVolume"] )*1e-6 # mu l
  return V
 end
+
+
+function getBV(b; recChannels=1:rxNumChannels(b))
+
+  bvFilename = joinpath(b.path*"/pdata", "1", "backgroundVariance")
+  @info bvFilename
+  s = open(bvFilename)
+  nFreq=rxNumFrequencies(b)
+  data = Mmap.mmap(s, Array{Float64,2}, (nFreq,rxNumChannels(b)))
+  close(s)
+  return data
+end
+
