@@ -107,7 +107,7 @@ mutable struct MDFv2Study <: MDFv2InMemoryPart
   end
 end
 
-defaultMDFv2Study() = MDFv2Study()
+defaultMDFv2Study() = MDFv2Study(time=Dates.now(), uuid=UUIDs.uuid4())
 
 "Experiment group of an in-memory MDF"
 mutable struct MDFv2Experiment <: MDFv2InMemoryPart
@@ -143,7 +143,7 @@ mutable struct MDFv2Experiment <: MDFv2InMemoryPart
   end
 end
 
-defaultMDFv2Experiment() = MDFv2Experiment() # Should we create the UUID automatically?
+defaultMDFv2Experiment() = MDFv2Experiment(uuid=UUIDs.uuid4())
 
 "Tracer group of an in-memory MDF; optional"
 mutable struct MDFv2Tracer <: MDFv2InMemoryPart
@@ -346,7 +346,7 @@ mutable struct MDFv2Acquisition <: MDFv2InMemoryPart
   end
 end
 
-defaultMDFv2Acquisition() = MDFv2Acquisition(drivefield=defaultMDFv2Drivefield(), receiver=defaultMDFv2Receiver())
+defaultMDFv2Acquisition() = MDFv2Acquisition(startTime=Dates.now(), drivefield=defaultMDFv2Drivefield(), receiver=defaultMDFv2Receiver())
 
 "Measurement group of an in-memory MDF"
 mutable struct MDFv2Measurement <: MDFv2InMemoryPart
@@ -580,7 +580,9 @@ function check(part::MDFv2Tracer, variables::MDFv2Variables)
   # Check if all sizes match
   for fieldname in fieldnames(MDFv2Tracer)
     field = getproperty(part, fieldname)
-    @assert length(field) == variables.A "Inconsistent dimensions in `$fieldname` in `tracer`."
+    if !isnothing(field)
+      @assert length(field) == variables.A "Inconsistent dimensions in `$fieldname` in `tracer`."
+    end
   end
 end
 
@@ -1185,7 +1187,14 @@ function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
   # Add standard-compliant fields
   for functionSymbol in keys(specificationSymbols)
     f = getfield(MPIFiles, functionSymbol)
-    result = f(mdfFile)
+
+    result = nothing
+    try
+      result = f(mdfFile)
+    catch e
+      @warn "Exception while reading symbol $(functionSymbol). Please check closely."
+    end
+
     if !(isnothing(result) || ismissing(result))
       f(mdf, result) # Call the setter of an MDFv2InMemory with a getter from an MDFFileV2
     end
@@ -1194,7 +1203,14 @@ function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
   # Add non-standard fields
   for functionSymbol in keys(customSymbols)
     f = getfield(MPIFiles, functionSymbol)
-    result = f(mdfFile)
+
+    result = nothing
+    try
+      result = f(mdfFile)
+    catch e
+      @warn "Exception while reading symbol $(functionSymbol). Please check closely."
+    end
+
     if !(isnothing(result) || ismissing(result))
       mdf.custom[string(functionSymbol)] = result
     end
