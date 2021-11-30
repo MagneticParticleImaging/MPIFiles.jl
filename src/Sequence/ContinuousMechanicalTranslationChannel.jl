@@ -17,3 +17,5 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Continu
   positions = uparse.(channelDict["positions"])
   return ContinuousMechanicalTranslationChannel(id=channelID, speed=speed, positions=positions)
 end
+
+cycleDuration(channel::ContinuousMechanicalTranslationChannel, baseFrequency::typeof(1.0u"Hz")) = upreferred(abs(channel.positions[1]-channel.positions[2])/speed)

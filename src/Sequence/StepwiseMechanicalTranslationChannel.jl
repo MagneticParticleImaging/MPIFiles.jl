@@ -17,3 +17,6 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Stepwis
   positions = uparse.(channelDict["positions"])
   return StepwiseMechanicalTranslationChannel(id=channelID, speed=speed, positions=positions)
 end
+
+cycleDuration(channel::StepwiseMechanicalTranslationChannel, baseFrequency::typeof(1.0u"Hz")) = nothing
+stepsPerCycle(channel::StepwiseMechanicalTranslationChannel) = length(channel.positions)

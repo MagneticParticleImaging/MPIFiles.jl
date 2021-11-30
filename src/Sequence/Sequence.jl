@@ -28,6 +28,12 @@ isStepwise(channelType::T) where T = isStepwise(channeltype(T), channelType)
 isStepwise(::ContinuousTxChannel, channel) = false
 isStepwise(::StepwiseTxChannel, channel) = true
 
+export stepsPerCycle
+stepsPerCycle(channelType::T) where T = channeltype(T) isa StepwiseTxChannel ? error("Method not defined for $T.") : nothing
+
+export cycleDuration
+cycleDuration(::T) where T <: TxChannel = error("The method has not been implemented for T")
+
 include("PeriodicElectricalChannel.jl")
 include("StepwiseElectricalChannel.jl")
 include("ContinuousElectricalChannel.jl")

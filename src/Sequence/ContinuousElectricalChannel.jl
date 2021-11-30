@@ -9,7 +9,7 @@ Base.@kwdef struct ContinuousElectricalChannel <: AcyclicElectricalTxChannel # T
   "Divider of the component."
   divider::Integer
   "Amplitude (peak) of the component for each period of the field."
-  amplitude::Union{typeof(1.0u"T"), typeof(1.0u"A")} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
+  amplitude::Union{typeof(1.0u"T"), typeof(1.0u"A"), typeof(1.0u"A")} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
   "Phase of the component for each period of the field."
   phase::typeof(1.0u"rad")
   "Offset of the channel. If defined in Tesla, the calibration configured in the scanner will be used."
@@ -24,6 +24,8 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Continu
   offset = uparse.(channelDict["offset"])
   if eltype(offset) <: Unitful.Current
     offset = offset .|> u"A"
+  elseif eltype(offset) <: Unitful.Voltage
+    offset = offset .|> u"V"
   elseif eltype(offset) <: Unitful.BField
     offset = offset .|> u"T"
   else
@@ -40,6 +42,8 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Continu
   amplitude = uparse.(channelDict["amplitude"])
   if eltype(amplitude) <: Unitful.Current
     amplitude = amplitude .|> u"A"
+  elseif eltype(amplitude) <: Unitful.Voltage
+    amplitude = amplitude .|> u"V"
   elseif eltype(amplitude) <: Unitful.BField
     amplitude = amplitude .|> u"T"
   else
@@ -69,4 +73,4 @@ function values(channel::ContinuousElectricalChannel)
                        for p=0:(numPatches-1)]
 end
 
-#cycleDuration(channel::ContinuousElectricalChannel, baseFrequency::typeof(1.0u"Hz")) = 
+cycleDuration(channel::ContinuousElectricalChannel, baseFrequency::typeof(1.0u"Hz")) = baseFrequency/channel.divider

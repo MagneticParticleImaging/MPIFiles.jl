@@ -115,3 +115,5 @@ phase!(component::PeriodicElectricalComponent, value::typeof(1.0u"rad"); period:
 phase(component::SweepElectricalComponent, trigger::Integer=1) = 0.0u"rad"
 waveform(component::ElectricalComponent) = component.waveform
 id(component::PeriodicElectricalComponent) = component.id
+
+cycleDuration(channel::PeriodicElectricalComponent, baseFrequency::typeof(1.0u"Hz")) = lcm([comp.divider for comp in components(channel)])/baseFrequency

@@ -6,8 +6,8 @@ Base.@kwdef struct StepwiseElectricalChannel <: AcyclicElectricalTxChannel
   id::AbstractString
   "Divider of the component."
   divider::Integer
-  "values corresponding to the individual steps."
-  values::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"A")}}
+  "Values corresponding to the individual steps."
+  values::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"A")}, Vector{typeof(1.0u"V")}}
 end
 
 channeltype(::Type{<:StepwiseElectricalChannel}) = StepwiseTxChannel()
@@ -17,6 +17,8 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Stepwis
   values = uparse.(channelDict["values"])
   if eltype(values) <: Unitful.Current
     values = values .|> u"A"
+  elseif eltype(values) <: Unitful.Voltage
+    values = values .|> u"V"
   elseif eltype(values) <: Unitful.BField
     values = values .|> u"T"
   else
@@ -31,3 +33,6 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Stepwis
 end
 
 values(channel::StepwiseElectricalChannel) = channel.values
+
+cycleDuration(channel::StepwiseElectricalChannel, baseFrequency::typeof(1.0u"Hz")) = upreferred(channel.divider/baseFrequency)
+stepsPerCycle(channel::StepwiseElectricalChannel) = length(channel.values)

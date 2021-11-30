@@ -4,8 +4,8 @@ export StepwiseMechanicalRotationChannel
 Base.@kwdef struct StepwiseMechanicalRotationChannel <: MechanicalTxChannel
   "ID corresponding to the channel configured in the scanner."
   id::AbstractString
-  "Step angle of the mechanical rotation. If defined as a vector, the steps can be non-equidistant."
-  stepAngle::Union{typeof(1.0u"rad"), Vector{typeof(1.0u"rad")}}
+  "Step angle of the mechanical rotation."
+  stepAngle::typeof(1.0u"rad") #TODO: Should we have a stepsPerSecond value?
 end
 
 channeltype(::Type{<:StepwiseMechanicalRotationChannel}) = StepwiseTxChannel()
@@ -14,3 +14,6 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Stepwis
   stepAngle = uconvert.(u"rad", uparse.(channelDict["stepAngle"]))
   return StepwiseMechanicalRotationChannel(id=channelID, stepAngle=stepAngle)
 end
+
+cycleDuration(channel::StepwiseMechanicalRotationChannel, baseFrequency::typeof(1.0u"Hz")) = nothing
+stepsPerCycle(channel::StepwiseMechanicalRotationChannel) = round(Int64, 2π/channel.stepAngle)
