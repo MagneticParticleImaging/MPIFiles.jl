@@ -68,7 +68,7 @@ Base.@kwdef struct PeriodicElectricalComponent <: ElectricalComponent
   "Divider of the component."
   divider::Integer
   "Amplitude (peak) of the component for each period of the field."
-  amplitude::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"V")}} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
+  amplitude::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"V")}, Vector{typeof(1.0u"A")}} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
   "Phase of the component for each period of the field."
   phase::Vector{typeof(1.0u"rad")}
   "Waveform of the component."
@@ -82,7 +82,7 @@ Base.@kwdef struct SweepElectricalComponent <: ElectricalComponent
   "Divider of the component."
   divider::Vector{Integer}
   "Amplitude (peak) of the channel for each divider in the sweep. Must have the same dimension as `divider`."
-  amplitude::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"V")}}
+  amplitude::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"V")}, Vector{typeof(1.0u"A")}}
   "Waveform of the component."
   waveform::Waveform = WAVEFORM_SINE
 end
@@ -95,7 +95,7 @@ Base.@kwdef struct PeriodicElectricalChannel <: ElectricalTxChannel
   "Components added for this channel."
   components::Vector{ElectricalComponent}
   "Offset of the channel. If defined in Tesla, the calibration configured in the scanner will be used."
-  offset::Union{typeof(1.0u"T"), typeof(1.0u"V")} = 0.0u"T"
+  offset::Union{typeof(1.0u"T"), typeof(1.0u"V"), typeof(1.0u"A")} = 0.0u"T"
 end
 
 "Electrical channel with a stepwise definition of values."
@@ -105,7 +105,7 @@ Base.@kwdef struct StepwiseElectricalChannel <: AcyclicElectricalTxChannel
   "Divider of the component."
   divider::Integer
   "values corresponding to the individual steps."
-  values::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"A")}}
+  values::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"V")}, Vector{typeof(1.0u"A")}}
 end
 
 "Electrical channel with a stepwise definition of values."
@@ -117,11 +117,11 @@ Base.@kwdef struct ContinuousElectricalChannel <: AcyclicElectricalTxChannel
   "Divider of the component."
   divider::Integer
   "Amplitude (peak) of the component for each period of the field."
-  amplitude::Union{typeof(1.0u"T"), typeof(1.0u"A")} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
+  amplitude::Union{typeof(1.0u"T"), typeof(1.0u"V"), typeof(1.0u"A")} # Is it really the right choice to have the periods here? Or should it be moved to the MagneticField?
   "Phase of the component for each period of the field."
   phase::typeof(1.0u"rad")
   "Offset of the channel. If defined in Tesla, the calibration configured in the scanner will be used."
-  offset::Union{typeof(1.0u"T"), typeof(1.0u"A")} = 0.0u"T"
+  offset::Union{typeof(1.0u"T"), typeof(1.0u"V"), typeof(1.0u"A")} = 0.0u"T"
   "Waveform of the component."
   waveform::Waveform = WAVEFORM_SINE
 end
@@ -364,10 +364,12 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Periodi
     tmp = uparse.(channelDict["offset"])
     if eltype(tmp) <: Unitful.Current
       tmp = tmp .|> u"A"
+    elseif eltype(tmp) <: Unitful.Voltage
+      tmp = tmp .|> u"V"
     elseif eltype(tmp) <: Unitful.BField
       tmp = tmp .|> u"T"
     else
-      error("The value for an offset has to be either given as a current or in tesla. You supplied the type `$(eltype(tmp))`.")
+      error("The value for an offset has to be either given as a current, voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
     end
     splattingDict[:offset] = tmp
   end
@@ -381,10 +383,12 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Periodi
     amplitude = uparse.(component["amplitude"])
     if eltype(amplitude) <: Unitful.Current
       amplitude = amplitude .|> u"A"
+    elseif eltype(amplitude) <: Unitful.Voltage
+      amplitude = amplitude .|> u"V"
     elseif eltype(amplitude) <: Unitful.BField
       amplitude = amplitude .|> u"T"
     else
-      error("The value for an amplitude has to be either given as a current or in tesla. You supplied the type `$(eltype(tmp))`.")
+      error("The value for an amplitude has to be either given as a current, voltage or in tesla. You supplied the type `$(eltype(tmp))`.")
     end
 
     if haskey(component, "phase")
@@ -423,10 +427,12 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Stepwis
   values = uparse.(channelDict["values"])
   if eltype(values) <: Unitful.Current
     values = values .|> u"A"
+  elseif eltype(values) <: Unitful.Voltage
+    values = values .|> u"V"
   elseif eltype(values) <: Unitful.BField
     values = values .|> u"T"
   else
-    error("The values have to be either given as a current or in tesla. You supplied the type `$(eltype(values))`.")
+    error("The values have to be either given as a current, voltage or in tesla. You supplied the type `$(eltype(values))`.")
   end
 
   if mod(divider, length(values)) != 0
@@ -440,10 +446,12 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Continu
   offset = uparse.(channelDict["offset"])
   if eltype(offset) <: Unitful.Current
     offset = offset .|> u"A"
+  elseif eltype(offset) <: Unitful.Voltage
+    offset = offset .|> u"V"
   elseif eltype(offset) <: Unitful.BField
     offset = offset .|> u"T"
   else
-    error("The value for an offset has to be either given as a current or in tesla. You supplied the type `$(eltype(offset))`.")
+    error("The value for an offset has to be either given as a current, voltage or in tesla. You supplied the type `$(eltype(offset))`.")
   end
 
   dividerSteps = channelDict["dividerSteps"]
@@ -456,10 +464,12 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Continu
   amplitude = uparse.(channelDict["amplitude"])
   if eltype(amplitude) <: Unitful.Current
     amplitude = amplitude .|> u"A"
+  elseif eltype(amplitude) <: Unitful.Voltage
+    amplitude = amplitude .|> u"V"
   elseif eltype(amplitude) <: Unitful.BField
     amplitude = amplitude .|> u"T"
   else
-    error("The value for an amplitude has to be either given as a current or in tesla. You supplied the type `$(eltype(amplitude))`.")
+    error("The value for an amplitude has to be either given as a current, voltage or in tesla. You supplied the type `$(eltype(amplitude))`.")
   end
 
   if haskey(channelDict, "phase")
