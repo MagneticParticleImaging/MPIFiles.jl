@@ -112,6 +112,7 @@ function Sequence(filename::AbstractString)
   return sequenceFromTOML(filename)
 end
 
+export sequenceFromTOML
 function sequenceFromTOML(filename::AbstractString)
   sequenceDict = TOML.parsefile(filename)
 
