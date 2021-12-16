@@ -4,7 +4,17 @@ struct MDFDatasetStore <: DatasetStore
   path::String
 
   function MDFDatasetStore(path::String)
-    path = abspath(expanduser(path))
+    # On Windows, expanding the user path is not supported out of the box, but we want to do this anyways
+    if startswith(path, "~")
+      @static if Sys.islinux() || Sys.isapple()
+        path = expanduser(path)
+      elseif Sys.iswindows()
+        path = normpath(homedir(), path[3:end])
+      else
+        error("Operating system not supported.")
+      end
+    end
+    
     mkpath(path)
     mkpath(joinpath(path,"measurements"))
     mkpath(joinpath(path,"reconstructions"))
