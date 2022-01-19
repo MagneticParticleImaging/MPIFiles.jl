@@ -3,7 +3,7 @@ module MPIFiles
 using UUIDs
 using Graphics: @mustimplement
 
-using SparsityOperators
+using Reexport
 @reexport using SparsityOperators
 @reexport using AxisArrays
 const axes = Base.axes
