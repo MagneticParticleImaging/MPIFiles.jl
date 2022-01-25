@@ -98,6 +98,11 @@ function makeTarGzip(d::DatasetStore)
   makeTarGzip(d.path, filename)
 end
 
+function makeTarGzip(path::String)
+  filename = joinpath(splitpath(path)...)*".tar.gz" # this ensures that a trailing / is removed
+  makeTarGzip(path, filename)
+end
+
 function sha256sum(tarball_path)
   return open(tarball_path, "r") do io
       return bytes2hex(sha256(io))
@@ -113,6 +118,24 @@ function createArtifact(d::DatasetStore, url="https://")
   name = splitpath(d.path)[end]
   
 
+  hash = create_artifact() do artifact_dir
+    unpack(tarball, artifact_dir)
+  end
+
+  bind_artifact!(artifact_toml, name, hash;
+                 download_info=[(url, tarball_hash)],lazy=true, force=true)
+  remove_artifact(hash)
+end
+
+
+function createArtifact(path::String, url="https://")
+  makeTarGzip(path)
+  tarball = joinpath(splitpath(path)...)*".tar.gz" 
+
+  artifact_toml = joinpath(path, "..", "Artifacts.toml")
+  tarball_hash = sha256sum(tarball)
+  name = splitpath(path)[end]
+  
   hash = create_artifact() do artifact_dir
     unpack(tarball, artifact_dir)
   end
