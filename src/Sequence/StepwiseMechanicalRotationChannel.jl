@@ -9,6 +9,7 @@ Base.@kwdef struct StepwiseMechanicalRotationChannel <: MechanicalTxChannel
 end
 
 channeltype(::Type{<:StepwiseMechanicalRotationChannel}) = StepwiseTxChannel()
+mechanicalMovementType(::Type{<:StepwiseMechanicalRotationChannel}) = RotationTxChannel()
 
 function createFieldChannel(channelID::AbstractString, channelType::Type{StepwiseMechanicalRotationChannel}, channelDict::Dict{String, Any})
   stepAngle = uconvert.(u"rad", uparse.(channelDict["stepAngle"]))

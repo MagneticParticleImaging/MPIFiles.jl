@@ -11,6 +11,7 @@ Base.@kwdef struct ContinuousMechanicalRotationChannel <: MechanicalTxChannel
 end
 
 channeltype(::Type{<:ContinuousMechanicalRotationChannel}) = ContinuousTxChannel()
+mechanicalMovementType(::Type{<:ContinuousMechanicalRotationChannel}) = RotationTxChannel()
 
 function createFieldChannel(channelID::AbstractString, channelType::Type{ContinuousMechanicalRotationChannel}, channelDict::Dict{String, Any})
   divider = Int64.(channelDict["divider"])

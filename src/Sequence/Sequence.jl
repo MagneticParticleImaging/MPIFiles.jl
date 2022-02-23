@@ -7,6 +7,11 @@ abstract type TxChannelType end
 struct ContinuousTxChannel <: TxChannelType end
 struct StepwiseTxChannel <: TxChannelType end
 
+export TxMechanicalMovementType, RotationTxChannel, TranslationTxChannel
+abstract type TxMechanicalMovementType end
+struct RotationTxChannel <: TxChannelType end
+struct TranslationTxChannel <: TxChannelType end
+
 export TxChannel, ElectricalTxChannel, AcyclicElectricalTxChannel, MechanicalTxChannel, ElectricalComponent
 abstract type TxChannel end
 abstract type ElectricalTxChannel <: TxChannel end
@@ -19,14 +24,27 @@ export channeltype
 channeltype(::Type{<:TxChannelType}) = ContinuousTxChannel() #fall-back, by default everything is continuous
 
 export isContinuous
-isContinuous(channelType::T) where T = isContinuous(channeltype(T), channelType)
+isContinuous(channelType::T) where T <: TxChannel = isContinuous(channeltype(T), channelType)
 isContinuous(::ContinuousTxChannel, channel) = true
 isContinuous(::StepwiseTxChannel, channel) = false
 
 export isStepwise
-isStepwise(channelType::T) where T = isStepwise(channeltype(T), channelType)
+isStepwise(channelType::T) where T <: TxChannel = isStepwise(channeltype(T), channelType)
 isStepwise(::ContinuousTxChannel, channel) = false
 isStepwise(::StepwiseTxChannel, channel) = true
+
+export mechanicalMovementType
+@mustimplement mechanicalMovementType(::Type{<:MechanicalTxChannel})
+
+export doesRotationMovement
+doesRotationMovement(channelType::T) where T <: MechanicalTxChannel = doesRotationMovement(mechanicalMovementType(T), channelType)
+doesRotationMovement(::TxMechanicalMovementType, channel) = false
+doesRotationMovement(::RotationTxChannel, channel) = true
+
+export doesTranslationMovement
+doesTranslationMovement(channelType::T) where T <: MechanicalTxChannel = doesTranslationMovement(mechanicalMovementType(T), channelType)
+doesTranslationMovement(::TxMechanicalMovementType, channel) = false
+doesTranslationMovement(::TranslationTxChannel, channel) = true
 
 export stepsPerCycle
 stepsPerCycle(channelType::T) where T = channeltype(T) isa StepwiseTxChannel ? error("Method not defined for $T.") : nothing
@@ -239,6 +257,12 @@ export acyclicElectricalTxChannels
 acyclicElectricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} =
   [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: StepwiseElectricalChannel || typeof(channel) <: ContinuousElectricalChannel]
 
+export hasElectricalTxChannels
+hasElectricalTxChannels(sequence::Sequence) = length(electricalTxChannels(sequence)) > 0
+
+export hasMechanicalTxChannels
+hasMechanicalTxChannels(sequence::Sequence) = length(mechanicalTxChannels(sequence)) > 0
+
 export id
 id(channel::TxChannel) = channel.id
 id(channel::RxChannel) = channel.id
@@ -270,7 +294,7 @@ export acqNumPeriodsPerFrame
 function acqNumPeriodsPerFrame(sequence::Sequence)
   channels = acyclicElectricalTxChannels(sequence)
   samplesPerCycle = lcm(dfDivider(sequence))
-  numPeriods = [ div(c.divider,samplesPerCycle) for c in channels ]
+  numPeriods = [div(c.divider, samplesPerCycle) for c in channels ]
 
   if minimum(numPeriods) != maximum(numPeriods)
     error("Sequence contains acyclic electrical channels of different length: $(numPeriods)")
@@ -292,7 +316,7 @@ function acqNumPeriodsPerPatch(sequence::Sequence)
 end
 
 export acqNumPatches
-acqNumPatches(sequence::Sequence) = div(acqNumPeriodsPerFrame(sequence),acqNumPeriodsPerPatch(sequence))
+acqNumPatches(sequence::Sequence) = div(acqNumPeriodsPerFrame(sequence), acqNumPeriodsPerPatch(sequence))
 
 export acqOffsetField
 acqOffsetField(sequence::Sequence) = nothing # TODO: Implement
@@ -378,6 +402,16 @@ function dfWaveform(sequence::Sequence) # TODO: How do we integrate the mechanic
   return result
 end
 
+export needsControl
+needsControl(sequence::Sequence) = any([field.control for field in sequence.fields])
+
+export needsDecoupling
+needsDecoupling(sequence::Sequence) = any([field.decouple for field in sequence.fields])
+
+export needsControlOrDecoupling
+needsControlOrDecoupling(sequence::Sequence) = needsControl(sequence) || needsDecoupling(sequence)
+
+# Functions working on the acquisition are define here because they need Sequence to be defined
 export acqNumFrames
 acqNumFrames(sequence::Sequence) = sequence.acquisition.numFrames
 acqNumFrames(sequence::Sequence, val) = sequence.acquisition.numFrames = val
@@ -398,7 +432,7 @@ export rxBandwidth
 rxBandwidth(sequence::Sequence) = sequence.acquisition.bandwidth
 
 export rxSamplingRate
-rxSamplingRate(sequence::Sequence) = 2 * sequence.acquisition.bandwidth
+rxSamplingRate(sequence::Sequence) = 2 * rxBandwidth(sequence)
 
 export rxNumChannels
 rxNumChannels(sequence::Sequence) = length(rxChannels(sequence))
@@ -411,12 +445,3 @@ rxNumSamplesPerPeriod(sequence::Sequence) = rxNumSamplingPoints(sequence)
 
 export rxChannels
 rxChannels(sequence::Sequence) = sequence.acquisition.channels
-
-export needsControl
-needsControl(sequence::Sequence) = any([field.control for field in sequence.fields])
-
-export needsDecoupling
-needsDecoupling(sequence::Sequence) = any([field.decouple for field in sequence.fields])
-
-export needsControlOrDecoupling
-needsControlOrDecoupling(sequence::Sequence) = needsControl(sequence) || needsDecoupling(sequence)

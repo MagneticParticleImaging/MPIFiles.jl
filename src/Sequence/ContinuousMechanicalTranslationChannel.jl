@@ -11,6 +11,7 @@ Base.@kwdef struct ContinuousMechanicalTranslationChannel <: MechanicalTxChannel
 end
 
 channeltype(::Type{<:ContinuousMechanicalTranslationChannel}) = ContinuousTxChannel()
+mechanicalMovementType(::Type{<:ContinuousMechanicalTranslationChannel}) = TranslationTxChannel()
 
 function createFieldChannel(channelID::AbstractString, channelType::Type{ContinuousMechanicalTranslationChannel}, channelDict::Dict{String, Any})
   speed = uparse(channelDict["speed"])
