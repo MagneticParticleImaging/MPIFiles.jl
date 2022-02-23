@@ -102,18 +102,29 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Periodi
   return PeriodicElectricalChannel(;splattingDict...)
 end
 
+export offset
 offset(channel::PeriodicElectricalChannel) = channel.offset
 
-# Periodic components
+export components
 components(channel::PeriodicElectricalChannel) = channel.components
+
+export divider
 divider(component::ElectricalComponent, trigger::Integer=1) = length(component.divider) == 1 ? component.divider[1] : component.divider[trigger]
+
+export amplitude, amplitude!
 amplitude(component::PeriodicElectricalComponent; period::Integer=1) = component.amplitude[period]
 amplitude!(component::PeriodicElectricalComponent, value::Union{typeof(1.0u"T"),typeof(1.0u"V")}; period::Integer=1) = component.amplitude[period] = value
 amplitude(component::SweepElectricalComponent; trigger::Integer=1) = component.amplitude[period]
+
+export phase, phase!
 phase(component::PeriodicElectricalComponent, trigger::Integer=1) = component.phase[trigger]
 phase!(component::PeriodicElectricalComponent, value::typeof(1.0u"rad"); period::Integer=1) = component.phase[period] = value
 phase(component::SweepElectricalComponent, trigger::Integer=1) = 0.0u"rad"
+
+export waveform
 waveform(component::ElectricalComponent) = component.waveform
+
+export id
 id(component::PeriodicElectricalComponent) = component.id
 
 cycleDuration(channel::PeriodicElectricalComponent, baseFrequency::typeof(1.0u"Hz")) = lcm([comp.divider for comp in components(channel)])/baseFrequency
