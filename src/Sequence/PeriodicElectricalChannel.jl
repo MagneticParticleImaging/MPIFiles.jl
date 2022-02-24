@@ -108,6 +108,8 @@ offset(channel::PeriodicElectricalChannel) = channel.offset
 export components
 components(channel::PeriodicElectricalChannel) = channel.components
 
+cycleDuration(channel::PeriodicElectricalChannel, baseFrequency::typeof(1.0u"Hz")) = lcm([comp.divider for comp in components(channel)])/baseFrequency
+
 export divider
 divider(component::ElectricalComponent, trigger::Integer=1) = length(component.divider) == 1 ? component.divider[1] : component.divider[trigger]
 
@@ -126,5 +128,3 @@ waveform(component::ElectricalComponent) = component.waveform
 
 export id
 id(component::PeriodicElectricalComponent) = component.id
-
-cycleDuration(channel::PeriodicElectricalComponent, baseFrequency::typeof(1.0u"Hz")) = lcm([comp.divider for comp in components(channel)])/baseFrequency

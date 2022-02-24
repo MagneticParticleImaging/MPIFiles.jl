@@ -50,7 +50,7 @@ export stepsPerCycle
 stepsPerCycle(channelType::T) where T = channeltype(T) isa StepwiseTxChannel ? error("Method not defined for $T.") : nothing
 
 export cycleDuration
-cycleDuration(::T) where T <: TxChannel = error("The method has not been implemented for T")
+cycleDuration(::T, var) where T <: TxChannel = error("The method has not been implemented for T")
 
 include("PeriodicElectricalChannel.jl")
 include("StepwiseElectricalChannel.jl")
@@ -263,6 +263,12 @@ hasElectricalTxChannels(sequence::Sequence) = length(electricalTxChannels(sequen
 export hasMechanicalTxChannels
 hasMechanicalTxChannels(sequence::Sequence) = length(mechanicalTxChannels(sequence)) > 0
 
+export hasPeriodicElectricalTxChannels
+hasPeriodicElectricalTxChannels(sequence::Sequence) = length(periodicElectricalTxChannels(sequence)) > 0
+
+export hasAcyclicElectricalTxChannels
+hasAcyclicElectricalTxChannels(sequence::Sequence) = length(acyclicElectricalTxChannels(sequence)) > 0
+
 export id
 id(channel::TxChannel) = channel.id
 id(channel::RxChannel) = channel.id
@@ -292,27 +298,38 @@ acqGradient(sequence::Sequence) = nothing # TODO: Implement
 
 export acqNumPeriodsPerFrame
 function acqNumPeriodsPerFrame(sequence::Sequence)
-  channels = acyclicElectricalTxChannels(sequence)
-  samplesPerCycle = lcm(dfDivider(sequence))
-  numPeriods = [div(c.divider, samplesPerCycle) for c in channels ]
+  #TODO: We can't limit this to acyclic channels. What is the correct number of periods per frame with mechanical channels?
+  if hasAcyclicElectricalTxChannels(sequence)
+    channels = acyclicElectricalTxChannels(sequence)
+    samplesPerCycle = lcm(dfDivider(sequence))
+    numPeriods = [div(c.divider, samplesPerCycle) for c in channels ]
 
-  if minimum(numPeriods) != maximum(numPeriods)
-    error("Sequence contains acyclic electrical channels of different length: $(numPeriods)")
+    if minimum(numPeriods) != maximum(numPeriods)
+      error("Sequence contains acyclic electrical channels of different length: $(numPeriods)")
+    end
+    return first(numPeriods)
+  else
+    channels = electricalTxChannels(sequence)
+    return round(Int64, lcm(dfDivider(sequence))/minimum(dfDivider(sequence)))
   end
-  return first(numPeriods)
 end
 
 export acqNumPeriodsPerPatch
 function acqNumPeriodsPerPatch(sequence::Sequence)
-  channels = acyclicElectricalTxChannels(sequence)
-  samplesPerCycle = lcm(dfDivider(sequence))
-  stepsPerCycle = [ typeof(c) <: StepwiseElectricalChannel ?
-                             div(c.divider,length(c.values)*samplesPerCycle) :
-                             div(c.dividerSteps,samplesPerCycle) for c in channels ]
-  if minimum(stepsPerCycle) != maximum(stepsPerCycle)
-    error("Sequence contains acyclic electrical channels of different length: $(stepsPerCycle)")
+  #TODO: We can't limit this to acyclic channels. What is the correct number of periods per frame with mechanical channels?
+  if hasAcyclicElectricalTxChannels(sequence)
+    channels = acyclicElectricalTxChannels(sequence)
+    samplesPerCycle = lcm(dfDivider(sequence))
+    stepsPerCycle = [ typeof(c) <: StepwiseElectricalChannel ?
+                              div(c.divider,length(c.values)*samplesPerCycle) :
+                              div(c.dividerSteps,samplesPerCycle) for c in channels ]
+    if minimum(stepsPerCycle) != maximum(stepsPerCycle)
+      error("Sequence contains acyclic electrical channels of different length: $(stepsPerCycle)")
+    end
+    return first(stepsPerCycle)
+  else
+    return 1
   end
-  return first(stepsPerCycle)
 end
 
 export acqNumPatches
