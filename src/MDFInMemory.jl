@@ -1362,3 +1362,88 @@ function measDataRaw(mdf::MDFv2InMemory, value)
 end
 
 filepath(mdf::MDFv2InMemory) = nothing # Has to be implemented...
+
+# Helpers
+
+export addTracer
+function addTracer(mdfPart::MDFv2Tracer;
+                   batch::Union{String, Missing},
+                   concentration::Union{Float64, Missing},
+                   injectionTime::Union{DateTime, Nothing},
+                   name::Union{String, Missing},
+                   solute::Union{String, Missing},
+                   vendor::Union{String, Missing},
+                   volume::Union{Float64, Missing})
+
+  if !ismissing(tracerBatch(mdfPart))
+    if !ismissing(batch)
+      tracerBatch(mdfPart, vcat(tracerBatch(mdfPart), batch))
+    else
+      tracerBatch(mdfPart, vcat(tracerBatch(mdfPart), "N.A."))
+    end
+  else
+    tracerBatch(mdfPart, [batch])
+  end
+
+  if !ismissing(tracerConcentration(mdfPart))
+    if !ismissing(concentration)
+      tracerConcentration(mdfPart, vcat(tracerConcentration(mdfPart), concentration))
+    else
+      tracerConcentration(mdfPart, vcat(tracerConcentration(mdfPart), -1.0))
+    end
+  else
+    tracerConcentration(mdfPart, [concentration])
+  end
+
+  if !isnothing(tracerInjectionTime(mdfPart))
+    if !isnothing(injectionTime)
+      tracerInjectionTime(mdfPart, vcat(tracerInjectionTime(mdfPart), injectionTime))
+    else
+      tracerInjectionTime(mdfPart, vcat(tracerInjectionTime(mdfPart), DateTime(0)))
+    end
+  else
+    tracerInjectionTime(mdfPart, [injectionTime])
+  end
+
+  if !ismissing(tracerName(mdfPart))
+    if !ismissing(name)
+      tracerName(mdfPart, vcat(tracerName(mdfPart), name))
+    else
+      tracerName(mdfPart, vcat(tracerName(mdfPart), "N.A."))
+    end
+  else
+    tracerName(mdfPart, [name])
+  end
+
+  if !ismissing(tracerSolute(mdfPart))
+    if !ismissing(solute)
+      tracerSolute(mdfPart, vcat(tracerSolute(mdfPart), solute))
+    else
+      tracerSolute(mdfPart, vcat(tracerSolute(mdfPart), "N.A."))
+    end
+  else
+    tracerSolute(mdfPart, [solute])
+  end
+
+  if !ismissing(tracerVendor(mdfPart))
+    if !ismissing(vendor)
+      tracerVendor(mdfPart, vcat(tracerVendor(mdfPart), vendor))
+    else
+      tracerVendor(mdfPart, vcat(tracerVendor(mdfPart), "N.A."))
+    end
+  else
+    tracerVendor(mdfPart, [vendor])
+  end
+
+  if !ismissing(tracerVolume(mdfPart))
+    if !ismissing(volume)
+      tracerVolume(mdfPart, vcat(tracerVolume(mdfPart), volume))
+    else
+      tracerVolume(mdfPart, vcat(tracerVolume(mdfPart), "N.A."))
+    end
+  else
+    tracerVolume(mdfPart, [volume])
+  end
+
+end
+addTracer(mdf::MDFv2InMemory; kwargs...) = addTracer(tracer(mdf); kwargs...)
