@@ -997,23 +997,33 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
 
         @eval begin
           # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          function $(functionSymbol)(mdfPart::$fieldtype)::Union{$partFieldtype, $missingOrNothing}
+            return mdfPart.$partFieldname
+          end
+
+          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          function $(functionSymbol)(mdfPart::$fieldtype, value::Union{$partFieldtype, $missingOrNothing})
+            mdfPart.$partFieldname = value
+          end
+
+          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
           function $(functionSymbol)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing}
-            if !(isnothing(mdf.$fieldname) || ismissing(mdf.$fieldname))
-              return mdf.$fieldname.$partFieldname
+            if !(isnothing($fieldname(mdf)) || ismissing($fieldname(mdf)))
+              return $(functionSymbol)($fieldname(mdf))
             else
-              return mdf.$fieldname
+              return $fieldname(mdf)
             end
           end
 
           # TODO: Add docstring from struct; I did not yet find a way to retrieve it
           function $(functionSymbol)(mdf::MDFv2InMemory, value::Union{$partFieldtype, $missingOrNothing})
             # Automatically create fields if they do not exist
-            if isnothing(mdf.$fieldname) || ismissing(mdf.$fieldname)
+            if isnothing($fieldname(mdf)) || ismissing($fieldname(mdf))
               @debug "Creating field $($fieldnameStr)"
-              mdf.$fieldname = $fieldtype()
+              $fieldname(mdf, $fieldtype())
             end
 
-            mdf.$fieldname.$partFieldname = value
+            $(functionSymbol)($fieldname(mdf), value)
           end
         end
 
@@ -1034,23 +1044,33 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
         # Create getter and for the whole group
         @eval begin
           # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          function $(partFieldname)(mdfPart::$fieldtype)::Union{$partFieldtype, $missingOrNothing}
+            return mdfPart.$partFieldname
+          end
+
+          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          function $(partFieldname)(mdfPart::$fieldtype, value::Union{$partFieldtype, $missingOrNothing})
+            mdfPart.$partFieldname = value
+          end
+
+          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
           function $(partFieldname)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing}
-            if !(isnothing(mdf.$fieldname) || ismissing(mdf.$fieldname))
-              return mdf.$fieldname.$partFieldname
+            if !(isnothing($fieldname(mdf)) || ismissing($fieldname(mdf)))
+              return $partFieldname($fieldname(mdf))
             else
-              return mdf.$fieldname
+              return $fieldname(mdf)
             end
           end
 
           # TODO: Add docstring from struct; I did not yet find a way to retrieve it
           function $(partFieldname)(mdf::MDFv2InMemory, value::Union{$partFieldtype, $missingOrNothing})
             # Automatically create fields if they do not exist
-            if isnothing(mdf.$fieldname) || ismissing(mdf.$fieldname)
+            if isnothing($fieldname(mdf)) || ismissing($fieldname(mdf))
               @debug "Creating field $($fieldnameStr)"
-              mdf.$fieldname = $fieldtype()
+              $fieldname(mdf, $fieldtype())
             end
-            
-            mdf.$fieldname.$partFieldname = value
+
+            $partFieldname($fieldname(mdf), value)
           end
         end
 
@@ -1059,38 +1079,70 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
           capitalizedSubPartFieldname = uppercase(subPartFieldnameStr[1])*subPartFieldnameStr[2:end]
           functionSymbol = Symbol(prefixes[replace(string(partFieldtype), "MPIFiles." => "")]*capitalizedSubPartFieldname)
 
+          subPartMissingOrNothing = missingOrNothing # TODO: This should be type-specific
+
           # Save symbols for later use in conversion
           specificationSymbols[functionSymbol] = "/"*fieldnameStr*"/"*partFieldnameStr*"/"*subPartFieldnameStr
 
           # Create getter and setter for the respective field  within the naming scheme
           @eval begin
             # TODO: Add docstring from struct; I did not yet find a way to retrieve it
-            function $(functionSymbol)(mdf::MDFv2InMemory)::Union{$subPartFieldtype, $missingOrNothing}
-              if !(isnothing(mdf.$fieldname) || ismissing(mdf.$fieldname))
-                if !(isnothing(mdf.$fieldname.$partFieldname) || ismissing(mdf.$fieldname.$partFieldname))
-                  return mdf.$fieldname.$partFieldname.$subPartFieldname
+            function $(functionSymbol)(mdfPart::$partFieldtype)::Union{$subPartFieldtype, $subPartMissingOrNothing}
+              return mdfPart.$subPartFieldname
+            end
+
+            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            function $(functionSymbol)(mdfPart::$partFieldtype, value::Union{$subPartFieldtype, $subPartMissingOrNothing})
+              mdfPart.$subPartFieldname = value
+            end
+
+            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            function $(functionSymbol)(mdfPart::$fieldtype)::Union{$partFieldtype, $subPartMissingOrNothing}
+              if !(isnothing($partFieldname(mdfPart)) || ismissing($partFieldname(mdfPart)))
+                return $subPartFieldname($partFieldname(mdfPart))
+              else
+                return $partFieldname(mdfPart)
+              end
+            end
+
+            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            function $(functionSymbol)(mdfPart::$fieldtype, value::Union{$partFieldtype, $subPartMissingOrNothing})
+              # Automatically create fields if they do not exist
+              if isnothing($partFieldname(mdfPart)) || ismissing($subPartFieldname(mdfPart))
+                @debug "Creating field $($partFieldnameStr).$($subPartFieldnameStr)"
+                $partFieldname(mdfPart, $partFieldtype())
+              end
+              
+              $subPartFieldname(mdfPart, value)
+            end
+
+            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            function $(functionSymbol)(mdf::MDFv2InMemory)::Union{$subPartFieldtype, $subPartMissingOrNothing}
+              if !(isnothing($fieldname(mdf)) || ismissing($fieldname(mdf)))
+                if !(isnothing($partFieldname($fieldname(mdf))) || ismissing($partFieldname($fieldname(mdf))))
+                  return $functionSymbol($partFieldname($fieldname(mdf)))
                 else
-                  return mdf.$fieldname.$partFieldname
+                  return $partFieldname($fieldname(mdf))
                 end
               else
-                return mdf.$fieldname
+                return $fieldname(mdf)
               end
             end
   
             # TODO: Add docstring from struct; I did not yet find a way to retrieve it
-            function $(functionSymbol)(mdf::MDFv2InMemory, value::Union{$subPartFieldtype, $missingOrNothing})
+            function $(functionSymbol)(mdf::MDFv2InMemory, value::Union{$subPartFieldtype, $subPartMissingOrNothing})
               # Automatically create fields if they do not exist
-              if isnothing(mdf.$fieldname) || ismissing(mdf.$fieldname)
+              if isnothing($fieldname(mdf)) || ismissing($fieldname(mdf))
                 @debug "Creating field $($fieldnameStr)"
-                mdf.$fieldname = $fieldtype()
+                $fieldname(mdf, $fieldtype())
               end
 
-              if isnothing(mdf.$fieldname.$partFieldname) || ismissing(mdf.$fieldname.$partFieldname)
+              if isnothing($partFieldname($fieldname(mdf))) || ismissing($partFieldname($fieldname(mdf)))
                 @debug "Creating field $($fieldnameStr).$($partFieldnameStr)"
-                mdf.$fieldname.$partFieldname = $partFieldtype()
+                $partFieldname($fieldname(mdf), $partFieldtype())
               end
               
-              mdf.$fieldname.$partFieldname.$subPartFieldname = value
+              $functionSymbol($partFieldname($fieldname(mdf)), value)
             end
           end
 
