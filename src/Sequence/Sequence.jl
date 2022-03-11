@@ -9,8 +9,8 @@ struct StepwiseTxChannel <: TxChannelType end
 
 export TxMechanicalMovementType, RotationTxChannel, TranslationTxChannel
 abstract type TxMechanicalMovementType end
-struct RotationTxChannel <: TxChannelType end
-struct TranslationTxChannel <: TxChannelType end
+struct RotationTxChannel <: TxMechanicalMovementType end
+struct TranslationTxChannel <: TxMechanicalMovementType end
 
 export TxChannel, ElectricalTxChannel, AcyclicElectricalTxChannel, MechanicalTxChannel, ElectricalComponent
 abstract type TxChannel end
@@ -21,7 +21,7 @@ abstract type MechanicalTxChannel <: TxChannel end
 abstract type ElectricalComponent end
 
 export channeltype
-channeltype(::Type{<:TxChannelType}) = ContinuousTxChannel() #fall-back, by default everything is continuous
+channeltype(::Type{<:TxChannelType}) = ContinuousTxChannel() #fallback, by default everything is continuous
 
 export isContinuous
 isContinuous(channelType::T) where T <: TxChannel = isContinuous(channeltype(T), channelType)
