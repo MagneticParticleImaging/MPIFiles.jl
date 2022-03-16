@@ -257,6 +257,18 @@ export acyclicElectricalTxChannels
 acyclicElectricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} =
   [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: StepwiseElectricalChannel || typeof(channel) <: ContinuousElectricalChannel]
 
+export continuousElectricalTxChannels
+continuousElectricalTxChannels(sequence::Sequence) = [channel for channel in electricalTxChannels(sequence) if isContinuous(channel)]
+
+export continuousMechanicalTxChannels
+continuousMechanicalTxChannels(sequence::Sequence) = [channel for channel in mechanicalTxChannels(sequence) if isContinuous(channel)]
+
+export stepwiseElectricalTxChannels
+stepwiseElectricalTxChannels(sequence::Sequence) = [channel for channel in electricalTxChannels(sequence) if isStepwise(channel)]
+
+export stepwiseMechanicalTxChannels
+stepwiseMechanicalTxChannels(sequence::Sequence) = [channel for channel in mechanicalTxChannels(sequence) if isStepwise(channel)]
+
 export hasElectricalTxChannels
 hasElectricalTxChannels(sequence::Sequence) = length(electricalTxChannels(sequence)) > 0
 
@@ -269,9 +281,35 @@ hasPeriodicElectricalTxChannels(sequence::Sequence) = length(periodicElectricalT
 export hasAcyclicElectricalTxChannels
 hasAcyclicElectricalTxChannels(sequence::Sequence) = length(acyclicElectricalTxChannels(sequence)) > 0
 
+export hasContinuousElectricalTxChannels
+hasContinuousElectricalChannels(sequence::Sequence) = any(isContinuous.(electricalTxChannels(sequence)))
+
+export hasStepwiseElectricalChannels
+hasStepwiseElectricalChannels(sequence::Sequence) = any(isStepwise.(electricalTxChannels(sequence)))
+
+export hasContinuousMechanicalTxChannels
+hasContinuousMechanicalTxChannels(sequence::Sequence) = any(isContinuous.(mechanicalTxChannels(sequence)))
+
+export hasStepwiseMechanicalChannels
+hasStepwiseMechanicalChannels(sequence::Sequence) = any(isStepwise.(mechanicalTxChannels(sequence)))
+
 export id
 id(channel::TxChannel) = channel.id
 id(channel::RxChannel) = channel.id
+
+# Enable sorting of stepwise channels by their step priority
+# TODO: This currently blocks sorting for other properties
+function Base.isless(a::TxChannel, b::TxChannel)
+  if isStepwise(a) && isStepwise(b)
+    isless(a.stepPriority, b.stepPriority)
+  elseif isStepwise(a)
+    return false
+  elseif isStepwise(b)
+    return true
+  else
+    return true
+  end
+end
 
 export amplitude!
 function amplitude!(channel::PeriodicElectricalChannel, componentId::AbstractString, value::Union{typeof(1.0u"T"),typeof(1.0u"V")}; period::Integer=1)
