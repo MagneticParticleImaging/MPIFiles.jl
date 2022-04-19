@@ -558,9 +558,17 @@ acqGradient(sequence::Sequence) = nothing # TODO: Implement
 values(channel::StepwiseElectricalChannel) = channel.values
 function values(channel::ContinuousElectricalChannel)
   numPatches = div(channel.divider, channel.dividerSteps)
-  return [channel.offset + channel.amplitude*
+  if channel.waveform == WAVEFORM_SAWTOOTH_RISING
+    temp = channel.offset .+ channel.amplitude .*collect(range(-1, stop=1, length=numPatches)) 
+    return circshift(temp, ceil(Int,channel.phase/(2*pi)*length(temp)) ) 
+  elseif channel.waveform == WAVEFORM_SAWTOOTH_FALLING
+    temp = channel.offset .+ channel.amplitude .*collect(range(1, stop=-1, length=numPatches)) 
+    return circshift(temp, ceil(Int,channel.phase/(2*pi)*length(temp)) ) 
+  else
+    return [channel.offset + channel.amplitude*
                    value(channel.waveform, p/numPatches+channel.phase/(2*pi))
                        for p=0:(numPatches-1)]
+  end 
 end
 
 function acqNumPeriodsPerFrame(sequence::Sequence)
