@@ -225,10 +225,10 @@ function createFieldChannel(channelID::AbstractString, channelDict::Dict{String,
     if !isnothing(index) 
       createFieldChannel(channelID, knownChannels[index], channelDict)
     else
-      error("Channel $channelID has an unknown channel type $type")
+      error("Channel $channelID has an unknown channel type `$type`.")
     end
   else
-    error("Channel $channelID has no type field")
+    error("Channel $channelID has no `type` field.")
   end
 end
 
