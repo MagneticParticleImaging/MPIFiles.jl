@@ -12,8 +12,8 @@ export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAW
        acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
        acqNumAverages, acqNumFrameAverages, acqOffsetField, dfBaseFrequency, txBaseFrequency,
        txCycle, dfDivider, dfNumChannels, dfPhase, dfStrength, dfWaveform, rxBandwidth, rxSamplingRate,
-       rxNumChannels, rxNumSamplingPoints, rxNumSamplesPerPeriod, rxChannels,
-       needsControl, needsDecoupling, needsControlOrDecoupling
+       rxNumChannels, rxNumSamplingPoints, rxNumSamplesPerPeriod, rxChannels, channels,
+       needsControl, needsDecoupling, needsControlOrDecoupling, fields, safeStartInterval, safeEndInterval, safeErrorInterval, safeTransitionInterval
 
 "Enum describing the existing waveforms."
 @enum Waveform begin
@@ -510,12 +510,25 @@ description(sequence::Sequence) = sequence.description
 targetScanner(sequence::Sequence) = sequence.targetScanner
 baseFrequency(sequence::Sequence) = sequence.baseFrequency
 isTriggered(sequence::Sequence) = sequence.triggered
+fields(sequence::Sequence) = sequence.fields
 
-electricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: ElectricalTxChannel]
-mechanicalTxChannels(sequence::Sequence)::Vector{MechanicalTxChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: MechanicalTxChannel]
-periodicElectricalTxChannels(sequence::Sequence)::Vector{PeriodicElectricalChannel} = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
-acyclicElectricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} =
-  [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: StepwiseElectricalChannel || typeof(channel) <: ContinuousElectricalChannel]
+id(field::MagneticField) = field.id
+channels(field::MagneticField) = field.channels
+safeStartInterval(field::MagneticField) = field.safeStartInterval
+safeTransitionInterval(field::MagneticField) = field.safeTransitionInterval
+safeEndInterval(field::MagneticField) = field.safeEndInterval
+safeErrorInterval(field::MagneticField) = field.safeErrorInterval
+control(field::MagneticField) = field.control
+decouple(field::MagneticField) = field.decouple
+
+electricalTxChannels(field::MagneticField) = [channel for channel in channels(field) if typeof(channel) <: ElectricalTxChannel]
+electricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = [channel for field in fields(sequence) for channel in channels(field) if typeof(channel) <: ElectricalTxChannel]
+mechanicalTxChannels(field::MagneticField) = [channel for channel in channels(field) if typeof(channel) <: MechanicalTxChannel]
+mechanicalTxChannels(sequence::Sequence)::Vector{MechanicalTxChannel} = [channel for field in fields(sequence) for channel in channels(field) if typeof(channel) <: MechanicalTxChannel]
+periodicElectricalTxChannels(field::MagneticField) = [channel for channel in channels(field) if typeof(channel) <: PeriodicElectricalChannel]
+periodicElectricalTxChannels(sequence::Sequence)::Vector{PeriodicElectricalChannel} = [channel for field in fields(sequence) for channel in channels(field) if typeof(channel) <: PeriodicElectricalChannel]
+acyclicElectricalTxChannels(field::MagneticField) = [channel for channel in channels(field) if typeof(channel) <: AcyclicElectricalTxChannel]
+acyclicElectricalTxChannels(sequence::Sequence)::Vector{ElectricalTxChannel} = [channel for field in fields(sequence) for channel in channels(field) if typeof(channel) <: AcyclicElectricalTxChannel]
 
 
 id(channel::TxChannel) = channel.id
@@ -638,7 +651,7 @@ function dfPhase(sequence::Sequence) # TODO: How do we integrate the mechanical 
 end
 
 function dfStrength(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
-  channels = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
+  channels = [channel for field in fields(sequence) for channel in channels(field) if typeof(channel) <: PeriodicElectricalChannel]
   maxComponents = maximum([length(channel.components) for channel in channels])
   numPeriods = length(channels[1].components[1].amplitude) # Should all be of the same length
   result = zeros(typeof(1.0u"T"), (numPeriods, dfNumChannels(sequence), maxComponents))
@@ -653,7 +666,7 @@ function dfStrength(sequence::Sequence) # TODO: How do we integrate the mechanic
 end
 
 function dfWaveform(sequence::Sequence) # TODO: How do we integrate the mechanical channels and non-periodic channels and sweeps?
-  channels = [channel for field in sequence.fields for channel in field.channels if typeof(channel) <: PeriodicElectricalChannel]
+  channels = [channel for field in fields(sequence) for channel in channels(field) if typeof(channel) <: PeriodicElectricalChannel]
   maxComponents = maximum([length(channel.components) for channel in channels])
   result = fill(WAVEFORM_SINE, (dfNumChannels(sequence), maxComponents))
   for (channelIdx, channel) in enumerate(channels)
@@ -671,6 +684,6 @@ rxNumSamplingPoints(sequence::Sequence) = round(Int64, upreferred(rxSamplingRate
 rxNumSamplesPerPeriod(sequence::Sequence) = rxNumSamplingPoints(sequence)
 rxChannels(sequence::Sequence) = sequence.acquisition.channels
 
-needsControl(sequence::Sequence) = any([field.control for field in sequence.fields])
-needsDecoupling(sequence::Sequence) = any([field.decouple for field in sequence.fields])
+needsControl(sequence::Sequence) = any([field.control for field in fields(sequence)])
+needsDecoupling(sequence::Sequence) = any([field.decouple for field in fields(sequence)])
 needsControlOrDecoupling(sequence::Sequence) = needsControl(sequence) || needsDecoupling(sequence)
