@@ -1343,6 +1343,7 @@ calibTemperatures(mdf::MDFv2InMemory, calibTemperatures) = mdf.custom["calibTemp
 auxiliaryData(mdf::MDFv2InMemory) = @keyoptional mdf.custom["auxiliaryData"]
 auxiliaryData(mdf::MDFv2InMemory, auxiliaryData) = mdf.custom["auxiliaryData"] = auxiliaryData
 
+export measDataRaw
 function measDataRaw(mdf::MDFv2InMemory)
   if !(isnothing(mdf.measurement))
     return mdf.measurement.data
@@ -1350,7 +1351,6 @@ function measDataRaw(mdf::MDFv2InMemory)
     return mdf.measurement
   end
 end
-
 function measDataRaw(mdf::MDFv2InMemory, value)
   # Automatically create fields if they do not exist
   if isnothing(mdf.measurement)
