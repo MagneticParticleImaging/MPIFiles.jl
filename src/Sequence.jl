@@ -106,6 +106,7 @@ Base.@kwdef struct StepwiseElectricalChannel <: AcyclicElectricalTxChannel
   divider::Integer
   "values corresponding to the individual steps."
   values::Union{Vector{typeof(1.0u"T")}, Vector{typeof(1.0u"V")}, Vector{typeof(1.0u"A")}}
+  enable::Vector{Bool}
 end
 
 "Electrical channel with a stepwise definition of values."
@@ -424,6 +425,7 @@ end
 
 function createFieldChannel(channelID::AbstractString, channelType::Type{StepwiseElectricalChannel}, channelDict::Dict{String, Any})
   divider = channelDict["divider"]
+  enable = haskey(channelDict, "enable") ? channelDict["enable"] : Bool[]
   values = uparse.(channelDict["values"])
   if eltype(values) <: Unitful.Current
     values = values .|> u"A"
@@ -439,7 +441,7 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Stepwis
     error("The divider $(divider) needs to be a multiple of the $(length(values))")
   end
 
-  return StepwiseElectricalChannel(;id=channelID, divider, values)
+  return StepwiseElectricalChannel(;id=channelID, divider, values, enable)
 end
 
 function createFieldChannel(channelID::AbstractString, channelType::Type{ContinuousElectricalChannel}, channelDict::Dict{String, Any})
@@ -574,6 +576,13 @@ function values(channel::ContinuousElectricalChannel)
   return [channel.offset + channel.amplitude*
                    value(channel.waveform, p/numPatches+channel.phase/(2*pi))
                        for p=0:(numPatches-1)]
+end
+
+enableValues(channel::StepwiseElectricalChannel) = 
+     isempty(channel.enable) ? ones(Bool, length(channel.values)) : channel.enable
+function enableValues(channel::ContinuousElectricalChannel)
+  numPatches = div(channel.divider, channel.dividerSteps)
+  return [true  for p=0:(numPatches-1)]
 end
 
 function acqNumPeriodsPerFrame(sequence::Sequence)
