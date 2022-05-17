@@ -100,6 +100,7 @@ macro keyoptional(expr)
   end
 end
 
+export concreteSubtypes
 function concreteSubtypes(type::DataType)
   subtypes_ = subtypes(type)
   # Only add filtered ones but check all subtypes
