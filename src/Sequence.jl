@@ -7,7 +7,7 @@ export Waveform, WAVEFORM_SINE, WAVEFORM_SQUARE, WAVEFORM_TRIANGLE, WAVEFORM_SAW
        ContinuousElectricalChannel, MechanicalTranslationChannel,
        StepwiseMechanicalRotationChannel, ContinuousMechanicalRotationChannel,
        MagneticField, RxChannel, AcquisitionSettings, Sequence, sequenceFromTOML, fieldDictToFields,
-       id, offset, components, divider, amplitude, amplitude!, phase, phase!, waveform, electricalTxChannels,
+       id, offset, components, divider, amplitude, amplitude!, phase, phase!, waveform, waveform!, electricalTxChannels,
        mechanicalTxChannels, periodicElectricalTxChannels, acyclicElectricalTxChannels,
        acqGradient, acqNumFrames, acqNumPeriodsPerFrame,
        acqNumAverages, acqNumFrameAverages, acqOffsetField, dfBaseFrequency, txBaseFrequency,
@@ -63,7 +63,7 @@ abstract type MechanicalTxChannel <: TxChannel end
 abstract type ElectricalComponent end
 
 "Component of an electrical channel with periodic base function."
-Base.@kwdef struct PeriodicElectricalComponent <: ElectricalComponent
+Base.@kwdef mutable struct PeriodicElectricalComponent <: ElectricalComponent
   id::AbstractString
   "Divider of the component."
   divider::Integer
@@ -78,7 +78,7 @@ end
 "Sweepable component of an electrical channel with periodic base function.
 Note: Does not allow for changes in phase since this would make the switch
 between frequencies difficult."
-Base.@kwdef struct SweepElectricalComponent <: ElectricalComponent
+Base.@kwdef mutable struct SweepElectricalComponent <: ElectricalComponent
   "Divider of the component."
   divider::Vector{Integer}
   "Amplitude (peak) of the channel for each divider in the sweep. Must have the same dimension as `divider`."
@@ -547,6 +547,7 @@ phase(component::PeriodicElectricalComponent, trigger::Integer=1) = component.ph
 phase!(component::PeriodicElectricalComponent, value::typeof(1.0u"rad"); period::Integer=1) = component.phase[period] = value
 phase(component::SweepElectricalComponent, trigger::Integer=1) = 0.0u"rad"
 waveform(component::ElectricalComponent) = component.waveform
+waveform!(component::ElectricalComponent, value) = component.waveform = value
 id(component::PeriodicElectricalComponent) = component.id
 
 function amplitude!(channel::PeriodicElectricalChannel, componentId::AbstractString, value::Union{typeof(1.0u"T"),typeof(1.0u"V")}; period::Integer=1)
@@ -562,6 +563,15 @@ function phase!(channel::PeriodicElectricalChannel, componentId::AbstractString,
   index = findfirst(x -> id(x) == componentId, channel.components)
   if !isnothing(index)
     phase!(channel.components[index], value, period = period)
+  else
+    throw(ArgumentError("Channel $(id(channel)) has no component with id $componentid"))
+  end
+end
+
+function waveform!(channel::PeriodicElectricalChannel, componentId::AbstractString, value)
+  index = findfirst(x -> id(x) == componentId, channel.components)
+  if !isnothing(index)
+    waveform!(channel.components[index], value)
   else
     throw(ArgumentError("Channel $(id(channel)) has no component with id $componentid"))
   end
