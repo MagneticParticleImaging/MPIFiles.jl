@@ -73,6 +73,8 @@ Base.@kwdef mutable struct PeriodicElectricalComponent <: ElectricalComponent
   phase::Vector{typeof(1.0u"rad")}
   "Waveform of the component."
   waveform::Waveform = WAVEFORM_SINE
+  "Jump sharpness for rectangular waveforms."
+  jumpSharpness::Float64 = 0.0
 end
 
 "Sweepable component of an electrical channel with periodic base function.
@@ -406,6 +408,8 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Periodi
 
     @assert length(amplitude) == length(phase) "The length of amplitude and phase must match."
 
+    jumpSharpness = get(component, "jumpSharpness", 0.0)
+
     if divider isa Vector
       push!(splattingDict[:components],
             SweepElectricalComponent(divider=divider,
@@ -417,7 +421,8 @@ function createFieldChannel(channelID::AbstractString, channelType::Type{Periodi
                                         divider=divider,
                                         amplitude=amplitude,
                                         phase=phase,
-                                        waveform=waveform))
+                                        waveform=waveform,
+                                        jumpSharpness=jumpSharpness))
     end
   end
   return PeriodicElectricalChannel(;splattingDict...)
