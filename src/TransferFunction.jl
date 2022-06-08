@@ -5,9 +5,9 @@ mutable struct TransferFunction
   data::Matrix{ComplexF64}
   inductionFactor::Vector{Float64}
 
-  function TransferFunction(freq_, datain::Array{T}, inductionFactor=ones(size(datain,2))) where {T<:Complex}
+  function TransferFunction(freq_, datain::Array{T}, inductionFactor=ones(size(datain, 2))) where {T<:Complex}
     freq = freq_[1]:(freq_[2]-freq_[1]):freq_[end]
-    data=reshape(deepcopy(datain),size(datain,1), size(datain,2))
+    data = reshape(deepcopy(datain), size(datain,1), size(datain, 2))
     return new(freq_, data, inductionFactor)
   end
 end
