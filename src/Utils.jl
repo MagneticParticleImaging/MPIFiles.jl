@@ -2,21 +2,21 @@ export changeParam
 
 # Support for handling complex datatypes in HDF5 files
 function writeComplexArray(file, dataset, A::AbstractArray{Complex{T},D}) where {T,D}
-  d_type_compound = HDF5.h5t_create(HDF5.H5T_COMPOUND,2*sizeof(T))
-  HDF5.h5t_insert(d_type_compound, "r", 0 , HDF5.hdf5_type_id(T))
-  HDF5.h5t_insert(d_type_compound, "i", sizeof(T) , HDF5.hdf5_type_id(T))
+  d_type_compound = HDF5.API.h5t_create(HDF5.API.H5T_COMPOUND,2*sizeof(T))
+  HDF5.API.h5t_insert(d_type_compound, "r", 0 , HDF5.hdf5_type_id(T))
+  HDF5.API.h5t_insert(d_type_compound, "i", sizeof(T) , HDF5.hdf5_type_id(T))
 
   shape = collect(reverse(size(A)))
-  space = HDF5.h5s_create_simple(D, shape, shape)
+  space = HDF5.API.h5s_create_simple(D, shape, shape)
 
-  dset_compound = HDF5.h5d_create(file, dataset, d_type_compound, space,
-                                  HDF5.H5P_DEFAULT,HDF5.H5P_DEFAULT,HDF5.H5P_DEFAULT)
-  HDF5.h5s_close(space)
+  dset_compound = HDF5.API.h5d_create(file, dataset, d_type_compound, space,
+                                  HDF5.API.H5P_DEFAULT,HDF5.API.H5P_DEFAULT,HDF5.API.H5P_DEFAULT)
+  HDF5.API.h5s_close(space)
 
-  HDF5.h5d_write(dset_compound, d_type_compound, HDF5.H5S_ALL, HDF5.H5S_ALL, HDF5.H5P_DEFAULT, A)
+  HDF5.API.h5d_write(dset_compound, d_type_compound, HDF5.API.H5S_ALL, HDF5.API.H5S_ALL, HDF5.API.H5P_DEFAULT, A)
 
-  HDF5.h5d_close(dset_compound)
-  HDF5.h5t_close(d_type_compound)
+  HDF5.API.h5d_close(dset_compound)
+  HDF5.API.h5t_close(d_type_compound)
 end
 
 function isComplexArray(file, dataset)
@@ -30,7 +30,7 @@ end
 function getComplexType(file, dataset)
   T = HDF5.get_jl_type(
             HDF5.Datatype(
-              HDF5.h5t_get_member_type( datatype(file[dataset]).id, 0 )
+              HDF5.API.h5t_get_member_type( datatype(file[dataset]).id, 0 )
           )
         )
     return Complex{T}

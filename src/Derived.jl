@@ -138,7 +138,7 @@ function measDataTD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
   end
 
   if measIsFourierTransformed(f)
-    dataTD = irfft(data2,2*size(data2,1)-1, 1)
+    dataTD = irfft(data2, rxNumSamplingPoints(f), 1)
   else
     dataTD = data2
   end
