@@ -27,6 +27,8 @@ using InteractiveUtils
 using UnitfulAngles
 using Inflate, SHA
 using StableRNGs
+using REPL: fielddoc
+using DocStringExtensions
 
 if VERSION < v"1.1"
   isnothing(x) = x == nothing

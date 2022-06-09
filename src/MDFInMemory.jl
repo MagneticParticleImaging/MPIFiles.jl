@@ -13,6 +13,11 @@ export checkConsistency, inMemoryMDFToDict, inMemoryMDFFromDict
 
 abstract type MDFv2InMemoryPart end
 
+"""
+    $(TYPEDEF)
+
+Set of variables of the MDF.
+"""
 mutable struct MDFv2Variables
   "tracer materials/injections for multi-color MPI"
   A::Union{Int64, Nothing}
@@ -53,7 +58,11 @@ mutable struct MDFv2Variables
   end
 end
 
-"Root group of an in-memory MDF"
+"""
+    $(TYPEDEF)
+    
+Root group of an in-memory MDF
+"""
 mutable struct MDFv2Root <: MDFv2InMemoryPart
   "UTC creation time of MDF data set"
   time::Union{DateTime, Missing}
@@ -77,7 +86,11 @@ end
 
 defaultMDFv2Root() = MDFv2Root(time=Dates.now(), uuid=UUIDs.uuid4(), version=VersionNumber("2.1.0"))
 
-"Study group of an in-memory MDF"
+"""
+    $(TYPEDEF)
+
+Study group of an in-memory MDF
+"""
 mutable struct MDFv2Study <: MDFv2InMemoryPart
   "Short description of the study"
   description::Union{String, Missing}
@@ -109,7 +122,11 @@ end
 
 defaultMDFv2Study() = MDFv2Study(time=Dates.now(), uuid=UUIDs.uuid4())
 
-"Experiment group of an in-memory MDF"
+"""
+    $(TYPEDEF)
+
+Experiment group of an in-memory MDF
+"""
 mutable struct MDFv2Experiment <: MDFv2InMemoryPart
   "Short description of the experiment"
   description::Union{String, Missing}
@@ -145,7 +162,11 @@ end
 
 defaultMDFv2Experiment() = MDFv2Experiment(uuid=UUIDs.uuid4())
 
-"Tracer group of an in-memory MDF; optional"
+"""
+    $(TYPEDEF)
+
+Tracer group of an in-memory MDF; optional
+"""
 mutable struct MDFv2Tracer <: MDFv2InMemoryPart
   "Batch of tracer"
   batch::Union{Vector{String}, Missing}
@@ -185,7 +206,11 @@ end
 
 defaultMDFv2Tracer() = MDFv2Tracer()
 
-"Scanner group of an in-memory MDF"
+"""
+    $(TYPEDEF)
+
+Scanner group of an in-memory MDF
+"""
 mutable struct MDFv2Scanner <: MDFv2InMemoryPart
   "Diameter of the bore; optional"
   boreSize::Union{Float64, Nothing}
@@ -221,7 +246,11 @@ end
 
 defaultMDFv2Scanner() = MDFv2Scanner()
 
-"Drivefield subgroup of acquisition group of an in-memory MDF"
+"""
+    $(TYPEDEF)
+
+Drivefield subgroup of acquisition group of an in-memory MDF
+"""
 mutable struct MDFv2Drivefield <: MDFv2InMemoryPart
   "Base frequency to derive drive field frequencies"
   baseFrequency::Union{Float64, Missing}
@@ -263,7 +292,11 @@ end
 
 defaultMDFv2Drivefield() = MDFv2Drivefield()
 
-"Receiver subgroup of acquisition group of an in-memory MDF"
+"""
+    $(TYPEDEF)
+
+Receiver subgroup of acquisition group of an in-memory MDF
+"""
 mutable struct MDFv2Receiver <: MDFv2InMemoryPart
   "Bandwidth of the receiver unit"
   bandwidth::Union{Float64, Missing}
@@ -305,7 +338,11 @@ end
 
 defaultMDFv2Receiver() = MDFv2Receiver(unit = "V")
 
-"Acquisition group of an in-memory MDF"
+"""
+    $(TYPEDEF)
+
+Acquisition group of an in-memory MDF
+"""
 mutable struct MDFv2Acquisition <: MDFv2InMemoryPart
   "Gradient strength of the selection field in x, y, and z directions; optional"
   gradient::Union{Array{Float64, 4}, Nothing}
@@ -348,7 +385,11 @@ end
 
 defaultMDFv2Acquisition() = MDFv2Acquisition(startTime=Dates.now(), drivefield=defaultMDFv2Drivefield(), receiver=defaultMDFv2Receiver())
 
-"Measurement group of an in-memory MDF"
+"""
+    $(TYPEDEF)
+
+Measurement group of an in-memory MDF
+"""
 mutable struct MDFv2Measurement <: MDFv2InMemoryPart
   "Measured data at a specific processing stage"
   data::Union{AbstractArray{<:Number, 4}, Missing}
@@ -416,7 +457,11 @@ end
 
 defaultMDFv2Measurement() = MDFv2Measurement()
 
-"Calibration group of an in-memory MDF"
+"""
+    $(TYPEDEF)
+
+Calibration group of an in-memory MDF
+"""
 mutable struct MDFv2Calibration <: MDFv2InMemoryPart
   "Size of the delta sample used for calibration scan; optional"
   deltaSampleSize::Union{Vector{Float64}, Nothing}
@@ -464,7 +509,11 @@ end
 
 defaultMDFv2Calibration() = MDFv2Calibration(order="xyz")
 
-"Reconstruction group of an in-memory MDF"
+"""
+    $(TYPEDEF)
+
+Reconstruction group of an in-memory MDF
+"""
 mutable struct MDFv2Reconstruction <: MDFv2InMemoryPart
   "Reconstructed data"
   data::Union{Array{Number, 3}, Missing}
@@ -504,6 +553,11 @@ end
 
 defaultMDFv2Reconstruction() = MDFv2Reconstruction(order="xyz")
 
+"""
+    $(TYPEDEF)
+
+In-memory description of an MDF file.
+"""
 mutable struct MDFv2InMemory <: MPIFile # TODO: Not sure, if MPIFile is a good fit
   root::Union{MDFv2Root, Missing}
   study::Union{MDFv2Study, Missing}
@@ -963,14 +1017,25 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
     missingOrNothing = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.a : fieldtype.b
     fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
 
+    capitalizedFieldnameStr = uppercase(fieldnameStr[1])*fieldnameStr[2:end]
+
     # Create getter and setter for the whole group
     @eval begin
-      # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+      export $fieldname
+      @doc $"""
+          $fieldnameStr(mdf)
+
+      $capitalizedFieldnameStr group of an in-memory MDF.
+      """
       function $(fieldname)(mdf::MDFv2InMemory)::Union{$fieldtype, $missingOrNothing}
         return mdf.$fieldname
       end
 
-      # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+      @doc $"""
+          $fieldnameStr(mdf, value)
+
+      $capitalizedFieldnameStr group of an in-memory MDF.
+      """
       function $(fieldname)(mdf::MDFv2InMemory, value::Union{$fieldtype, $missingOrNothing})
         mdf.$fieldname = value
       end
@@ -978,6 +1043,8 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
 
     for (partFieldname, partFieldtype) in zip(fieldnames(fieldtype), fieldtypes(fieldtype))
       partFieldnameStr = string(partFieldname)
+
+      fieldDocstring = fielddoc(fieldtype, partFieldname)
 
       # The acquisition group has subgroups, so we need to go deeper there
       if !(partFieldnameStr == "drivefield" || partFieldnameStr == "receiver")
@@ -996,17 +1063,29 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
         end
 
         @eval begin
-          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          @doc $"""
+              $functionSymbol(mdfPart)
+
+          $fieldDocstring
+          """
           function $(functionSymbol)(mdfPart::$fieldtype)::Union{$partFieldtype, $missingOrNothing}
             return mdfPart.$partFieldname
           end
 
-          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          @doc $"""
+              $functionSymbol(mdfPart, value)
+
+          $fieldDocstring
+          """
           function $(functionSymbol)(mdfPart::$fieldtype, value::Union{$partFieldtype, $missingOrNothing})
             mdfPart.$partFieldname = value
           end
 
-          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          @doc $"""
+              $functionSymbol(mdf)
+
+          $fieldDocstring
+          """
           function $(functionSymbol)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing}
             if !(isnothing($fieldname(mdf)) || ismissing($fieldname(mdf)))
               return $(functionSymbol)($fieldname(mdf))
@@ -1015,7 +1094,11 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
             end
           end
 
-          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          @doc $"""
+              $functionSymbol(mdf, value)
+
+          $fieldDocstring
+          """
           function $(functionSymbol)(mdf::MDFv2InMemory, value::Union{$partFieldtype, $missingOrNothing})
             # Automatically create fields if they do not exist
             if isnothing($fieldname(mdf)) || ismissing($fieldname(mdf))
@@ -1031,8 +1114,20 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
         if haskey(aliases, functionSymbol)
           alias = aliases[functionSymbol]
           @eval begin
+            @doc $"""
+              $alias(mdf)
+
+            $fieldDocstring
+            """
             $(alias)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing} = $(functionSymbol)(mdf)
+
+            @doc $"""
+              $alias(mdf, value)
+
+            $fieldDocstring
+            """
             $(alias)(mdf::MDFv2InMemory, value::$partFieldtype) = $(functionSymbol)(mdf, value)
+
             $(functionSymbol)(f::MDFFileV2)::Union{$partFieldtype, $missingOrNothing} = $(alias)(f) # Should this be here or in MDF.jl?
           end
         end
@@ -1043,17 +1138,29 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
 
         # Create getter and for the whole group
         @eval begin
-          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          @doc $"""
+              $partFieldname(mdfPart)
+
+          $fieldDocstring
+          """
           function $(partFieldname)(mdfPart::$fieldtype)::Union{$partFieldtype, $missingOrNothing}
             return mdfPart.$partFieldname
           end
 
-          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          @doc $"""
+              $partFieldname(mdfPart, value)
+
+          $fieldDocstring
+          """
           function $(partFieldname)(mdfPart::$fieldtype, value::Union{$partFieldtype, $missingOrNothing})
             mdfPart.$partFieldname = value
           end
 
-          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          @doc $"""
+              $partFieldname(mdf)
+
+          $fieldDocstring
+          """
           function $(partFieldname)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing}
             if !(isnothing($fieldname(mdf)) || ismissing($fieldname(mdf)))
               return $partFieldname($fieldname(mdf))
@@ -1062,7 +1169,11 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
             end
           end
 
-          # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+          @doc $"""
+              $partFieldname(mdfPart, value)
+
+          $fieldDocstring
+          """
           function $(partFieldname)(mdf::MDFv2InMemory, value::Union{$partFieldtype, $missingOrNothing})
             # Automatically create fields if they do not exist
             if isnothing($fieldname(mdf)) || ismissing($fieldname(mdf))
@@ -1084,19 +1195,33 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
           # Save symbols for later use in conversion
           specificationSymbols[functionSymbol] = "/"*fieldnameStr*"/"*partFieldnameStr*"/"*subPartFieldnameStr
 
+          subPartFieldDocstring = fielddoc(partFieldtype, subPartFieldname)
+
           # Create getter and setter for the respective field  within the naming scheme
           @eval begin
-            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            @doc $"""
+              $functionSymbol(mdfPart)
+
+            $subPartFieldDocstring
+            """
             function $(functionSymbol)(mdfPart::$partFieldtype)::Union{$subPartFieldtype, $subPartMissingOrNothing}
               return mdfPart.$subPartFieldname
             end
 
-            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            @doc $"""
+              $functionSymbol(mdfPart, value)
+
+            $subPartFieldDocstring
+            """
             function $(functionSymbol)(mdfPart::$partFieldtype, value::Union{$subPartFieldtype, $subPartMissingOrNothing})
               mdfPart.$subPartFieldname = value
             end
 
-            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            @doc $"""
+              $functionSymbol(mdfPart)
+
+            $subPartFieldDocstring
+            """
             function $(functionSymbol)(mdfPart::$fieldtype)::Union{$partFieldtype, $subPartMissingOrNothing}
               if !(isnothing($partFieldname(mdfPart)) || ismissing($partFieldname(mdfPart)))
                 return $subPartFieldname($partFieldname(mdfPart))
@@ -1105,7 +1230,11 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
               end
             end
 
-            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            @doc $"""
+              $functionSymbol(mdfPart, value)
+
+            $subPartFieldDocstring
+            """
             function $(functionSymbol)(mdfPart::$fieldtype, value::Union{$partFieldtype, $subPartMissingOrNothing})
               # Automatically create fields if they do not exist
               if isnothing($partFieldname(mdfPart)) || ismissing($subPartFieldname(mdfPart))
@@ -1116,7 +1245,11 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
               $subPartFieldname(mdfPart, value)
             end
 
-            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            @doc $"""
+              $functionSymbol(mdf)
+
+            $subPartFieldDocstring
+            """
             function $(functionSymbol)(mdf::MDFv2InMemory)::Union{$subPartFieldtype, $subPartMissingOrNothing}
               if !(isnothing($fieldname(mdf)) || ismissing($fieldname(mdf)))
                 if !(isnothing($partFieldname($fieldname(mdf))) || ismissing($partFieldname($fieldname(mdf))))
@@ -1129,7 +1262,11 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
               end
             end
   
-            # TODO: Add docstring from struct; I did not yet find a way to retrieve it
+            @doc $"""
+              $functionSymbol(mdf, value)
+
+            $subPartFieldDocstring
+            """
             function $(functionSymbol)(mdf::MDFv2InMemory, value::Union{$subPartFieldtype, $subPartMissingOrNothing})
               # Automatically create fields if they do not exist
               if isnothing($fieldname(mdf)) || ismissing($fieldname(mdf))
