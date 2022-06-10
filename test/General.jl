@@ -206,7 +206,8 @@
 
 
     freq = filterFrequencies(smv5, SNRThresh=4.0)
-    S1 = getSystemMatrix(smv5, freq)
+    S0 = getSystemMatrix(smv5) # test loading of reduced calib file without freq. selection
+    S1 = getSystemMatrix(smv5, freq) # test loading of reduced calib file with freq. selection
     @test size(S1)  == (1936,194)
 
     S2 = getSystemMatrix(smv2, freq)

@@ -16,7 +16,7 @@ function getSystemMatrix(f::MPIFile, frequencies=nothing;
                          numPeriodAverages=1, numPeriodGrouping=1, kargs...)
 
   if frequencies == nothing
-    frequencies = 1:rxNumFrequencies(f,numPeriodGrouping)*rxNumChannels(f)
+    frequencies = filterFrequencies(f)
   end
 
   if measIsFastFrameAxis(f) && measIsFourierTransformed(f)
