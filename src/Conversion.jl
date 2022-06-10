@@ -135,6 +135,10 @@ function loadMeasParams(f, params = Dict{Symbol,Any}(); skipMeasData = false)
     setparam!(params, :measData, measData(f))
   end
 
+  if measIsFrequencySelection(f)
+    setparam!(params, :measFrequencySelection, measFrequencySelection(f))
+  end
+
   return params
 end
 

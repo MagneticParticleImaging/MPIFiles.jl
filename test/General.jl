@@ -13,6 +13,7 @@
   fnSMV4 = joinpath(tmpdir,"mdf","systemMatrix_V4.mdf")
   fnSMV5 = joinpath(tmpdir,"mdf","systemMatrix_V5.mdf")
   fnSMV6 = joinpath(tmpdir,"mdf","systemMatrix_V6.mdf")
+  fnSMV7 = joinpath(tmpdir,"mdf","systemMatrix_V7.mdf")
   fnSM1DV1 = joinpath(tmpdir,"mdf","systemMatrix1D_V1.mdf")
   fnSM1DV2 = joinpath(tmpdir,"mdf","systemMatrix1D_V2.mdf")
 
@@ -209,6 +210,13 @@
     S0 = getSystemMatrix(smv5) # test loading of reduced calib file without freq. selection
     S1 = getSystemMatrix(smv5, freq) # test loading of reduced calib file with freq. selection
     @test size(S1)  == (1936,194)
+
+    # test low level interface for compressed calib files
+    ds = loadDataset(smv5)
+    saveasMDF(fnSMV7, ds)
+    smv7 = MPIFile(fnSMV7)
+    S2 = getSystemMatrix(smv7)
+    @test S2==S0
 
     S2 = getSystemMatrix(smv2, freq)
     @test S1  == S2
