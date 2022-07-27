@@ -147,9 +147,9 @@ tracerConcentration(f::MDFFileV1)::Union{Vector{Float64}, Missing} = @keyrequire
 tracerConcentration(f::MDFFileV2)::Union{Vector{Float64}, Missing} = @keyrequired [f["/tracer/concentration"]...]
 tracerSolute(f::MDFFileV2)::Union{Vector{String}, Missing} = @keyrequired _makeStringArray(f["/tracer/solute"])
 tracerSolute(f::MDFFileV1)::Union{Vector{String}, Missing} = ["Fe"]
-function tracerInjectionTime(f::MDFFile)::Vector{DateTime}
+function tracerInjectionTime(f::MDFFile)::Union{Vector{DateTime}, Nothing}
   p = typeof(f) <: MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
-  if f[p] == nothing
+  if isnothing(f[p])
     return nothing
   end
 
