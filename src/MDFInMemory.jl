@@ -978,7 +978,7 @@ end
 customSymbols = Dict{Symbol, String}(
   :dfCustomWaveform => "/acquisition/drivefield/customWaveform",
   :calibIsMeanderingGrid => "/calibration/isMeanderingGrid",
-  :calibTemperatures => "/calibration/_temperatures",
+  :measTemperatures => "/measurement/_temperatures",
   :rxTransferFunctionFileName => "/acquisition/receiver/transferFunctionFileName",
   :recoParameters => "/reconstruction/_parameters",
   :auxiliaryData => "/custom/auxiliaryData",
@@ -1427,17 +1427,13 @@ end
 
 "Create an MDFFile from an in-memory MDF."
 function saveasMDF(file::HDF5.File, mdf::MDFv2InMemory; failOnInconsistent::Bool=false)
-  if failOnInconsistent
+  try
     checkConsistency(mdf)
-  else
-    try
-      checkConsistency(mdf)
-    catch e
-      if e isa AssertionError
-        @warn "There is an inconsistency in the given in-memory MDF. The message is: `$(e.msg)`."
-      else
-        rethrow()
-      end
+  catch e
+    if e isa AssertionError && !failOnInconsistent
+      @warn "There is an inconsistency in the given in-memory MDF. The message is: `$(e.msg)`."
+    else
+      rethrow()
     end
   end
 
@@ -1474,8 +1470,8 @@ rxTransferFunctionFileName(mdf::MDFv2InMemory, filename::String) = mdf.custom["r
 recoParameters(mdf::MDFv2InMemory) = @keyoptional mdf.custom["recoParameters"]
 recoParameters(mdf::MDFv2InMemory, parameters) = mdf.custom["recoParameters"] = parameters
 
-calibTemperatures(mdf::MDFv2InMemory) = @keyoptional mdf.custom["calibTemperatures"]
-calibTemperatures(mdf::MDFv2InMemory, calibTemperatures) = mdf.custom["calibTemperatures"] = calibTemperatures
+measTemperatures(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measTemperatures"]
+measTemperatures(mdf::MDFv2InMemory, measTemperatures) = mdf.custom["measTemperatures"] = measTemperatures
 
 auxiliaryData(mdf::MDFv2InMemory) = @keyoptional mdf.custom["auxiliaryData"]
 auxiliaryData(mdf::MDFv2InMemory, auxiliaryData) = mdf.custom["auxiliaryData"] = auxiliaryData

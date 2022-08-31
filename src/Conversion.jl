@@ -803,6 +803,8 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
       write(file, "/measurement/sparsityTransformation", params[:measSparsityTransformation] )
     end
   end
+  writeIfAvailable(file, "/measurement/_temperatures",  params, :measTemperatures)
+
 
   # calibrations
   writeIfAvailable(file, "/calibration/snr",  params, :calibSNR)
@@ -817,7 +819,6 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
   if hasKeyAndValue(params, :calibIsMeanderingGrid)
     write(file, "/calibration/isMeanderingGrid", Int8(params[:calibIsMeanderingGrid]))
   end
-  writeIfAvailable(file, "/calibration/_temperatures",  params, :calibTemperatures)
   # reconstruction
   if hasKeyAndValue(params, :recoData)
     write(file, "/reconstruction/data", params[:recoData])

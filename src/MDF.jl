@@ -413,6 +413,7 @@ fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid
 measIsCalibProcessed(f::MDFFile) = measIsFramePermutation(f) && 
                                    measIsFourierTransformed(f) &&
                                    measIsFastFrameAxis(f)
+measTemperatures(f::MDFFile) = @keyoptional f["/measurement/_temperatures"] # non-standard
 
 #calibrations
 calibSNR(f::MDFFileV1) = @keyoptional addTrailingSingleton(f["/calibration/snrFD"],3)
@@ -426,7 +427,6 @@ calibDeltaSampleSize(f::MDFFile) = @keyoptional f["/calibration/deltaSampleSize"
 calibMethod(f::MDFFile) = @keyrequired f["/calibration/method"]
 calibIsMeanderingGrid(f::MDFFile) = @keyoptional Bool(f["/calibration/isMeanderingGrid", 0])
 calibPositions(f::MDFFile) = @keyoptional f["/calibration/positions"]
-calibTemperatures(f::MDFFile) = @keyoptional f["/calibration/_temperatures"] # non-standard
 
 # reconstruction results
 recoData(f::MDFFileV1) = @keyrequired addLeadingSingleton(f[ "/reconstruction/data"], 3)
