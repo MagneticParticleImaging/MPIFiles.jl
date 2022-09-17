@@ -72,21 +72,34 @@ function calculateSystemMatrixSNR(f::MPIFile, S::Array; numPeriodAverages=1, num
 
   SNR = zeros(K, R, J)
 
-  calculateSystemMatrixSNRInner(S, SNR, J, R, K, N)
+  gridSize = tuple(calibSize(f)...)
+
+  calculateSystemMatrixSNRInner(S, SNR, J, R, K, N, gridSize)
   return SNR
 end
 
-function calculateSystemMatrixSNRInner(S, SNR, J, R, K, N)
+function calculateSystemMatrixSNRInner(S, SNR, J, R, K, N, gridSize::NTuple{D,Int}) where D
   for j=1:J
     for r=1:R
       for k=1:K
         SBG = S[(N+1):end,k,r,j]
         SFG = S[1:N,k,r,j]
-        diffBG = diff(SBG)
+        #diffBG = diff(SBG) #diff is helpful when having groups of BG measurements
         meanBG = mean(SBG)
-        signal = maximum(abs.(SFG.-meanBG))
-        #noise = mean(abs.(SFG.-meanBG))
-        noise = mean(abs.(diffBG))
+        noise = mean(abs.(SBG .- meanBG))
+
+        κ = abs.(SFG.-meanBG)
+        maxκ = maximum(κ)  
+        # We first calculate the signal using the mean (exactly like for the noise)
+        signal = mean( κ ) 
+        thresh = 3
+        # If the SNR is above thresh we might have signal. In that case we want to
+        # prevent underestimation by e.g. the overscan. We therefore apply a 
+        # threshold before calculating the mean
+        if signal > thresh*noise 
+          signal = mean( κ[κ .> maxκ*0.5] ) 
+        end
+
         SNR[k,r,j] = signal / noise
       end
     end
