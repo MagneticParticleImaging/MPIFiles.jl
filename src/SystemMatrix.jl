@@ -81,25 +81,35 @@ end
 function calculateSystemMatrixSNRInner(S, SNR, J, R, K, N, gridSize::NTuple{D,Int}) where D
   for j=1:J
     for r=1:R
+      # precalc on entire FOV
       for k=1:K
         SBG = S[(N+1):end,k,r,j]
         SFG = S[1:N,k,r,j]
-        #diffBG = diff(SBG) #diff is helpful when having groups of BG measurements
         meanBG = mean(SBG)
         noise = mean(abs.(SBG .- meanBG))
-
-        κ = abs.(SFG.-meanBG)
-        maxκ = maximum(κ)  
-        # We first calculate the signal using the mean (exactly like for the noise)
-        signal = mean( κ ) 
-        thresh = 3
-        # If the SNR is above thresh we might have signal. In that case we want to
-        # prevent underestimation by e.g. the overscan. We therefore apply a 
-        # threshold before calculating the mean
-        if signal > thresh*noise 
-          signal = mean( κ[κ .> maxκ*0.5] ) 
-        end
-
+        signal = mean( abs.(SFG.-meanBG) ) 
+        SNR[k,r,j] = signal / noise
+      end
+      # generate mask representing signal region 
+      idx = sortperm(vec(SNR[:,r,j]), rev=true)
+      mask = zeros(Bool, N)
+      for q = 1:20
+        SFG = abs.(S[1:N,idx[q],r,j])
+        maxSFG = maximum(SFG)
+        mask[ SFG .> maxSFG*0.9 ] .= true
+      end
+      # calc SNR on mask
+      for k=1:K
+        SBG = S[(N+1):end,k,r,j]
+        SFG = S[1:N,k,r,j]
+        meanBG = mean(SBG)
+        noise = mean(abs.(SBG .- meanBG))
+        κ = abs.(SFG.-meanBG) 
+        signal = median( κ[mask .== true] ) 
+        #if signal > 2.5*noise
+        #  κmax = maximum(κ)
+        #  #signal = median( κ[(κ .> κmax*0.5) ] ) 
+        #end
         SNR[k,r,j] = signal / noise
       end
     end
