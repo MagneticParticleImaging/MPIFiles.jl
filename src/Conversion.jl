@@ -11,7 +11,8 @@ end
 
 # we do not support all conversion possibilities
 function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocessing=false,
-                     numPeriodAverages=1, numPeriodGrouping=1, experimentNumber=nothing, kargs...)
+                     numPeriodAverages=1, numPeriodGrouping=1, experimentNumber=nothing,
+                     fixDistortions=false, kargs...)
   params = loadMetadata(f)
 
   if experimentNumber != nothing
@@ -29,11 +30,16 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
       else
         setparam!(params, :measData, measData(f))
       end
+
+      if fixDistortions
+        detectAndFixDistortions!(params[:measData], 0.3)
+      end
     else
         @info "load measurement data"
         data = getMeasurementsFD(f, false, frames=1:acqNumFrames(f), sortFrames=true,
                        spectralLeakageCorrection=false, transposed=true, tfCorrection=false,
-                       numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
+                       numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping,
+                       fixDistortions=fixDistortions)
 
           @info size(data)
         setparam!(params, :measData, data)

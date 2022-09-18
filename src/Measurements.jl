@@ -117,7 +117,7 @@ returnasreal(u::AbstractArray{T}) where {T<:Real} = u
 
 function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
             numAverages=1,  periods=1:acqNumPeriodsPerFrame(f),
-            averagePeriodsPerPatch=false, numPeriodAverages=1, kargs...)
+            averagePeriodsPerPatch=false, numPeriodAverages=1, fixDistortions=false, kargs...)
 
   @debug "frequency and frame selection" rxNumSamplingPoints(f) rxNumChannels(f) acqNumFrames(f)
 
@@ -141,6 +141,10 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
       tmp = measDataLowLevel(f, frames[index1:index2], periods; kargs...)
       data[:,:,:,i] = mean(tmp,dims=4)
     end
+  end
+
+  if fixDistortions
+    detectAndFixDistortions!(data, 0.3)
   end
 
   if numPeriodAverages > 1 && averagePeriodsPerPatch
@@ -384,4 +388,35 @@ function spectralLeakageCorrectedData(dataIn)
       end
     end
   return dataOut
+end
+
+
+function detectAndFixDistortions!(data::AbstractArray{T,4}, thresh) where T
+  for fr=1:size(data, 4)
+    peaks = Int[]
+    for p = 1:size(data, 3)
+      if maximum(abs.(data[:,1,p,fr])) > thresh
+        push!(peaks, p)
+      end
+    end
+    if !isempty(peaks)
+     @show peaks
+    end
+    
+    for q in peaks
+      qbegin = q - 1
+      qend = q + 1
+      while qbegin > 0 && qbegin ∈ peaks
+        qbegin -= 1
+      end
+      while qend <= size(data,3) && qend ∈ peaks
+        qend += 1
+      end
+      if qbegin >=1 && qend <= size(data,3)
+        α = (q - qbegin)/(qend - qbegin)
+        data[:,:,q,fr] = α * data[:,:,qbegin,fr] + (1 - α) * data[:,:,qend,fr]
+      end
+    end
+  end
+  return
 end
