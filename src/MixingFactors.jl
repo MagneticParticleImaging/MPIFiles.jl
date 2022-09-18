@@ -30,7 +30,7 @@ function calcPrefactors(b::MPIFile)
   mask = collect((dfStrength(b)[1,:,1] .>= 0.0000001))
   divider = vec(dfDivider(b))
   #mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
-  mxyz_ = 2 .*rxBandwidth(b)*dfCycle(b)./divider
+  mxyz_ = dfBaseFrequency(b)*dfCycle(b)./divider
   mxyz = max.(1,round.(Int64,mxyz_.*mask))
 
   return mxyz, mask, freqNumber
