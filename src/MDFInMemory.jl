@@ -481,6 +481,8 @@ mutable struct MDFv2Calibration <: MDFv2InMemoryPart
   size::Union{Vector{Int64}, Nothing}
   "Signal-to-noise estimate for recorded frequency components; optional"
   snr::Union{Array{Float64, 3}, Nothing}
+  "Flag, if the grid is meandering; optional"
+  isMeanderingGrid::Union{Bool, Missing}
 
   function MDFv2Calibration(;
     deltaSampleSize = nothing,
@@ -491,7 +493,8 @@ mutable struct MDFv2Calibration <: MDFv2InMemoryPart
     order = nothing,
     positions = nothing,
     size = nothing,
-    snr = nothing)
+    snr = nothing,
+    isMeanderingGrid = missing)
 
     return new(
       deltaSampleSize,
@@ -502,7 +505,8 @@ mutable struct MDFv2Calibration <: MDFv2InMemoryPart
       order,
       positions,
       size,
-      snr
+      snr,
+      isMeanderingGrid
     )
   end
 end
@@ -977,7 +981,6 @@ end
 
 customSymbols = Dict{Symbol, String}(
   :dfCustomWaveform => "/acquisition/drivefield/customWaveform",
-  :calibIsMeanderingGrid => "/calibration/isMeanderingGrid",
   :measTemperatures => "/measurement/_temperatures",
   :rxTransferFunctionFileName => "/acquisition/receiver/transferFunctionFileName",
   :recoParameters => "/reconstruction/_parameters",
@@ -1460,9 +1463,6 @@ end
 # This is non-standard (add new non-standard functions to `customSymbols` in order to have the custom fields set!)
 dfCustomWaveform(mdf::MDFv2InMemory)::Union{String, Nothing} = @keyoptional mdf.custom["dfCustomWaveform"] # TODO: Should this be a 2D array?
 dfCustomWaveform(mdf::MDFv2InMemory, customWaveform::String) = mdf.custom["dfCustomWaveform"] = customWaveform
-
-calibIsMeanderingGrid(mdf::MDFv2InMemory)::Union{Bool, Nothing} = @keyoptional Bool(mdf.custom["calibIsMeanderingGrid"])
-calibIsMeanderingGrid(mdf::MDFv2InMemory, meandering::Bool) = mdf.custom["calibIsMeanderingGrid"] = Int(meandering)
 
 rxTransferFunctionFileName(mdf::MDFv2InMemory)::Union{String, Nothing} = @keyoptional mdf.custom["rxTransferFunctionFileName"]
 rxTransferFunctionFileName(mdf::MDFv2InMemory, filename::String) = mdf.custom["rxTransferFunctionFileName"] = filename
