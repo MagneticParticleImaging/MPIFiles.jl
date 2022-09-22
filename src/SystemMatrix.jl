@@ -87,7 +87,7 @@ function calculateSystemMatrixSNRInner(S, SNR, J, R, K, N, gridSize::NTuple{D,In
         SFG = S[1:N,k,r,j]
         meanBG = mean(SBG)
         noise = mean(abs.(SBG .- meanBG))
-        signal = mean( abs.(SFG.-meanBG) ) 
+        signal = median( abs.(SFG.-meanBG) ) 
         SNR[k,r,j] = signal / noise
       end
       # generate mask representing signal region 
@@ -96,8 +96,9 @@ function calculateSystemMatrixSNRInner(S, SNR, J, R, K, N, gridSize::NTuple{D,In
       for q = 1:20
         SFG = abs.(S[1:N,idx[q],r,j])
         maxSFG = maximum(SFG)
-        mask[ SFG .> maxSFG*0.9 ] .= true
+        mask[ SFG .> maxSFG*0.90 ] .= true
       end
+      #@info sum(mask)/length(mask)
       # calc SNR on mask
       for k=1:K
         SBG = S[(N+1):end,k,r,j]
@@ -105,16 +106,19 @@ function calculateSystemMatrixSNRInner(S, SNR, J, R, K, N, gridSize::NTuple{D,In
         meanBG = mean(SBG)
         noise = mean(abs.(SBG .- meanBG))
         κ = abs.(SFG.-meanBG) 
+        #κ_ = mapwindow(median!, reshape(κ, gridSize), ntuple(d->5,D))
+        #signal = maximum( κ_ ) 
         signal = median( κ[mask .== true] ) 
-        #if signal > 2.5*noise
+        #if signal > 3.5*noise
+          #signal = maximum( κ[mask .== true] )
         #  κmax = maximum(κ)
-        #  #signal = median( κ[(κ .> κmax*0.5) ] ) 
+        #  signal = median( κ[(κ .> κmax*0.9) ] ) 
         #end
         SNR[k,r,j] = signal / noise
       end
     end
   end
-  SNR[:,:,:] .= mean(SNR,dims=3)
+  SNR[:,:,:] .= median(SNR,dims=3)
   return
 end
 #=
