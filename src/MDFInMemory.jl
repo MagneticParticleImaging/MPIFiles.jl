@@ -482,7 +482,7 @@ mutable struct MDFv2Calibration <: MDFv2InMemoryPart
   "Signal-to-noise estimate for recorded frequency components; optional"
   snr::Union{Array{Float64, 3}, Nothing}
   "Flag, if the grid is meandering; optional"
-  isMeanderingGrid::Union{Bool, Missing}
+  isMeanderingGrid::Union{Bool, Nothing}
 
   function MDFv2Calibration(;
     deltaSampleSize = nothing,
@@ -494,7 +494,7 @@ mutable struct MDFv2Calibration <: MDFv2InMemoryPart
     positions = nothing,
     size = nothing,
     snr = nothing,
-    isMeanderingGrid = missing)
+    isMeanderingGrid = nothing)
 
     return new(
       deltaSampleSize,
