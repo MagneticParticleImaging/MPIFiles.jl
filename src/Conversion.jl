@@ -116,11 +116,14 @@ function loadCalibParams(f, params = Dict{Symbol,Any}())
   if experimentIsCalibration(f)
     for op in [:calibFov, :calibFovCenter,
                :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
-             :calibDeltaSampleSize, :calibMethod]
+               :calibDeltaSampleSize, :calibMethod]
       setparam!(params, op, eval(op)(f))
     end
     if !haskey(params, :calibSNR)
       setparam!(params, :calibSNR, calibSNR(f))
+    end
+    if !haskey(params, :calibIsMeanderingGrid)
+      setparam!(params, :calibIsMeanderingGrid, calibIsMeanderingGrid(f))
     end
   end
   return params
