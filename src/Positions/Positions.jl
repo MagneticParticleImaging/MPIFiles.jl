@@ -382,7 +382,7 @@ function BreakpointGridPositions(params::Dict)
 
   breakpointIndices = params["indicesBreakpoint"]
 
-  if typ == "MeanderingGridPositions"
+  if haskey(params, "positionsMeandering")
     grid = MeanderingGridPositions(params)
     return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
   elseif typ == "RegularGridPositions"
