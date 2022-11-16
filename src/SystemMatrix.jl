@@ -109,11 +109,16 @@ function calculateSystemMatrixSNRInner(S, SNR, J, R, K, N, gridSize::NTuple{D,In
         #κ_ = mapwindow(median!, reshape(κ, gridSize), ntuple(d->5,D))
         #signal = maximum( κ_ ) 
         signal = median( κ[mask .== true] ) 
-        #if signal > 3.5*noise
-          #signal = maximum( κ[mask .== true] )
-        #  κmax = maximum(κ)
-        #  signal = median( κ[(κ .> κmax*0.9) ] ) 
-        #end
+        #signal = maximum( κ[mask .== true] ) 
+        if signal > 3.5*noise
+          phaseMaskA = angle.(SFG.-meanBG) .> 0
+          phaseMaskB = angle.(SFG.-meanBG) .<= 0
+	  phaseMask = sum(phaseMaskA) > sum(phaseMaskB) ? phaseMaskA : phaseMaskB
+	  #signal = maximum( κ[mask .== true] )
+          κmax = maximum(κ)
+          signal = median( κ[(κ .> κmax*0.9 ) ] ) 
+          #signal = mean( κ[ mask .&&  phaseMask ] ) 
+        end
         SNR[k,r,j] = signal / noise
       end
     end
