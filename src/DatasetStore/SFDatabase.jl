@@ -27,9 +27,12 @@ function findSFFiles(d::BrukerDatasetStore)
 end
 
 function findSFFiles(d::MDFDatasetStore)
-  bfiles = String[]
-
   path = joinpath(d.path,"calibrations/")
+  return findSFFilesMDF(path)
+end
+
+function findSFFilesMDF(path::AbstractString)
+  bfiles = String[]
 
   files = readdir(path)
 
@@ -38,7 +41,9 @@ function findSFFiles(d::MDFDatasetStore)
     if !isdir(file) && tryparse(Int64,prefix) != nothing &&
        (ext == ".mdf" || ext == ".hdf" || ext == ".h5") && !occursin("td.mdf",file)
       try
-        push!(bfiles, joinpath(path,file))
+        filename = joinpath(path,file)
+        MPIFile(filename) # check if file can be opened as an MPIFile
+        push!(bfiles, filename)
       catch e
         @debug "" e
       end
@@ -156,10 +161,7 @@ function loadSFDatabase(d::BrukerDatasetStore)
 end
 
 function loadSFDatabase(d::MDFDatasetStore)
-  files = readdir(calibdir(d))
-  @debug "system function database" files
-  mdffiles = files[endswith.(files,".mdf") .& .!endswith.(files,"td.mdf")]
-  fileList = calibdir(d).*"/".*mdffiles
+  fileList = findSFFiles(d)
   A = generateSFDatabase(fileList)
   return A
 end

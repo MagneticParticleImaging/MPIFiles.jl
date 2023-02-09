@@ -72,26 +72,58 @@ function calculateSystemMatrixSNR(f::MPIFile, S::Array; numPeriodAverages=1, num
 
   SNR = zeros(K, R, J)
 
-  calculateSystemMatrixSNRInner(S, SNR, J, R, K, N)
+  gridSize = tuple(calibSize(f)...)
+
+  calculateSystemMatrixSNRInner(S, SNR, J, R, K, N, gridSize)
   return SNR
 end
 
-function calculateSystemMatrixSNRInner(S, SNR, J, R, K, N)
+function calculateSystemMatrixSNRInner(S, SNR, J, R, K, N, gridSize::NTuple{D,Int}) where D
   for j=1:J
     for r=1:R
+      # precalc on entire FOV
       for k=1:K
         SBG = S[(N+1):end,k,r,j]
         SFG = S[1:N,k,r,j]
-        diffBG = diff(SBG)
         meanBG = mean(SBG)
-        signal = maximum(abs.(SFG.-meanBG))
-        #noise = mean(abs.(SFG.-meanBG))
-        noise = mean(abs.(diffBG))
+        noise = mean(abs.(SBG .- meanBG))
+        signal = median( abs.(SFG.-meanBG) ) 
+        SNR[k,r,j] = signal / noise
+      end
+      # generate mask representing signal region 
+      idx = sortperm(vec(SNR[:,r,j]), rev=true)
+      mask = zeros(Bool, N)
+      for q = 1:20
+        SFG = abs.(S[1:N,idx[q],r,j])
+        maxSFG = maximum(SFG)
+        mask[ SFG .> maxSFG*0.90 ] .= true
+      end
+      #@info sum(mask)/length(mask)
+      # calc SNR on mask
+      for k=1:K
+        SBG = S[(N+1):end,k,r,j]
+        SFG = S[1:N,k,r,j]
+        meanBG = mean(SBG)
+        noise = mean(abs.(SBG .- meanBG))
+        κ = abs.(SFG.-meanBG) 
+        #κ_ = mapwindow(median!, reshape(κ, gridSize), ntuple(d->5,D))
+        #signal = maximum( κ_ ) 
+        signal = median( κ[mask .== true] ) 
+        #signal = maximum( κ[mask .== true] ) 
+        if signal > 3.5*noise
+          phaseMaskA = angle.(SFG.-meanBG) .> 0
+          phaseMaskB = angle.(SFG.-meanBG) .<= 0
+	  phaseMask = sum(phaseMaskA) > sum(phaseMaskB) ? phaseMaskA : phaseMaskB
+	  #signal = maximum( κ[mask .== true] )
+          κmax = maximum(κ)
+          signal = median( κ[(κ .> κmax*0.9 ) ] ) 
+          #signal = mean( κ[ mask .&&  phaseMask ] ) 
+        end
         SNR[k,r,j] = signal / noise
       end
     end
   end
-  SNR[:,:,:] .= mean(SNR,dims=3)
+  SNR[:,:,:] .= median(SNR,dims=3)
   return
 end
 #=

@@ -70,7 +70,7 @@ function loadRecoData_(f::MDFFile)
   if haskey(f.file, "/reconstruction/_parameters/nAverages")
     periodTime *= read(f.file, "/reconstruction/_parameters/nAverages")
   else
-    @warn "No reconstruction averaging number found. tempoaral spacings in axis `:time` might be wrong."
+    @warn "No reconstruction averaging number found. temporal spacings in axis `:time` might be wrong."
   end
 
   # load data

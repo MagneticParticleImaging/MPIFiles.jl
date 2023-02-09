@@ -80,6 +80,7 @@ function BrukerFile(path::String; isCalib=_iscalib(path), fastMode=false, preten
 				 "ACQ_time", "ACQ_ReceiverSelect", "ACQ_comment"]
 	  keylistMethod = ["PVM_MPI_Bandwidth", "MPI_RepetitionsPerStep",
 				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
+                                 "PVM_MPI_NrBackgroundMeasurementCalibrationAllScans",
 				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
 				 "PVM_MPI_ChannelSelect", "PVM_MPI_Tracer", "PVM_MPI_DriveFieldCycle", "PVM_Matrix", "PVM_Fov"]   
   else
