@@ -803,7 +803,7 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
       write(file, "/measurement/sparsityTransformation", params[:measSparsityTransformation] )
     end
   end
-  writeIfAvailable(file, "/measurement/_temperatures",  params, :measTemperatures)
+  writeIfAvailable(file, "/measurement/sensor/temperature",  params, :measTemperatures)
 
 
   # calibrations

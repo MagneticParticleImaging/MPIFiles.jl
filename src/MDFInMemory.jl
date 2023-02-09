@@ -978,7 +978,8 @@ end
 customSymbols = Dict{Symbol, String}(
   :dfCustomWaveform => "/acquisition/drivefield/customWaveform",
   :calibIsMeanderingGrid => "/calibration/isMeanderingGrid",
-  :measTemperatures => "/measurement/_temperatures",
+  :measTemperatures => "/measurement/sensor/temperature",
+  :measDriveField => "/measurement/sensor/driveField",
   :rxTransferFunctionFileName => "/acquisition/receiver/transferFunctionFileName",
   :recoParameters => "/reconstruction/_parameters",
   :auxiliaryData => "/custom/auxiliaryData",
@@ -1470,8 +1471,12 @@ rxTransferFunctionFileName(mdf::MDFv2InMemory, filename::String) = mdf.custom["r
 recoParameters(mdf::MDFv2InMemory) = @keyoptional mdf.custom["recoParameters"]
 recoParameters(mdf::MDFv2InMemory, parameters) = mdf.custom["recoParameters"] = parameters
 
-measTemperatures(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measTemperatures"]
-measTemperatures(mdf::MDFv2InMemory, measTemperatures) = mdf.custom["measTemperatures"] = measTemperatures
+measTemperatures(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measTemperature"]
+measTemperatures(mdf::MDFv2InMemory, measTemperatures) = mdf.custom["measTemperature"] = measTemperatures
+
+measDriveField(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measDriveField"]
+measDriveField(mdf::MDFv2InMemory, measTemperatures) = mdf.custom["measDriveField"] = measTemperatures
+
 
 auxiliaryData(mdf::MDFv2InMemory) = @keyoptional mdf.custom["auxiliaryData"]
 auxiliaryData(mdf::MDFv2InMemory, auxiliaryData) = mdf.custom["auxiliaryData"] = auxiliaryData
