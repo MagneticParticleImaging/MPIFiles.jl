@@ -413,8 +413,8 @@ fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid
 measIsCalibProcessed(f::MDFFile) = measIsFramePermutation(f) && 
                                    measIsFourierTransformed(f) &&
                                    measIsFastFrameAxis(f)
-measTemperatures(f::MDFFile) = @keyoptional f["/measurement/sensor/temperature"] # non-standard
-measDriveField(f::MDFFile) = @keyoptional f["/measurement/sensor/driveField"] # non-standard
+measTemperatures(f::MDFFile) = @keyoptional f["/measurement/_sensor/_temperature"] # non-standard
+measDriveField(f::MDFFile) = @keyoptional f["/measurement/_sensor/_driveField"] # non-standard
 
 
 #calibrations
