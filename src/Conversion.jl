@@ -813,7 +813,8 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
     end
   end
   writeIfAvailable(file, "/measurement/_sensor/_temperature",  params, :measTemperatures)
-  writeIfAvailable(file, "/measurement/_sensor/_driveField", params, :measDriveField)
+  writeIfAvailable(file, "/measurement/_sensor/_driveField/_field", params, :measDriveField)
+  writeIfAvailable(file, "/measurement/_sensor/_driveField/_transmit", params, :measDriveFieldTxVoltage)
 
 
   # calibrations

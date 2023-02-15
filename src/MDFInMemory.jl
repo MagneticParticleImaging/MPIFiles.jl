@@ -982,7 +982,8 @@ end
 customSymbols = Dict{Symbol, String}(
   :dfCustomWaveform => "/acquisition/drivefield/customWaveform",
   :measTemperatures => "/measurement/_sensor/_temperature",
-  :measDriveField => "/measurement/_sensor/_driveField",
+  :measDriveField => "/measurement/_sensor/_driveField/_field",
+  :measDriveFieldTx => "/measurement/_sensor/_driveField/_transmit",
   :rxTransferFunctionFileName => "/acquisition/receiver/transferFunctionFileName",
   :recoParameters => "/reconstruction/_parameters",
   :auxiliaryData => "/custom/auxiliaryData",
@@ -1476,6 +1477,9 @@ measTemperatures(mdf::MDFv2InMemory, measTemperatures) = mdf.custom["measTempera
 
 measDriveField(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measDriveField"]
 measDriveField(mdf::MDFv2InMemory, measDriveFields) = mdf.custom["measDriveField"] = measDriveFields
+
+measDriveFieldTx(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measDriveFieldTx"]
+measDriveFieldTx(mdf::MDFv2InMemory, measTransmit) = mdf.custom["measDriveFieldTx"] = measTransmit
 
 
 auxiliaryData(mdf::MDFv2InMemory) = @keyoptional mdf.custom["auxiliaryData"]

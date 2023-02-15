@@ -414,7 +414,8 @@ measIsCalibProcessed(f::MDFFile) = measIsFramePermutation(f) &&
                                    measIsFourierTransformed(f) &&
                                    measIsFastFrameAxis(f)
 measTemperatures(f::MDFFile) = @keyoptional f["/measurement/_sensor/_temperature"] # non-standard
-measDriveField(f::MDFFile) = @keyoptional f["/measurement/_sensor/_driveField"] # non-standard
+measDriveField(f::MDFFile) = @keyoptional f["/measurement/_sensor/_driveField/_field"] # non-standard
+measDriveFieldTx(f::MDFFile) = @keyoptional f["/measurement/_sensor/_driveField/_transmit"] # non-standard
 
 
 #calibrations
