@@ -981,9 +981,9 @@ end
 
 customSymbols = Dict{Symbol, String}(
   :dfCustomWaveform => "/acquisition/drivefield/customWaveform",
-  :measTemperatures => "/measurement/_sensor/_temperature",
-  :measDriveField => "/measurement/_sensor/_driveField/_field",
-  :measDriveFieldTx => "/measurement/_sensor/_driveField/_transmit",
+  :measTemperatures => "/measurement/_monitoring/temperature",
+  :measObservedDriveField => "/measurement/_monitoring/driveField/observed",
+  :measAppliedDriveField => "/measurement/_monitoring/driveField/applied",
   :rxTransferFunctionFileName => "/acquisition/receiver/transferFunctionFileName",
   :recoParameters => "/reconstruction/_parameters",
   :auxiliaryData => "/custom/auxiliaryData",
@@ -1475,11 +1475,11 @@ recoParameters(mdf::MDFv2InMemory, parameters) = mdf.custom["recoParameters"] = 
 measTemperatures(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measTemperature"]
 measTemperatures(mdf::MDFv2InMemory, measTemperatures) = mdf.custom["measTemperature"] = measTemperatures
 
-measDriveField(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measDriveField"]
-measDriveField(mdf::MDFv2InMemory, measDriveFields) = mdf.custom["measDriveField"] = measDriveFields
+measObservedDriveField(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measObservedDriveField"]
+measObservedDriveField(mdf::MDFv2InMemory, measDriveFields) = mdf.custom["measObservedDriveField"] = measDriveFields
 
-measDriveFieldTx(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measDriveFieldTx"]
-measDriveFieldTx(mdf::MDFv2InMemory, measTransmit) = mdf.custom["measDriveFieldTx"] = measTransmit
+measAppliedDriveField(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measAppliedDriveField"]
+measAppliedDriveField(mdf::MDFv2InMemory, measTransmit) = mdf.custom["measAppliedDriveField"] = measTransmit
 
 
 auxiliaryData(mdf::MDFv2InMemory) = @keyoptional mdf.custom["auxiliaryData"]
