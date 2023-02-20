@@ -181,7 +181,6 @@ Supported keyword arguments:
 * bgCorrection
 * interpolateBG
 * tfCorrection
-* tfDCCorrection
 * sortFrames
 * numAverages
 * numPeriodAverages
@@ -190,7 +189,7 @@ Supported keyword arguments:
 function getMeasurements(f::MPIFile, neglectBGFrames=true;
       frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
       bgCorrection=false, interpolateBG=false, tfCorrection=rxHasTransferFunction(f),
-      tfDCCorrection=false, sortFrames=false, numAverages=1, numPeriodGrouping=1, kargs...)
+      sortFrames=false, numAverages=1, numPeriodGrouping=1, kargs...)
 
   if neglectBGFrames
     idx = measFGFrameIdx(f)
@@ -274,12 +273,12 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
     dataF = rfft(data, 1)
     dataF[2:end,:,:,:] ./= tf[2:end,:,:,:]
 
-    if tfDCCorrection
+    if all(tf[1,:,:,:] .!= 0) && !any(isnan.(tf[1,:,:,:]))
       dataF[1,:,:,:] ./= tf[1,:,:,:]
     end
 
     @warn "This measurement has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
-    if inductionFactor != nothing
+    if !isnothing(inductionFactor)
         K = minimum([length(inductionFactor), size(dataF, 2)])
         if K != length(inductionFactor)
           @warn "The amount of channels in the data and the TF does not match. Using lowest value. Please check closely if the TF is applied to wrong channels."
@@ -318,15 +317,25 @@ function getMeasurementsFD(f::MPIFile, args...;
       tfCorrection=rxHasTransferFunction(f),  kargs...)
 
   data = getMeasurements(f, args..., tfCorrection=false; kargs...)
-
+  
   data = rfft(data, 1)
 
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
     data[2:end,:,:,:] ./= tf[2:end,:,:,:]
+
+    if all(tf[1,:,:,:] .!= 0) && !any(isnan.(tf[1,:,:,:]))
+      data[1,:,:,:] ./= tf[1,:,:,:]
+    end
+
     @warn "This measurement has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
-    if inductionFactor != nothing
+    if !isnothing(inductionFactor)
+        K = minimum([length(inductionFactor), size(data, 2)])
+        if K != length(inductionFactor)
+          @warn "The amount of channels in the data and the TF does not match. Using lowest value. Please check closely if the TF is applied to wrong channels."
+        end
+
        	for k=1:length(inductionFactor)
        		data[:,k,:,:] ./= inductionFactor[k]
        	end
