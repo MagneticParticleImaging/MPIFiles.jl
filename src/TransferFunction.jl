@@ -181,7 +181,7 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
   close(f.file)
 
   h5open(filepath(f), "r+") do file
-	if haskey(file, "/acquisition/receiver/transferFunctionFileName")
+	  if haskey(file, "/acquisition/receiver/transferFunctionFileName")
       delete_object(file, "/acquisition/receiver/transferFunctionFileName")
     end
     write(file, "/acquisition/receiver/transferFunctionFileName", filenameTF)
