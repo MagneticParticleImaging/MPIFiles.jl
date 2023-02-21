@@ -981,7 +981,7 @@ end
 
 customSymbols = Dict{Symbol, String}(
   :dfCustomWaveform => "/acquisition/drivefield/customWaveform",
-  :measTemperatures => "/measurement/_monitoring/temperature",
+  :measTemperatures => "/measurement/_monitoring/temperature/observed",
   :measObservedDriveField => "/measurement/_monitoring/driveField/observed",
   :measAppliedDriveField => "/measurement/_monitoring/driveField/applied",
   :rxTransferFunctionFileName => "/acquisition/receiver/transferFunctionFileName",
