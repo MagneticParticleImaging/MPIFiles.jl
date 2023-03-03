@@ -11,7 +11,8 @@ const axes = Base.axes
 @reexport using HDF5
 @reexport using Dates
 @reexport using DelimitedFiles
-@reexport using Images
+@reexport using ImageMetadata
+using ImageAxes
 @reexport using LinearAlgebra
 @reexport using Random
 @reexport using Mmap
@@ -53,47 +54,47 @@ export studyName, studyNumber, studyUuid, studyDescription, studyTime
 
 # experiment parameters
 export experimentName, experimentNumber, experimentUuid, experimentDescription, experimentSubject,
-      experimentIsSimulation, experimentIsCalibration,
-      experimentHasMeasurement, experimentHasReconstruction
+  experimentIsSimulation, experimentIsCalibration,
+  experimentHasMeasurement, experimentHasReconstruction
 
 # tracer parameters
 export tracerName, tracerBatch, tracerVolume, tracerConcentration,
-       tracerSolute, tracerInjectionTime, tracerVendor
+  tracerSolute, tracerInjectionTime, tracerVendor
 
 # scanner parameters
 export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
-       scannerTopology
+  scannerTopology
 
 # acquisition parameters
 export acqStartTime, acqNumFrames, acqNumAverages,
-       acqGradient, acqOffsetField, acqNumPeriodsPerFrame, acqSize
+  acqGradient, acqOffsetField, acqNumPeriodsPerFrame, acqSize
 
 # drive-field parameters
 export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,
-       dfDivider, dfWaveform, dfCycle
+  dfDivider, dfWaveform, dfCycle
 
 # receiver parameters
 export rxNumChannels, rxBandwidth, rxNumSamplingPoints,
-       rxTransferFunction, rxTransferFunctionFileName, rxHasTransferFunction, rxUnit,
-       rxDataConversionFactor, rxInductionFactor
+  rxTransferFunction, rxTransferFunctionFileName, rxHasTransferFunction, rxUnit,
+  rxDataConversionFactor, rxInductionFactor
 
 # measurements
 export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
-       measIsTransferFunctionCorrected,
-       measIsBGCorrected, measIsBackgroundCorrected, measIsFastFrameAxis,
-       measIsFramePermutation, measIsFrequencySelection,
-       measIsBGFrame, measIsBackgroundFrame, measIsSpectralLeakageCorrected, measFramePermutation,
-       measFrequencySelection, measIsSparsityTransformed, measIsCalibProcessed
+  measIsTransferFunctionCorrected,
+  measIsBGCorrected, measIsBackgroundCorrected, measIsFastFrameAxis,
+  measIsFramePermutation, measIsFrequencySelection,
+  measIsBGFrame, measIsBackgroundFrame, measIsSpectralLeakageCorrected, measFramePermutation,
+  measFrequencySelection, measIsSparsityTransformed, measIsCalibProcessed
 
 # calibrations
 export calibSNR, calibSnr, calibFov, calibFieldOfView, calibFovCenter,
-       calibFieldOfViewCenter, calibSize, calibOrder, calibPositions,
-       calibOffsetField, calibDeltaSampleSize,
-       calibMethod, calibIsMeanderingGrid
+  calibFieldOfViewCenter, calibSize, calibOrder, calibPositions,
+  calibOffsetField, calibDeltaSampleSize,
+  calibMethod, calibIsMeanderingGrid
 
 # reconstruction results
 export recoData, recoFov, recoFieldOfView, recoFovCenter, recoFieldOfViewCenter,
-       recoSize, recoOrder, recoPositions
+  recoSize, recoOrder, recoPositions
 
 # additional functions that should be implemented by an MPIFile
 export filepath, systemMatrixWithBG, systemMatrix
@@ -232,15 +233,15 @@ include("IMT.jl")
 function MPIFile(filename::AbstractString; kargs...)
   filenamebase, ext = splitext(filename)
   if ext == ".mdf" || ext == ".hdf" || ext == ".h5"
-    file = h5open(filename,"r")
+    file = h5open(filename, "r")
     if haskey(file, "/version")
       return MDFFile(filename, file) # MDFFile currently has no kargs
     else
       return IMTFile(filename, file; kargs...)
     end
   else
-    if isfile(joinpath(filename,"mdf"))
-      filenameMDF = readline(joinpath(filename,"mdf"))
+    if isfile(joinpath(filename, "mdf"))
+      filenameMDF = readline(joinpath(filename, "mdf"))
       return MDFFile(filenameMDF)
     else
       return BrukerFile(filename; kargs...)
@@ -249,30 +250,30 @@ function MPIFile(filename::AbstractString; kargs...)
 end
 
 function show(io::IO, f::MPIFile)
-  print(io,supertype(typeof(f)))
-  print(io,"\n\tStudy: ")
+  print(io, supertype(typeof(f)))
+  print(io, "\n\tStudy: ")
   show(io, studyName(f))
-  print(io,", ")
-  show(io,studyTime(f))
-  print(io,"\n\tExperiment: ")
-  show(io,experimentName(f))
-  print(io,", ")
-  show(io,acqStartTime(f))
-  print(io,"\n")
+  print(io, ", ")
+  show(io, studyTime(f))
+  print(io, "\n\tExperiment: ")
+  show(io, experimentName(f))
+  print(io, ", ")
+  show(io, acqStartTime(f))
+  print(io, "\n")
 end
 
 # Opens a set of MPIFiles
 function MPIFile(filenames::Vector)
-  return map(x->MPIFile(x),filenames)
+  return map(x -> MPIFile(x), filenames)
 end
 
 # For the do block
 function MPIFile(h::Function, args...; kargs...)
   f = MPIFile(args...; kargs...)
   try
-      h(f)
+    h(f)
   finally
-      close(f)
+    close(f)
   end
 end
 
