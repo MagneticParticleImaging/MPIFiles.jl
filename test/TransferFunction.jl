@@ -15,13 +15,13 @@ tfh5path = joinpath(tmpdir,"transferFunction","example.h5")
 
   @test a.freq == b.freq
   @test a.data == b.data
-  @test a[[1],1] == a[[0.0],1]
+  @test a[1,1] == a(0.0,1)
 
   c = MPIFiles.combine(MPIFiles.combine(a,a),a)
   rm(tfh5path)
   MPIFiles.save(tfh5path, c)
-  @test a[[1],1] == c[[1],2]
-  @test a[[1],1] == c[[1],3]
+  @test a[1,1] == c[1,2]
+  @test a[1,1] == c[1,3]
 
   measBruker = MPIFile(fnMeasBruker)
   tf = sampleTF(c, measBruker)

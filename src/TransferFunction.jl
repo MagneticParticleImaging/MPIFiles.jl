@@ -3,14 +3,18 @@ export TransferFunction, sampleTF, setTF
 mutable struct TransferFunction
   freq::Vector{Float64}
   data::Matrix{ComplexF64}
+  interpolator::Vector{AbstractInterpolation}
   inductionFactor::Vector{Float64}
 
   function TransferFunction(freq_, datain::Array{T}, inductionFactor=ones(size(datain, 2))) where {T<:Complex}
-    freq = freq_[1]:(freq_[2]-freq_[1]):freq_[end]
+    if length(freq_) != size(datain,1); error("Length of frequency axis ($(length(freq_))) does not match the number of samples in the data ($(size(datain,1)))!") end
     data = reshape(deepcopy(datain), size(datain,1), size(datain, 2))
-    return new(freq_, data, inductionFactor)
+    interpolator = [extrapolate(interpolate((freq_,), channel, Gridded(Linear())), Interpolations.Flat()) for channel in eachcol(data)]
+    return new(freq_, data, interpolator, inductionFactor)
   end
 end
+
+Base.show(io::IO, ::MIME"text/plain", tf::TransferFunction) = print(io, "MPIFiles.TransferFunction: \n\t$(size(tf.data,2)) channels\n\t$(size(tf.data,1)) frequency samples from $(tf.freq[1]) Hz to $(tf.freq[end]) Hz")
 
 function TransferFunction(freq_, ampdata, phasedata, args...)
   data = ampdata.*exp.(im.*phasedata)
@@ -19,7 +23,7 @@ end
 
 function TransferFunction(filename::String; kargs...)
     filenamebase, ext = splitext(filename)
-    if  ext == ".h5"
+    if ext == ".h5"
       tf = load_tf(filename)
     else #if ext == "s1p" || ext == "s2p"
       tf = load_tf_fromVNA(filename; kargs...)
@@ -27,29 +31,21 @@ function TransferFunction(filename::String; kargs...)
     return tf
 end
 
-function getindex(tmf::TransferFunction, x::UnitRange, chan::Integer=1)
-  a = tmf.data[x,chan]
-  return a
-end
-
-#function getindex(tmf::TransferFunction, x::Real, chan::Integer=1)
-#  a = tmf.interp[chan](x)
-#  return a
-#end
-
-function getindex(tmf::TransferFunction, X::Union{Vector,AbstractRange}, chan::Integer=1)
-  I = extrapolate(interpolate((tmf.freq,), tmf.data[:,chan], Gridded(Linear())), Interpolations.Flat())
-
-  return [I(x) for x in X]
-end
-
-function getindex(tmf::TransferFunction, X::Union{Vector,AbstractRange}, chan::AbstractRange)
-  out = zeros(ComplexF64, length(X), length(chan))
-  for d=1:length(chan)
-    out[:,d] = tmf[X,d]
+function getindex(tmf::TransferFunction, args...)
+  try 
+    return getindex(tmf.data, args...)  
+  catch e
+    @warn "The indexing using square brackets on TransferFunction objects now always operates on the integer indizes of the underlying transfer function data. To use frequency interpolation, use tf(freq, channel) instead of tf[[freq],channel]."
+    rethrow(e)
   end
-  return out
 end
+
+function (tmf::TransferFunction)(x, chan::Integer=1)
+  if chan>length(tmf.interpolator); error("The TransferFunction only has $(length(tmf.interpolator)) channel(s), unable to access channel $(chan)") end
+  return tmf.interpolator[chan](x)
+end
+
+(tmf::TransferFunction)(x, chan::AbstractArray) = hcat([tmf(x,c) for c in chan]...)
 
 function load_tf(filename::String)
   tf = h5read(filename,"/transferFunction")
@@ -59,6 +55,7 @@ function load_tf(filename::String)
 end
 
 function combine(tf1, tf2)
+  if tf1.freq != tf2.freq; error("The frequency axes of the transfer functions do not match. Can not combine!") end
   freq = tf1.freq
   data = cat(tf1.data,tf2.data, dims=2)
   inductionFactor = cat(tf1.inductionFactor, tf2.inductionFactor, dims=1)
@@ -126,8 +123,7 @@ end
 function sampleTF(tmf::TransferFunction, f::MPIFile)
   freq = rxFrequencies(f)
   numChan = rxNumChannels(f)
-  numFreq = length(freq)
-  return tmf[freq,1:numChan]
+  return tmf(freq,1:numChan)
 end
 
 
