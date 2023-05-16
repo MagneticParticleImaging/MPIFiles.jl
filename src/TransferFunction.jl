@@ -5,20 +5,33 @@ mutable struct TransferFunction
   data::Matrix{ComplexF64}
   interpolator::Vector{AbstractInterpolation}
   inductionFactor::Vector{Float64}
+  units::Vector{Unitful.FreeUnits}
 
-  function TransferFunction(freq_, datain::Array{T}, inductionFactor=ones(size(datain, 2))) where {T<:Complex}
+  function TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Complex}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
+
+    parsed_units = Unitful.FreeUnits[]
+    for tmp in units
+      if isa(tmp, String); tmp = uparse(tmp) end # get correct unit from unit strings
+      if !isa(tmp, Unitful.FreeUnits); tmp = Unitful.unit(tmp) end # get correct unit for numbers and quantities, e.g. unit(1) or unit(1u"V/T"), includes the case that the string parsing returned one of these types
+      push!(parsed_units, tmp)
+    end
+    
     if length(freq_) != size(datain,1); error("Length of frequency axis ($(length(freq_))) does not match the number of samples in the data ($(size(datain,1)))!") end
+    if size(datain, 2) != length(inductionFactor); error("Number of channels in data ($(size(datain, 2))) does not match the number of channels in the given inductionFactor ($(size(inductionFactor,1)))!") end
+    if size(datain, 2) != length(units); error("Number of channels in data ($(size(datain, 2))) does not match the number of channels in the given units ($(size(units,1)))!") end
+
     data = reshape(deepcopy(datain), size(datain,1), size(datain, 2))
     interpolator = [extrapolate(interpolate((freq_,), channel, Gridded(Linear())), Interpolations.Flat()) for channel in eachcol(data)]
-    return new(freq_, data, interpolator, inductionFactor)
+    return new(freq_, data, interpolator, inductionFactor, parsed_units)
   end
 end
 
-Base.show(io::IO, ::MIME"text/plain", tf::TransferFunction) = print(io, "MPIFiles.TransferFunction: \n\t$(size(tf.data,2)) channels\n\t$(size(tf.data,1)) frequency samples from $(tf.freq[1]) Hz to $(tf.freq[end]) Hz")
+Base.show(io::IO, ::MIME"text/plain", tf::TransferFunction) = print(io, "MPIFiles.TransferFunction: \n\t$(size(tf.data,2)) channels, units of $(string.(tf.units))\n\t$(size(tf.data,1)) frequency samples from $(tf.freq[1]) Hz to $(tf.freq[end]) Hz")
 
-function TransferFunction(freq_, ampdata, phasedata, args...)
+function TransferFunction(freq_::Vector{<:Real}, ampdata::Array{<:Real,N}, phasedata::Array{<:Real,N}; kwargs...) where N
+  if size(ampdata) != size(phasedata); error("The size of ampdata and phasedata must match!") end
   data = ampdata.*exp.(im.*phasedata)
-  return TransferFunction(freq_, data, args...)
+  return TransferFunction(freq_, data; kwargs...)
 end
 
 function TransferFunction(filename::String; kargs...)
@@ -42,7 +55,7 @@ end
 
 function (tmf::TransferFunction)(x, chan::Integer=1)
   if chan>length(tmf.interpolator); error("The TransferFunction only has $(length(tmf.interpolator)) channel(s), unable to access channel $(chan)") end
-  return tmf.interpolator[chan](x)
+  return tmf.interpolator[chan](x) .* tmf.units[chan]
 end
 
 (tmf::TransferFunction)(x, chan::AbstractArray) = hcat([tmf(x,c) for c in chan]...)
@@ -51,21 +64,29 @@ function load_tf(filename::String)
   tf = h5read(filename,"/transferFunction")
   freq = h5read(filename,"/frequencies")
   inductionFactor = h5read(filename,"/inductionFactor")
-  return TransferFunction(freq,tf,inductionFactor)
+  unit = []
+  try 
+    unit = h5read(filename, "/unit")
+  catch # if h5read fails, it should mean that there is no units, maybe do something better here
+    return TransferFunction(freq, tf, inductionFactor=inductionFactor)
+  end
+  return TransferFunction(freq, tf, inductionFactor=inductionFactor, units=uparse.(unit))
 end
 
-function combine(tf1, tf2)
+function combine(tf1::TransferFunction, tf2::TransferFunction)
   if tf1.freq != tf2.freq; error("The frequency axes of the transfer functions do not match. Can not combine!") end
   freq = tf1.freq
   data = cat(tf1.data,tf2.data, dims=2)
   inductionFactor = cat(tf1.inductionFactor, tf2.inductionFactor, dims=1)
-  return TransferFunction(freq, data, inductionFactor)
+  units = cat(tf1.units, tf2.units, dims=1)
+  return TransferFunction(freq, data, inductionFactor=inductionFactor, units=units)
 end
 
 function save(filename::String, tf::TransferFunction)
   h5write(filename, "/transferFunction", tf.data)
   h5write(filename, "/frequencies", tf.freq)
   h5write(filename, "/inductionFactor", tf.inductionFactor)
+  h5write(filename, "/unit", string.(tf.units))
   return nothing
 end
 

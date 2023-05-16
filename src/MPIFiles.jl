@@ -26,6 +26,7 @@ using Pkg.Artifacts
 using Unitful
 using InteractiveUtils
 using UnitfulAngles
+using UnitfulParsableString
 using Inflate, SHA
 using StableRNGs
 using REPL: fielddoc
