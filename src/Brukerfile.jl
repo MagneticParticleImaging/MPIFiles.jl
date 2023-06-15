@@ -315,7 +315,7 @@ function acqNumBGFrames(b::BrukerFile)
 
   Q = parse(Int64,n)-parse(Int64,a)
   if hasproperty(b, :handleSubPeriodsAsFrames) && b.handleSubPeriodsAsFrames
-    return Q*numSubPeriods(f)
+    return Q*numSubPeriods(b)
   else 
     return Q
   end
