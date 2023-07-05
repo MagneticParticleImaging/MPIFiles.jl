@@ -26,7 +26,7 @@ mutable struct TransferFunction
   end
 end
 
-Base.show(io::IO, ::MIME"text/plain", tf::TransferFunction) = print(io, "MPIFiles.TransferFunction: \n\t$(size(tf.data,2)) channels, units of $(string.(tf.units))\n\t$(size(tf.data,1)) frequency samples from $(tf.freq[1]) Hz to $(tf.freq[end]) Hz")
+Base.show(io::IO, ::MIME"text/plain", tf::TransferFunction) = print(io, "MPIFiles.TransferFunction: \n\t$(size(tf.data,2)) channel(s), units of $(string.(tf.units))\n\t$(size(tf.data,1)) frequency samples from $(tf.freq[1]) Hz to $(tf.freq[end]) Hz")
 
 function TransferFunction(freq_::Vector{<:Real}, ampdata::Array{<:Real,N}, phasedata::Array{<:Real,N}; kwargs...) where N
   if size(ampdata) != size(phasedata); error("The size of ampdata and phasedata must match!") end
