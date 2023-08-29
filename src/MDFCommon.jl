@@ -43,7 +43,11 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
 
   if measIsSparsityTransformed(f)
     dataBackTrafo = similar(fgdata, prod(calibSize(f)), size(fgdata,2))
-    B = linearOperator(measSparsityTransformation(f), calibSize(f))
+
+    strToSparsityTrafo = Dict("DCT-I"=>(DCTOp{ComplexF32},1), "DCT-II"=>(DCTOp{ComplexF32},2), 
+                              "DCT-III"=>(DCTOp{ComplexF32},3), "DCT-IV"=>(DCTOp{ComplexF32},4))
+    trafo, dcttype = strToSparsityTrafo[measSparsityTransformation(f)]
+    B = createLinearOperator(trafo; shape=tuple(calibSize(f)...), dcttype)
 
     tmp = measSubsamplingIndices(f)
     subsamplingIndices_ = reshape(tmp, size(tmp,1),

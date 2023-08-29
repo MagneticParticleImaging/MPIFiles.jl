@@ -4,7 +4,8 @@ using UUIDs
 using Graphics: @mustimplement
 
 using Reexport
-@reexport using SparsityOperators
+using LinearOperatorCollection
+using FFTW
 @reexport using AxisArrays
 const axes = Base.axes
 @reexport using Interpolations
