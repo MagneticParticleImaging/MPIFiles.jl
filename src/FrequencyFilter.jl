@@ -22,30 +22,17 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   nFreq = rxNumFrequencies(f, numPeriodGrouping)
   nReceivers = rxNumChannels(f)
   nPeriods = 1 #acqNumPeriodsPerFrame(f)
+  freqIndices = collect(vec(CartesianIndices((nFreq, nReceivers))))
 
   minIdx = floor(Int, minFreq / rxBandwidth(f) * (nFreq-1) ) + 1
   maxIdx = ceil(Int, maxFreq / rxBandwidth(f) * (nFreq-1) ) + 1
 
-  freqMask = zeros(Bool,nFreq,nReceivers,nPeriods)
+  filterFrequenciesBySelection!(freqIndices, f)
+  filterFrequenciesByChannel!(freqIndices, recChannels)
+  filterFrequenciesByMinIdx!(freqIndices, minIdx)
+  filterFrequenciesByMaxIdx!(freqIndices, maxIdx)
 
-  freqMask[:,recChannels,:] .= true
-
-  if measIsFrequencySelection(f)
-    freqMask[:,recChannels,:] .= false
-    idx = measFrequencySelection(f)
-    freqMask[idx,recChannels,:] .= true
-  else
-    freqMask[:,recChannels,:] .= true
-  end
-
-  if minFreq > 0
-    freqMask[1:(minIdx),:,:] .= false
-  end
-
-  if maxIdx < nFreq
-    freqMask[(maxIdx):end,:,:] .= false
-  end
-
+  #=
   if maxMixingOrder > 0
     if numPeriodGrouping == 1
       mf = mixingFactors(f)
@@ -71,7 +58,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
       freqMask .&= freqMaskMO
     end
   end
-
+  =#
   SNRAll = nothing
 
   if SNRThresh > 0 || numUsedFreqs > 0 || sortBySNR
@@ -135,6 +122,38 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   end
 
   freq
+end
+
+function filterFrequenciesBySelection!(indices::Vector{CartesianIndex}, f::MPIFile)
+  if measIsFrequencySelection(f)
+    return filterFrequenciesBySelection!(indices, measFrequencySelection(f))
+  end
+end
+filterFrequenciesBySelection!(indices::Vector{CartesianIndex}, selection::Vector{Int64}) = filter!(x -> in(x[1], selection), indices)
+
+filterFrequenciesByChannel!(indices::Vector{CartesianIndex}, channels) = filter!(x-> in(x[2], channels), indices)
+
+function filterFrequenciesByMinFreq!(indices::Vector{CartesianIndex}, f::MPIFile, minFreq)
+  nFreq = rxNumFrequencies(f, numPeriodGrouping)
+  minIdx = floor(Int, minFreq / rxBandwidth(f) * (nFreq-1) ) + 1
+  return filterFrequenciesByMinIdx!(indices, minIdx)
+end
+filterFrequenciesByMinIdx!(indices::Vector{CartesianIndex}, minIdx) = minIdx > 0 ?  filter!(x -> x[1] > minFreq, freqIndices) : indices 
+
+
+function filterFrequenciesByMaxFreq!(indices::Vector{CartesianIndex}, f::MPIFile, maxFreq)
+  nFreq = rxNumFrequencies(f, numPeriodGrouping)
+  maxIdx = ceil(Int, maxFreq / rxBandwidth(f) * (nFreq-1) ) + 1
+  return filterFrequenciesByMaxIdx!(indices, maxIdx)
+end
+filterFrequenciesByMaxIdx!(indices::Vector{CartesianIndex}, maxIdx) = filter!(x-> x[1] <= maxIdx, indices)
+
+function sortFrequenciesBySNR!()
+end
+
+
+
+function sortFrequenciesByMixFactors()
 end
 
 
