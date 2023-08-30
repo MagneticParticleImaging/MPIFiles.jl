@@ -89,7 +89,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
     filterFrequenciesBySNRThresh!(freqIndices, SNRThresh, SNR)
   elseif  numUsedFreqs > 0 && SNRThresh <= 0
     filterFrequenciesByNumUsedFrequencies!(freqIndices, numUsedFreqs)
-  else
+  elseif numUsedFreqs > 0 && SNRThresh > 0
     error("It is not possible to use SNRThresh and SNRFactorUsedFreq similtaneously")
   end
 
