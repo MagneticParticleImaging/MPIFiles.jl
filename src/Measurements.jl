@@ -344,7 +344,6 @@ function getMeasurementsFD(f::MPIFile, args...;
 
   if frequencies != nothing
     # here we merge frequencies and channels
-    data = reshape(data, size(data,1)*size(data,2), size(data,3), size(data,4))
     data = data[frequencies, :, :]
   end
 
