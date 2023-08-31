@@ -16,6 +16,7 @@
   fnSMV7 = joinpath(tmpdir,"mdf","systemMatrix_V7.mdf")
   fnSM1DV1 = joinpath(tmpdir,"mdf","systemMatrix1D_V1.mdf")
   fnSM1DV2 = joinpath(tmpdir,"mdf","systemMatrix1D_V2.mdf")
+  fnSM1DV3 = joinpath(tmpdir,"mdf","systemMatrix1D_V3.mdf")
 
   @testset "Fields" begin
     measBruker = MPIFile(fnMeasBruker)
@@ -278,6 +279,25 @@
 
       @test rxNumSamplingPoints(sm) == 102
       @test rxNumFrequencies(sm) == 52
+    end
+
+    sm1DBrukerMeasAllFrames = MPIFile(fnSM1DBruker, isCalib=false, handleSubPeriodsAsFrames=true)
+    saveasMDF(fnSM1DV3, sm1DBrukerMeasAllFrames)
+
+    sm1DMeasAllFrames = MPIFile(fnSM1DV3)
+    @test typeof(sm1DMeasAllFrames) <: MDFFileV2
+
+    sm1DMeasAllFramesInMemory = MDFv2InMemory(sm1DMeasAllFrames)
+    @test typeof(sm1DMeasAllFramesInMemory) <: MDFv2InMemory
+
+    @test MPIFiles.numSubPeriods(sm1DBrukerMeasAllFrames) == 528
+
+    for sm in (sm1DBrukerMeasAllFrames,sm1DMeasAllFrames,sm1DMeasAllFramesInMemory)
+      @info "Test $sm"
+
+      @test size(measData(sm)) == (102, 3, 1, 35376)
+      @test rxNumSamplingPoints(sm) == 102
+      @test acqNumFrames(sm) == 35376
     end
   end
 end

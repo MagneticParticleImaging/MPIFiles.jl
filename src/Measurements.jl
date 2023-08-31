@@ -336,7 +336,7 @@ function getMeasurementsFD(f::MPIFile, args...;
           @warn "The amount of channels in the data and the TF does not match. Using lowest value. Please check closely if the TF is applied to wrong channels."
         end
 
-       	for k=1:length(inductionFactor)
+       	for k=1:K
        		data[:,k,:,:] ./= inductionFactor[k]
        	end
     end

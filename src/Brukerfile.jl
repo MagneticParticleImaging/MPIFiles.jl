@@ -32,6 +32,7 @@ mutable struct BrukerFileMeas <: BrukerFile
   keylistAcqp::Vector{String}
   keylistMethod::Vector{String}
   pretendToBeSinglePatch::Bool
+  handleSubPeriodsAsFrames::Bool
 end
 
 mutable struct BrukerFileCalib <: BrukerFile
@@ -72,7 +73,8 @@ function _iscalib(path::AbstractString)
     return calib
 end
 
-function BrukerFile(path::String; isCalib=_iscalib(path), fastMode=false, pretendToBeSinglePatch=false)
+function BrukerFile(path::String; isCalib=_iscalib(path), fastMode=false, 
+                    pretendToBeSinglePatch=false, handleSubPeriodsAsFrames=false)
   if fastMode
     maxEntriesAcqp = 400
 	  keylistAcqp = ["ACQ_scan_name", "ACQ_size", "ACQ_jobs","ACQ_MPI_drive_field_strength",
@@ -98,7 +100,7 @@ function BrukerFile(path::String; isCalib=_iscalib(path), fastMode=false, preten
   else
     return BrukerFileMeas(path, params, paramsProc, false, false, false,
                false, false, false, false, maxEntriesAcqp, keylistAcqp, 
-               keylistMethod, pretendToBeSinglePatch)
+               keylistMethod, pretendToBeSinglePatch, handleSubPeriodsAsFrames)
   end
 end
 
@@ -106,7 +108,7 @@ function BrukerFile()
   params = JcampdxFile()
   paramsProc = JcampdxFile()
   return BrukerFileMeas("", params, paramsProc, false, false, false,
-             false, false, false, false, 1, String[], String[], false)
+             false, false, false, false, 1, String[], String[], false, false)
 end
 
 BrukerFileFast(path) = BrukerFile(path, fastMode=true)
@@ -265,7 +267,11 @@ function acqNumFrames(b::BrukerFileMeas)
   #For calibration scans interpreted as measurements
   A_ = b["PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans"]
   A = (A_ == "") ? 0 : parse(Int64, A_)
-  return div(M-A,acqNumPeriodsPerFrame(b))
+  if b.handleSubPeriodsAsFrames
+    return div(M-A,acqNumPeriodsPerFrame(b))*numSubPeriods(b)
+  else 
+    return div(M-A,acqNumPeriodsPerFrame(b))
+  end
 end
 
 function acqNumFrames(b::BrukerFileCalib)
@@ -293,7 +299,7 @@ function acqNumPeriodsPerFrame(b::BrukerFile)
   end
 end
 
-acqNumAverages(b::BrukerFileMeas) = parse(Int,b["NA"])
+acqNumAverages(b::BrukerFileMeas) = parse(Int,b["NA"]) # ??? *numSubPeriods(b) 
 acqNumAverages(b::BrukerFileCalib) = parse(Int,b["NA"])*numSubPeriods(b)
 
 
@@ -307,7 +313,12 @@ function acqNumBGFrames(b::BrukerFile)
     a = "0"
   end
 
-  return parse(Int64,n)-parse(Int64,a)
+  Q = parse(Int64,n)-parse(Int64,a)
+  if hasproperty(b, :handleSubPeriodsAsFrames) && b.handleSubPeriodsAsFrames
+    return Q*numSubPeriods(b)
+  else 
+    return Q
+  end
 end
 
 function acqGradient(b::BrukerFile)
@@ -423,9 +434,17 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
     raw = Mmap.mmap(s, Array{dType,4},
              (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
   else
-    raw = Mmap.mmap(s, Array{dType,5},
-             (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
-    raw = dropdims(sum(raw,dims=2),dims=2)
+    if b.handleSubPeriodsAsFrames
+      raw = Mmap.mmap(s, Array{dType,5}, (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),
+                         acqNumPeriodsPerFrame(b), div(acqNumFrames(b),numSubPeriods(b))))
+
+      raw = reshape(permutedims(collect(raw), (1,3,4,2,5)), Val(4))
+    else 
+      raw = Mmap.mmap(s, Array{dType,5},
+      (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+
+      raw = dropdims(sum(raw,dims=2),dims=2)
+    end
   end
   data = raw[:,receivers,periods,frames]
   close(s)
@@ -567,8 +586,13 @@ function measIsBGFrame(b::BrukerFileMeas)
     # to BG measurements
     isBG = zeros(Bool, acqNumFrames(b))
     increment = parse(Int,b["PVM_MPI_BackgroundMeasurementCalibrationIncrement"])+1
-    isBG[1:increment:end] .= true
-
+    if !b.handleSubPeriodsAsFrames
+      isBG[1:increment:end] .= true
+    else
+      for l=1:numSubPeriods(b)
+        isBG[l:increment*numSubPeriods(b):end] .= true
+      end
+    end
     return isBG
   end
 end

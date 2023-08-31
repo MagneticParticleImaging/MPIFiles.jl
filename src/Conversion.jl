@@ -273,7 +273,8 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
   if sparsityTrafoRedFactor == 1.0
     params[:measData] = data
   else
-    B = linearOperator(sparsityTrafo, calibSize(f))
+    B = createLinearOperator(sparsityTrafo, ComplexF32; shape=tuple(calibSize(f)...))
+
     N = prod(calibSize(f))
     NBG = size(data,1) - N
     D = size(data,3)
