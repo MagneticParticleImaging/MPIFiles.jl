@@ -80,6 +80,8 @@ function range(grid::RegularGridPositions, dim::Int)
     return 1:1
   end
 end
+Base.ndims(grid::RegularGridPositions) = length(grid.shape)
+Base.axes(grid::RegularGridPositions) = tuple([range(grid, i) for i in 1:ndims(grid)]...)
 
 RegularGridPositions(shape, fov, center) = RegularGridPositions(shape, fov, center, ones(Int,length(shape)))
 
@@ -670,17 +672,17 @@ function Base.:(==)(val1::Positions, val2::Positions)
 end
 
 # fuction related to looping
-length(tdes::SphericalTDesign) = size(tdes.positions,2)
-length(apos::ArbitraryPositions) = size(apos.positions,2)
-length(grid::GridPositions) = prod(grid.shape)
-length(rpos::UniformRandomPositions) = rpos.N
-length(mgrid::MeanderingGridPositions) = length(mgrid.grid)
-length(bgrid::BreakpointGridPositions) = length(bgrid.grid)+length(bgrid.breakpointIndices)
+Base.length(tdes::SphericalTDesign) = size(tdes.positions,2)
+Base.length(apos::ArbitraryPositions) = size(apos.positions,2)
+Base.length(grid::GridPositions) = prod(grid.shape)
+Base.length(rpos::UniformRandomPositions) = rpos.N
+Base.length(mgrid::MeanderingGridPositions) = length(mgrid.grid)
+Base.length(bgrid::BreakpointGridPositions) = length(bgrid.grid)+length(bgrid.breakpointIndices)
 
 start_(grid::Positions) = 1
 next_(grid::Positions,state) = (grid[state],state+1)
 done_(grid::Positions,state) = state > length(grid)
-iterate(grid::Positions, s=start_(grid)) = done_(grid, s) ? nothing : next_(grid, s)
+Base.iterate(grid::Positions, s=start_(grid)) = done_(grid, s) ? nothing : next_(grid, s)
 
 
 include("Interpolation.jl")
