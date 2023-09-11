@@ -211,6 +211,10 @@ function getindex(grid::RegularGridPositions, idx::Vector{T}) where T<:Number
   return 0.5.*fieldOfView(grid) .* (-1 .+ (2 .* idx .- 1) ./ shape(grid)) .+ fieldOfViewCenter(grid)
 end
 
+function getindex(grid::RegularGridPositions, idx::CartesianIndex)
+  return getindex(grid, LinearIndices(tuple(grid.shape...))[idx])
+end
+
 function posToIdxFloat(grid::RegularGridPositions,pos::Vector)
   idx = 0.5 .* (shape(grid) .* ((pos .- fieldOfViewCenter(grid)) ./
               ( 0.5 .* fieldOfView(grid) ) .+ 1) .+ 1)
