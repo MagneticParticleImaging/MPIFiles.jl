@@ -38,13 +38,10 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   nPeriods = 1 #acqNumPeriodsPerFrame(f)
   freqIndices = collect(vec(CartesianIndices((nFreq, nReceivers))))
 
-  minIdx = floor(Int, minFreq / rxBandwidth(f) * (nFreq-1) ) + 1
-  maxIdx = ceil(Int, maxFreq / rxBandwidth(f) * (nFreq-1) ) + 1
-
   filterFrequenciesBySelection!(freqIndices, f)
   filterFrequenciesByChannel!(freqIndices, recChannels)
-  filterFrequenciesByMinIdx!(freqIndices, minIdx)
-  filterFrequenciesByMaxIdx!(freqIndices, maxIdx)
+  filterFrequenciesByMinFreq!(freqIndices, f, minFreq)
+  filterFrequenciesByMaxFreq!(freqIndices, f, maxFreq)
 
   if maxMixingOrder > 0
     if numPeriodGrouping == 1
@@ -165,12 +162,10 @@ filterFrequenciesByNumUsedFrequencies!(indices::Vector{CartesianIndex{2}}, maxId
 =#
 
 export filterFrequenciesByStepsize!
-filterFrequenciesByStepsize!(indices::Vector{CartesianIndex{2}}, stepsize) = error("Not implemented")
-#=
-    freqStepsizeMask = zeros(Bool,nFreq, nReceivers, nPatches)
-    freqStepsizeMask[1:stepsize:nFreq,:,:] = freqMask[1:stepsize:nFreq,:,:]
-    freqMask = freqStepsizeMask
-=#
+function filterFrequenciesByStepsize!(indices::Vector{CartesianIndex{2}}, stepsize)
+  stepIndices = 1:stepsize:maximum(map(x -> x[1], indices))
+  filter!(x -> in(x[1], stepIndices), indices)
+end
 
 function sortFrequencies!(indices::Vector{CartesianIndex{2}}, f::MPIFile; numPeriodGrouping = 1, stepsize = 1, sortBySNR = false, sortByMixFactors = false)
   if sortBySNR && !sortByMixFactors
