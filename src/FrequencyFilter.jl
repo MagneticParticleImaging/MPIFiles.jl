@@ -31,7 +31,7 @@ Supported keyword arguments:
 """
 function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
                maxFreq=rxBandwidth(f), recChannels=1:rxNumChannels(f),numUsedFreqs=-1, stepsize=1,
-                maxMixingOrder=-1, numPeriodAverages=1, numPeriodGrouping=1)
+                maxMixingOrder=-1, numPeriodAverages=1, numPeriodGrouping=1, numSidebandFreqs = -1)
 
   nFreq = rxNumFrequencies(f, numPeriodGrouping)
   nReceivers = rxNumChannels(f)
@@ -46,33 +46,18 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   filterFrequenciesByMinIdx!(freqIndices, minIdx)
   filterFrequenciesByMaxIdx!(freqIndices, maxIdx)
 
-  #=
   if maxMixingOrder > 0
     if numPeriodGrouping == 1
-      mf = mixingFactors(f)
-      for l=1:size(mf,1)
-        if mf[l,4] > maxMixingOrder || mf[l,4] > maxMixingOrder
-          freqMask[(l-1)+1,recChannels] .= false
-        end
-      end
-    else # This is a hack until we have a general solution
-
-      numPatches = div(acqNumPeriodsPerFrame(f), numPeriodAverages)
-      fBands = (collect(0:(rxNumFrequencies(f)-1)).-1) .* numPatches
-      freqMaskMO = zeros(Bool,nFreq,nReceivers,nPeriods)
-
-      for i=1:length(fBands)
-        for y=-maxMixingOrder:maxMixingOrder
-          index = fBands[i]+y
-          if 1 <= index <= size(freqMask,1)
-            freqMaskMO[index,recChannels] .= true
-          end
-        end
-      end
-      freqMask .&= freqMaskMO
+      filterFrequenciesByMaxMixingOrder!(freqIndices, maxMixingOrder, f)
+    else
+      error("Can not apply max mixing order with a period grouping larger than one, found: $numPeriodGrouping")
     end
   end
-  =#
+
+  if numSidebandFreqs > 0 && numPeriodGrouping > 1
+    filterFrequenciesByNumSidebandFreqs!(freqIndices, numSidebandFreqs, f, numPeriodGrouping = numPeriodGrouping)
+  end
+
   SNRAll = nothing
 
   if SNRThresh > 0 || numUsedFreqs > 0
@@ -118,7 +103,7 @@ function filterFrequenciesByMinFreq!(indices::Vector{CartesianIndex{2}}, f::MPIF
   minIdx = floor(Int, minFreq / rxBandwidth(f) * (nFreq-1) ) + 1
   return filterFrequenciesByMinIdx!(indices, minIdx)
 end
-filterFrequenciesByMinIdx!(indices::Vector{CartesianIndex{2}}, minIdx) = minIdx > 0 ?  filter!(x -> x[1] >= minIdx, indices) : indices 
+filterFrequenciesByMinIdx!(indices::Vector{CartesianIndex{2}}, minIdx) = minIdx > 0 ?  filter!(x -> x[1] > minIdx, indices) : indices 
 
 export filterFrequenciesByMaxFreq!
 function filterFrequenciesByMaxFreq!(indices::Vector{CartesianIndex{2}}, f::MPIFile, maxFreq; numPeriodGrouping = 1)
@@ -126,8 +111,30 @@ function filterFrequenciesByMaxFreq!(indices::Vector{CartesianIndex{2}}, f::MPIF
   maxIdx = ceil(Int, maxFreq / rxBandwidth(f) * (nFreq-1) ) + 1
   return filterFrequenciesByMaxIdx!(indices, maxIdx)
 end
-filterFrequenciesByMaxIdx!(indices::Vector{CartesianIndex{2}}, maxIdx) = filter!(x-> x[1] <= maxIdx, indices)
+filterFrequenciesByMaxIdx!(indices::Vector{CartesianIndex{2}}, maxIdx) = filter!(x-> x[1] < maxIdx, indices)
 
+export filterFrequenciesByMaxMixingOrder!
+filterFrequenciesByMaxMixingOrder!(indices::Vector{CartesianIndex{2}}, maxMixingOrder, f::MPIFile) = filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, mixingFactors(f))
+filterFrequenciesByMaxMixingOrder!(indices::Vector{CartesianIndex{2}}, maxMixingOrder, mf::Matrix) = filter!(x-> mf[x[1], 4] <= maxMixingOrder, indices)
+
+export filterFrequenciesByNumSidebandFreqs!
+function filterFrequenciesByNumSidebandFreqs!(indices::Vector{CartesianIndex{2}}, numSidebandFreqs::Int64, f::MPIFile; numPeriodGrouping = 1)
+  # https://en.wikipedia.org/wiki/Sideband
+  # Because of period grouping we have more frequencies than in original data
+
+  # Find "virtual" frequency indices of original frequencies
+  fBands = (collect(0:(rxNumFrequencies(f))).-1) .* numPeriodGrouping
+
+  delete = Int64[]
+  for (i, cart) in enumerate(indices)
+    freq = cart[1]
+    # Check if there is no frequency that is at most numSideBandFreqs away from our original frequency
+    if !any(fBand -> abs(fBand - freq) <= numSidebandFreqs, fBands)
+      push!(delete, i)
+    end
+  end
+  deleteat!(indices, delete)
+end
 
 export filterFrequenciesBySNRThresh!
 function filterFrequenciesBySNRThresh!(indices::Vector{CartesianIndex{2}}, f::MPIFile, snrthresh; numPeriodGrouping = 1)
