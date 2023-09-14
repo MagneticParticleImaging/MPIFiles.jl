@@ -7,7 +7,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   caG = RegularGridPositions(shp,fov,ctr)
   @test shape(caG) == shp
   @test ndims(caG) == 3
-  @test axes(cag) == ((-1.0:1.0:1.0)u"mm", (-1.0:1.0:1.0)u"mm", (-1.0:1.0:1.0)u"mm")
+  @test axes(caG) == ((-1.0:1.0:1.0)u"mm", (-1.0:1.0:1.0)u"mm", (-1.0:1.0:1.0)u"mm")
   @test fieldOfView(caG) == fov
   @test fieldOfViewCenter(caG) == ctr
   @test_throws BoundsError caG[0]
