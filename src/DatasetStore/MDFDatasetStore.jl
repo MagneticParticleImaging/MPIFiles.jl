@@ -104,7 +104,7 @@ function getMDFStudyFolderName(name::String, date::DateTime)
 end
 
 function addStudy(d::MDFDatasetStore, study::Study)
-  studypath = joinpath( studydir(d), getMDFStudyFolderName(study))
+  studypath = path(study)
   mkpath(studypath)
   try_chmod(studypath, 0o770, recursive=true)
 

@@ -3,7 +3,7 @@
 customSF = joinpath(datadir,"BrukerStore","20200603_172811_EasyAxisContrast_1_1","245")
 customMeas = joinpath(datadir,"BrukerStore","20200603_172811_EasyAxisContrast_1_1","247")
 
-fnCustomSF_FF = joinpath(datadir,"mdf","customSystemMatrixFF.mdf")
+fnCustomSF_FF = joinpath(tmpdir,"mdf","customSystemMatrixFF.mdf")
 
 fSF = MPIFile(customSF)
 fMeas = MPIFile(customMeas)

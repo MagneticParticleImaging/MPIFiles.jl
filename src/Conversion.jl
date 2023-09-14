@@ -11,7 +11,8 @@ end
 
 # we do not support all conversion possibilities
 function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocessing=false,
-                     numPeriodAverages=1, numPeriodGrouping=1, experimentNumber=nothing, kargs...)
+                     numPeriodAverages=1, numPeriodGrouping=1, experimentNumber=nothing,
+                     fixDistortions=false, kargs...)
   params = loadMetadata(f)
 
   if experimentNumber != nothing
@@ -29,11 +30,16 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
       else
         setparam!(params, :measData, measData(f))
       end
+
+      if fixDistortions
+        detectAndFixDistortions!(params[:measData], 0.3)
+      end
     else
         @info "load measurement data"
         data = getMeasurementsFD(f, false, frames=1:acqNumFrames(f), sortFrames=true,
                        spectralLeakageCorrection=false, transposed=true, tfCorrection=false,
-                       numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
+                       numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping,
+                       fixDistortions=fixDistortions)
 
           @info size(data)
         setparam!(params, :measData, data)
@@ -110,11 +116,14 @@ function loadCalibParams(f, params = Dict{Symbol,Any}())
   if experimentIsCalibration(f)
     for op in [:calibFov, :calibFovCenter,
                :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
-             :calibDeltaSampleSize, :calibMethod]
+               :calibDeltaSampleSize, :calibMethod]
       setparam!(params, op, eval(op)(f))
     end
     if !haskey(params, :calibSNR)
       setparam!(params, :calibSNR, calibSNR(f))
+    end
+    if !haskey(params, :calibIsMeanderingGrid)
+      setparam!(params, :calibIsMeanderingGrid, calibIsMeanderingGrid(f))
     end
   end
   return params
@@ -264,7 +273,8 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
   if sparsityTrafoRedFactor == 1.0
     params[:measData] = data
   else
-    B = linearOperator(sparsityTrafo, calibSize(f))
+    B = createLinearOperator(sparsityTrafo, ComplexF32; shape=tuple(calibSize(f)...))
+
     N = prod(calibSize(f))
     NBG = size(data,1) - N
     D = size(data,3)
@@ -803,6 +813,10 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
       write(file, "/measurement/sparsityTransformation", params[:measSparsityTransformation] )
     end
   end
+  writeIfAvailable(file, "/measurement/_monitoring/temperature/observed",  params, :measTemperatures)
+  writeIfAvailable(file, "/measurement/_monitoring/driveField/observed", params, :measObservedDriveField)
+  writeIfAvailable(file, "/measurement/_monitoring/driveField/applied", params, :measAppliedDriveField)
+
 
   # calibrations
   writeIfAvailable(file, "/calibration/snr",  params, :calibSNR)
@@ -817,7 +831,6 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
   if hasKeyAndValue(params, :calibIsMeanderingGrid)
     write(file, "/calibration/isMeanderingGrid", Int8(params[:calibIsMeanderingGrid]))
   end
-  writeIfAvailable(file, "/calibration/_temperatures",  params, :calibTemperatures)
   # reconstruction
   if hasKeyAndValue(params, :recoData)
     write(file, "/reconstruction/data", params[:recoData])

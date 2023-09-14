@@ -481,6 +481,8 @@ mutable struct MDFv2Calibration <: MDFv2InMemoryPart
   size::Union{Vector{Int64}, Nothing}
   "Signal-to-noise estimate for recorded frequency components; optional"
   snr::Union{Array{Float64, 3}, Nothing}
+  "Flag, if the grid is meandering; optional"
+  isMeanderingGrid::Union{Bool, Nothing}
 
   function MDFv2Calibration(;
     deltaSampleSize = nothing,
@@ -491,7 +493,8 @@ mutable struct MDFv2Calibration <: MDFv2InMemoryPart
     order = nothing,
     positions = nothing,
     size = nothing,
-    snr = nothing)
+    snr = nothing,
+    isMeanderingGrid = nothing)
 
     return new(
       deltaSampleSize,
@@ -502,7 +505,8 @@ mutable struct MDFv2Calibration <: MDFv2InMemoryPart
       order,
       positions,
       size,
-      snr
+      snr,
+      isMeanderingGrid
     )
   end
 end
@@ -977,8 +981,9 @@ end
 
 customSymbols = Dict{Symbol, String}(
   :dfCustomWaveform => "/acquisition/drivefield/customWaveform",
-  :calibIsMeanderingGrid => "/calibration/isMeanderingGrid",
-  :calibTemperatures => "/calibration/_temperatures",
+  :measTemperatures => "/measurement/_monitoring/temperature/observed",
+  :measObservedDriveField => "/measurement/_monitoring/driveField/observed",
+  :measAppliedDriveField => "/measurement/_monitoring/driveField/applied",
   :rxTransferFunctionFileName => "/acquisition/receiver/transferFunctionFileName",
   :recoParameters => "/reconstruction/_parameters",
   :auxiliaryData => "/custom/auxiliaryData",
@@ -1427,17 +1432,13 @@ end
 
 "Create an MDFFile from an in-memory MDF."
 function saveasMDF(file::HDF5.File, mdf::MDFv2InMemory; failOnInconsistent::Bool=false)
-  if failOnInconsistent
+  try
     checkConsistency(mdf)
-  else
-    try
-      checkConsistency(mdf)
-    catch e
-      if e isa AssertionError
-        @warn "There is an inconsistency in the given in-memory MDF. The message is: `$(e.msg)`."
-      else
-        rethrow()
-      end
+  catch e
+    if e isa AssertionError && !failOnInconsistent
+      @warn "There is an inconsistency in the given in-memory MDF. The message is: `$(e.msg)`."
+    else
+      rethrow()
     end
   end
 
@@ -1465,17 +1466,21 @@ end
 dfCustomWaveform(mdf::MDFv2InMemory)::Union{String, Nothing} = @keyoptional mdf.custom["dfCustomWaveform"] # TODO: Should this be a 2D array?
 dfCustomWaveform(mdf::MDFv2InMemory, customWaveform::String) = mdf.custom["dfCustomWaveform"] = customWaveform
 
-calibIsMeanderingGrid(mdf::MDFv2InMemory)::Union{Bool, Nothing} = @keyoptional Bool(mdf.custom["calibIsMeanderingGrid"])
-calibIsMeanderingGrid(mdf::MDFv2InMemory, meandering::Bool) = mdf.custom["calibIsMeanderingGrid"] = Int(meandering)
-
 rxTransferFunctionFileName(mdf::MDFv2InMemory)::Union{String, Nothing} = @keyoptional mdf.custom["rxTransferFunctionFileName"]
 rxTransferFunctionFileName(mdf::MDFv2InMemory, filename::String) = mdf.custom["rxTransferFunctionFileName"] = filename
 
 recoParameters(mdf::MDFv2InMemory) = @keyoptional mdf.custom["recoParameters"]
 recoParameters(mdf::MDFv2InMemory, parameters) = mdf.custom["recoParameters"] = parameters
 
-calibTemperatures(mdf::MDFv2InMemory) = @keyoptional mdf.custom["calibTemperatures"]
-calibTemperatures(mdf::MDFv2InMemory, calibTemperatures) = mdf.custom["calibTemperatures"] = calibTemperatures
+measTemperatures(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measTemperature"]
+measTemperatures(mdf::MDFv2InMemory, measTemperatures) = mdf.custom["measTemperature"] = measTemperatures
+
+measObservedDriveField(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measObservedDriveField"]
+measObservedDriveField(mdf::MDFv2InMemory, measDriveFields) = mdf.custom["measObservedDriveField"] = measDriveFields
+
+measAppliedDriveField(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measAppliedDriveField"]
+measAppliedDriveField(mdf::MDFv2InMemory, measTransmit) = mdf.custom["measAppliedDriveField"] = measTransmit
+
 
 auxiliaryData(mdf::MDFv2InMemory) = @keyoptional mdf.custom["auxiliaryData"]
 auxiliaryData(mdf::MDFv2InMemory, auxiliaryData) = mdf.custom["auxiliaryData"] = auxiliaryData
