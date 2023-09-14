@@ -90,7 +90,7 @@ export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
 # calibrations
 export calibSNR, calibSnr, calibFov, calibFieldOfView, calibFovCenter,
   calibFieldOfViewCenter, calibSize, calibOrder, calibPositions,
-  calibOffsetField, calibDeltaSampleSize,
+  calibOffsetFields, calibDeltaSampleSize,
   calibMethod, calibIsMeanderingGrid
 
 # reconstruction results
