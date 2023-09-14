@@ -115,7 +115,7 @@ end
 function loadCalibParams(f, params = Dict{Symbol,Any}())
   if experimentIsCalibration(f)
     for op in [:calibFov, :calibFovCenter,
-               :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
+               :calibSize, :calibOrder, :calibPositions, :calibOffsetFields,
                :calibDeltaSampleSize, :calibMethod]
       setparam!(params, op, eval(op)(f))
     end
@@ -825,7 +825,7 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
   writeIfAvailable(file, "/calibration/size",  params, :calibSize)
   writeIfAvailable(file, "/calibration/order",  params, :calibOrder)
   writeIfAvailable(file, "/calibration/positions",  params, :calibPositions)
-  writeIfAvailable(file, "/calibration/offsetField",  params, :calibOffsetField)
+  writeIfAvailable(file, "/calibration/offsetFields",  params, :calibOffsetFields)
   writeIfAvailable(file, "/calibration/deltaSampleSize",  params, :calibDeltaSampleSize)
   writeIfAvailable(file, "/calibration/method",  params, :calibMethod)
   if hasKeyAndValue(params, :calibIsMeanderingGrid)
