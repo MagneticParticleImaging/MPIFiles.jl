@@ -201,7 +201,7 @@ calibSize(f::IMTFile) = [div(size(f["/systemResponseFrequencies"],1),2),
                          size(f["/systemResponseFrequencies"],2),
                          size(f["/systemResponseFrequencies"],3)]
 calibOrder(f::IMTFile) = "xyz"
-calibOffsetField(f::IMTFileCalib) = nothing
+calibOffsetFields(f::IMTFileCalib) = nothing
 calibDeltaSampleSize(f::IMTFile) = [0.0,0.0,0.0]
 calibMethod(f::IMTFile) = "simulation"
 #calibIsMeanderingGrid(f::IMTFile) = Bool(f["/calibration/isMeanderingGrid", 0])
