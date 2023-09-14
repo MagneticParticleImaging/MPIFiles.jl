@@ -144,7 +144,7 @@ end
 # TODO: define functions for multi calibration data
 #  if experimentIsCalibration(f)
 #    for op in [:calibSNR, :calibFov, :calibFovCenter,
-#               :calibSize, :calibOrder, :calibPositions, :calibOffsetField,
+#               :calibSize, :calibOrder, :calibPositions, :calibOffsetFields,
 #               :calibDeltaSampleSize, :calibMethod]
 #      setparam!(params, string(op), eval(op)(f))
 #    end
