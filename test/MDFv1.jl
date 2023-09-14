@@ -125,7 +125,7 @@ for sm in (smv1,smv2)
   @test calibSize(sm) == [44; 44; 1]
   @test calibOrder(sm) == "xyz"
   @test calibPositions(smv1) == nothing
-  @test calibOffsetField(smv1) == nothing
+  @test calibOffsetFields(smv1) == nothing
   @test calibDeltaSampleSize(sm) == [0.001; 0.001; 0.001]
   @test calibMethod(sm) == "robot"
 
