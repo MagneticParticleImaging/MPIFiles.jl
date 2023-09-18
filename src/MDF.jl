@@ -69,13 +69,7 @@ function h5haskey(filename, parameter)
   end
 end
 
-function getindex(f::MDFFile, parameter)
-  if haskey(f.file, parameter)
-    return read(f.file, parameter)
-  else
-    return nothing
-  end
-end
+getindex(f::MDFFile, parameter) = read(f.file, parameter)
 
 function getindex(f::MDFFile, parameter, default)
   #if !haskey(f.param_cache,parameter)
