@@ -540,22 +540,17 @@ function systemMatrix(b::BrukerFileCalib, rows, bgCorrection=true)
   nFreq = div(rxNumSamplingPoints(b)*numSubPeriods(b),2)+1
 
   if numSubPeriods(b) > 1
-    rows_ = collect(rows)
-    NFreq = rxNumFrequencies(b)
-    NRx = rxNumChannels(b)
     stepsize = numSubPeriods(b)
     for k=1:length(rows)
-      freq = mod1(rows[k],NFreq)
-      rec = div(rows[k]-1,NFreq)
-      rows_[k] = (freq-1)*stepsize+1 + rec*nFreq
+      freq = rows[k][1]
+      rec = rows[k][2]
+      rows[k] = CartesianIndex((freq-1)*stepsize+1, rec)
     end
-  else
-    rows_ = rows
   end
 
   s = open(sfFilename)
-  data = Mmap.mmap(s, Array{ComplexF64,2}, (prod(calibSize(b)),nFreq*rxNumChannels(b)))
-  S = data[:,rows_]
+  data = Mmap.mmap(s, Array{ComplexF64,3}, (prod(calibSize(b)), nFreq, rxNumChannels(b)))
+  S = data[:,rows]
   close(s)
   rmul!(S, 1.0/acqNumAverages(b))
   return S
