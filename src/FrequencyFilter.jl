@@ -40,8 +40,14 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
 
   filterFrequenciesBySelection!(freqIndices, f)
   filterFrequenciesByChannel!(freqIndices, recChannels)
-  filterFrequenciesByMinFreq!(freqIndices, f, minFreq)
-  filterFrequenciesByMaxFreq!(freqIndices, f, maxFreq)
+  
+  if minFreq > 0
+    filterFrequenciesByMinFreq!(freqIndices, f, minFreq)
+  end
+  
+  if maxFreq < nFreq
+    filterFrequenciesByMaxFreq!(freqIndices, f, maxFreq)
+  end
 
   if maxMixingOrder > 0
     if numPeriodGrouping == 1
