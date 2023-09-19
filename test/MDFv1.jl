@@ -96,7 +96,7 @@ for mdf in (mdfv1,mdfv2)
 
   @test size(getMeasurementsFD(mdf, numAverages=10, frames=1:500, loadasreal=true)) == (1634,3,1,50)
 
-  @test size(getMeasurementsFD(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
+  @test size(getMeasurementsFD(mdf,frequencies=collect(vec(CartesianIndices((10, 1)))), numAverages=10)) == (10,1,50)
 
 end
 
@@ -132,8 +132,8 @@ for sm in (smv1,smv2)
   @test size(filterFrequencies(sm, SNRThresh = 5)) == (147,)
   #@test size(filterFrequencies(sm, numUsedFreqs = 100)) == (100,) # not working
 
-  @test size(getSystemMatrix(sm,1:10)) == (1936,10)
-  @test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (1936,20)
+  @test size(getSystemMatrix(sm,collect(vec(CartesianIndices((10, 1)))))) == (1936,10)
+  @test size(getSystemMatrix(sm,collect(vec(CartesianIndices((10, 1)))),loadasreal=true)) == (1936,20)
 end
 
 end
