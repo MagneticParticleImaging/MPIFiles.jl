@@ -173,12 +173,12 @@ function filterFrequenciesByStepsize!(indices::Vector{CartesianIndex{2}}, stepsi
   filter!(x -> in(x[1], stepIndices), indices)
 end
 
-function sortFrequencies!(indices::Vector{CartesianIndex{2}}, f::MPIFile; numPeriodGrouping = 1, stepsize = 1, sortBySNR = false, sortByMixFactors = false)
+function sortFrequencies(indices::Vector{CartesianIndex{2}}, f::MPIFile; numPeriodGrouping = 1, stepsize = 1, sortBySNR = false, sortByMixFactors = false)
   if sortBySNR && !sortByMixFactors
     indices = sortFrequenciesBySNR(indices, f, numPeriodGrouping = numPeriodGrouping, stepsize = stepsize)
   elseif !sortBySNR && sortByMixFactors
     indices = sortFrequenciesByMixFactors(indices, f, numPeriodGrouping = numPeriodGrouping)
-  else
+  elseif sortBySNR && sortByMixFactors
     error("Can not apply multiple sorting algorithms to frequencies")
   end
   return indices
