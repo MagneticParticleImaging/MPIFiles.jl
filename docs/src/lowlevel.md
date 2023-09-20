@@ -40,7 +40,7 @@ measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation
 
 # calibrations
 calibSNR, calibFov, calibFovCenter, calibSize, calibOrder, calibPositions,
-calibOffsetField, calibDeltaSampleSize, calibMethod, calibIsMeanderingGrid
+calibOffsetFields, calibDeltaSampleSize, calibMethod, calibIsMeanderingGrid
 
 # reconstruction results
 recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions

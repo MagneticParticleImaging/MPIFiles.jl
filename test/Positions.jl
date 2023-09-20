@@ -6,6 +6,8 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   ctr = [0.0,0.0,0.0]Unitful.mm
   caG = RegularGridPositions(shp,fov,ctr)
   @test shape(caG) == shp
+  @test ndims(caG) == 3
+  @test axes(caG) == ((-1.0:1.0:1.0)u"mm", (-1.0:1.0:1.0)u"mm", (-1.0:1.0:1.0)u"mm")
   @test fieldOfView(caG) == fov
   @test fieldOfViewCenter(caG) == ctr
   @test_throws BoundsError caG[0]
@@ -15,6 +17,8 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test caG[3] == [1,-1,-1]Unitful.mm
   @test caG[4] == [-1,0,-1]Unitful.mm
   @test caG[27] == [1,1,1]Unitful.mm
+  @test getindex(caG, CartesianIndex(1,1,1)) == [-1,-1,-1]Unitful.mm
+  @test getindex(caG, CartesianIndex(3,3,3)) == [1,1,1]Unitful.mm
   h5open(pospath, "w") do file
     write(file, caG)
   end
