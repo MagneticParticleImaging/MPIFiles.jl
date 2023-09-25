@@ -773,7 +773,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
 	push!(Ns,parse(Int,N))
       end
       sort!(Ns)
-      @info "No spherical $t-Design with $N points availible!\nThere are spherical $t-Designs with following N:" Ns
+      @info "No spherical $t-Design with $N points available!\nThere are spherical $t-Designs with following N:" Ns
       throw(DomainError(1))
     else
       ts = Int[]
@@ -784,7 +784,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
         end
       end
       sort!(ts)
-      @info "No spherical $t-Design availible!\n Choose another t."
+      @info "No spherical $t-Design available!\n Choose another t."
       throw(DomainError(1))
     end
   end
