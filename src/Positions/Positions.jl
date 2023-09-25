@@ -569,7 +569,7 @@ function TubularRegularGridPositions(params::Dict)
   return TubularRegularGridPositions(shape, fov, center, mainAxis, radiusAxis)
 end
 
-function RegularGridPositions(file::HDF5.File)
+function TubularRegularGridPositions(file::HDF5.File)
   shape = read(file, "/positionsShape")
   fov = read(file, "/positionsFov")*Unitful.m
   center = read(file, "/positionsCenter")*Unitful.m
