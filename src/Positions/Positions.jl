@@ -82,6 +82,8 @@ function range(grid::RegularGridPositions, dim::Int)
     return 1:1
   end
 end
+ndims(grid::RegularGridPositions) = length(grid.shape)
+axes(grid::RegularGridPositions) = tuple([range(grid, i) for i in 1:ndims(grid)]...)
 
 RegularGridPositions(shape, fov, center) = RegularGridPositions(shape, fov, center, ones(Int,length(shape)))
 
@@ -211,13 +213,18 @@ function getindex(grid::RegularGridPositions, idx::Vector{T}) where T<:Number
   return 0.5.*fieldOfView(grid) .* (-1 .+ (2 .* idx .- 1) ./ shape(grid)) .+ fieldOfViewCenter(grid)
 end
 
-function posToIdxFloat(grid::RegularGridPositions,pos::Vector)
+function getindex(grid::RegularGridPositions, idx::CartesianIndex)
+  return getindex(grid, LinearIndices(tuple(grid.shape...))[idx])
+end
+
+function posToIdxFloat(grid::RegularGridPositions, pos)
   idx = 0.5 .* (shape(grid) .* ((pos .- fieldOfViewCenter(grid)) ./
               ( 0.5 .* fieldOfView(grid) ) .+ 1) .+ 1)
+  idx = [isnan(val) ? one(eltype(idx)) : val for val in idx]
   return idx
 end
 
-function posToIdx(grid::RegularGridPositions,pos::Vector)
+function posToIdx(grid::RegularGridPositions, pos)
   idx = round.(Int64, posToIdxFloat(grid,pos))
   for d=1:length(idx)
     if grid.sign[d] == -1
@@ -227,7 +234,7 @@ function posToIdx(grid::RegularGridPositions,pos::Vector)
   return idx
 end
 
-function posToLinIdx(grid::RegularGridPositions,pos::Vector)
+function posToLinIdx(grid::RegularGridPositions, pos)
   return (LinearIndices(tuple(shape(grid)...)))[posToIdx(grid,pos)...]
 end
 

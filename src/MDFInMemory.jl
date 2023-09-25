@@ -1303,10 +1303,6 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
   end
 end
 
-
-# The MDF specification uses the plural
-calibOffsetFields(f::MDFFile) = calibOffsetField(f)
-
 # And some utility functions
 measIsCalibProcessed(mdf::MDFv2InMemory)::Union{Bool, Missing} = measIsFramePermutation(mdf) && 
                                                                  measIsFourierTransformed(mdf) &&
