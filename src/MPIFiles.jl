@@ -18,7 +18,7 @@ using ImageAxes
 @reexport using Random
 @reexport using Mmap
 @reexport using Statistics
-using Unitful
+@reexport using Unitful
 using CodecZlib
 using Tar
 using Pkg.PlatformEngines
