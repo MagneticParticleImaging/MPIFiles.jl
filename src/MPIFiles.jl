@@ -3,22 +3,21 @@ module MPIFiles
 using UUIDs
 using Graphics: @mustimplement
 
-using Reexport
 using LinearOperatorCollection
 using FFTW
-@reexport using AxisArrays
+using AxisArrays
 const axes = Base.axes
-@reexport using Interpolations
-@reexport using HDF5
-@reexport using Dates
-@reexport using DelimitedFiles
+using Interpolations
+using HDF5
+using Dates
+using DelimitedFiles
 using ImageMetadata
 using ImageAxes
-@reexport using LinearAlgebra
-@reexport using Random
-@reexport using Mmap
-@reexport using Statistics
-@reexport using Unitful
+using LinearAlgebra
+using Random
+using Mmap
+using Statistics
+using Unitful
 using CodecZlib
 using Tar
 using Pkg.PlatformEngines
@@ -31,10 +30,6 @@ using Inflate, SHA
 using StableRNGs
 using REPL: fielddoc
 using DocStringExtensions
-
-if VERSION < v"1.1"
-  isnothing(x) = x === nothing
-end
 
 ### global import list ###
 
