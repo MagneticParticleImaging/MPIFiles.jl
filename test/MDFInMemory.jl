@@ -29,19 +29,19 @@ end
   fnSM1DBruker = joinpath(datadir,"BrukerStore","20170807_142514_Service_1_1","89")
 
 
-  fnMeasV1 = joinpath(tmpdir,"mdf","measurement_V1.mdf")
-  fnMeasV2 = joinpath(tmpdir,"mdf","measurement_V2.mdf")
-  fnSMV1 = joinpath(tmpdir,"mdf","systemMatrix_V1.mdf")
-  fnSMV2 = joinpath(tmpdir,"mdf","systemMatrix_V2.mdf")
-  fnSMV3 = joinpath(tmpdir,"mdf","systemMatrix_V3.mdf")
-  fnSMV4 = joinpath(tmpdir,"mdf","systemMatrix_V4.mdf")
-  fnSMV5 = joinpath(tmpdir,"mdf","systemMatrix_V5.mdf")
-  fnSMV6 = joinpath(tmpdir,"mdf","systemMatrix_V6.mdf")
-  fnSM1DV1 = joinpath(tmpdir,"mdf","systemMatrix1D_V1.mdf")
-  fnSM1DV2 = joinpath(tmpdir,"mdf","systemMatrix1D_V2.mdf")
+  fnMeasV1 = joinpath(tmpdir,"mdfim","measurement_V1.mdf")
+  fnMeasV2 = joinpath(tmpdir,"mdfim","measurement_V2.mdf")
+  fnSMV1 = joinpath(tmpdir,"mdfim","systemMatrix_V1.mdf")
+  fnSMV2 = joinpath(tmpdir,"mdfim","systemMatrix_V2.mdf")
+  fnSMV3 = joinpath(tmpdir,"mdfim","systemMatrix_V3.mdf")
+  fnSMV4 = joinpath(tmpdir,"mdfim","systemMatrix_V4.mdf")
+  fnSMV5 = joinpath(tmpdir,"mdfim","systemMatrix_V5.mdf")
+  fnSMV6 = joinpath(tmpdir,"mdfim","systemMatrix_V6.mdf")
+  fnSM1DV1 = joinpath(tmpdir,"mdfim","systemMatrix1D_V1.mdf")
+  fnSM1DV2 = joinpath(tmpdir,"mdfim","systemMatrix1D_V2.mdf")
 
-  fnMeasV2_converted = joinpath(tmpdir,"mdf","measurement_V2_converted.mdf")
-  fnSMV2_converted = joinpath(tmpdir,"mdf","systemMatrix_V2_converted.mdf")
+  fnMeasV2_converted = joinpath(tmpdir,"mdfim","measurement_V2_converted.mdf")
+  fnSMV2_converted = joinpath(tmpdir,"mdfim","systemMatrix_V2_converted.mdf")
 
   @testset "Conversion" begin
     @testset "Fields" begin
