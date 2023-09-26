@@ -101,10 +101,10 @@ macro keyoptional(expr)
 end
 
 export concreteSubtypes
-function concreteSubtypes(type::DataType)
+function concreteSubtypes(type::Union{DataType, UnionAll})
   subtypes_ = subtypes(type)
   # Only add filtered ones but check all subtypes
-  allSubtypes = filter(x -> !isabstracttype(x), subtypes_)
+  allSubtypes = filter(x -> isconcretetype(x) || isstructtype(x), subtypes_)
   for subtype in subtypes_
     subsubtypes_ = concreteSubtypes(subtype)
     allSubtypes = vcat(allSubtypes, subsubtypes_)
