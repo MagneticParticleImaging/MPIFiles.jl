@@ -583,7 +583,7 @@ function TubularRegularGridPositions(file::HDF5.File)
   mainAxis = read(file, "positionsMainAxis")
   radiusAxis = read(file, "positionsRadiusAxis")
 
-  return RegularGridPositions(shape, fov, center, mainAxis, radiusAxis)
+  return TubularRegularGridPositions(shape, fov, center, mainAxis, radiusAxis)
 end
 
 length(grid::TubularRegularGridPositions) = length(filteredPositions(grid))
@@ -592,7 +592,7 @@ export radius
 radius(grid::TubularRegularGridPositions) = grid.fov[grid.radiusAxis] / 2
 
 function write(file::HDF5.File, positions::TubularRegularGridPositions)
-  write(file,"/positionsType", "TubularRegularGridPositions")
+  write(file, "/positionsType", "TubularRegularGridPositions")
   write(file, "/positionsShape", positions.shape)
   write(file, "/positionsFov", Float64.(ustrip.(uconvert.(Unitful.m, positions.fov))) )
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )

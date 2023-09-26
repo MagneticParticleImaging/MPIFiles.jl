@@ -325,21 +325,34 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test params["positionsRadiusAxis"] == paramsFromGrid["positionsRadiusAxis"]
     
     @test length(grid) == 5169
-    @test radius(grid) == 20u"mm"
+    @test MPIFiles.radius(grid) == 20u"mm"
 
     filename = joinpath(tmpdir, "TubularRegularGridPositionsTest.h5")
+
+    if isfile(filename)
+      rm(filename)
+    end
+
     h5open(filename, "w") do f
       write(f, grid)
     end
 
-    h5open(filename, "w") do f
+    gridByFile = nothing
+    h5open(filename, "r") do f
       gridByFile = TubularRegularGridPositions(f)
     end
 
-    @test grid == gridByFile
+    rm(filename)
 
-    @test grid[1] .≈ [-2.962962962962963, -19.753086419753085, 0.0]u"mm"
-    @test grid[2000] .≈ [-9.382716049382715, -3.45679012345679, 0.0]u"mm"
+    @test gridByFile isa TubularRegularGridPositions
+    @test all(grid.shape .≈ gridByFile.shape)
+    @test all(grid.fov .≈ gridByFile.fov)
+    @test all(grid.center .≈ gridByFile.center)
+    @test grid.mainAxis == gridByFile.mainAxis
+    @test grid.radiusAxis == gridByFile.radiusAxis
+
+    @test all(grid[1] .≈ [-2.962962962962963, -19.753086419753085, 0.0]u"mm")
+    @test all(grid[2000] .≈ [-9.382716049382715, -3.45679012345679, 0.0]u"mm")
 
     @test posToLinIdx(grid, [-2.962962962962963, -19.753086419753085, 0.0]u"mm") == 1
     @test posToLinIdx(grid, [-9.382716049382715, -3.45679012345679, 0.0]u"mm") == 2000
