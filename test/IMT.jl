@@ -93,7 +93,7 @@ end
   @test calibSize(calibIMT) == [20; 20; 1]
   @test calibOrder(calibIMT) == "xyz"
   @test calibPositions(calibIMT) == nothing
-  @test calibOffsetField(calibIMT) == nothing
+  @test calibOffsetFields(calibIMT) == nothing
   @test calibDeltaSampleSize(calibIMT) == [0.0; 0.0; 0.0]
   @test calibMethod(calibIMT) == "simulation"
 

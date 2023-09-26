@@ -27,6 +27,13 @@ function TransferFunction(filename::String; kargs...)
     return tf
 end
 
+function TransferFunction(file::MPIFile)
+  tf_file = rxTransferFunction(file)
+  inductionFactor = rxInductionFactor(file)
+  f = collect(rfftfreq(rxNumSamplingPoints(file), rxBandwidth(file)*2))
+  return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor)
+end
+
 function getindex(tmf::TransferFunction, x::UnitRange, chan::Integer=1)
   a = tmf.data[x,chan]
   return a

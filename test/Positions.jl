@@ -6,6 +6,8 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   ctr = [0.0,0.0,0.0]Unitful.mm
   caG = RegularGridPositions(shp,fov,ctr)
   @test shape(caG) == shp
+  @test ndims(caG) == 3
+  @test axes(caG) == ((-1.0:1.0:1.0)u"mm", (-1.0:1.0:1.0)u"mm", (-1.0:1.0:1.0)u"mm")
   @test fieldOfView(caG) == fov
   @test fieldOfViewCenter(caG) == ctr
   @test_throws BoundsError caG[0]
@@ -15,6 +17,8 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test caG[3] == [1,-1,-1]Unitful.mm
   @test caG[4] == [-1,0,-1]Unitful.mm
   @test caG[27] == [1,1,1]Unitful.mm
+  @test getindex(caG, CartesianIndex(1,1,1)) == [-1,-1,-1]Unitful.mm
+  @test getindex(caG, CartesianIndex(3,3,3)) == [1,1,1]Unitful.mm
   h5open(pospath, "w") do file
     write(file, caG)
   end
@@ -293,6 +297,65 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
 
   for (i,p) in enumerate(caG)
     @test p == caG[i]
+  end
+
+  @testset "Tubular regular grid positions" begin
+    grid = TubularRegularGridPositions([81, 81, 1], [40, 40 ,0]u"mm", [0, 0, 0]u"mm", 3, 1)
+
+    params = Dict{String, Any}()
+    params["positionsType"] = "TubularRegularGridPositions"
+    params["positionsShape"] = [81, 81, 1]
+    params["positionsFov"] = [40, 40 ,0]u"mm"
+    params["positionsCenter"] = [0, 0, 0]u"mm"
+    params["positionsMainAxis"] = 3
+    params["positionsRadiusAxis"] = 1
+    gridByParams = TubularRegularGridPositions(params)
+
+    @test grid == gridByParams
+
+    gridByParamsGeneral = Positions(params)
+    @test grid == gridByParamsGeneral
+
+    paramsFromGrid = toDict(grid)
+    @test params["positionsType"] == paramsFromGrid["positionsType"] 
+    @test all(params["positionsShape"] .== paramsFromGrid["positionsShape"])
+    @test all(ustrip.(u"m", params["positionsFov"]) .≈ paramsFromGrid["positionsFov"])
+    @test all(ustrip.(u"m", params["positionsCenter"]) .≈ paramsFromGrid["positionsCenter"])
+    @test params["positionsMainAxis"] == paramsFromGrid["positionsMainAxis"]
+    @test params["positionsRadiusAxis"] == paramsFromGrid["positionsRadiusAxis"]
+    
+    @test length(grid) == 5169
+    @test MPIFiles.radius(grid) == 20u"mm"
+
+    filename = joinpath(tmpdir, "TubularRegularGridPositionsTest.h5")
+
+    if isfile(filename)
+      rm(filename)
+    end
+
+    h5open(filename, "w") do f
+      write(f, grid)
+    end
+
+    gridByFile = nothing
+    h5open(filename, "r") do f
+      gridByFile = TubularRegularGridPositions(f)
+    end
+
+    rm(filename)
+
+    @test gridByFile isa TubularRegularGridPositions
+    @test all(grid.shape .≈ gridByFile.shape)
+    @test all(grid.fov .≈ gridByFile.fov)
+    @test all(grid.center .≈ gridByFile.center)
+    @test grid.mainAxis == gridByFile.mainAxis
+    @test grid.radiusAxis == gridByFile.radiusAxis
+
+    @test all(grid[1] .≈ [-2.962962962962963, -19.753086419753085, 0.0]u"mm")
+    @test all(grid[2000] .≈ [-9.382716049382715, -3.45679012345679, 0.0]u"mm")
+
+    @test posToLinIdx(grid, [-2.962962962962963, -19.753086419753085, 0.0]u"mm") == 1
+    @test posToLinIdx(grid, [-9.382716049382715, -3.45679012345679, 0.0]u"mm") == 2000
   end
 
   @testset "Squared positions regression test" begin

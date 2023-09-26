@@ -34,21 +34,18 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
 
   data_ = measDataRaw(f)
 
-  data_ = reshape(data_, size(data_,1),
-          size(data_,2)*size(data_,3),
-          size(data_,4))[:, rows_, :]
+  data_ = data_[:, rows_, :]
   data = reshape(data_, Val(2))
 
   fgdata = data[measFGFrameIdx(f),:]
 
   if measIsSparsityTransformed(f)
     dataBackTrafo = similar(fgdata, prod(calibSize(f)), size(fgdata,2))
-    B = linearOperator(measSparsityTransformation(f), calibSize(f))
+
+    B = createLinearOperator(measSparsityTransformation(f), ComplexF32; shape=tuple(calibSize(f)...))
 
     tmp = measSubsamplingIndices(f)
-    subsamplingIndices_ = reshape(tmp, size(tmp,1),
-                          size(tmp,2)*size(tmp,3),
-                          size(tmp,4))[:, rows_, :]
+    subsamplingIndices_ = tmp[:, rows_, :]
     subsamplingIndices = reshape(subsamplingIndices_, Val(2))
 
     for l=1:size(fgdata,2)

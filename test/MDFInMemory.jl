@@ -29,19 +29,19 @@ end
   fnSM1DBruker = joinpath(datadir,"BrukerStore","20170807_142514_Service_1_1","89")
 
 
-  fnMeasV1 = joinpath(tmpdir,"mdf","measurement_V1.mdf")
-  fnMeasV2 = joinpath(tmpdir,"mdf","measurement_V2.mdf")
-  fnSMV1 = joinpath(tmpdir,"mdf","systemMatrix_V1.mdf")
-  fnSMV2 = joinpath(tmpdir,"mdf","systemMatrix_V2.mdf")
-  fnSMV3 = joinpath(tmpdir,"mdf","systemMatrix_V3.mdf")
-  fnSMV4 = joinpath(tmpdir,"mdf","systemMatrix_V4.mdf")
-  fnSMV5 = joinpath(tmpdir,"mdf","systemMatrix_V5.mdf")
-  fnSMV6 = joinpath(tmpdir,"mdf","systemMatrix_V6.mdf")
-  fnSM1DV1 = joinpath(tmpdir,"mdf","systemMatrix1D_V1.mdf")
-  fnSM1DV2 = joinpath(tmpdir,"mdf","systemMatrix1D_V2.mdf")
+  fnMeasV1 = joinpath(tmpdir,"mdfim","measurement_V1.mdf")
+  fnMeasV2 = joinpath(tmpdir,"mdfim","measurement_V2.mdf")
+  fnSMV1 = joinpath(tmpdir,"mdfim","systemMatrix_V1.mdf")
+  fnSMV2 = joinpath(tmpdir,"mdfim","systemMatrix_V2.mdf")
+  fnSMV3 = joinpath(tmpdir,"mdfim","systemMatrix_V3.mdf")
+  fnSMV4 = joinpath(tmpdir,"mdfim","systemMatrix_V4.mdf")
+  fnSMV5 = joinpath(tmpdir,"mdfim","systemMatrix_V5.mdf")
+  fnSMV6 = joinpath(tmpdir,"mdfim","systemMatrix_V6.mdf")
+  fnSM1DV1 = joinpath(tmpdir,"mdfim","systemMatrix1D_V1.mdf")
+  fnSM1DV2 = joinpath(tmpdir,"mdfim","systemMatrix1D_V2.mdf")
 
-  fnMeasV2_converted = joinpath(tmpdir,"mdf","measurement_V2_converted.mdf")
-  fnSMV2_converted = joinpath(tmpdir,"mdf","systemMatrix_V2_converted.mdf")
+  fnMeasV2_converted = joinpath(tmpdir,"mdfim","measurement_V2_converted.mdf")
+  fnSMV2_converted = joinpath(tmpdir,"mdfim","systemMatrix_V2_converted.mdf")
 
   @testset "Conversion" begin
     @testset "Fields" begin
@@ -147,7 +147,7 @@ end
 
       @test size(getMeasurementsFD(mdf, numAverages=10, frames=1:100, loadasreal=true)) == (1634,3,1,10)
 
-      @test size(getMeasurementsFD(mdf,frequencies=1:10, numAverages=10)) == (10,1,50)
+      @test size(getMeasurementsFD(mdf,frequencies=collect(vec(CartesianIndices((10, 1)))), numAverages=10)) == (10,1,50)
     end
 
     @testset "Calibration" begin
@@ -168,7 +168,7 @@ end
       @test typeof(sm) <: MDFFileV2
   
       @test size( systemMatrixWithBG(sm) ) == (1959,817,3,1)
-      @test size( systemMatrix(sm,1:10) ) == (1936,10)
+      @test size( systemMatrix(sm,collect(vec(CartesianIndices((10, 1))))) ) == (1936,10)
 
       @test size(rxTransferFunction(sm)) == (817, 3)
       @test rxHasTransferFunction(sm) == true
@@ -198,9 +198,9 @@ end
       @test size(filterFrequencies(sm, SNRThresh = 5)) == (147,)
       #@test size(filterFrequencies(sm, numUsedFreqs = 100)) == (100,) # not working
 
-      @test size(getSystemMatrix(sm,1:10)) == (1936,10)
-      @test size(getSystemMatrix(sm,1:10,loadasreal=true)) == (1936,20)
-      @test size(getSystemMatrix(sm,1:10,bgCorrection=true)) == (1936,10)
+      @test size(getSystemMatrix(sm,collect(vec(CartesianIndices((10, 1)))))) == (1936,10)
+      @test size(getSystemMatrix(sm,collect(vec(CartesianIndices((10, 1)))),loadasreal=true)) == (1936,20)
+      @test size(getSystemMatrix(sm,collect(vec(CartesianIndices((10, 1)))),bgCorrection=true)) == (1936,10)
       # test on the data level if the conversion was successfull
       SNRThresh = 2
       freq = filterFrequencies(smBruker,SNRThresh=SNRThresh)

@@ -4,7 +4,8 @@ using UUIDs
 using Graphics: @mustimplement
 
 using Reexport
-@reexport using SparsityOperators
+using LinearOperatorCollection
+using FFTW
 @reexport using AxisArrays
 const axes = Base.axes
 @reexport using Interpolations
@@ -89,7 +90,7 @@ export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
 # calibrations
 export calibSNR, calibSnr, calibFov, calibFieldOfView, calibFovCenter,
   calibFieldOfViewCenter, calibSize, calibOrder, calibPositions,
-  calibOffsetField, calibDeltaSampleSize,
+  calibOffsetFields, calibDeltaSampleSize,
   calibMethod, calibIsMeanderingGrid
 
 # reconstruction results
@@ -198,7 +199,7 @@ abstract type MPIFile end
 @mustimplement calibSize(f::MPIFile)
 @mustimplement calibOrder(f::MPIFile)
 @mustimplement calibPositions(f::MPIFile)
-@mustimplement calibOffsetField(f::MPIFile)
+@mustimplement calibOffsetFields(f::MPIFile)
 @mustimplement calibDeltaSampleSize(f::MPIFile)
 @mustimplement calibMethod(f::MPIFile)
 @mustimplement calibIsMeanderingGrid(f::MPIFile)
