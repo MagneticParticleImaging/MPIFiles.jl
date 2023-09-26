@@ -1,4 +1,4 @@
-export MDFDatasetStore, MDFStore, addStudy, getMDFStudyFolderName, calibdir, getMDFStore, getCalibStudy
+export MDFDatasetStore, addStudy, getMDFStudyFolderName, calibdir, getMDFStore, getCalibStudy
 
 struct MDFDatasetStore <: DatasetStore
   path::String
@@ -24,7 +24,8 @@ struct MDFDatasetStore <: DatasetStore
   end
 end
 
-if ispath("/opt/mpidata/Bruker")
+@static if ispath("/opt/mpidata/Bruker")
+  export MDFStore
   const MDFStore = MDFDatasetStore("/opt/data/Bruker")
 end
 path(e::Experiment{MDFDatasetStore}) = joinpath( path(e.study), string(e.num)*".mdf" )

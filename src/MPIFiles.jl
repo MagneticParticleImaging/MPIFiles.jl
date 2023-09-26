@@ -12,13 +12,13 @@ const axes = Base.axes
 @reexport using HDF5
 @reexport using Dates
 @reexport using DelimitedFiles
-@reexport using ImageMetadata
+using ImageMetadata
 using ImageAxes
 @reexport using LinearAlgebra
 @reexport using Random
 @reexport using Mmap
 @reexport using Statistics
-@reexport using Unitful
+using Unitful
 using CodecZlib
 using Tar
 using Pkg.PlatformEngines
@@ -33,7 +33,7 @@ using REPL: fielddoc
 using DocStringExtensions
 
 if VERSION < v"1.1"
-  isnothing(x) = x == nothing
+  isnothing(x) = x === nothing
 end
 
 ### global import list ###
@@ -68,7 +68,7 @@ export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
 
 # acquisition parameters
 export acqStartTime, acqNumFrames, acqNumAverages,
-  acqGradient, acqOffsetField, acqNumPeriodsPerFrame, acqSize
+  acqGradient, acqOffsetField, acqNumPeriodsPerFrame
 
 # drive-field parameters
 export dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform,

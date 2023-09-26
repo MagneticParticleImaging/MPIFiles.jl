@@ -9,6 +9,7 @@ using UUIDs
 using Unitful
 using Scratch
 using LazyArtifacts
+using Aqua
 
 const datadir = joinpath(artifact"data", "data")
 @info "The test data is located at $datadir."
@@ -21,16 +22,20 @@ mkpath(joinpath(tmpdir,"mdfim"))
 mkpath(joinpath(tmpdir,"positions"))
 mkpath(joinpath(tmpdir,"transferFunction"))
 
-include("General.jl")
-include("Cartesian.jl")
-include("Positions.jl")
-include("MDFv1.jl")
-include("MultiMPIFile.jl")
-include("Reco.jl")
-include("IMT.jl")
-include("TransferFunction.jl")
-include("CustomSFMeas.jl")
-include("MDFInMemory.jl")
-include("MagneticFieldMeasurement.jl")
+@testset "Aqua" begin
+  Aqua.test_all(MPIFiles)
+end
+
+# include("General.jl")
+# include("Cartesian.jl")
+# include("Positions.jl")
+# include("MDFv1.jl")
+# include("MultiMPIFile.jl")
+# include("Reco.jl")
+# include("IMT.jl")
+# include("TransferFunction.jl")
+# include("CustomSFMeas.jl")
+# include("MDFInMemory.jl")
+# include("MagneticFieldMeasurement.jl")
 
 @info "The unit tests are done!"

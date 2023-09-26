@@ -4,7 +4,7 @@ export Positions, GridPositions, RegularGridPositions, ChebyshevGridPositions,
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
-export idxToPos, posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid, toDict
+export posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid, toDict
 
 abstract type Positions end
 abstract type GridPositions<:Positions end
