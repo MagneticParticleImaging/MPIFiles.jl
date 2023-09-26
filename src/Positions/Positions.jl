@@ -52,6 +52,8 @@ function Positions(params::Dict)
     positions = UniformRandomPositions(params)
   elseif typ == "ArbitraryPositions"
     positions = ArbitraryPositions(params)
+  elseif typ == "TubularRegularGridPositions"
+    positions = TubularRegularGridPositions(params)
   else
     throw(ErrorException("No grid found to load from dict $params"))
   end
@@ -543,6 +545,162 @@ function convert(::Type{UniformRandomPositions}, N::Integer,fov::Vector,center::
 end
 =#
 
+# Tubular cartesian grid
+export TubularRegularGridPositions
+mutable struct TubularRegularGridPositions{T} <: GridPositions where {T<:Unitful.Length}
+  shape::Vector{Int}
+  fov::Vector{T}
+  center::Vector{T}
+  "Main axis of the tube; only effective in 3D grids"
+  mainAxis::Int64
+  "Radius-defining axis of the tube"
+  radiusAxis::Int64
+end
+
+function TubularRegularGridPositions(params::Dict)
+  shape = params["positionsShape"]
+
+  fov = params["positionsFov"]
+  if !(eltype(fov) <: Quantity)
+    fov = fov.*Unitful.m
+  end
+
+  center = params["positionsCenter"]
+  if !(eltype(center) <: Quantity)
+    center = center.*Unitful.m
+  end
+
+  mainAxis = params["positionsMainAxis"]
+  radiusAxis = params["positionsRadiusAxis"]
+
+  return TubularRegularGridPositions(shape, fov, center, mainAxis, radiusAxis)
+end
+
+function TubularRegularGridPositions(file::HDF5.File)
+  shape = read(file, "/positionsShape")
+  fov = read(file, "/positionsFov")*Unitful.m
+  center = read(file, "/positionsCenter")*Unitful.m
+  mainAxis = read(file, "positionsMainAxis")
+  radiusAxis = read(file, "positionsRadiusAxis")
+
+  return TubularRegularGridPositions(shape, fov, center, mainAxis, radiusAxis)
+end
+
+length(grid::TubularRegularGridPositions) = length(filteredPositions(grid))
+
+export radius
+radius(grid::TubularRegularGridPositions) = grid.fov[grid.radiusAxis] / 2
+
+function write(file::HDF5.File, positions::TubularRegularGridPositions)
+  write(file, "/positionsType", "TubularRegularGridPositions")
+  write(file, "/positionsShape", positions.shape)
+  write(file, "/positionsFov", Float64.(ustrip.(uconvert.(Unitful.m, positions.fov))) )
+  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
+  write(file, "/positionsMainAxis", positions.mainAxis)
+  write(file, "/positionsRadiusAxis", positions.radiusAxis)
+end
+
+function toDict(positions::TubularRegularGridPositions)
+  params = Dict{String,Any}()
+  params["positionsType"] = "TubularRegularGridPositions"
+  params["positionsShape"] = positions.shape
+  params["positionsFov"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.fov)))
+  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
+  params["positionsMainAxis"] = positions.mainAxis
+  params["positionsRadiusAxis"] = positions.radiusAxis
+  return params
+end
+
+function filteredPositions(grid::TubularRegularGridPositions)
+  if length(grid.shape) == 1 #Very ugly but improves compile time
+    cartIndices = CartesianIndices(tuple(grid.shape[1]))
+    return [Tuple(idx) for idx in cartIndices] # Applying a radius in 1D is not possible
+  elseif length(grid.shape) == 2
+    cartIndices = CartesianIndices(tuple(grid.shape[1], grid.shape[2]))
+    return [Tuple(idx) for idx in cartIndices if norm(collect(Tuple(idx)) .- grid.shape./2)]
+  elseif length(grid.shape) == 3
+    cartIndices = CartesianIndices(tuple(grid.shape[1], grid.shape[2], grid.shape[3]))
+  else
+    cartIndices = CartesianIndices(tuple(grid.shape...))
+  end
+
+  return [idx for idx in cartIndices if norm(collect(Tuple(idx)) .- grid.shape./2 .- 0.5) <= grid.shape[grid.radiusAxis]/2]
+end
+
+function getindex(grid::TubularRegularGridPositions, i::Integer)
+  filteredPositions_ = filteredPositions(grid)
+  if i > length(filteredPositions_) || i < 1
+    throw(BoundsError(grid, i))
+  end
+
+  idx = Tuple(filteredPositions_[i])
+
+  return ((-shape(grid).+(2 .*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
+end
+
+function getindex(grid::TubularRegularGridPositions, idx::Vector{T}) where T<:Number
+  filteredPositions_ = filteredPositions(grid)
+  cartIdx = CartesianIndex(idx...)
+  if !(cartIdx in filteredPositions_)
+    throw(BoundsError(grid, idx))
+  else
+    return ((-shape(grid).+(2 .*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
+  end
+end
+
+function posToIdxFloat(grid::TubularRegularGridPositions, pos)
+  idx = 0.5 .* (shape(grid) .* ((pos .- fieldOfViewCenter(grid)) ./
+              ( 0.5 .* fieldOfView(grid) ) .+ 1) .+ 1)
+  idx = [isnan(val) ? one(eltype(idx)) : val for val in idx]
+  return idx
+end
+
+function posToIdx(grid::TubularRegularGridPositions, pos)
+  return round.(Int64, posToIdxFloat(grid, pos))
+end
+
+function posToLinIdx(grid::TubularRegularGridPositions, pos)
+  filteredPositions_ = filteredPositions(grid)
+  idx = posToIdx(grid, pos)
+  matchingIdx = [i for (i, idx_) in enumerate(filteredPositions_) if idx_ == CartesianIndex(idx...)]
+  if length(matchingIdx) < 1
+    error("The position $pos is not valid.")
+  else
+    return first(matchingIdx)
+  end
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # General functions for handling grids
 fieldOfView(grid::GridPositions) = grid.fov
@@ -622,7 +780,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
 	push!(Ns,parse(Int,N))
       end
       sort!(Ns)
-      @info "No spherical $t-Design with $N points availible!\nThere are spherical $t-Designs with following N:" Ns
+      @info "No spherical $t-Design with $N points available!\nThere are spherical $t-Designs with following N:" Ns
       throw(DomainError(1))
     else
       ts = Int[]
@@ -633,7 +791,7 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
         end
       end
       sort!(ts)
-      @info "No spherical $t-Design availible!\n Choose another t."
+      @info "No spherical $t-Design available!\n Choose another t."
       throw(DomainError(1))
     end
   end

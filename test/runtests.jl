@@ -17,6 +17,7 @@ const tmpdir  = @get_scratch!("tmp")
 @info "If you want to check the output of the tests, please head to $tmpdir."
 
 mkpath(joinpath(tmpdir,"mdf"))
+mkpath(joinpath(tmpdir,"mdfim"))
 mkpath(joinpath(tmpdir,"positions"))
 mkpath(joinpath(tmpdir,"transferFunction"))
 
