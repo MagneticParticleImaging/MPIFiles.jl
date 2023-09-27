@@ -100,8 +100,8 @@ studyUuid(f::MDFFileV2) = @keyrequired UUID(f["/study/uuid"])
 studyDescription(f::MDFFileV1)::Union{String, Missing} = "n.a."
 studyDescription(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/study/description"]
 function studyTime(f::MDFFile)
-  t = f["/study/time"]
-  if typeof(t)==String
+  t = @keyoptional f["/study/time"]
+  if typeof(t) == String
    return DateTime(t)
   else
    return nothing
