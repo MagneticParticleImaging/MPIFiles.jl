@@ -1,5 +1,5 @@
 # This file contains routines to generate MDF files
-export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!, compressCalibMDF
+export saveasMDF, loadDataset, loadMetadata, setparam!, compressCalibMDF
 export getFFdataPerPos, prepareAsMDFSingleMeasurement, convertCustomSF, blockAverage
 
 

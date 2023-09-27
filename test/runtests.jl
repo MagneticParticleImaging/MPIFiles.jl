@@ -9,6 +9,7 @@ using UUIDs
 using Unitful
 using Scratch
 using LazyArtifacts
+using Aqua
 
 const datadir = joinpath(artifact"data", "data")
 @info "The test data is located at $datadir."
@@ -20,6 +21,10 @@ mkpath(joinpath(tmpdir,"mdf"))
 mkpath(joinpath(tmpdir,"mdfim"))
 mkpath(joinpath(tmpdir,"positions"))
 mkpath(joinpath(tmpdir,"transferFunction"))
+
+@testset "Aqua" begin
+  Aqua.test_all(MPIFiles)
+end
 
 include("General.jl")
 include("Cartesian.jl")
