@@ -23,7 +23,7 @@ scannerFacility, scannerOperator, scannerManufacturer, scannerName, scannerTopol
 
 # acquisition parameters
 acqStartTime, acqNumFrames, acqNumAverages, acqGradient, acqOffsetField,
-acqNumPeriodsPerFrame, acqSize
+acqNumPeriodsPerFrame
 
 # drive-field parameters
 dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform, dfDivider,
