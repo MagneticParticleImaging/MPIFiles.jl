@@ -268,6 +268,10 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
+    if ismissing(inductionFactor)
+      @warn "The file is missing the induction factor. The induction factor will be set to 1."
+      inductionFactor = ones(Float64, rxNumChannels(f))
+    end
 
     J = size(data,1)
     dataF = rfft(data, 1)
@@ -323,6 +327,11 @@ function getMeasurementsFD(f::MPIFile, args...;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
+    if ismissing(inductionFactor)
+      @warn "The file is missing the induction factor. The induction factor will be set to 1."
+      inductionFactor = ones(Float64, rxNumChannels(f))
+    end
+
     data[2:end,:,:,:] ./= tf[2:end,:,:,:]
 
     if all(tf[1,:,:,:] .!= 0) && !any(isnan.(tf[1,:,:,:]))

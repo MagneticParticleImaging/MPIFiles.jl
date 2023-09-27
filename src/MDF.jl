@@ -69,13 +69,7 @@ function h5haskey(filename, parameter)
   end
 end
 
-function getindex(f::MDFFile, parameter)
-  if haskey(f.file, parameter)
-    return read(f.file, parameter)
-  else
-    return nothing
-  end
-end
+getindex(f::MDFFile, parameter) = read(f.file, parameter)
 
 function getindex(f::MDFFile, parameter, default)
   #if !haskey(f.param_cache,parameter)
@@ -106,8 +100,8 @@ studyUuid(f::MDFFileV2) = @keyrequired UUID(f["/study/uuid"])
 studyDescription(f::MDFFileV1)::Union{String, Missing} = "n.a."
 studyDescription(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/study/description"]
 function studyTime(f::MDFFile)
-  t = f["/study/time"]
-  if typeof(t)==String
+  t = @keyoptional f["/study/time"]
+  if typeof(t) == String
    return DateTime(t)
   else
    return nothing
