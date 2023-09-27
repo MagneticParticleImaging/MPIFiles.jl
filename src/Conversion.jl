@@ -4,7 +4,7 @@ export getFFdataPerPos, prepareAsMDFSingleMeasurement, convertCustomSF, blockAve
 
 
 function setparam!(params::Dict, parameter, value)
-  if !(isnothing(value) || !ismissing(value))
+  if !(isnothing(value) || ismissing(value))
     params[parameter] = value
   end
 end
