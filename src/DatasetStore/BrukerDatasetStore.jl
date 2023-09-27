@@ -1,10 +1,11 @@
-export BrukerDatasetStore, BrukerStore, findBrukerFiles, getNewCalibNum
+export BrukerDatasetStore, findBrukerFiles, getNewCalibNum
 
 struct BrukerDatasetStore <: DatasetStore
   path::String
 end
 
-if ispath("/opt/mpidata")
+@static if ispath("/opt/mpidata")
+  export BrukerStore
   const BrukerStore = BrukerDatasetStore("/opt/mpidata")
 end
 

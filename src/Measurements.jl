@@ -1,4 +1,4 @@
-export getMeasurements, getMeasurementsFD, getMeasurementsLowLevel
+export getMeasurements, getMeasurementsFD
 
 function measDataConv(f::MPIFile, args...)
   data = measDataTD(f, args...)
