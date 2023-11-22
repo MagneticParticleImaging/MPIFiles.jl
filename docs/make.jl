@@ -15,7 +15,8 @@ makedocs(
         "Frequency Filter" => "frequencyFilter.md",
         "Reconstruction Results" => "reconstruction.md"
       #  "Positions" => "positions.md"
-    ]
+    ],
+    warnonly = [:missing_docs]
 )
 
 deploydocs(

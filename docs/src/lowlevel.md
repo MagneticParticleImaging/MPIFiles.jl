@@ -23,7 +23,7 @@ scannerFacility, scannerOperator, scannerManufacturer, scannerName, scannerTopol
 
 # acquisition parameters
 acqStartTime, acqNumFrames, acqNumAverages, acqGradient, acqOffsetField,
-acqNumPeriodsPerFrame, acqSize
+acqNumPeriodsPerFrame
 
 # drive-field parameters
 dfNumChannels, dfStrength, dfPhase, dfBaseFrequency, dfCustomWaveform, dfDivider,
@@ -40,7 +40,7 @@ measIsBGFrame, measIsSpectralLeakageCorrected, measFramePermutation
 
 # calibrations
 calibSNR, calibFov, calibFovCenter, calibSize, calibOrder, calibPositions,
-calibOffsetField, calibDeltaSampleSize, calibMethod, calibIsMeanderingGrid
+calibOffsetFields, calibDeltaSampleSize, calibMethod, calibIsMeanderingGrid
 
 # reconstruction results
 recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions

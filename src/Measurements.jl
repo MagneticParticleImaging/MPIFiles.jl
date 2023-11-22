@@ -1,4 +1,4 @@
-export getMeasurements, getMeasurementsFD, getMeasurementsLowLevel
+export getMeasurements, getMeasurementsFD
 
 function measDataConv(f::MPIFile, args...)
   data = measDataTD(f, args...)
@@ -7,7 +7,7 @@ function measDataConv(f::MPIFile, args...)
     data = map(Float32, data)
   end
   a = rxDataConversionFactor(f)
-  if a!=nothing
+  if !ismissing(a)
     for d=1:size(data,2)
       slice = view(data,:,d,:,:)
       rmul!(slice, a[1,d])
@@ -268,6 +268,10 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
+    if ismissing(inductionFactor)
+      @warn "The file is missing the induction factor. The induction factor will be set to 1."
+      inductionFactor = ones(Float64, rxNumChannels(f))
+    end
 
     J = size(data,1)
     dataF = rfft(data, 1)
@@ -323,6 +327,11 @@ function getMeasurementsFD(f::MPIFile, args...;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
+    if ismissing(inductionFactor)
+      @warn "The file is missing the induction factor. The induction factor will be set to 1."
+      inductionFactor = ones(Float64, rxNumChannels(f))
+    end
+
     data[2:end,:,:,:] ./= tf[2:end,:,:,:]
 
     if all(tf[1,:,:,:] .!= 0) && !any(isnan.(tf[1,:,:,:]))
@@ -336,7 +345,7 @@ function getMeasurementsFD(f::MPIFile, args...;
           @warn "The amount of channels in the data and the TF does not match. Using lowest value. Please check closely if the TF is applied to wrong channels."
         end
 
-       	for k=1:length(inductionFactor)
+       	for k=1:K
        		data[:,k,:,:] ./= inductionFactor[k]
        	end
     end
@@ -344,7 +353,6 @@ function getMeasurementsFD(f::MPIFile, args...;
 
   if frequencies != nothing
     # here we merge frequencies and channels
-    data = reshape(data, size(data,1)*size(data,2), size(data,3), size(data,4))
     data = data[frequencies, :, :]
   end
 

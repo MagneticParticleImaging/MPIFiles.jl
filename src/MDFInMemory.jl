@@ -1303,10 +1303,6 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
   end
 end
 
-
-# The MDF specification uses the plural
-calibOffsetFields(f::MDFFile) = calibOffsetField(f)
-
 # And some utility functions
 measIsCalibProcessed(mdf::MDFv2InMemory)::Union{Bool, Missing} = measIsFramePermutation(mdf) && 
                                                                  measIsFourierTransformed(mdf) &&
@@ -1411,7 +1407,11 @@ function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
   end
 
   # Add measurements data
-  measDataRaw(mdf, mdfFile.mmap_measData)
+  if !isnothing(mdfFile.mmap_measData)
+    measDataRaw(mdf, mdfFile.mmap_measData)
+  else
+    @warn "The measurement data could not be read. Please check closely."
+  end
 
   return mdf
 end
@@ -1480,7 +1480,6 @@ measObservedDriveField(mdf::MDFv2InMemory, measDriveFields) = mdf.custom["measOb
 
 measAppliedDriveField(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measAppliedDriveField"]
 measAppliedDriveField(mdf::MDFv2InMemory, measTransmit) = mdf.custom["measAppliedDriveField"] = measTransmit
-
 
 auxiliaryData(mdf::MDFv2InMemory) = @keyoptional mdf.custom["auxiliaryData"]
 auxiliaryData(mdf::MDFv2InMemory, auxiliaryData) = mdf.custom["auxiliaryData"] = auxiliaryData
