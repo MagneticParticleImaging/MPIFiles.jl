@@ -7,7 +7,7 @@ function measDataConv(f::MPIFile, args...)
     data = map(Float32, data)
   end
   a = rxDataConversionFactor(f)
-  if !ismissing(a)
+  if !isnothing(a)
     for d=1:size(data,2)
       slice = view(data,:,d,:,:)
       rmul!(slice, a[1,d])
@@ -268,7 +268,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
-    if ismissing(inductionFactor)
+    if isnothing(inductionFactor)
       @warn "The file is missing the induction factor. The induction factor will be set to 1."
       inductionFactor = ones(Float64, rxNumChannels(f))
     end
@@ -327,7 +327,7 @@ function getMeasurementsFD(f::MPIFile, args...;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
-    if ismissing(inductionFactor)
+    if isnothing(inductionFactor)
       @warn "The file is missing the induction factor. The induction factor will be set to 1."
       inductionFactor = ones(Float64, rxNumChannels(f))
     end
