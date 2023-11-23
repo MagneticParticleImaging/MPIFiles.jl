@@ -263,12 +263,12 @@ function rxHasTransferFunction(f::MDFFile)
   haskey(f.file, "/acquisition/receiver/transferFunction")
 end
 rxInductionFactor(f::MDFFileV1) = nothing
-rxInductionFactor(f::MDFFileV2) = @keyrequired f["/acquisition/receiver/inductionFactor"]
+rxInductionFactor(f::MDFFileV2) = @keyoptional f["/acquisition/receiver/inductionFactor"]
 
 rxUnit(f::MDFFileV1)::Union{String, Missing} = "a.u."
 rxUnit(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/acquisition/receiver/unit"]
 rxDataConversionFactor(f::MDFFileV1) = repeat([1.0, 0.0], outer=(1,rxNumChannels(f)))
-rxDataConversionFactor(f::MDFFileV2) = @keyrequired f["/acquisition/receiver/dataConversionFactor"]
+rxDataConversionFactor(f::MDFFileV2) = @keyoptional f["/acquisition/receiver/dataConversionFactor"]
 
 # measurements
 function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
