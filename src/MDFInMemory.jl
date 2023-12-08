@@ -520,7 +520,7 @@ Reconstruction group of an in-memory MDF
 """
 mutable struct MDFv2Reconstruction <: MDFv2InMemoryPart
   "Reconstructed data"
-  data::Union{Array{Number, 3}, Missing}
+  data::Union{Array{Float32, 3}, Missing}
   "Field of view of reconstructed data; optional"
   fieldOfView::Union{Vector{Float64}, Nothing}
   "Center of the reconstructed data (relative to scanner origin/center); optional"
