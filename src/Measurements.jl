@@ -196,10 +196,14 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
     data = getAveragedMeasurements(f; frames=idx[frames],
                                       numAverages=numAverages, kargs...)
-
-    if bgCorrection
+    
+    idxBG = measBGFrameIdx(f)
+    hasBGFrames = length(idxBG) > 0
+    if bgCorrection && !hasBGFrames
+      @warn "Background correction was selected but there are no background frames in the file."
+    elseif bgCorrection && hasBGFrames
       @debug "Applying bg correction ..."
-      idxBG = measBGFrameIdx(f)
+      
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
       if interpolateBG
         blockLen = measBGFrameBlockLengths(measIsBGFrame(f))
@@ -245,8 +249,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
       data = getAveragedMeasurements(f; frames=frames, numAverages=numAverages, kargs...)
     end
 
-    if bgCorrection
-      idxBG = measBGFrameIdx(f)
+    if bgCorrection && hasBGFrames
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
 
       data[:,:,:,:] .-= mean(dataBG, dims=4)
