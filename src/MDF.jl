@@ -143,14 +143,15 @@ tracerSolute(f::MDFFileV2)::Union{Vector{String}, Missing} = @keyrequired _makeS
 tracerSolute(f::MDFFileV1)::Union{Vector{String}, Missing} = ["Fe"]
 function tracerInjectionTime(f::MDFFile)::Union{Vector{DateTime}, Nothing}
   p = typeof(f) <: MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
-  if isnothing(f[p])
+  time = @keyoptional f[p]
+  if isnothing(nothing)
     return nothing
   end
 
-  if typeof(f[p]) == String
-    return [DateTime(f[p])]
+  if typeof(time) == String
+    return [DateTime(time)]
   else
-    return [DateTime(y) for y in f[p]]
+    return [DateTime(y) for y in time]
   end
 end
 #tracerInjectionTime(f::MDFFileV2) = DateTime( f["/tracer/injectionTime"] )
