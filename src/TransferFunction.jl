@@ -1,4 +1,4 @@
-export TransferFunction, sampleTF, setTF
+export TransferFunction, sampleTF, setTF, combine
 
 mutable struct TransferFunction
   freq::Vector{Float64}
@@ -80,13 +80,23 @@ function load_tf(filename::String)
   return TransferFunction(freq, tf, inductionFactor=inductionFactor, units=uparse.(unit))
 end
 
-function combine(tf1::TransferFunction, tf2::TransferFunction)
-  if tf1.freq != tf2.freq; error("The frequency axes of the transfer functions do not match. Can not combine!") end
-  freq = tf1.freq
-  data = cat(tf1.data,tf2.data, dims=2)
-  inductionFactor = cat(tf1.inductionFactor, tf2.inductionFactor, dims=1)
-  units = cat(tf1.units, tf2.units, dims=1)
-  return TransferFunction(freq, data, inductionFactor=inductionFactor, units=units)
+"""
+$(TYPEDSIGNATURES)
+
+Combine two `TransferFunctions` along their channel dimension. If interpolate=false, will only work if the frequency samples are identical.
+"""
+function combine(tf1::TransferFunction, tf2::TransferFunction; interpolate=false)
+  if !interpolate
+    if tf1.freq != tf2.freq; error("The frequency axes of the transfer functions do not match. Can not combine!") end
+    freq = tf1.freq
+    data = cat(tf1.data,tf2.data, dims=2)
+  else
+    freq = unique(sort(cat(tf1.freq, tf2.freq, dims=1)))
+    data = cat(tf1(freq, :), tf2(freq, :), dims=2)
+  end
+    inductionFactor = cat(tf1.inductionFactor, tf2.inductionFactor, dims=1)
+    units = cat(tf1.units, tf2.units, dims=1)
+    return TransferFunction(freq, data, inductionFactor=inductionFactor, units=units)
 end
 
 function save(filename::String, tf::TransferFunction)
