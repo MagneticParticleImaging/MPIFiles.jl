@@ -1,5 +1,19 @@
 export TransferFunction, sampleTF, setTF, combine
 
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+
+
+    TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Complex}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
+
+Create a `TransferFunction` from a complex data array at frequencies `freq_`.
+
+# Optional Keyword-Arguments:
+- `inductionFactor::Vector{<:Real}`: induction factor for each channel
+- `units::Vector`: units for each channel, can be either Unitful.FreeUnits or a string that can be parsed as a Unitful unit 
+
+"""
 mutable struct TransferFunction
   freq::Vector{Float64}
   data::Matrix{ComplexF64}
@@ -7,8 +21,8 @@ mutable struct TransferFunction
   inductionFactor::Vector{Float64}
   units::Vector{Unitful.FreeUnits}
 
-  function TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Complex}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
 
+  function TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Number}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
     parsed_units = Unitful.FreeUnits[]
     for tmp in units
       if isa(tmp, String); tmp = uparse(tmp) end # get correct unit from unit strings
@@ -28,12 +42,26 @@ end
 
 Base.show(io::IO, ::MIME"text/plain", tf::TransferFunction) = print(io, "MPIFiles.TransferFunction: \n\t$(size(tf.data,2)) channel(s), units of $(string.(tf.units))\n\t$(size(tf.data,1)) frequency samples from $(tf.freq[1]) Hz to $(tf.freq[end]) Hz")
 
-function TransferFunction(freq_::Vector{<:Real}, ampdata::Array{<:Real,N}, phasedata::Array{<:Real,N}; kwargs...) where N
+"""
+$(TYPEDSIGNATURES)
+
+Create a `TransferFunction` from separate amplitude and phase arrays at frequencies `freq`.
+
+`ampdata` and `phasedata` should have the following shape: [frequencies, channels]
+"""
+function TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Real,N}, phasedata::Array{<:Real,N}; kwargs...) where N
   if size(ampdata) != size(phasedata); error("The size of ampdata and phasedata must match!") end
   data = ampdata.*exp.(im.*phasedata)
-  return TransferFunction(freq_, data; kwargs...)
+  return TransferFunction(freq, data; kwargs...)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Create a `TransferFunction` from a data file at `filename`.
+
+The file can be either a h5-File created with this package. Keyword arguments will be passed to `load_tf_fromVNA` 
+"""
 function TransferFunction(filename::String; kargs...)
     filenamebase, ext = splitext(filename)
     if ext == ".h5"
@@ -44,6 +72,11 @@ function TransferFunction(filename::String; kargs...)
     return tf
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Create a `TransferFunction` from the tf data saved in a MPIFile (see `rxTransferFunction`)
+"""
 function TransferFunction(file::MPIFile)
   tf_file = rxTransferFunction(file)
   inductionFactor = rxInductionFactor(file)
@@ -51,21 +84,38 @@ function TransferFunction(file::MPIFile)
   return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor)
 end
 
-function getindex(tmf::TransferFunction, args...)
+"""
+    tf[i,j]
+
+Directly access the underlying data of a `TransferFunction`
+"""
+function getindex(tf::TransferFunction, args...)
   try 
-    return getindex(tmf.data, args...)  
+    return getindex(tf.data, args...)  
   catch e
     @warn "The indexing using square brackets on TransferFunction objects now always operates on the integer indizes of the underlying transfer function data. To use frequency interpolation, use tf(freq, channel) instead of tf[[freq],channel]."
     rethrow(e)
   end
 end
 
-function (tmf::TransferFunction)(x, chan::Integer=1)
-  if chan>length(tmf.interpolator); error("The TransferFunction only has $(length(tmf.interpolator)) channel(s), unable to access channel $(chan)") end
-  return tmf.interpolator[chan](x) .* tmf.units[chan]
+"""
+    tf(f, chan::Integer)
+
+Interpolated access to a `TransferFunction` at frequencies `f` and single channel `chan`
+"""
+function (tf::TransferFunction)(f, chan::Integer=1)
+  if chan>length(tf.interpolator); error("The TransferFunction only has $(length(tf.interpolator)) channel(s), unable to access channel $(chan)") end
+  return tf.interpolator[chan](f) .* tf.units[chan]
 end
 
-(tmf::TransferFunction)(x, chan::AbstractArray) = hcat([tmf(x,c) for c in chan]...)
+"""
+    tf(f, chan::AbstractVector{<:Integer})
+
+Interpolated access to a `TransferFunction` at frequencies `f` and channels `chan`
+"""
+(tf::TransferFunction)(f, chan::AbstractVector{<:Integer}) = hcat([tf(f,c) for c in chan]...)
+
+(tf::TransferFunction)(f, ::Colon) = tf(f, axes(tf.data,2))
 
 function load_tf(filename::String)
   tf = h5read(filename,"/transferFunction")
@@ -99,6 +149,11 @@ function combine(tf1::TransferFunction, tf2::TransferFunction; interpolate=false
     return TransferFunction(freq, data, inductionFactor=inductionFactor, units=units)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Save `tf` as a h5 file to `filename`
+"""
 function save(filename::String, tf::TransferFunction)
   h5write(filename, "/transferFunction", tf.data)
   h5write(filename, "/frequencies", tf.freq)
@@ -107,6 +162,7 @@ function save(filename::String, tf::TransferFunction)
   return nothing
 end
 
+"""TODO: fix function and write docs"""
 function load_tf_fromVNA(filename::String;
     frequencyWeighting=false,
     R = 50.0, #Ω
@@ -158,10 +214,10 @@ function load_tf_fromVNA(filename::String;
 end
 
 
-function sampleTF(tmf::TransferFunction, f::MPIFile)
+function sampleTF(tf::TransferFunction, f::MPIFile)
   freq = rxFrequencies(f)
   numChan = rxNumChannels(f)
-  return tmf(freq,1:numChan)
+  return tf(freq,1:numChan)
 end
 
 
