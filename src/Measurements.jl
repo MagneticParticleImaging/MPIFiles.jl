@@ -7,7 +7,7 @@ function measDataConv(f::MPIFile, args...)
     data = map(Float32, data)
   end
   a = rxDataConversionFactor(f)
-  if !ismissing(a)
+  if !isnothing(a)
     for d=1:size(data,2)
       slice = view(data,:,d,:,:)
       rmul!(slice, a[1,d])
@@ -196,10 +196,14 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
     data = getAveragedMeasurements(f; frames=idx[frames],
                                       numAverages=numAverages, kargs...)
-
-    if bgCorrection
+    
+    idxBG = measBGFrameIdx(f)
+    hasBGFrames = length(idxBG) > 0
+    if bgCorrection && !hasBGFrames
+      @warn "Background correction was selected but there are no background frames in the file."
+    elseif bgCorrection && hasBGFrames
       @debug "Applying bg correction ..."
-      idxBG = measBGFrameIdx(f)
+      
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
       if interpolateBG
         blockLen = measBGFrameBlockLengths(measIsBGFrame(f))
@@ -245,8 +249,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
       data = getAveragedMeasurements(f; frames=frames, numAverages=numAverages, kargs...)
     end
 
-    if bgCorrection
-      idxBG = measBGFrameIdx(f)
+    if bgCorrection && hasBGFrames
       dataBG = getAveragedMeasurements(f; frames=idxBG, kargs...)
 
       data[:,:,:,:] .-= mean(dataBG, dims=4)
@@ -268,7 +271,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
-    if ismissing(inductionFactor)
+    if isnothing(inductionFactor)
       @warn "The file is missing the induction factor. The induction factor will be set to 1."
       inductionFactor = ones(Float64, rxNumChannels(f))
     end
@@ -327,7 +330,7 @@ function getMeasurementsFD(f::MPIFile, args...;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
-    if ismissing(inductionFactor)
+    if isnothing(inductionFactor)
       @warn "The file is missing the induction factor. The induction factor will be set to 1."
       inductionFactor = ones(Float64, rxNumChannels(f))
     end
