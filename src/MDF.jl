@@ -144,7 +144,7 @@ tracerSolute(f::MDFFileV1)::Union{Vector{String}, Missing} = ["Fe"]
 function tracerInjectionTime(f::MDFFile)::Union{Vector{DateTime}, Nothing}
   p = typeof(f) <: MDFFileV1 ? "/tracer/time" : "/tracer/injectionTime"
   time = @keyoptional f[p]
-  if isnothing(nothing)
+  if isnothing(time)
     return nothing
   end
 
