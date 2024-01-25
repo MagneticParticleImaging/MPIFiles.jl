@@ -4,7 +4,7 @@ export Positions, GridPositions, RegularGridPositions, ChebyshevGridPositions,
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
-export idxToPos, posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid, toDict
+export posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid, toDict
 
 abstract type Positions end
 abstract type GridPositions<:Positions end
@@ -220,7 +220,7 @@ end
 function posToIdxFloat(grid::RegularGridPositions, pos)
   idx = 0.5 .* (shape(grid) .* ((pos .- fieldOfViewCenter(grid)) ./
               ( 0.5 .* fieldOfView(grid) ) .+ 1) .+ 1)
-  idx = [isnan(val) ? one(eltype(idx)) : val for val in idx]
+  #idx = [isnan(val) ? one(eltype(idx)) : val for val in idx]
   return idx
 end
 

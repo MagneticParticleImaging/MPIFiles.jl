@@ -45,7 +45,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
     filterFrequenciesByMinFreq!(freqIndices, f, minFreq)
   end
   
-  if maxFreq < nFreq
+  if maxFreq < rxBandwidth(f)
     filterFrequenciesByMaxFreq!(freqIndices, f, maxFreq)
   end
 

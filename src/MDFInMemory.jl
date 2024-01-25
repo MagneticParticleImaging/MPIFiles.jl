@@ -520,7 +520,7 @@ Reconstruction group of an in-memory MDF
 """
 mutable struct MDFv2Reconstruction <: MDFv2InMemoryPart
   "Reconstructed data"
-  data::Union{Array{Number, 3}, Missing}
+  data::Union{Array{Float32, 3}, Missing}
   "Field of view of reconstructed data; optional"
   fieldOfView::Union{Vector{Float64}, Nothing}
   "Center of the reconstructed data (relative to scanner origin/center); optional"
@@ -1407,7 +1407,11 @@ function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
   end
 
   # Add measurements data
-  measDataRaw(mdf, mdfFile.mmap_measData)
+  if !isnothing(mdfFile.mmap_measData)
+    measDataRaw(mdf, mdfFile.mmap_measData)
+  else
+    @warn "The measurement data could not be read. Please check closely."
+  end
 
   return mdf
 end
@@ -1476,7 +1480,6 @@ measObservedDriveField(mdf::MDFv2InMemory, measDriveFields) = mdf.custom["measOb
 
 measAppliedDriveField(mdf::MDFv2InMemory) = @keyoptional mdf.custom["measAppliedDriveField"]
 measAppliedDriveField(mdf::MDFv2InMemory, measTransmit) = mdf.custom["measAppliedDriveField"] = measTransmit
-
 
 auxiliaryData(mdf::MDFv2InMemory) = @keyoptional mdf.custom["auxiliaryData"]
 auxiliaryData(mdf::MDFv2InMemory, auxiliaryData) = mdf.custom["auxiliaryData"] = auxiliaryData

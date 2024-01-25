@@ -1,21 +1,21 @@
 # This file contains routines to generate MDF files
-export saveasMDF, loadDataset, loadMetadata, loadMetadataOnline, setparam!, compressCalibMDF
+export saveasMDF, loadDataset, loadMetadata, setparam!, compressCalibMDF
 export getFFdataPerPos, prepareAsMDFSingleMeasurement, convertCustomSF, blockAverage
 
 
 function setparam!(params::Dict, parameter, value)
-  if value != nothing
+  if !(isnothing(value) || ismissing(value))
     params[parameter] = value
   end
 end
 
 # we do not support all conversion possibilities
 function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocessing=false,
-                     numPeriodAverages=1, numPeriodGrouping=1, experimentNumber=nothing,
+                     numPeriodAverages=1, numPeriodGrouping=1, experimentNumber=missing,
                      fixDistortions=false, kargs...)
   params = loadMetadata(f)
 
-  if experimentNumber != nothing
+  if !ismissing(experimentNumber)
     params[:experimentNumber] = experimentNumber
   end
 
@@ -63,7 +63,7 @@ function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocess
           cat(zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f)), dims=1))
 
         snr = calibSNR(f)
-	      if snr == nothing
+	      if isnothing(snr)
           @info "calculate SNR"
           snr = calculateSystemMatrixSNR(f, data, numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
         end
@@ -151,8 +151,6 @@ function loadMeasParams(f, params = Dict{Symbol,Any}(); skipMeasData = false)
   return params
 end
 
-
-
 function appendBGDataset(params::Dict, filenameBG::String; kargs...)
   params = MPIFile(filenameBG) do fBG 
     appendBGDataset(params, fBG; kargs...)
@@ -170,7 +168,6 @@ function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
 
   return params
 end
-
 
 isConvertibleToMDF(f::MPIFile) = true
 function isConvertibleToMDF(f::BrukerFile)
@@ -196,16 +193,15 @@ function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
 end
 
 function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, enforceConversion=false, kargs...)
-  
   # This is a hack. Needs to be fixed properly
-  if(haskey(kargs, :SNRThresh) || haskey(kargs, :sparsityTrafoRedFactor)) && calibSNR(f) != nothing
+  if(haskey(kargs, :SNRThresh) || haskey(kargs, :sparsityTrafoRedFactor)) && !isnothing(calibSNR(f))
     compressCalibMDF(filenameOut, f; kargs...)
     return
   end
   
   if enforceConversion || isConvertibleToMDF(f)
-    params = loadDataset(f;kargs...)
-    if filenameBG != nothing
+    params = loadDataset(f; kargs...)
+    if !isnothing(filenameBG)
       appendBGDataset(params, filenameBG)
     end
     saveasMDF(filenameOut, params)
@@ -746,7 +742,7 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
   write(file, "/scanner/topology", get(params,:scannerTopology,"FFP"))
 
   # acquisition parameters
-  write(file, "/acquisition/numAverages",  params[:acqNumAverages])
+  write(file, "/acquisition/numAverages", params[:acqNumAverages])
   write(file, "/acquisition/numFrames", get(params,:acqNumFrames,1))
   write(file, "/acquisition/numPeriodsPerFrame", get(params,:acqNumPeriodsPerFrame,1))
   write(file, "/acquisition/startTime", "$( get(params,:acqStartTime, Dates.unix2datetime(time())) )")
