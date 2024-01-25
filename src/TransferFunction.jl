@@ -174,42 +174,67 @@ function load_tf_fromVNA(filename::String;
   apdata = Float64[]
   aϕdata = Float64[]
   freq = Float64[]
-  for i=4:length(lines)
-      tmp = split(strip(lines[i])," ")
-      tmp=tmp[tmp.!=""]
-      f = parse(Float64,strip(tmp[1]))
-      if occursin(lines[3],"# kHz S MA R 50")
-          ap = parse(Float64,strip(tmp[2]))
-          aphi = parse(Float64,strip(tmp[3]))
-          f=f*1000
-       elseif occursin(lines[3],"# Hz S DB R 50")
-            ap = 10^(parse(Float64,strip(tmp[2]))/20)
-            aphi = parse(Float64,strip(tmp[3]))*pi/180
-            f=f
-       elseif occursin(lines[3],"# kHz S DB R 50")
-            ap = 10^(parse(Float64,strip(tmp[2]))/20)
-            aphi = parse(Float64,strip(tmp[3]))*pi/180
-            f=f*1000
-        elseif occursin(lines[3],"# MHz S DB R 50")
-            ap = 10^(parse(Float64,strip(tmp[2]))/20)
-            aphi = parse(Float64,strip(tmp[3]))*pi/180
-            f=f*1000000
-      elseif occursin(lines[3],"# kHz S RI R 50")
-          tf_complex=parse(Float64,strip(tmp[2]))+im*parse(Float64,strip(tmp[3]))
-          ap=abs.(tf_complex);
-          aphi=angle(tf_complex)
-          f=f*1000
+  line_trafo = nothing
+  for lineIdx in eachindex(lines)
+    line = lines[lineIdx]
+    if startswith(line, "!") # This is a comment and thus we ignore this line
+      continue
+    elseif startswith(line, "#")
+      header = split(line, " ", keepempty=false)
+      frequencyUnit = header[2]
+      parameter = header[3] # Assumed to be S for "Scattering parameters"
+      mode = header[4]
+      impedance = header[6] # header[4] is always "R"
+
+      frequencyFactor = 1
+      if lowercase(frequencyUnit) == "hz"
+        frequencyFactor = 1
+      elseif lowercase(frequencyUnit) == "khz"
+        frequencyFactor = 1e3
+      elseif lowercase(frequencyUnit) == "mhz"
+        frequencyFactor = 1e6
+      elseif lowercase(frequencyUnit) == "ghz"
+        frequencyFactor = 1e9
       else
-	      error("Wrong data Format! Please export in kHz domain S21 parameter with either Magnitude/Phase, DB/Phase or Real/Imaginary!")
+        error("Frequency unit `$frequencyUnit` not applicable.")
       end
-      push!(apdata, ap)
-      push!(aϕdata, aphi)
-      push!(freq, f)
+
+      line_trafo = (line) -> begin
+        line_parts = split(line, " ", keepempty=false)
+        f = parse(Float64, line_parts[1])*frequencyFactor
+
+        if uppercase(mode) == "DB" # dB-angle (dB = 20*log10|magnitude|)
+          ap = 10^(parse(Float64, line_parts[2])/20)
+          aphi = parse(Float64, line_parts[3])*π/180
+        elseif uppercase(mode) == "MA" # magnitude-angle
+          ap = parse(Float64, line_parts[2])
+          aphi = parse(Float64, line_parts[3])
+        elseif uppercase(mode) == "RI" # real-imaginary
+          tf_complex=parse(Float64, line_parts[2]) + im*parse(Float64, line_parts[3])
+          ap = abs(tf_complex)
+          aphi = angle(tf_complex)
+        else
+          error("Mode `$mode` not applicable.")
+        end
+
+        return ap, aphi, f
+      end
+    else
+      if !isnothing(line_trafo)
+        ap, aphi, f = line_trafo(line)
+        push!(apdata, ap)
+        push!(aϕdata, aphi)
+        push!(freq, f)
+      else
+        error("No header has been found until first data lines were reached.")
+      end
+    end
   end
   close(file)
   if frequencyWeighting
   	apdata ./= (freq.*2*pi) # As TF is defined as u_ADC = u_coil *TF the derivative from magnetic moment is applied as the division of the TF by w
   end
+
   return TransferFunction(freq, apdata, aϕdata)
 end
 
