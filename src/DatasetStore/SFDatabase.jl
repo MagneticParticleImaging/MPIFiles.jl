@@ -16,11 +16,13 @@ function findSFFiles(d::BrukerDatasetStore)
       end
     end
   end
-  BrukerMDFSFs = readdir("/opt/data/MDF_SFs/")
-  for BrukerMDFSF in BrukerMDFSFs
-    prefix, ext = splitext(BrukerMDFSF)
-     if ext == ".mdf"
-      push!(bfiles,joinpath("/opt/data/MDF_SFs/",BrukerMDFSF))
+  if isdir("/opt/data/MDF_SFs/")
+    BrukerMDFSFs = readdir("/opt/data/MDF_SFs/")
+    for BrukerMDFSF in BrukerMDFSFs
+      prefix, ext = splitext(BrukerMDFSF)
+      if ext == ".mdf"
+        push!(bfiles,joinpath("/opt/data/MDF_SFs/",BrukerMDFSF))
+      end
     end
   end
   return bfiles
@@ -129,9 +131,9 @@ function generateSFDatabase(d::MDFDatasetStore)
 end
 
 # HAAACKKK
-function generateSFDatabase(d::BrukerDatasetStore)
-  oldfile = "/opt/data/SF_DatabaseOld.csv"
-  newfile = "/opt/data/SF_Database.csv"
+function generateSFDatabase(d::BrukerDatasetStore; dbpath="/opt/data")
+  oldfile = joinpath(dbpath, "SF_DatabaseOld.csv")
+  newfile = joinpath(dbpath, "SF_Database.csv")
   generateSFDatabase_(d, oldfile, newfile)
 end
 
@@ -148,11 +150,12 @@ function generateSFDatabase_(d::DatasetStore, oldfile, newfile)
   generateSFDatabase(d, newfile)
 end
 
-function loadSFDatabase(d::BrukerDatasetStore)
-  if isfile("/opt/data/SF_Database.csv")
-    A = readdlm("/opt/data/SF_Database.csv",',')
+function loadSFDatabase(d::BrukerDatasetStore; dbpath="/opt/data")
+  filepath = joinpath(dbpath, "SF_Database.csv")
+  if isfile(filepath)
+    A = readdlm(filepath,',')
     if size(A,2) < 16
-      A = readdlm("/opt/data/SF_Database.csv",'\t')
+      A = readdlm(filepath,'\t')
     end
     return A
   else
