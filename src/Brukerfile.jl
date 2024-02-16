@@ -84,7 +84,7 @@ function BrukerFile(path::String; isCalib=_iscalib(path), fastMode=false,
 				 "PVM_MPI_NrCalibrationScans","MPI_NSteps",
                                  "PVM_MPI_NrBackgroundMeasurementCalibrationAllScans",
 				 "PVM_MPI_NrBackgroundMeasurementCalibrationAdditionalScans",
-				 "PVM_MPI_ChannelSelect", "PVM_MPI_Tracer", "PVM_MPI_DriveFieldCycle", "PVM_Matrix", "PVM_Fov"]   
+				 "PVM_MPI_ChannelSelect", "PVM_MPI_Tracer", "PVM_MPI_DriveFieldCycle", "PVM_Matrix", "PVM_Fov", "PVM_MPI_FovCenter"]   
   else
     maxEntriesAcqp = 2000
 	  keylistAcqp = String[]
