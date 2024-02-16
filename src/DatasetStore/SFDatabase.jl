@@ -131,7 +131,12 @@ function generateSFDatabase(d::MDFDatasetStore)
 end
 
 # HAAACKKK
-function generateSFDatabase(d::BrukerDatasetStore; dbpath="/opt/data")
+function generateSFDatabase(d::BrukerDatasetStore)
+  if readonly(d)
+    dbpath = "/opt/data"
+  else
+    dbpath = d.path
+  end
   oldfile = joinpath(dbpath, "SF_DatabaseOld.csv")
   newfile = joinpath(dbpath, "SF_Database.csv")
   generateSFDatabase_(d, oldfile, newfile)
@@ -150,7 +155,12 @@ function generateSFDatabase_(d::DatasetStore, oldfile, newfile)
   generateSFDatabase(d, newfile)
 end
 
-function loadSFDatabase(d::BrukerDatasetStore; dbpath="/opt/data")
+function loadSFDatabase(d::BrukerDatasetStore)
+  if readonly(d)
+    dbpath = "/opt/data"
+  else
+    dbpath = d.path
+  end
   filepath = joinpath(dbpath, "SF_Database.csv")
   if isfile(filepath)
     A = readdlm(filepath,',')
