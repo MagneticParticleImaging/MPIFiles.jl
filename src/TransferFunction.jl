@@ -1,25 +1,70 @@
-export TransferFunction, sampleTF, setTF
+export TransferFunction, sampleTF, setTF, combine
 
+"""
+$(TYPEDEF)
+$(TYPEDFIELDS)
+
+
+    TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Complex}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
+
+Create a `TransferFunction` from a complex data array at frequencies `freq_`.
+
+# Optional Keyword-Arguments:
+- `inductionFactor::Vector{<:Real}`: induction factor for each channel
+- `units::Vector`: units for each channel, can be either Unitful.FreeUnits or a string that can be parsed as a Unitful unit 
+
+"""
 mutable struct TransferFunction
   freq::Vector{Float64}
   data::Matrix{ComplexF64}
+  interpolator::Vector{AbstractInterpolation}
   inductionFactor::Vector{Float64}
+  units::Vector{Unitful.FreeUnits}
 
-  function TransferFunction(freq_, datain::Array{T}, inductionFactor=ones(size(datain, 2))) where {T<:Complex}
-    freq = freq_[1]:(freq_[2]-freq_[1]):freq_[end]
+
+  function TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Number}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
+    parsed_units = Unitful.FreeUnits[]
+    for tmp in units
+      if isa(tmp, String); tmp = uparse(tmp) end # get correct unit from unit strings
+      if !isa(tmp, Unitful.FreeUnits); tmp = Unitful.unit(tmp) end # get correct unit for numbers and quantities, e.g. unit(1) or unit(1u"V/T"), includes the case that the string parsing returned one of these types
+      push!(parsed_units, tmp)
+    end
+    
+    if length(freq_) != size(datain,1); error("Length of frequency axis ($(length(freq_))) does not match the number of samples in the data ($(size(datain,1)))!") end
+    if size(datain, 2) != length(inductionFactor); error("Number of channels in data ($(size(datain, 2))) does not match the number of channels in the given inductionFactor ($(size(inductionFactor,1)))!") end
+    if size(datain, 2) != length(units); error("Number of channels in data ($(size(datain, 2))) does not match the number of channels in the given units ($(size(units,1)))!") end
+
     data = reshape(deepcopy(datain), size(datain,1), size(datain, 2))
-    return new(freq_, data, inductionFactor)
+    interpolator = [extrapolate(interpolate((freq_,), channel, Gridded(Linear())), Interpolations.Flat()) for channel in eachcol(data)]
+    return new(freq_, data, interpolator, inductionFactor, parsed_units)
   end
 end
 
-function TransferFunction(freq_, ampdata, phasedata, args...)
+Base.show(io::IO, ::MIME"text/plain", tf::TransferFunction) = print(io, "MPIFiles.TransferFunction: \n\t$(size(tf.data,2)) channel(s), units of $(string.(tf.units))\n\t$(size(tf.data,1)) frequency samples from $(tf.freq[1]) Hz to $(tf.freq[end]) Hz")
+
+"""
+$(TYPEDSIGNATURES)
+
+Create a `TransferFunction` from separate amplitude and phase arrays at frequencies `freq`.
+
+`ampdata` and `phasedata` should have the following shape: [frequencies, channels]
+"""
+function TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Real,N}, phasedata::Array{<:Real,N}; kwargs...) where N
+  if size(ampdata) != size(phasedata); error("The size of ampdata and phasedata must match!") end
   data = ampdata.*exp.(im.*phasedata)
-  return TransferFunction(freq_, data, args...)
+  return TransferFunction(freq, data; kwargs...)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Create a `TransferFunction` from a data file at `filename`.
+
+The file can be either a h5-File created with this package. Keyword arguments will be passed to `load_tf_fromVNA` 
+"""
 function TransferFunction(filename::String; kargs...)
     filenamebase, ext = splitext(filename)
-    if  ext == ".h5"
+    if ext == ".h5"
       tf = load_tf(filename)
     else #if ext == "s1p" || ext == "s2p"
       tf = load_tf_fromVNA(filename; kargs...)
@@ -27,6 +72,11 @@ function TransferFunction(filename::String; kargs...)
     return tf
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Create a `TransferFunction` from the tf data saved in a MPIFile (see `rxTransferFunction`)
+"""
 function TransferFunction(file::MPIFile)
   tf_file = rxTransferFunction(file)
   inductionFactor = rxInductionFactor(file)
@@ -34,51 +84,85 @@ function TransferFunction(file::MPIFile)
   return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor)
 end
 
-function getindex(tmf::TransferFunction, x::UnitRange, chan::Integer=1)
-  a = tmf.data[x,chan]
-  return a
-end
+"""
+    tf[i,j]
 
-#function getindex(tmf::TransferFunction, x::Real, chan::Integer=1)
-#  a = tmf.interp[chan](x)
-#  return a
-#end
-
-function getindex(tmf::TransferFunction, X::Union{Vector,AbstractRange}, chan::Integer=1)
-  I = extrapolate(interpolate((tmf.freq,), tmf.data[:,chan], Gridded(Linear())), Interpolations.Flat())
-
-  return [I(x) for x in X]
-end
-
-function getindex(tmf::TransferFunction, X::Union{Vector,AbstractRange}, chan::AbstractRange)
-  out = zeros(ComplexF64, length(X), length(chan))
-  for d=1:length(chan)
-    out[:,d] = tmf[X,d]
+Directly access the underlying data of a `TransferFunction`
+"""
+function getindex(tf::TransferFunction, args...)
+  try 
+    return getindex(tf.data, args...)  
+  catch e
+    @warn "The indexing using square brackets on TransferFunction objects now always operates on the integer indizes of the underlying transfer function data. To use frequency interpolation, use tf(freq, channel) instead of tf[[freq],channel]."
+    rethrow(e)
   end
-  return out
 end
+
+"""
+    tf(f, chan::Integer)
+
+Interpolated access to a `TransferFunction` at frequencies `f` and single channel `chan`
+"""
+function (tf::TransferFunction)(f, chan::Integer=1)
+  if chan>length(tf.interpolator); error("The TransferFunction only has $(length(tf.interpolator)) channel(s), unable to access channel $(chan)") end
+  return tf.interpolator[chan](f) .* tf.units[chan]
+end
+
+"""
+    tf(f, chan::AbstractVector{<:Integer})
+
+Interpolated access to a `TransferFunction` at frequencies `f` and channels `chan`
+"""
+(tf::TransferFunction)(f, chan::AbstractVector{<:Integer}) = hcat([tf(f,c) for c in chan]...)
+
+(tf::TransferFunction)(f, ::Colon) = tf(f, axes(tf.data,2))
 
 function load_tf(filename::String)
   tf = h5read(filename,"/transferFunction")
   freq = h5read(filename,"/frequencies")
   inductionFactor = h5read(filename,"/inductionFactor")
-  return TransferFunction(freq,tf,inductionFactor)
+  unit = []
+  try 
+    unit = h5read(filename, "/unit")
+  catch # if h5read fails, it should mean that there is no units, maybe do something better here
+    return TransferFunction(freq, tf, inductionFactor=inductionFactor)
+  end
+  return TransferFunction(freq, tf, inductionFactor=inductionFactor, units=uparse.(unit))
 end
 
-function combine(tf1, tf2)
-  freq = tf1.freq
-  data = cat(tf1.data,tf2.data, dims=2)
-  inductionFactor = cat(tf1.inductionFactor, tf2.inductionFactor, dims=1)
-  return TransferFunction(freq, data, inductionFactor)
+"""
+$(TYPEDSIGNATURES)
+
+Combine two `TransferFunctions` along their channel dimension. If interpolate=false, will only work if the frequency samples are identical.
+"""
+function combine(tf1::TransferFunction, tf2::TransferFunction; interpolate=false)
+  if !interpolate
+    if tf1.freq != tf2.freq; error("The frequency axes of the transfer functions do not match. Can not combine!") end
+    freq = tf1.freq
+    data = cat(tf1.data,tf2.data, dims=2)
+  else
+    freq = unique(sort(cat(tf1.freq, tf2.freq, dims=1)))
+    data = cat(tf1(freq, :), tf2(freq, :), dims=2)
+  end
+    inductionFactor = cat(tf1.inductionFactor, tf2.inductionFactor, dims=1)
+    units = cat(tf1.units, tf2.units, dims=1)
+    return TransferFunction(freq, data, inductionFactor=inductionFactor, units=units)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Save `tf` as a h5 file to `filename`
+"""
 function save(filename::String, tf::TransferFunction)
   h5write(filename, "/transferFunction", tf.data)
   h5write(filename, "/frequencies", tf.freq)
   h5write(filename, "/inductionFactor", tf.inductionFactor)
+  h5write(filename, "/unit", string.(tf.units))
   return nothing
 end
 
+"""TODO: fix function and write docs"""
 function load_tf_fromVNA(filename::String;
     frequencyWeighting=false,
     R = 50.0, #Ω
@@ -90,51 +174,75 @@ function load_tf_fromVNA(filename::String;
   apdata = Float64[]
   aϕdata = Float64[]
   freq = Float64[]
-  for i=4:length(lines)
-      tmp = split(strip(lines[i])," ")
-      tmp=tmp[tmp.!=""]
-      f = parse(Float64,strip(tmp[1]))
-      if occursin(lines[3],"# kHz S MA R 50")
-          ap = parse(Float64,strip(tmp[2]))
-          aphi = parse(Float64,strip(tmp[3]))
-          f=f*1000
-       elseif occursin(lines[3],"# Hz S DB R 50")
-            ap = 10^(parse(Float64,strip(tmp[2]))/20)
-            aphi = parse(Float64,strip(tmp[3]))*pi/180
-            f=f
-       elseif occursin(lines[3],"# kHz S DB R 50")
-            ap = 10^(parse(Float64,strip(tmp[2]))/20)
-            aphi = parse(Float64,strip(tmp[3]))*pi/180
-            f=f*1000
-        elseif occursin(lines[3],"# MHz S DB R 50")
-            ap = 10^(parse(Float64,strip(tmp[2]))/20)
-            aphi = parse(Float64,strip(tmp[3]))*pi/180
-            f=f*1000000
-      elseif occursin(lines[3],"# kHz S RI R 50")
-          tf_complex=parse(Float64,strip(tmp[2]))+im*parse(Float64,strip(tmp[3]))
-          ap=abs.(tf_complex);
-          aphi=angle(tf_complex)
-          f=f*1000
+  line_trafo = nothing
+  for lineIdx in eachindex(lines)
+    line = lines[lineIdx]
+    if startswith(line, "!") # This is a comment and thus we ignore this line
+      continue
+    elseif startswith(line, "#")
+      header = split(line, " ", keepempty=false)
+      frequencyUnit = header[2]
+      parameter = header[3] # Assumed to be S for "Scattering parameters"
+      mode = header[4]
+      impedance = header[6] # header[4] is always "R"
+
+      frequencyFactor = 1
+      if lowercase(frequencyUnit) == "hz"
+        frequencyFactor = 1
+      elseif lowercase(frequencyUnit) == "khz"
+        frequencyFactor = 1e3
+      elseif lowercase(frequencyUnit) == "mhz"
+        frequencyFactor = 1e6
+      elseif lowercase(frequencyUnit) == "ghz"
+        frequencyFactor = 1e9
       else
-	      error("Wrong data Format! Please export in kHz domain S21 parameter with either Magnitude/Phase, DB/Phase or Real/Imaginary!")
+        error("Frequency unit `$frequencyUnit` not applicable.")
       end
-      push!(apdata, ap)
-      push!(aϕdata, aphi)
-      push!(freq, f)
+
+      line_trafo = (line) -> begin
+        line_parts = split(line, " ", keepempty=false)
+        f = parse(Float64, line_parts[1])*frequencyFactor
+
+        if uppercase(mode) == "DB" # dB-angle (dB = 20*log10|magnitude|)
+          ap = 10^(parse(Float64, line_parts[2])/20)
+          aphi = parse(Float64, line_parts[3])*π/180
+        elseif uppercase(mode) == "MA" # magnitude-angle
+          ap = parse(Float64, line_parts[2])
+          aphi = parse(Float64, line_parts[3])
+        elseif uppercase(mode) == "RI" # real-imaginary
+          tf_complex=parse(Float64, line_parts[2]) + im*parse(Float64, line_parts[3])
+          ap = abs(tf_complex)
+          aphi = angle(tf_complex)
+        else
+          error("Mode `$mode` not applicable.")
+        end
+
+        return ap, aphi, f
+      end
+    else
+      if !isnothing(line_trafo)
+        ap, aphi, f = line_trafo(line)
+        push!(apdata, ap)
+        push!(aϕdata, aphi)
+        push!(freq, f)
+      else
+        error("No header has been found until first data lines were reached.")
+      end
+    end
   end
   close(file)
   if frequencyWeighting
   	apdata ./= (freq.*2*pi) # As TF is defined as u_ADC = u_coil *TF the derivative from magnetic moment is applied as the division of the TF by w
   end
+
   return TransferFunction(freq, apdata, aϕdata)
 end
 
 
-function sampleTF(tmf::TransferFunction, f::MPIFile)
+function sampleTF(tf::TransferFunction, f::MPIFile)
   freq = rxFrequencies(f)
   numChan = rxNumChannels(f)
-  numFreq = length(freq)
-  return tmf[freq,1:numChan]
+  return tf(freq,1:numChan)
 end
 
 
