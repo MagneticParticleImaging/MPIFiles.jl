@@ -13,7 +13,8 @@ makedocs(
         "Measurements" => "measurements.md",
         "System Matrices" => "systemmatrix.md",
         "Frequency Filter" => "frequencyFilter.md",
-        "Reconstruction Results" => "reconstruction.md"
+        "Reconstruction Results" => "reconstruction.md",
+        "Transfer Functions" => "transferfunction.md"
       #  "Positions" => "positions.md"
     ],
     warnonly = [:missing_docs]
