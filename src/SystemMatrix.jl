@@ -15,7 +15,7 @@ function getSystemMatrix(f::MPIFile, frequencies=nothing;
                          tfCorrection=rxHasTransferFunction(f), 
                          numPeriodAverages=1, numPeriodGrouping=1, kargs...)
 
-  if frequencies == nothing
+  if isnothing(frequencies)
     frequencies = filterFrequencies(f)
   end
 
@@ -32,7 +32,7 @@ function getSystemMatrix(f::MPIFile, frequencies=nothing;
 
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
-    if tf != nothing
+    if !isnothing(tf)
       _corrTFSF(S,tf[rowsToSubsampledRows(f,frequencies)])
       @info "System matrix has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
     else

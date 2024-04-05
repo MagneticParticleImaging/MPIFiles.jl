@@ -138,7 +138,13 @@ function measDataTD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
   end
 
   if measIsFourierTransformed(f)
-    dataTD = irfft(data2, rxNumSamplingPoints(f), 1)
+    if measIsFrequencySelection(f)
+      dataPadded = zeros(eltype(data2), (rxNumFrequencies(f), size(data2, 2), size(data2, 3), size(data2, 4))) # TODO: Are there "inverted" views with a default value (e.g. 0) available in Julia?
+      dataPadded[measFrequencySelection(f), :, :, :] .= data2
+      dataTD = irfft(dataPadded, rxNumSamplingPoints(f), 1)
+    else
+      dataTD = irfft(data2, rxNumSamplingPoints(f), 1)
+    end
   else
     dataTD = data2
   end
