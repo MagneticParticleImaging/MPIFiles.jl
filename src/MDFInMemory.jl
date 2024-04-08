@@ -732,21 +732,21 @@ function check(part::MDFv2Receiver, variables::MDFv2Variables)
   end
 
   if !isnothing(part.dataConversionFactor)
-    @assert variables.C == size(part.dataConversionFactor, 1) "Inconsistent dimension C in `dataConversionFactor` in `receiver`."
-    @assert size(part.dataConversionFactor, 2) == 2 "Inconsistent second dimension in `dataConversionFactor` in `receiver`."
+    @assert variables.C == size(part.dataConversionFactor, 2) "Inconsistent dimension C in `dataConversionFactor` in `receiver`."
+    @assert size(part.dataConversionFactor, 1) == 2 "Inconsistent first dimension in `dataConversionFactor` in `receiver`."
   end
 
   if !isnothing(part.inductionFactor)
-    @assert variables.C == size(part.inductionFactor, 1) "Inconsistent dimension C in `inductionFactor` in `receiver`."
+    @assert variables.C == size(part.inductionFactor, 2) "Inconsistent dimension C in `inductionFactor` in `receiver`."
   end
 
   if !isnothing(part.transferFunction)
-    @assert variables.C == size(part.transferFunction, 1) "Inconsistent dimension C in `transferFunction` in `receiver`."
+    @assert variables.C == size(part.transferFunction, 2) "Inconsistent dimension C in `transferFunction` in `receiver`."
 
     if isnothing(variables.K)
-      variables.K = size(part.transferFunction, 2)
+      variables.K = size(part.transferFunction, 1)
     else
-      @assert variables.K == size(part.transferFunction, 2) "Inconsistent dimension K in `transferFunction` in `receiver`."
+      @assert variables.K == size(part.transferFunction, 1) "Inconsistent dimension K in `transferFunction` in `receiver`."
     end
   end
 end
@@ -876,9 +876,9 @@ function check(part::MDFv2Calibration, variables::MDFv2Variables)
 
   if !isnothing(part.snr)
     if isnothing(variables.J)
-      variables.J = size(part.snr, 1)
+      variables.J = size(part.snr, 3)
     else
-      @assert variables.J == size(part.snr, 1) "Inconsistent dimension J in `snr` in `calibration`."
+      @assert variables.J == size(part.snr, 3) "Inconsistent dimension J in `snr` in `calibration`."
     end
 
     if isnothing(variables.C)
@@ -888,9 +888,9 @@ function check(part::MDFv2Calibration, variables::MDFv2Variables)
     end
 
     if isnothing(variables.K)
-      variables.K = size(part.snr, 3)
+      variables.K = size(part.snr, 1)
     else
-      @assert variables.K == size(part.snr, 3) "Inconsistent dimension K in `snr` in `calibration`."
+      @assert variables.K == size(part.snr, 1) "Inconsistent dimension K in `snr` in `calibration`."
     end
   end
 end

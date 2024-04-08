@@ -132,6 +132,9 @@ end
 
 function sampleTF(tmf::TransferFunction, f::MPIFile)
   freq = rxFrequencies(f)
+  if measIsFrequencySelection(f)
+    freq = freq[measFrequencySelection(f)]
+  end
   numChan = rxNumChannels(f)
   numFreq = length(freq)
   return tmf[freq,1:numChan]
