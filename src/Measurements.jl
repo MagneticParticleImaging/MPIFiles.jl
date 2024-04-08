@@ -321,7 +321,7 @@ Supported keyword arguments:
 """
 function getMeasurementsFD(f::MPIFile, args...;
       loadasreal=false, transposed=false, frequencies=nothing,
-      tfCorrection=rxHasTransferFunction(f),  kargs...)
+      tfCorrection=rxHasTransferFunction(f), kargs...)
 
   data = getMeasurements(f, args..., tfCorrection=false; kargs...)
   
@@ -354,13 +354,13 @@ function getMeasurementsFD(f::MPIFile, args...;
     end
   end
 
-  if frequencies != nothing
+  if !isnothing(frequencies)
     # here we merge frequencies and channels
     data = data[frequencies, :, :]
   end
 
   if transposed
-    if frequencies != nothing
+    if !isnothing(frequencies)
       data = permutedims(data, [3,1,2])
     else
       data = permutedims(data, [4,1,2,3])
@@ -373,12 +373,6 @@ function getMeasurementsFD(f::MPIFile, args...;
 
   return data
 end
-
-
-
-
-
-
 
 function spectralLeakageCorrectedData(dataIn)
   @debug "Apply Spectral Cleaning"
