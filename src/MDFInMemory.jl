@@ -1382,7 +1382,7 @@ function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
     try
       result = f(mdfFile)
     catch e
-      @warn "Exception while reading symbol $(functionSymbol). Please check closely."
+      @warn "Exception while reading symbol $(functionSymbol). Please check closely. Exception was `$e`."
     end
 
     if !(isnothing(result) || ismissing(result))
