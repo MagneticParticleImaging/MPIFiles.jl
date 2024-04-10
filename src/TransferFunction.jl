@@ -241,6 +241,9 @@ end
 
 function sampleTF(tf::TransferFunction, f::MPIFile)
   freq = rxFrequencies(f)
+  if measIsFrequencySelection(f)
+    freq = freq[measFrequencySelection(f)]
+  end
   numChan = rxNumChannels(f)
   return tf(freq,1:numChan)
 end
