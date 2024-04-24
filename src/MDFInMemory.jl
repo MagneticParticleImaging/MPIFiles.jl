@@ -767,7 +767,7 @@ function check(part::MDFv2Measurement, variables::MDFv2Variables)
   if isnothing(variables.E)
     variables.E = length([x for x in part.isBackgroundFrame if x == true])
   end
-  # E is defined by the number of `false` values in isBackgroundFrame here; should have been retrieved earlier
+  # O is defined by the number of `false` values in isBackgroundFrame here; should have been retrieved earlier
   if isnothing(variables.O)
     variables.O = length([x for x in part.isBackgroundFrame if x == false])
   end
