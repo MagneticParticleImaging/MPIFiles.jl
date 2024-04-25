@@ -160,9 +160,9 @@ end
 
 function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
   paramsBG = loadDataset(fBG, frames=frames)
-  paramsBG[:measIsBGFrame][:] = true
+  paramsBG[:measIsBGFrame][:] .= true
 
-  params[:measData] = cat(4, params[:measData], paramsBG[:measData])
+  params[:measData] = cat(params[:measData], paramsBG[:measData], dims=4)
   params[:measIsBGFrame] = cat(params[:measIsBGFrame], paramsBG[:measIsBGFrame], dims=1)
   params[:acqNumFrames] += paramsBG[:acqNumFrames]
 
