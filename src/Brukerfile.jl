@@ -433,20 +433,22 @@ function measData(b::BrukerFileMeas, frames=1:acqNumFrames(b), periods=1:acqNumP
   if numSubPeriods(b) == 1
     raw = Mmap.mmap(s, Array{dType,4},
              (rxNumSamplingPoints(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
+    data = raw[:,receivers,periods,frames]
   else
     if b.handleSubPeriodsAsFrames
       raw = Mmap.mmap(s, Array{dType,5}, (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),
                          acqNumPeriodsPerFrame(b), div(acqNumFrames(b),numSubPeriods(b))))
 
       raw = reshape(permutedims(collect(raw), (1,3,4,2,5)), Val(4))
+      data = raw[:,receivers,periods,frames]
     else 
       raw = Mmap.mmap(s, Array{dType,5},
       (rxNumSamplingPoints(b),numSubPeriods(b),rxNumChannels(b),acqNumPeriodsPerFrame(b),acqNumFrames(b)))
 
-      raw = dropdims(sum(raw,dims=2),dims=2)
+      data = dropdims(sum(raw[:,:,receivers,periods,frames],dims=2),dims=2)
     end
   end
-  data = raw[:,receivers,periods,frames]
+  
   close(s)
 
   return reshape(data, rxNumSamplingPoints(b), length(receivers),length(periods),length(frames))
@@ -771,4 +773,3 @@ function getBV(b; recChannels=1:rxNumChannels(b))
   close(s)
   return data
 end
-
