@@ -36,11 +36,15 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   nFreq = rxNumFrequencies(f, numPeriodGrouping)
   nReceivers = rxNumChannels(f)
   nPeriods = 1 #acqNumPeriodsPerFrame(f)
-  freqIndices = collect(vec(CartesianIndices((nFreq, nReceivers))))
+  freqs = measIsFrequencySelection(f) ? measFrequencySelection(f) : 1:nFreq
 
-  filterFrequenciesBySelection!(freqIndices, f)
-  filterFrequenciesByChannel!(freqIndices, recChannels)
-  
+  if numPeriodGrouping == 1
+    freqIndices = vec([CartesianIndex{2}(i, j) for i in freqs, j in recChannels])
+  else
+    freqIndices = collect(vec(CartesianIndices((nFreq, nReceivers))))
+    filterFrequenciesBySelection!(freqIndices, f) 
+    filterFrequenciesByChannel!(freqIndices, recChannels)
+  end  
   if minFreq > 0
     filterFrequenciesByMinFreq!(freqIndices, f, minFreq)
   end
@@ -64,12 +68,9 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   SNRAll = nothing
 
   if SNRThresh > 0 || numUsedFreqs > 0
-    SNR = zeros(nFreq, nReceivers)
-    idx = measIsFrequencySelection(f) ? measFrequencySelection(f) : idx = 1:nFreq
-
     SNRAll = calibSNR(f)
     if !isnothing(SNRAll)
-      SNR[idx,:] = SNRAll[:,:,1]
+      SNR = Dict(CartesianIndex(freqs[i], j) => SNRAll[i, j, 1] for i = 1:length(freqs), j in recChannels)
     end
   end
 
@@ -86,42 +87,42 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
     filterFrequenciesByStepsize!(freqIndices, stepsize)
   end
 
-  return freqIndices
+  return collect(vec(freqIndices))
 end
 
 export filterFrequenciesBySelection!
-function filterFrequenciesBySelection!(indices::Vector{CartesianIndex{2}}, f::MPIFile)
+function filterFrequenciesBySelection!(indices, f::MPIFile)
   if measIsFrequencySelection(f)
     return filterFrequenciesBySelection!(indices, measFrequencySelection(f))
   end
 end
-filterFrequenciesBySelection!(indices::Vector{CartesianIndex{2}}, selection::Vector{Int64}) = filter!(x -> in(x[1], selection), indices)
+filterFrequenciesBySelection!(indices, selection::Vector{Int64}, sorted = issorted(selection)) = filter!(x -> sorted ? insorted(x[1], selection) : in(x[1], selection), indices)
 
 export filterFrequenciesByChannel!
-filterFrequenciesByChannel!(indices::Vector{CartesianIndex{2}}, channels) = filter!(x-> in(x[2], channels), indices)
+filterFrequenciesByChannel!(indices, channels) = filter!(x-> in(x[2], channels), indices)
 
 export filterFrequenciesByMinFreq!
-function filterFrequenciesByMinFreq!(indices::Vector{CartesianIndex{2}}, f::MPIFile, minFreq; numPeriodGrouping = 1)
+function filterFrequenciesByMinFreq!(indices, f::MPIFile, minFreq; numPeriodGrouping = 1)
   nFreq = rxNumFrequencies(f, numPeriodGrouping)
   minIdx = floor(Int, minFreq / rxBandwidth(f) * (nFreq-1) ) + 1
   return filterFrequenciesByMinIdx!(indices, minIdx)
 end
-filterFrequenciesByMinIdx!(indices::Vector{CartesianIndex{2}}, minIdx) = minIdx > 0 ?  filter!(x -> x[1] > minIdx, indices) : indices 
+filterFrequenciesByMinIdx!(indices, minIdx) = minIdx > 0 ?  filter!(x -> x[1] > minIdx, indices) : indices 
 
 export filterFrequenciesByMaxFreq!
-function filterFrequenciesByMaxFreq!(indices::Vector{CartesianIndex{2}}, f::MPIFile, maxFreq; numPeriodGrouping = 1)
+function filterFrequenciesByMaxFreq!(indices, f::MPIFile, maxFreq; numPeriodGrouping = 1)
   nFreq = rxNumFrequencies(f, numPeriodGrouping)
   maxIdx = ceil(Int, maxFreq / rxBandwidth(f) * (nFreq-1) ) + 1
   return filterFrequenciesByMaxIdx!(indices, maxIdx)
 end
-filterFrequenciesByMaxIdx!(indices::Vector{CartesianIndex{2}}, maxIdx) = filter!(x-> x[1] < maxIdx, indices)
+filterFrequenciesByMaxIdx!(indices, maxIdx) = filter!(x-> x[1] < maxIdx, indices)
 
 export filterFrequenciesByMaxMixingOrder!
-filterFrequenciesByMaxMixingOrder!(indices::Vector{CartesianIndex{2}}, maxMixingOrder, f::MPIFile) = filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, mixingFactors(f))
-filterFrequenciesByMaxMixingOrder!(indices::Vector{CartesianIndex{2}}, maxMixingOrder, mf::Matrix) = filter!(x-> mf[x[1], 4] <= maxMixingOrder, indices)
+filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, f::MPIFile) = filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, mixingFactors(f))
+filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, mf::Matrix) = filter!(x-> mf[x[1], 4] <= maxMixingOrder, indices)
 
 export filterFrequenciesByNumSidebandFreqs!
-function filterFrequenciesByNumSidebandFreqs!(indices::Vector{CartesianIndex{2}}, numSidebandFreqs::Int64, f::MPIFile; numPeriodGrouping = 1)
+function filterFrequenciesByNumSidebandFreqs!(indices, numSidebandFreqs::Int64, f::MPIFile; numPeriodGrouping = 1)
   # https://en.wikipedia.org/wiki/Sideband
   # Because of period grouping we have more frequencies than in original data
 
@@ -140,17 +141,19 @@ function filterFrequenciesByNumSidebandFreqs!(indices::Vector{CartesianIndex{2}}
 end
 
 export filterFrequenciesBySNRThresh!
-function filterFrequenciesBySNRThresh!(indices::Vector{CartesianIndex{2}}, f::MPIFile, snrthresh; numPeriodGrouping = 1)
+function filterFrequenciesBySNRThresh!(indices, f::MPIFile, snrthresh; numPeriodGrouping = 1)
   SNR = getCalibSNR(f, numPeriodGrouping = numPeriodGrouping)
   return filterFrequenciesBySNRThresh!(indices, snrthresh, SNR)
 end
-filterFrequenciesBySNRThresh!(indices::Vector{CartesianIndex{2}}, SNRThresh, SNR) = filter!(x-> SNR[x] >= SNRThresh , indices)
+filterFrequenciesBySNRThresh!(indices, SNRThresh, SNR) = filter!(x-> SNR[x] >= SNRThresh , indices)
+filterFrequenciesBySNRThresh!(indices, SNRThresh, SNR::Dict{CartesianIndex{2}, Float64}) = filter!(x-> get(SNR, x, 0.0) >= SNRThresh , indices)
+
 
 export filterFrequenciesByNumUsedFrequencies!
-function filterFrequenciesByNumUsedFrequencies!(indices::Vector{CartesianIndex{2}}, f::MPIFile, maxFreq)
+function filterFrequenciesByNumUsedFrequencies!(indices, f::MPIFile, maxFreq)
   error("Not implemented")
 end
-filterFrequenciesByNumUsedFrequencies!(indices::Vector{CartesianIndex{2}}, maxIdx) = error("not implemented")
+filterFrequenciesByNumUsedFrequencies!(indices, maxIdx) = error("not implemented")
 #=
     numFreqsAlreadyFalse = sum(!freqMask)
     numFreqsFalse = round(Int,length(freqMask)* (1-numUsedFreqs))
@@ -168,12 +171,12 @@ filterFrequenciesByNumUsedFrequencies!(indices::Vector{CartesianIndex{2}}, maxId
 =#
 
 export filterFrequenciesByStepsize!
-function filterFrequenciesByStepsize!(indices::Vector{CartesianIndex{2}}, stepsize)
+function filterFrequenciesByStepsize!(indices, stepsize)
   stepIndices = 1:stepsize:maximum(map(x -> x[1], indices))
   filter!(x -> in(x[1], stepIndices), indices)
 end
 
-function sortFrequencies(indices::Vector{CartesianIndex{2}}, f::MPIFile; numPeriodGrouping = 1, stepsize = 1, sortBySNR = false, sortByMixFactors = false)
+function sortFrequencies(indices, f::MPIFile; numPeriodGrouping = 1, stepsize = 1, sortBySNR = false, sortByMixFactors = false)
   if sortBySNR && !sortByMixFactors
     indices = sortFrequenciesBySNR(indices, f, numPeriodGrouping = numPeriodGrouping, stepsize = stepsize)
   elseif !sortBySNR && sortByMixFactors
@@ -185,11 +188,11 @@ function sortFrequencies(indices::Vector{CartesianIndex{2}}, f::MPIFile; numPeri
 end
 
 export sortFrequenciesBySNR
-function sortFrequenciesBySNR(indices::Vector{CartesianIndex{2}}, f::MPIFile; numPeriodGrouping = 1, stepsize = 1)
+function sortFrequenciesBySNR(indices, f::MPIFile; numPeriodGrouping = 1, stepsize = 1)
   SNR = getCalibSNR(f, numPeriodGrouping = numPeriodGrouping, stepsize = stepsize)
   sortFrequenciesBySNR(indices, SNR)
 end
-sortFrequenciesBySNR(indices::Vector{CartesianIndex{2}}, SNR::AbstractArray) = indices[reverse(sortperm(SNR[indices]),dims=1)]
+sortFrequenciesBySNR(indices, SNR::AbstractArray) = indices[reverse(sortperm(SNR[indices]),dims=1)]
 
 export sortFrequenciesByMixFactors
 function sortFrequenciesByMixFactors(indices, f::MPIFile; numPeriodGrouping = 1)
@@ -203,7 +206,7 @@ function sortFrequenciesByMixFactors(indices, f::MPIFile; numPeriodGrouping = 1)
   end
   sortFrequenciesByMixFactors(indices, mfNorm)
 end
-sortFrequenciesByMixFactors(indices::Vector{CartesianIndex{2}}, mfNorm::AbstractArray) = indices[sortperm(mfNorm[indices])]
+sortFrequenciesByMixFactors(indices, mfNorm::AbstractArray) = indices[sortperm(mfNorm[indices])]
 
 
 function rowsToSubsampledRows(f::MPIFile, rows)
