@@ -19,7 +19,7 @@ function getSystemMatrix(f::MPIFile, frequencies=nothing;
     frequencies = filterFrequencies(f)
   end
 
-  if measIsFastFrameAxis(f) && measIsFourierTransformed(f)
+  if measIsFourierTransformed(f) && numPeriodGrouping == 1
     # This is the fast path if the SM lays on disk in the required format
     data = systemMatrix(f, frequencies, bgCorrection)
   else

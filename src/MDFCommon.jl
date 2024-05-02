@@ -25,14 +25,17 @@ function measDataTDPeriods(f::Union{MDFFileV2, MDFv2InMemory}, periods=1:acqNumP
 end
 
 function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=true)
-  if !experimentHasMeasurement(f) || !measIsFastFrameAxis(f) ||
-    !measIsFourierTransformed(f)
+  if !experimentHasMeasurement(f) || !measIsFourierTransformed(f)
     return nothing
   end
 
   rows_ = rowsToSubsampledRows(f, rows)
 
   data_ = measDataRaw(f)
+
+  if !measIsFastFrameAxis(f)
+    data_ = permutedims(data_, [4, 1, 2, 3])
+  end
 
   data_ = data_[:, rows_, :]
   data = reshape(data_, Val(2))
