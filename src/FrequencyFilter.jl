@@ -215,7 +215,7 @@ function rowsToSubsampledRows(f::MPIFile, rows)
     tmp = Array{Union{Nothing, CartesianIndex{2}}}(undef, rxNumFrequencies(f), rxNumChannels(f))
     idxAvailable = measFrequencySelection(f)
     for (i, idx) in enumerate(idxAvailable)
-      for d=1:rxNumChannels(f)
+      for d=1:size(tmp, 2)
         tmp[idx, d] = CartesianIndex(i, d)
       end
     end
