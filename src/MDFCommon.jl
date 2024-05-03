@@ -51,7 +51,7 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
     subsamplingIndices_ = tmp[:, rows_, :]
     subsamplingIndices = reshape(subsamplingIndices_, Val(2))
 
-    for l=1:size(fgdata,2)
+    for l ∈ axes(fgdata, 2)
       dataBackTrafo[:,l] .= 0.0
       dataBackTrafo[subsamplingIndices[:,l],l] .= fgdata[:,l]
       dataBackTrafo[:,l] .= adjoint(B) * vec(dataBackTrafo[:,l])
@@ -62,7 +62,14 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
   if bgCorrection # this assumes equidistant bg frames
     @debug "Applying bg correction on system matrix (MDF)"
     bgdata = data[measBGFrameIdx(f),:]
-    blockLen = measBGFrameBlockLengths( invpermute!(deepcopy(measIsBGFrame(f)), measFramePermutation(f)) ) # Added deepcopy to be side-effect free in in-memory MDF
+
+    if measIsFramePermutation(f)
+      mask = invpermute!(deepcopy(measIsBGFrame(f)), measFramePermutation(f)) # Added deepcopy to be side-effect free in in-memory MDF
+    else
+      mask = deepcopy(measIsBGFrame(f)) # Added deepcopy to be side-effect free in in-memory MDF
+    end
+    blockLen = measBGFrameBlockLengths(mask)
+    
     st = 1
     for j=1:length(blockLen)
       bgdata[st:st+blockLen[j]-1,:] .=
@@ -72,10 +79,10 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
 
     bgdataInterp = interpolate(bgdata, (BSpline(Linear()), NoInterp()))
     # Cubic does not work for complex numbers
-    origIndex = measFramePermutation(f)
     M = size(fgdata,1)
     K = size(bgdata,1)
     N = M + K
+    origIndex = measIsFramePermutation(f) ? measFramePermutation(f) : 1:N
     for m=1:M
       alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
       for k=1:size(fgdata,2)
