@@ -68,9 +68,11 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   SNRAll = nothing
 
   if SNRThresh > 0 || numUsedFreqs > 0
+    SNR = zeros(eltype(SNRThresh), nFreq, nReceivers)
+
     SNRAll = calibSNR(f)
     if !isnothing(SNRAll)
-      SNR = Dict(CartesianIndex(freqs[i], j) => SNRAll[i, j, 1] for i = 1:length(freqs), j in recChannels)
+      SNR[freqs,:] = SNRAll[:,:,1]
     end
   end
 
@@ -145,7 +147,7 @@ function filterFrequenciesBySNRThresh!(indices, f::MPIFile, snrthresh; numPeriod
   SNR = getCalibSNR(f, numPeriodGrouping = numPeriodGrouping)
   return filterFrequenciesBySNRThresh!(indices, snrthresh, SNR)
 end
-filterFrequenciesBySNRThresh!(indices, SNRThresh, SNR) = filter!(x-> SNR[x] >= SNRThresh , indices)
+filterFrequenciesBySNRThresh!(indices, SNRThresh, SNR::Matrix) = filter!(x-> SNR[x] >= SNRThresh , indices)
 filterFrequenciesBySNRThresh!(indices, SNRThresh, SNR::Dict{CartesianIndex{2}, Float64}) = filter!(x-> get(SNR, x, 0.0) >= SNRThresh , indices)
 
 
