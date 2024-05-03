@@ -175,7 +175,7 @@ filterFrequenciesByNumUsedFrequencies!(indices, maxIdx) = error("not implemented
 export filterFrequenciesByStepsize!
 function filterFrequenciesByStepsize!(indices, stepsize)
   stepIndices = 1:stepsize:maximum(map(x -> x[1], indices))
-  filter!(x -> in(x[1], stepIndices), indices)
+  filter!(x -> insorted(x[1], stepIndices), indices)
 end
 
 function sortFrequencies(indices, f::MPIFile; numPeriodGrouping = 1, stepsize = 1, sortBySNR = false, sortByMixFactors = false)
