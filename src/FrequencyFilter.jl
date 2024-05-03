@@ -101,7 +101,7 @@ end
 filterFrequenciesBySelection!(indices, selection::Vector{Int64}, sorted = issorted(selection)) = filter!(x -> sorted ? insorted(x[1], selection) : in(x[1], selection), indices)
 
 export filterFrequenciesByChannel!
-filterFrequenciesByChannel!(indices, channels) = filter!(x-> in(x[2], channels), indices)
+filterFrequenciesByChannel!(indices, channels, sorted = issorted(channels)) = filter!(x-> sorted ? insorted(x[2], channels) : in(x[2], channels), indices)
 
 export filterFrequenciesByMinFreq!
 function filterFrequenciesByMinFreq!(indices, f::MPIFile, minFreq; numPeriodGrouping = 1)
