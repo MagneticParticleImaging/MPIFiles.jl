@@ -59,8 +59,8 @@ export tracerName, tracerBatch, tracerVolume, tracerConcentration,
   tracerSolute, tracerInjectionTime, tracerVendor
 
 # scanner parameters
-export scannerFacility, scannerOperator, scannerManufacturer, scannerName,
-  scannerTopology
+export scannerBoreSize, scannerFacility, scannerOperator, scannerManufacturer,
+   scannerName, scannerTopology
 
 # acquisition parameters
 export acqStartTime, acqNumFrames, acqNumAverages,

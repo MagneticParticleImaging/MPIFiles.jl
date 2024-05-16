@@ -68,7 +68,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
     idx = measIsFrequencySelection(f) ? measFrequencySelection(f) : idx = 1:nFreq
 
     SNRAll = calibSNR(f)
-    if SNRAll != nothing
+    if !isnothing(SNRAll)
       SNR[idx,:] = SNRAll[:,:,1]
     end
   end

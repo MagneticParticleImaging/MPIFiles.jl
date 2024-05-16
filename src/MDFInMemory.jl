@@ -660,27 +660,27 @@ function check(part::MDFv2Acquisition, variables::MDFv2Variables)
   # Check dimensions of `gradient` field
   if !isnothing(part.gradient)
     if isnothing(variables.J)
-      variables.J = size(part.gradient, 1)
+      variables.J = size(part.gradient, 4)
     else
-      @assert variables.J == size(part.gradient, 1) "Inconsistent dimension J in `gradient` in `acquisition`."
+      @assert variables.J == size(part.gradient, 4) "Inconsistent dimension J in `gradient` in `acquisition`."
     end
 
     if isnothing(variables.Y)
-      variables.Y = size(part.gradient, 2)
+      variables.Y = size(part.gradient, 3)
     else
-      @assert variables.Y == size(part.gradient, 1) "Inconsistent dimension Y in `gradient` in `acquisition`."
+      @assert variables.Y == size(part.gradient, 3) "Inconsistent dimension Y in `gradient` in `acquisition`."
     end
 
-    @assert size(part.gradient, 3) == 3 "Inconsistent third dimension in `gradient` in `acquisition`."
-    @assert size(part.gradient, 4) == 3 "Inconsistent fourth dimension in `gradient` in `acquisition`."
+    @assert size(part.gradient, 1) == 3 "Inconsistent first dimension in `gradient` in `acquisition`."
+    @assert size(part.gradient, 2) == 3 "Inconsistent second dimension in `gradient` in `acquisition`."
   end
 
   # Check dimensions of `offsetField` field
   if !isnothing(part.offsetField)
     if isnothing(variables.J)
-      variables.J = size(part.offsetField, 1)
+      variables.J = size(part.offsetField, 3)
     else
-      @assert variables.J == size(part.offsetField, 1) "Inconsistent dimension J in `offsetField` in `acquisition`."
+      @assert variables.J == size(part.offsetField, 3) "Inconsistent dimension J in `offsetField` in `acquisition`."
     end
 
     if isnothing(variables.Y)
@@ -689,7 +689,7 @@ function check(part::MDFv2Acquisition, variables::MDFv2Variables)
       @assert variables.Y == size(part.offsetField, 2) "Inconsistent dimension Y in `offsetField` in `acquisition`."
     end
 
-    @assert size(part.offsetField, 3) == 3 "Inconsistent third dimension in `offsetField` in `acquisition`."
+    @assert size(part.offsetField, 1) == 3 "Inconsistent first dimension in `offsetField` in `acquisition`."
   end
 end
 
@@ -699,26 +699,26 @@ function check(part::MDFv2Drivefield, variables::MDFv2Variables)
     variables.D = part.numChannels
   end
   if isnothing(variables.F)
-    variables.F = size(part.divider, 2)
+    variables.F = size(part.divider, 1)
   end
   if isnothing(variables.J)
-    variables.J = size(part.phase, 1)
+    variables.J = size(part.phase, 3)
   end
 
   # Then check dimensions for multidimensional fields
-  @assert variables.D == size(part.divider, 1) "Inconsistent dimension D in `divider` in `drivefield`."
-  @assert variables.F == size(part.divider, 2) "Inconsistent dimension F in `divider` in `drivefield`."
+  @assert variables.F == size(part.divider, 1) "Inconsistent dimension F in `divider` in `drivefield`."
+  @assert variables.D == size(part.divider, 2) "Inconsistent dimension D in `divider` in `drivefield`."
 
-  @assert variables.J == size(part.phase, 1) "Inconsistent dimension J in `phase` in `drivefield`."
+  @assert variables.F == size(part.phase, 1) "Inconsistent dimension F in `phase` in `drivefield`."
   @assert variables.D == size(part.phase, 2) "Inconsistent dimension D in `phase` in `drivefield`."
-  @assert variables.F == size(part.phase, 3) "Inconsistent dimension F in `phase` in `drivefield`."
+  @assert variables.J == size(part.phase, 3) "Inconsistent dimension J in `phase` in `drivefield`."
 
-  @assert variables.J == size(part.strength, 1) "Inconsistent dimension J in `strength` in `drivefield`."
+  @assert variables.F == size(part.strength, 1) "Inconsistent dimension F in `strength` in `drivefield`."
   @assert variables.D == size(part.strength, 2) "Inconsistent dimension D in `strength` in `drivefield`."
-  @assert variables.F == size(part.strength, 3) "Inconsistent dimension F in `strength` in `drivefield`."
+  @assert variables.J == size(part.strength, 3) "Inconsistent dimension J in `strength` in `drivefield`."
 
-  @assert variables.D == size(part.waveform, 1) "Inconsistent dimension D in `waveform` in `drivefield`."
-  @assert variables.F == size(part.waveform, 2) "Inconsistent dimension F in `waveform` in `drivefield`."
+  @assert variables.F == size(part.waveform, 1) "Inconsistent dimension F in `waveform` in `drivefield`."
+  @assert variables.D == size(part.waveform, 2) "Inconsistent dimension D in `waveform` in `drivefield`."
 end
 
 function check(part::MDFv2Receiver, variables::MDFv2Variables)
@@ -732,21 +732,21 @@ function check(part::MDFv2Receiver, variables::MDFv2Variables)
   end
 
   if !isnothing(part.dataConversionFactor)
-    @assert variables.C == size(part.dataConversionFactor, 1) "Inconsistent dimension C in `dataConversionFactor` in `receiver`."
-    @assert size(part.dataConversionFactor, 2) == 2 "Inconsistent second dimension in `dataConversionFactor` in `receiver`."
+    @assert variables.C == size(part.dataConversionFactor, 2) "Inconsistent dimension C in `dataConversionFactor` in `receiver`."
+    @assert size(part.dataConversionFactor, 1) == 2 "Inconsistent first dimension in `dataConversionFactor` in `receiver`."
   end
 
   if !isnothing(part.inductionFactor)
-    @assert variables.C == size(part.inductionFactor, 1) "Inconsistent dimension C in `inductionFactor` in `receiver`."
+    @assert variables.C == length(part.inductionFactor) "Inconsistent dimension C in `inductionFactor` in `receiver`."
   end
 
   if !isnothing(part.transferFunction)
-    @assert variables.C == size(part.transferFunction, 1) "Inconsistent dimension C in `transferFunction` in `receiver`."
+    @assert variables.C == size(part.transferFunction, 2) "Inconsistent dimension C in `transferFunction` in `receiver`."
 
     if isnothing(variables.K)
-      variables.K = size(part.transferFunction, 2)
+      variables.K = size(part.transferFunction, 1)
     else
-      @assert variables.K == size(part.transferFunction, 2) "Inconsistent dimension K in `transferFunction` in `receiver`."
+      @assert variables.K == size(part.transferFunction, 1) "Inconsistent dimension K in `transferFunction` in `receiver`."
     end
   end
 end
@@ -767,7 +767,7 @@ function check(part::MDFv2Measurement, variables::MDFv2Variables)
   if isnothing(variables.E)
     variables.E = length([x for x in part.isBackgroundFrame if x == true])
   end
-  # E is defined by the number of `false` values in isBackgroundFrame here; should have been retrieved earlier
+  # O is defined by the number of `false` values in isBackgroundFrame here; should have been retrieved earlier
   if isnothing(variables.O)
     variables.O = length([x for x in part.isBackgroundFrame if x == false])
   end
@@ -781,28 +781,28 @@ function check(part::MDFv2Measurement, variables::MDFv2Variables)
 
   if isnothing(variables.J)
     if !part.isSparsityTransformed
-      @warn "Can't determine variable J for measurement from `subsamplingIndices` since the dataset is not sparsity transformed."
+      @debug "Can't determine variable J for measurement from `subsamplingIndices` since the dataset is not sparsity transformed."
     else
       variables.J = size(part.subsamplingIndices, 1)
     end
   end
   if isnothing(variables.C)
     if !part.isSparsityTransformed
-      @warn "Can't determine variable C for measurement from `subsamplingIndices` since the dataset is not sparsity transformed. Should happen in receiver."
+      @debug "Can't determine variable C for measurement from `subsamplingIndices` since the dataset is not sparsity transformed. Should happen in receiver."
     else
       variables.C = size(part.subsamplingIndices, 2)
     end
   end
   if isnothing(variables.K)
     if !part.isSparsityTransformed
-      @warn "Can't determine variable K for measurement from `subsamplingIndices` since the dataset is not sparsity transformed. Should happen in receiver."
+      @debug "Can't determine variable K for measurement from `subsamplingIndices` since the dataset is not sparsity transformed. Should happen in receiver."
     else
       variables.K = size(part.subsamplingIndices, 3)
     end
   end
   if isnothing(variables.B)
     if !part.isSparsityTransformed
-      @warn "Can't determine variable B for measurement from `subsamplingIndices` since the dataset is not sparsity transformed. Should happen in receiver."
+      @debug "Can't determine variable B for measurement from `subsamplingIndices` since the dataset is not sparsity transformed. Should happen in receiver."
     else
       variables.B = size(part.subsamplingIndices, 4)
     end
@@ -829,10 +829,10 @@ function check(part::MDFv2Measurement, variables::MDFv2Variables)
 
   if part.isSparsityTransformed
     # J, C, K and B should be defined by now
-    @assert variables.J == size(part.subsamplingIndices, 1) "Inconsistent dimension J in `subsamplingIndices` in `measurement`."
-    @assert variables.C == size(part.subsamplingIndices, 2) "Inconsistent dimension C in `subsamplingIndices` in `measurement`."
-    @assert variables.K == size(part.subsamplingIndices, 3) "Inconsistent dimension K in `subsamplingIndices` in `measurement`."
-    @assert variables.B == size(part.subsamplingIndices, 4) "Inconsistent dimension B in `subsamplingIndices` in `measurement`."
+    @assert variables.B == size(part.subsamplingIndices, 1) "Inconsistent dimension B in `subsamplingIndices` in `measurement`."
+    @assert variables.K == size(part.subsamplingIndices, 2) "Inconsistent dimension K in `subsamplingIndices` in `measurement`."
+    @assert variables.C == size(part.subsamplingIndices, 3) "Inconsistent dimension C in `subsamplingIndices` in `measurement`."
+    @assert variables.J == size(part.subsamplingIndices, 4) "Inconsistent dimension J in `subsamplingIndices` in `measurement`."
   end
 end
 
@@ -851,11 +851,11 @@ function check(part::MDFv2Calibration, variables::MDFv2Variables)
 
   if !isnothing(part.offsetFields)
     if isnothing(variables.O)
-      variables.O = size(part.offsetFields, 1)
+      variables.O = size(part.offsetFields, 2)
     else
-      @assert variables.O == size(part.offsetFields, 1) "Inconsistent dimension O in `offsetFields` in `calibration`."
+      @assert variables.O == size(part.offsetFields, 2) "Inconsistent dimension O in `offsetFields` in `calibration`."
     end
-    @assert size(part.offsetFields, 2) == 3 "Inconsistent second dimension in `offsetFields` in `calibration`."
+    @assert size(part.offsetFields, 1) == 3 "Inconsistent first dimension in `offsetFields` in `calibration`."
   end
 
   if !isnothing(part.order)
@@ -864,8 +864,8 @@ function check(part::MDFv2Calibration, variables::MDFv2Variables)
 
   if !isnothing(part.positions)
     # O must be defined by now
-    @assert variables.O == size(part.positions, 1) "Inconsistent dimension O in `positions` in `calibration`."
-    @assert size(part.positions, 2) == 3 "Inconsistent second dimension in `positions` in `calibration`."
+    @assert variables.O == size(part.positions, 2) "Inconsistent dimension O in `positions` in `calibration`."
+    @assert size(part.positions, 1) == 3 "Inconsistent first dimension in `positions` in `calibration`."
   end
 
   if !isnothing(part.size)
@@ -876,9 +876,9 @@ function check(part::MDFv2Calibration, variables::MDFv2Variables)
 
   if !isnothing(part.snr)
     if isnothing(variables.J)
-      variables.J = size(part.snr, 1)
+      variables.J = size(part.snr, 3)
     else
-      @assert variables.J == size(part.snr, 1) "Inconsistent dimension J in `snr` in `calibration`."
+      @assert variables.J == size(part.snr, 3) "Inconsistent dimension J in `snr` in `calibration`."
     end
 
     if isnothing(variables.C)
@@ -888,9 +888,9 @@ function check(part::MDFv2Calibration, variables::MDFv2Variables)
     end
 
     if isnothing(variables.K)
-      variables.K = size(part.snr, 3)
+      variables.K = size(part.snr, 1)
     else
-      @assert variables.K == size(part.snr, 3) "Inconsistent dimension K in `snr` in `calibration`."
+      @assert variables.K == size(part.snr, 1) "Inconsistent dimension K in `snr` in `calibration`."
     end
   end
 end
@@ -898,7 +898,7 @@ end
 function check(part::MDFv2Reconstruction, variables::MDFv2Variables)
   # Pick variables first
   if isnothing(variables.Q)
-    variables.Q = size(part.data, 1)
+    variables.Q = size(part.data, 3)
   end
   if isnothing(variables.P)
     variables.P = size(part.data, 2)
@@ -924,8 +924,8 @@ function check(part::MDFv2Reconstruction, variables::MDFv2Variables)
   end
 
   if !isnothing(part.positions)
-    @assert variables.P == size(part.positions, 1) "Inconsistent dimension P in `positions` in `reconstruction`."
-    @assert size(part.positions, 2) == 3 "Inconsistent second dimension in `positions` in `reconstruction`."
+    @assert variables.P == size(part.positions, 2) "Inconsistent dimension P in `positions` in `reconstruction`."
+    @assert size(part.positions, 1) == 3 "Inconsistent first dimension in `positions` in `reconstruction`."
   end
 
   if !isnothing(part.size)
@@ -1382,7 +1382,7 @@ function inMemoryMDFFromMDFFileV2(mdfFile::MDFFileV2)::MDFv2InMemory
     try
       result = f(mdfFile)
     catch e
-      @warn "Exception while reading symbol $(functionSymbol). Please check closely."
+      @warn "Exception while reading symbol $(functionSymbol). Please check closely. Exception was `$e`."
     end
 
     if !(isnothing(result) || ismissing(result))

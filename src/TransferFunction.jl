@@ -81,7 +81,7 @@ function TransferFunction(file::MPIFile)
   tf_file = rxTransferFunction(file)
   inductionFactor = rxInductionFactor(file)
   f = collect(rfftfreq(rxNumSamplingPoints(file), rxBandwidth(file)*2))
-  return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor)
+  return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor=inductionFactor)
 end
 
 """
@@ -241,6 +241,9 @@ end
 
 function sampleTF(tf::TransferFunction, f::MPIFile)
   freq = rxFrequencies(f)
+  if measIsFrequencySelection(f)
+    freq = freq[measFrequencySelection(f)]
+  end
   numChan = rxNumChannels(f)
   return tf(freq,1:numChan)
 end
@@ -261,7 +264,7 @@ function setTF(b::BrukerFile, filenameTF::AbstractString)
   A = readlines(joinpath(filepath(b),"acqp"))
   l = findfirst( s->occursin("ACQ_comment", s), A)
 
-  if l == nothing
+  if isnothing(l)
    ll = findfirst( s->occursin("ACQ_experiment_mode", s), A)
    insert!(A, ll, "##\$ACQ_comment=( 2048 )")
    insert!(A, ll+1, "<$(filenameTF)>")
@@ -274,7 +277,7 @@ function setTF(b::BrukerFile, filenameTF::AbstractString)
   # For some reason ACQ_comment is also in the method file -> also change that
   B = readlines(joinpath(filepath(b),"method"))
   g = findfirst( s->occursin("ACQ_comment", s), B)
-  if g != nothing
+  if !isnothing(g)
     B[g+1] = "<$(filenameTF)>"
     _writeBrukerParamFile(b, B, "method")
   end
@@ -310,4 +313,9 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
     write(file, "/acquisition/receiver/inductionFactor", tmf.inductionFactor)
   end
   return
+end
+
+function setTF(f::MDFv2InMemory, tf::TransferFunction)
+  rxTransferFunction(f, sampleTF(tf, f))
+  rxInductionFactor(f, tf.inductionFactor)
 end

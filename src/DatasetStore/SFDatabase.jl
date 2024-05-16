@@ -111,8 +111,8 @@ function _innerGenerateSFDatabase(A,i,sf,b)
   end
   N = calibSize(b)
   A[i,6] = N[1]
-  A[i,7] = N[2]
-  A[i,8] = N[3]
+  A[i,7] = try N[2]; catch; 0 end 
+  A[i,8] = try N[3]; catch; 0 end
   A[i,9] = rxBandwidth(b) / 1e6
   A[i,10] = tracerName(b)[1]
   A[i,11] = tracerBatch(b)[1]

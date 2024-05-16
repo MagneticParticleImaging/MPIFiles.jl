@@ -159,7 +159,7 @@ tracerVendor(f::MDFFileV1)::Union{Vector{String}, Missing} = @keyrequired [f["/t
 tracerVendor(f::MDFFileV2)::Union{Vector{String}, Missing} = @keyrequired _makeStringArray(f["/tracer/vendor"])
 
 # scanner parameters
-scannerBoreSize(f::MDFFile)::Union{String, Nothing} = @keyoptional f["/scanner/boreSize"]
+scannerBoreSize(f::MDFFile)::Union{Float64, Nothing} = @keyoptional f["/scanner/boreSize"]
 scannerFacility(f::MDFFile)::Union{String, Missing} = @keyrequired f["/scanner/facility"]
 scannerOperator(f::MDFFile)::Union{String, Missing} = @keyrequired f["/scanner/operator"]
 scannerManufacturer(f::MDFFile)::Union{String, Missing} = @keyrequired f["/scanner/manufacturer"]

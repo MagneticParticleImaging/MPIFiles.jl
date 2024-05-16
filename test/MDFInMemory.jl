@@ -28,7 +28,6 @@ end
   fnSMBruker = joinpath(datadir,"BrukerStore","20141121_130749_CalibrationScans_1_1","76")
   fnSM1DBruker = joinpath(datadir,"BrukerStore","20170807_142514_Service_1_1","89")
 
-
   fnMeasV1 = joinpath(tmpdir,"mdfim","measurement_V1.mdf")
   fnMeasV2 = joinpath(tmpdir,"mdfim","measurement_V2.mdf")
   fnSMV1 = joinpath(tmpdir,"mdfim","systemMatrix_V1.mdf")
@@ -56,7 +55,8 @@ end
       mdfv2InMemory = MDFv2InMemory(mdfv2)
       @test typeof(mdfv2InMemory) <: MDFv2InMemory
 
-      message = "There is an inconsistency in the given in-memory MDF. The message is: `Inconsistent dimension J in `gradient` in `acquisition`.`."
+      # The file seems to have some transposed fields!
+      message = "There is an inconsistency in the given in-memory MDF. The message is: `Inconsistent dimension D in `divider` in `drivefield`.`."
       @test_logs (:warn, message) saveasMDF(fnMeasV2_converted, mdfv2InMemory)
 
       mdf = MPIFile(fnMeasV2_converted)
@@ -346,33 +346,33 @@ end
     drivefield = MDFv2Drivefield(
       baseFrequency = 40e3,
       cycle = 1600/40e3,
-      divider = fill(1600, (D, F)),
+      divider = fill(1600, (F, D)),
       numChannels = D,
-      phase = fill(0.0, (J, D, F)),
-      strength = fill(1.0, (J, D, F)),
-      waveform = fill("sine", (D, F)),
+      phase = fill(0.0, (F, D, J)),
+      strength = fill(1.0, (F, D, J)),
+      waveform = fill("sine", (F, D)),
     )
     receiver = MDFv2Receiver(
       bandwidth = 20e3,
-      dataConversionFactor = repeat([1/2^16 0], C),
+      dataConversionFactor = repeat([1/2^16 0]', outer=(1, C)),
       inductionFactor = fill(1.0, C),
       numChannels = C,
       numSamplingPoints = V,
-      transferFunction = fill(1+0.5im, (C, K)),
+      transferFunction = fill(1+0.5im, (K, C)),
       unit = "V"
     )
     mdf.acquisition = MDFv2Acquisition(
-      gradient = fill(0.0, (J, Y, 3, 3)),
+      gradient = fill(0.0, (3, 3, Y, J)),
       numAverages = 1,
       numFrames = N,
       numPeriodsPerFrame = J,
-      offsetField = fill(0.0, (J, Y, 3)),
+      offsetField = fill(0.0, (3, Y, J)),
       startTime = DateTime("2021-04-26T17:12:21.686"),
       drivefield = drivefield,
       receiver = receiver
     )
     mdf.measurement = MDFv2Measurement(;
-      data = fill(0, (N, J, C, K)),
+      data = fill(0, (K, C, J, N)),
       framePermutation = fill(0, N),
       frequencySelection = collect(1:K),
       isBackgroundCorrected = true,
@@ -385,26 +385,26 @@ end
       isSpectralLeakageCorrected = true,
       isTransferFunctionCorrected = true,
       sparsityTransformation = "DCT-I",
-      subsamplingIndices = fill(0, (J, C, K, B))
+      subsamplingIndices = fill(0, (B, K, C, J))
     )
     mdf.calibration = MDFv2Calibration(
       deltaSampleSize = fill(0.001, 3),
       fieldOfView = fill(0.2, 3),
       fieldOfViewCenter = fill(0.0, 3),
       method = "robot",
-      offsetFields = fill(0.0, (O, 3)),
+      offsetFields = fill(0.0, (3, O)),
       order = "xyz",
-      positions = fill(0.0, (O, 3)),
+      positions = fill(0.0, (3, O)),
       size = [1, 1, 1],
-      snr = fill(0.0, (J, C, K))
+      snr = fill(0.0, (K, C, J))
     )
     mdf.reconstruction = MDFv2Reconstruction(
-      data = fill(0, (Q, P, S)),
+      data = fill(0, (S, P, Q)),
       fieldOfView = fill(0.2, 3),
       fieldOfViewCenter = fill(0.0, 3),
       isOverscanRegion = fill(false, P),
       order = "xyz",
-      positions = fill(0.0, (P, 3)),
+      positions = fill(0.0, (3, P)),
       size = [1, 1, 1]
     )
 
@@ -532,23 +532,23 @@ end
       test_mdf_replacement(mdf, :tracerVolume, fill(1.0, A+1), "Inconsistent dimensions in `volume` in `tracer`.")
 
       # Drivefield
-      test_mdf_replacement(mdf, :dfDivider, fill(1600, (D+1, F)), "Inconsistent dimension D in `divider` in `drivefield`.")
-      test_mdf_replacement(mdf, :dfDivider, fill(1600, (D, F+1)), "Inconsistent dimension F in `divider` in `drivefield`.") # Works because F has been determined earlier
-      test_mdf_replacement(mdf, :dfPhase, fill(0.0, (J+1, D, F)), "Inconsistent dimension J in `phase` in `drivefield`.") # Works because J has been determined earlier
-      test_mdf_replacement(mdf, :dfPhase, fill(0.0, (J, D+1, F)), "Inconsistent dimension D in `phase` in `drivefield`.")
-      test_mdf_replacement(mdf, :dfPhase, fill(0.0, (J, D, F+1)), "Inconsistent dimension F in `phase` in `drivefield`.")
-      test_mdf_replacement(mdf, :dfStrength, fill(1.0, (J+1, D, F)), "Inconsistent dimension J in `strength` in `drivefield`.")
-      test_mdf_replacement(mdf, :dfStrength, fill(1.0, (J, D+1, F)), "Inconsistent dimension D in `strength` in `drivefield`.")
-      test_mdf_replacement(mdf, :dfStrength, fill(1.0, (J, D, F+1)), "Inconsistent dimension F in `strength` in `drivefield`.")
-      test_mdf_replacement(mdf, :dfWaveform, fill("sine", (D+1, F)), "Inconsistent dimension D in `waveform` in `drivefield`.")
-      test_mdf_replacement(mdf, :dfWaveform, fill("sine", (D, F+1)), "Inconsistent dimension F in `waveform` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfDivider, fill(1600, (F, D+1)), "Inconsistent dimension D in `divider` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfDivider, fill(1600, (F+1, D)), "Inconsistent dimension F in `divider` in `drivefield`.") # Works because F has been determined earlier
+      test_mdf_replacement(mdf, :dfPhase, fill(0.0, (F, D, J+1)), "Inconsistent dimension J in `phase` in `drivefield`.") # Works because J has been determined earlier
+      test_mdf_replacement(mdf, :dfPhase, fill(0.0, (F, D+1, J)), "Inconsistent dimension D in `phase` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfPhase, fill(0.0, (F+1, D, J)), "Inconsistent dimension F in `phase` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfStrength, fill(1.0, (F, D, J+1)), "Inconsistent dimension J in `strength` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfStrength, fill(1.0, (F, D+1, J)), "Inconsistent dimension D in `strength` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfStrength, fill(1.0, (F+1, D, J)), "Inconsistent dimension F in `strength` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfWaveform, fill("sine", (F, D+1)), "Inconsistent dimension D in `waveform` in `drivefield`.")
+      test_mdf_replacement(mdf, :dfWaveform, fill("sine", (F+1, D)), "Inconsistent dimension F in `waveform` in `drivefield`.")
 
       # Receiver
-      test_mdf_replacement(mdf, :rxDataConversionFactor, repeat([1/2^16 0], C+1), "Inconsistent dimension C in `dataConversionFactor` in `receiver`.")
-      test_mdf_replacement(mdf, :rxDataConversionFactor, repeat([1/2^16 0 0], C), "Inconsistent second dimension in `dataConversionFactor` in `receiver`.")
+      test_mdf_replacement(mdf, :rxDataConversionFactor, repeat([1/2^16 0]', outer=(1, C+1)), "Inconsistent dimension C in `dataConversionFactor` in `receiver`.")
+      test_mdf_replacement(mdf, :rxDataConversionFactor, repeat([1/2^16 0 0]', outer=(1, C)), "Inconsistent first dimension in `dataConversionFactor` in `receiver`.")
       test_mdf_replacement(mdf, :rxInductionFactor, fill(1.0, C+1), "Inconsistent dimension C in `inductionFactor` in `receiver`.")
-      test_mdf_replacement(mdf, :rxTransferFunction, fill(1+0.5im, (C+1, K)), "Inconsistent dimension C in `transferFunction` in `receiver`.")
-      test_mdf_replacement(mdf, :rxTransferFunction, fill(1+0.5im, (C, K+1)), "Inconsistent dimension K in `transferFunction` in `receiver`.")
+      test_mdf_replacement(mdf, :rxTransferFunction, fill(1+0.5im, (K, C+1)), "Inconsistent dimension C in `transferFunction` in `receiver`.")
+      test_mdf_replacement(mdf, :rxTransferFunction, fill(1+0.5im, (K+1, C)), "Inconsistent dimension K in `transferFunction` in `receiver`.")
 
       # Measurement
       test_mdf_replacement(mdf, :measFramePermutation, fill(0, N+1), "Inconsistent dimension N in `framePermutation` in `measurement`.")
@@ -560,24 +560,24 @@ end
       test_mdf_replacement(mdf, :calibDeltaSampleSize, fill(0.001, 4), "Inconsistent length in `deltaSampleSize` in `calibration`.")
       test_mdf_replacement(mdf, :calibFieldOfView, fill(0.2, 4), "Inconsistent length in `fieldOfView` in `calibration`.")
       test_mdf_replacement(mdf, :calibFieldOfViewCenter, fill(0.0, 4), "Inconsistent length in `fieldOfViewCenter` in `calibration`.")
-      test_mdf_replacement(mdf, :calibOffsetFields, fill(0.0, (O+1, 3)), "Inconsistent dimension O in `offsetFields` in `calibration`.")
-      test_mdf_replacement(mdf, :calibOffsetFields, fill(0.0, (O, 4)), "Inconsistent second dimension in `offsetFields` in `calibration`.")
+      test_mdf_replacement(mdf, :calibOffsetFields, fill(0.0, (3, O+1)), "Inconsistent dimension O in `offsetFields` in `calibration`.")
+      test_mdf_replacement(mdf, :calibOffsetFields, fill(0.0, (4, O)), "Inconsistent first dimension in `offsetFields` in `calibration`.")
       test_mdf_replacement(mdf, :calibOrder, "bla", "Wrong `order` of `bla` in `calibration`.")
-      test_mdf_replacement(mdf, :calibPositions, fill(0.0, (O+1, 3)), "Inconsistent dimension O in `positions` in `calibration`.")
-      test_mdf_replacement(mdf, :calibPositions, fill(0.0, (O, 4)), "Inconsistent second dimension in `positions` in `calibration`.")
+      test_mdf_replacement(mdf, :calibPositions, fill(0.0, (3, O+1)), "Inconsistent dimension O in `positions` in `calibration`.")
+      test_mdf_replacement(mdf, :calibPositions, fill(0.0, (3+1, O)), "Inconsistent first dimension in `positions` in `calibration`.")
       test_mdf_replacement(mdf, :calibSize, [1, 1, 1, 1], "Inconsistent length in `size` in `calibration`.")
       test_mdf_replacement(mdf, :calibSize, [1, 1, 2], "The product of `size` with `[1, 1, 2]` must equal O.")
-      test_mdf_replacement(mdf, :calibSnr, fill(0.0, (J+1, C, K)), "Inconsistent dimension J in `snr` in `calibration`.")
-      test_mdf_replacement(mdf, :calibSnr, fill(0.0, (J, C+1, K)), "Inconsistent dimension C in `snr` in `calibration`.")
-      test_mdf_replacement(mdf, :calibSnr, fill(0.0, (J, C, K+1)), "Inconsistent dimension K in `snr` in `calibration`.")
+      test_mdf_replacement(mdf, :calibSnr, fill(0.0, (K, C, J+1)), "Inconsistent dimension J in `snr` in `calibration`.")
+      test_mdf_replacement(mdf, :calibSnr, fill(0.0, (K, C+1, J)), "Inconsistent dimension C in `snr` in `calibration`.")
+      test_mdf_replacement(mdf, :calibSnr, fill(0.0, (K+1, C, J)), "Inconsistent dimension K in `snr` in `calibration`.")
 
       # Reconstruction
       test_mdf_replacement(mdf, :recoFieldOfView, fill(0.2, 4), "Inconsistent length in `fieldOfView` in `reconstruction`.")
       test_mdf_replacement(mdf, :recoFieldOfViewCenter, fill(0.0, 4), "Inconsistent length in `fieldOfViewCenter` in `reconstruction`.")
       test_mdf_replacement(mdf, :recoIsOverscanRegion, fill(false, P+1), "Inconsistent length in `isOverscanRegion` in `reconstruction`.")
       test_mdf_replacement(mdf, :recoOrder, "bla", "Wrong `order` of `bla` in `reconstruction`.")
-      test_mdf_replacement(mdf, :recoPositions, fill(0.0, (P+1, 3)), "Inconsistent dimension P in `positions` in `reconstruction`.")
-      test_mdf_replacement(mdf, :recoPositions, fill(0.0, (P, 4)), "Inconsistent second dimension in `positions` in `reconstruction`.")
+      test_mdf_replacement(mdf, :recoPositions, fill(0.0, (3, P+1)), "Inconsistent dimension P in `positions` in `reconstruction`.")
+      test_mdf_replacement(mdf, :recoPositions, fill(0.0, (3+1, P)), "Inconsistent first dimension in `positions` in `reconstruction`.")
       test_mdf_replacement(mdf, :recoSize, [1, 1, 1, 1], "Inconsistent length in `size` in `reconstruction`.")
       test_mdf_replacement(mdf, :recoSize, [1, 1, 2], "The product of `size` with `[1, 1, 2]` must equal P.")
     end

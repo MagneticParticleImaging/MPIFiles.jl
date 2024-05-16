@@ -83,7 +83,7 @@ function range(grid::RegularGridPositions, dim::Int)
   end
 end
 ndims(grid::RegularGridPositions) = length(grid.shape)
-axes(grid::RegularGridPositions) = tuple([range(grid, i) for i in 1:ndims(grid)]...)
+Base.axes(grid::RegularGridPositions) = tuple([range(grid, i) for i in 1:ndims(grid)]...)
 
 RegularGridPositions(shape, fov, center) = RegularGridPositions(shape, fov, center, ones(Int,length(shape)))
 
@@ -220,7 +220,7 @@ end
 function posToIdxFloat(grid::RegularGridPositions, pos)
   idx = 0.5 .* (shape(grid) .* ((pos .- fieldOfViewCenter(grid)) ./
               ( 0.5 .* fieldOfView(grid) ) .+ 1) .+ 1)
-  #idx = [isnan(val) ? one(eltype(idx)) : val for val in idx]
+  idx = [isnan(val) ? one(eltype(idx)) : val for val in idx]
   return idx
 end
 
