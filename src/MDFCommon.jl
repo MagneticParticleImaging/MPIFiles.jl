@@ -59,7 +59,7 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
     fgdata = dataBackTrafo
   end
 
-  if bgCorrection # this assumes equidistant bg frames
+  if bgCorrection && length(measBGFrameIdx(f)) > 0 # this assumes equidistant bg frames
     @debug "Applying bg correction on system matrix (MDF)"
     bgdata = data[measBGFrameIdx(f),:]
 
@@ -89,6 +89,8 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
         fgdata[m,k] -= bgdataInterp(alpha,k)
       end
     end
+  elseif bgCorrection && length(measBGFrameIdx(f)) == 0
+    @warn "Ignoring parameter `bgCorrection` since there are no background frames in the file."
   end
   return fgdata
 end
