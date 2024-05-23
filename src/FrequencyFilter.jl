@@ -7,7 +7,7 @@ function getCalibSNR(f::MPIFile; numPeriodGrouping = 1, stepsize = 1)
   idx = measIsFrequencySelection(f) ? measFrequencySelection(f) : idx = 1:nFreq
 
   SNRAll = calibSNR(f)
-  if SNRAll != nothing
+  if !isnothing(SNRAll)
     SNR[idx,:] = SNRAll[:,:,1]
   end
 
@@ -68,11 +68,11 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   SNRAll = nothing
 
   if SNRThresh > 0 || numUsedFreqs > 0
-    SNR = zeros(eltype(SNRThresh), nFreq, nReceivers)
+    SNR = zeros(Float64, nFreq, nReceivers)
 
     SNRAll = calibSNR(f)
     if !isnothing(SNRAll)
-      SNR[freqs,:] = SNRAll[:,:,1]
+      SNR[freqs, :] = SNRAll[:, :, 1]
     end
   end
 
@@ -83,7 +83,6 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   elseif numUsedFreqs > 0 && SNRThresh > 0
     error("It is not possible to use SNRThresh and SNRFactorUsedFreq similtaneously")
   end
-
 
   if stepsize > 1
     filterFrequenciesByStepsize!(freqIndices, stepsize)
@@ -144,11 +143,11 @@ end
 
 export filterFrequenciesBySNRThresh!
 function filterFrequenciesBySNRThresh!(indices, f::MPIFile, snrthresh::T; numPeriodGrouping = 1) where T <: Real
-  snr = getCalibSNR(f, numPeriodGrouping = numPeriodGrouping)
-  return filterFrequenciesBySNRThresh!(indices, snrthresh, snr)
+  SNR = getCalibSNR(f, numPeriodGrouping = numPeriodGrouping)
+  return filterFrequenciesBySNRThresh!(indices, snrthresh, SNR)
 end
-filterFrequenciesBySNRThresh!(indices, snrthresh::T, snr::Matrix) where T <: Real = filter!(x-> snr[x] >= snrthresh , indices)
-filterFrequenciesBySNRThresh!(indices, snrthresh::T, snr::Dict{CartesianIndex{2}, Float64}) where T <: Real = filter!(x-> get(snr, x, 0.0) >= snrthresh , indices)
+filterFrequenciesBySNRThresh!(indices, SNRThresh::T, SNR::Matrix) where T <: Real = filter!(x-> SNR[x] >= SNRThresh , indices)
+filterFrequenciesBySNRThresh!(indices, SNRThresh::T, SNR::Dict{CartesianIndex{2}, Float64}) where T <: Real = filter!(x-> get(SNR, x, 0.0) >= SNRThresh , indices)
 
 
 export filterFrequenciesByNumUsedFrequencies!
