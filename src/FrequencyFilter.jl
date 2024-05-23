@@ -143,12 +143,12 @@ function filterFrequenciesByNumSidebandFreqs!(indices, numSidebandFreqs::Int64, 
 end
 
 export filterFrequenciesBySNRThresh!
-function filterFrequenciesBySNRThresh!(indices, f::MPIFile, snrthresh; numPeriodGrouping = 1)
-  SNR = getCalibSNR(f, numPeriodGrouping = numPeriodGrouping)
-  return filterFrequenciesBySNRThresh!(indices, snrthresh, SNR)
+function filterFrequenciesBySNRThresh!(indices, f::MPIFile, snrthresh::T; numPeriodGrouping = 1) where T <: Real
+  snr = getCalibSNR(f, numPeriodGrouping = numPeriodGrouping)
+  return filterFrequenciesBySNRThresh!(indices, snrthresh, snr)
 end
-filterFrequenciesBySNRThresh!(indices, SNRThresh, SNR::Matrix) = filter!(x-> SNR[x] >= SNRThresh , indices)
-filterFrequenciesBySNRThresh!(indices, SNRThresh, SNR::Dict{CartesianIndex{2}, Float64}) = filter!(x-> get(SNR, x, 0.0) >= SNRThresh , indices)
+filterFrequenciesBySNRThresh!(indices, snrthresh::T, snr::Matrix) where T <: Real = filter!(x-> snr[x] >= snrthresh , indices)
+filterFrequenciesBySNRThresh!(indices, snrthresh::T, snr::Dict{CartesianIndex{2}, Float64}) where T <: Real = filter!(x-> get(snr, x, 0.0) >= snrthresh , indices)
 
 
 export filterFrequenciesByNumUsedFrequencies!
