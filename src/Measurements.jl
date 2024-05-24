@@ -197,7 +197,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
     data = getAveragedMeasurements(f; frames=idx[frames],
                                       numAverages=numAverages, kargs...)
     
-    idxBG = measBGFrameIdx[bgFrames]
+    idxBG = measBGFrameIdx(f)[bgFrames]
     hasBGFrames = length(idxBG) > 0
     if bgCorrection && !hasBGFrames
       @warn "Background correction was selected but there are no background frames in the file."
