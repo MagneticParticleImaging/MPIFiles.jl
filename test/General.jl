@@ -165,27 +165,27 @@
       #@test size(filterFrequencies(sm, numUsedFreqs = 100)) == (100,) # not working
 
       @test size(getSystemMatrix(sm,collect(vec(CartesianIndices((10, 1)))))) == (1936,10)
-      @test size(getSystemMatrix(sm,collect(vec(CartesianIndices((10, 1)))),loadasreal=true)) == (1936,20)
-      @test size(getSystemMatrix(sm,collect(vec(CartesianIndices((10, 1)))),bgCorrection=true)) == (1936,10)
+      @test size(getSystemMatrix(sm,collect(vec(CartesianIndices((10, 1)))), loadasreal=true)) == (1936,20)
+      @test size(getSystemMatrix(sm,collect(vec(CartesianIndices((10, 1)))), bgCorrection=true)) == (1936,10)
       # test on the data level if the conversion was successful
       SNRThresh = 2
-      freq = filterFrequencies(smBruker,SNRThresh=SNRThresh)
-      SBruker = getSystemMatrix(smBruker,frequencies=freq)
-      S = getSystemMatrix(sm,frequencies=freq)
+      freq = filterFrequencies(smBruker, SNRThresh=SNRThresh)
+      SBruker = getSystemMatrix(smBruker, frequencies=freq)
+      S = getSystemMatrix(sm, frequencies=freq)
 
-      relativeDeviation = zeros(Float32,length(freq))
+      relativeDeviation = zeros(Float32, length(freq))
       for f in 1:length(map(f->f[1], freq))
-        relativeDeviation[f] = norm(SBruker[:,f]-S[:,f])/norm(SBruker[:,f])
+        relativeDeviation[f] = norm(SBruker[:,f]-S[:,f]) / norm(SBruker[:,f])
       end
       # test if relative deviation for most of the frequency components is below 0.003
-      @test quantile(relativeDeviation,0.95)<0.003
+      @test quantile(relativeDeviation, 0.95) < 0.003
     end
 
     # Next test checks if the cached system matrix is the same as the one loaded
     # from the raw data
     S_loadedfromraw = getMeasurementsFD(smBrukerPretendToBeMeas,
-          frames=1:acqNumFGFrames(smBrukerPretendToBeMeas),sortFrames=true,
-          spectralLeakageCorrection=false,transposed=true,tfCorrection=false)
+          frames=1:acqNumFGFrames(smBrukerPretendToBeMeas), sortFrames=true,
+          spectralLeakageCorrection=false, transposed=true, tfCorrection=false)
 
     S_loadedfromproc = systemMatrix(smBruker)
 
@@ -232,7 +232,7 @@
       relativeDeviation[f] = norm(S1[:,f]-S2[:,f])/norm(S2[:,f])
     end
     # test if relative deviation for most of the frequency components is below 0.003
-    @test quantile(relativeDeviation,0.95)<0.14
+    @test quantile(relativeDeviation, 0.95)<0.14
 
 
     # Calibration file 1D
@@ -253,7 +253,7 @@
       @info "Test $sm"
 
       @test size( systemMatrixWithBG(sm) ) == (67,52,3,1)
-      @test size( systemMatrix(sm,collect(vec(CartesianIndices((10, 1))))) ) == (60,10)
+      @test size( systemMatrix(sm, collect(vec(CartesianIndices((10, 1))))) ) == (60,10)
       @test size( systemMatrix(sm) ) == (60,52,3,1)
 
       @test size(calibSNR(sm)) == (52, 3, 1)
