@@ -1,4 +1,5 @@
-name: Breakage
+name: Breakage 
+# Based on: https://github.com/JuliaSmoothOptimizers/LinearOperators.jl/blob/main/.github/workflows/Breakage.yml
 on:
     pull_request:
         branches:
