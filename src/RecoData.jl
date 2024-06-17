@@ -21,8 +21,8 @@ function saveRecoData(filename, image::ImageMeta)
 
   params = properties(image)
   params[:recoData] = c
-  params[:recoFov] = collect(grid) .* collect(converttometer(pixelspacing(image)))
-  params[:recoFovCenter] = collect(converttometer(imcenter(image)))[1:3]
+  params[:recoFov] = Float64.(collect(grid) .* collect(converttometer(pixelspacing(image))))
+  params[:recoFovCenter] = Float64.(collect(converttometer(imcenter(image)))[1:3])
   params[:recoSize] = collect(grid)
   params[:recoOrder] = "xyz"
   if haskey(params,:recoParams)
