@@ -160,9 +160,9 @@ end
 
 function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
   paramsBG = loadDataset(fBG, frames=frames)
-  paramsBG[:measIsBGFrame][:] = true
+  paramsBG[:measIsBGFrame][:] .= true
 
-  params[:measData] = cat(4, params[:measData], paramsBG[:measData])
+  params[:measData] = cat(params[:measData], paramsBG[:measData], dims=4)
   params[:measIsBGFrame] = cat(params[:measIsBGFrame], paramsBG[:measIsBGFrame], dims=1)
   params[:acqNumFrames] += paramsBG[:acqNumFrames]
 
@@ -838,6 +838,9 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
       write(file, "/reconstruction/positions", params[:recoPositions])
     end
     if hasKeyAndValue(params, :recoParameters)
+      ## Workaround to save new parameters to MDF, maybe not the best way to do it...
+      params[:recoParameters][:solver] = string(params[:recoParameters][:solver])
+      params[:recoParameters][:reg] = string(params[:recoParameters][:reg])
       saveParams(file, "/reconstruction/_parameters", params[:recoParameters])
     end
   end
