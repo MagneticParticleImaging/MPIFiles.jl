@@ -25,14 +25,17 @@ function measDataTDPeriods(f::Union{MDFFileV2, MDFv2InMemory}, periods=1:acqNumP
 end
 
 function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=true)
-  if !experimentHasMeasurement(f) || !measIsFastFrameAxis(f) ||
-    !measIsFourierTransformed(f)
+  if !experimentHasMeasurement(f) || !measIsFourierTransformed(f)
     return nothing
   end
 
   rows_ = rowsToSubsampledRows(f, rows)
 
   data_ = measDataRaw(f)
+
+  if !measIsFastFrameAxis(f)
+    data_ = permutedims(data_, [4, 1, 2, 3])
+  end
 
   data_ = data_[:, rows_, :]
   data = reshape(data_, Val(2))
@@ -48,7 +51,7 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
     subsamplingIndices_ = tmp[:, rows_, :]
     subsamplingIndices = reshape(subsamplingIndices_, Val(2))
 
-    for l=1:size(fgdata,2)
+    for l ∈ axes(fgdata, 2)
       dataBackTrafo[:,l] .= 0.0
       dataBackTrafo[subsamplingIndices[:,l],l] .= fgdata[:,l]
       dataBackTrafo[:,l] .= adjoint(B) * vec(dataBackTrafo[:,l])
@@ -56,10 +59,17 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
     fgdata = dataBackTrafo
   end
 
-  if bgCorrection # this assumes equidistant bg frames
+  if bgCorrection && length(measBGFrameIdx(f)) > 0 # this assumes equidistant bg frames
     @debug "Applying bg correction on system matrix (MDF)"
     bgdata = data[measBGFrameIdx(f),:]
-    blockLen = measBGFrameBlockLengths( invpermute!(deepcopy(measIsBGFrame(f)), measFramePermutation(f)) ) # Added deepcopy to be side-effect free in in-memory MDF
+
+    if measIsFramePermutation(f)
+      mask = invpermute!(deepcopy(measIsBGFrame(f)), measFramePermutation(f)) # Added deepcopy to be side-effect free in in-memory MDF
+    else
+      mask = deepcopy(measIsBGFrame(f)) # Added deepcopy to be side-effect free in in-memory MDF
+    end
+    blockLen = measBGFrameBlockLengths(mask)
+    
     st = 1
     for j=1:length(blockLen)
       bgdata[st:st+blockLen[j]-1,:] .=
@@ -69,16 +79,18 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
 
     bgdataInterp = interpolate(bgdata, (BSpline(Linear()), NoInterp()))
     # Cubic does not work for complex numbers
-    origIndex = measFramePermutation(f)
     M = size(fgdata,1)
     K = size(bgdata,1)
     N = M + K
+    origIndex = measIsFramePermutation(f) ? measFramePermutation(f) : 1:N
     for m=1:M
       alpha = (origIndex[m]-1)/(N-1)*(K-1)+1
       for k=1:size(fgdata,2)
         fgdata[m,k] -= bgdataInterp(alpha,k)
       end
     end
+  elseif bgCorrection && length(measBGFrameIdx(f)) == 0
+    @warn "Ignoring parameter `bgCorrection` since there are no background frames in the file."
   end
   return fgdata
 end
