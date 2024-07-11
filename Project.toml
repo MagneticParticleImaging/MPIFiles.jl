@@ -1,7 +1,7 @@
 name = "MPIFiles"
 uuid = "371237a9-e6c1-5201-9adb-3d8cfa78fa9f"
 authors = ["Tobias Knopp <tobias@knoppweb.de>"]
-version = "0.16.0"
+version = "0.16.1"
 
 [deps]
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
@@ -48,7 +48,7 @@ ImageAxes = "0.6"
 ImageMetadata = "0.9"
 Inflate = "0.1.2"
 Interpolations = "0.12, 0.13, 0.14, 0.15"
-LinearOperatorCollection = "1.1"
+LinearOperatorCollection = "1, 2"
 SHA = "0.7"
 StableRNGs = "1.0.0"
 Statistics = "1"
