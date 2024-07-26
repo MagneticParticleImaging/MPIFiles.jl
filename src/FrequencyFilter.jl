@@ -28,10 +28,13 @@ Supported keyword arguments:
 * stepsize
 * maxMixingOrder
 * sortByMixFactors
+* numPeriodGrouping
+* numSideBandFreqs
+* stopBands
 """
 function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
                maxFreq=rxBandwidth(f), recChannels=1:rxNumChannels(f),numUsedFreqs=-1, stepsize=1,
-                maxMixingOrder=-1, numPeriodAverages=1, numPeriodGrouping=1, numSidebandFreqs = -1)
+                maxMixingOrder=-1, numPeriodAverages=1, numPeriodGrouping=1, numSidebandFreqs = -1, stopBands = nothing)
 
   nFreq = rxNumFrequencies(f, numPeriodGrouping)
   nReceivers = rxNumChannels(f)
@@ -86,6 +89,10 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
 
   if stepsize > 1
     filterFrequenciesByStepsize!(freqIndices, stepsize)
+  end
+
+  if !isnothing(stopBands)
+    filterFrequenciesByStopBands!(freqIndices, stopBands)
   end
 
   return collect(vec(freqIndices))
@@ -176,6 +183,13 @@ function filterFrequenciesByStepsize!(indices, stepsize)
   stepIndices = 1:stepsize:maximum(map(x -> x[1], indices))
   filter!(x -> insorted(x[1], stepIndices), indices)
 end
+
+export filterFrequenciesByStopBands!, filterFrequenciesByStopBand!
+function filterFrequenciesByStopBands!(indices, stopBands::Vector)
+  filter!(x -> any(stopBand -> !in(x[1], stopBand), stopBands), indices)
+end
+filterFrequenciesByStopBands!(indices, stopBand) = filterFrequenciesByStopBands!(indices, [stopBand])
+filterFrequenciesByStopBand!(indices, stopBand) = filter!(x -> !in(x[1], stopBand), indices)
 
 function sortFrequencies(indices, f::MPIFile; numPeriodGrouping = 1, stepsize = 1, sortBySNR = false, sortByMixFactors = false)
   if sortBySNR && !sortByMixFactors
