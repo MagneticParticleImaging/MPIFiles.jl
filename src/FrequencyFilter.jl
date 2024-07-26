@@ -42,7 +42,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   freqs = measIsFrequencySelection(f) ? measFrequencySelection(f) : 1:nFreq
 
   if numPeriodGrouping == 1
-    freqIndices = vec([CartesianIndex{2}(i, j) for i in freqs, j in recChannels])
+    freqIndices = vec([CartesianIndex{2}(i, j) for i in freqs, j in intersect(1:nReceivers, recChannels)])
   else
     freqIndices = collect(vec(CartesianIndices((nFreq, nReceivers))))
     filterFrequenciesBySelection!(freqIndices, f) 
