@@ -397,7 +397,8 @@ end
       order = "xyz",
       positions = fill(0.0, (3, O)),
       size = [1, 1, 1],
-      snr = fill(0.0, (K, C, J))
+      snr = fill(0.0, (K, C, J)),
+      isMeanderingGrid = false # Not in specs for MDF v2!
     )
     mdf.reconstruction = MDFv2Reconstruction(
       data = fill(0, (S, P, Q)),
@@ -670,19 +671,19 @@ end
     )
     mdf.measurement = MDFv2Measurement(;
       data = fill(0, (K, C, J, N)),
-      framePermutation = fill(0, N),
-      frequencySelection = collect(1:K),
-      isBackgroundCorrected = true,
+      # framePermutation = fill(0, N),
+      # frequencySelection = collect(1:K),
+      isBackgroundCorrected = false,
       isBackgroundFrame = vcat(fill(true, E), fill(false, O)),
-      isFastFrameAxis = true,
-      isFourierTransformed = true,
-      isFramePermutation = true,
-      isFrequencySelection = true,
-      isSparsityTransformed = true,
-      isSpectralLeakageCorrected = true,
-      isTransferFunctionCorrected = true,
-      sparsityTransformation = "DCT-I",
-      subsamplingIndices = fill(0, (B, K, C, J))
+      isFastFrameAxis = false,
+      isFourierTransformed = false,
+      isFramePermutation = false,
+      isFrequencySelection = false,
+      isSparsityTransformed = false,
+      isSpectralLeakageCorrected = false,
+      isTransferFunctionCorrected = false,
+      # sparsityTransformation = "DCT-I",
+      # subsamplingIndices = fill(0, (B, K, C, J))
     )
     mdf.calibration = MDFv2Calibration(
       deltaSampleSize = fill(0.001, 3),
@@ -693,7 +694,8 @@ end
       order = "xyz",
       positions = fill(0.0, (3, O)),
       size = [1, 1, 1],
-      snr = fill(0.0, (K, C, J))
+      snr = fill(0.0, (K, C, J)),
+      isMeanderingGrid = false
     )
     mdf.reconstruction = MDFv2Reconstruction(
       data = fill(0, (S, P, Q)),
