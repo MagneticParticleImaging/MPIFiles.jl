@@ -418,7 +418,7 @@ mutable struct MDFv2Measurement <: MDFv2InMemoryPart
   "Name of the applied sparsity transformation; optional if !isSparsityTransformed"
   sparsityTransformation::Union{String, Nothing}
   "Subsampling indices \\beta{j,c,k,b}; optional if !isSparsityTransformed"
-  subsamplingIndices::Union{Array{Integer, 4}, Nothing}
+  subsamplingIndices::Union{Array{Int64, 4}, Nothing}
 
   function MDFv2Measurement(;
     data = missing,
@@ -1309,7 +1309,7 @@ for (partFieldnameStr, partPrefix) ∈ prefixes
   partInMemorySymbol = Symbol(lowercase(partFieldnameStr[6:end]))
   type_ = getfield(MPIFiles, partFieldnameSymbol)
   fields = fieldnames(type_)
-  functionNames = [let fieldString=string(field_); Symbol(partPrefix*uppercase(fieldString[1])*fieldString[2:end]) end for field_ in fields]
+  functionNames = [let fieldString=string(field_); partPrefix != "" ? Symbol(partPrefix*uppercase(fieldString[1])*fieldString[2:end]) : Symbol(fieldString) end for field_ ∈ fields if field_ ∉ [:drivefield, :receiver]]
 
   @eval begin
     @doc $"""
@@ -1325,17 +1325,34 @@ for (partFieldnameStr, partPrefix) ∈ prefixes
 
       return instance
     end
+  end
 
-    @doc $"""
-      $partFieldnameStr(file::MDFv2InMemory)
+  if !(partFieldnameStr == "MDFv2Drivefield" || partFieldnameStr == "MDFv2Receiver")
+    @eval begin
+      @doc $"""
+        $partFieldnameStr(file::MDFv2InMemory)
 
-    Create a `$partFieldnameStr` from the respective section in the given `file`.
-    """
-    function $partFieldnameSymbol(file::MDFv2InMemory)::$type_
-      return file.$partInMemorySymbol
+      Create a `$partFieldnameStr` from the respective section in the given `file`.
+      """
+      function $partFieldnameSymbol(file::MDFv2InMemory)::$type_
+        return file.$partInMemorySymbol
+      end
+    end
+  else
+    @eval begin
+      @doc $"""
+        $partFieldnameStr(file::MDFv2InMemory)
+
+      Create a `$partFieldnameStr` from the respective section in the given `file`.
+      """
+      function $partFieldnameSymbol(file::MDFv2InMemory)::$type_
+        return file.acquisition.$partInMemorySymbol
+      end
     end
   end
 end
+MDFv2Drivefield(part::MDFv2Acquisition) = part.drivefield
+MDFv2Receiver(part::MDFv2Acquisition) = part.receiver
 
 # And some utility functions
 measIsCalibProcessed(mdf::MDFv2InMemory)::Union{Bool, Missing} = measIsFramePermutation(mdf) && 
