@@ -1303,6 +1303,40 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
   end
 end
 
+# Extract individual parts of an MDFFile as in-memory parts
+for (partFieldnameStr, partPrefix) ∈ prefixes
+  partFieldnameSymbol = Symbol(partFieldnameStr)
+  partInMemorySymbol = Symbol(lowercase(partFieldnameStr[6:end]))
+  type_ = getfield(MPIFiles, partFieldnameSymbol)
+  fields = fieldnames(type_)
+  functionNames = [let fieldString=string(field_); Symbol(partPrefix*uppercase(fieldString[1])*fieldString[2:end]) end for field_ in fields]
+
+  @eval begin
+    @doc $"""
+      $partFieldnameStr(file::MDFFile)
+
+    Create a `$partFieldnameStr` from the respective section in the given `file`.
+    """
+    function $partFieldnameSymbol(file::MDFFile)::$type_
+      instance = $partFieldnameSymbol()
+      for (fieldname_, functionName_) in zip($fields, $functionNames)
+        setfield!(instance, fieldname_, eval(functionName_)(file))
+      end
+
+      return instance
+    end
+
+    @doc $"""
+      $partFieldnameStr(file::MDFv2InMemory)
+
+    Create a `$partFieldnameStr` from the respective section in the given `file`.
+    """
+    function $partFieldnameSymbol(file::MDFv2InMemory)::$type_
+      return file.$partInMemorySymbol
+    end
+  end
+end
+
 # And some utility functions
 measIsCalibProcessed(mdf::MDFv2InMemory)::Union{Bool, Missing} = measIsFramePermutation(mdf) && 
                                                                  measIsFourierTransformed(mdf) &&
