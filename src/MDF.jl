@@ -401,7 +401,7 @@ measFramePermutation(f::MDFFileV1)::Union{Vector{Int64}, Nothing} = nothing
 measFramePermutation(f::MDFFileV2)::Union{Vector{Int64}, Nothing} = @keyoptional f["/measurement/framePermutation"]
 measSparsityTransformation(f::MDFFileV1)::Union{String, Nothing} = nothing
 measSparsityTransformation(f::MDFFileV2)::Union{String, Nothing} = @keyoptional f["/measurement/sparsityTransformation"]
-measSubsamplingIndices(f::MDFFileV2)::Union{Array{Integer, 4}, Nothing} = @keyoptional f["/measurement/subsamplingIndices"]
+measSubsamplingIndices(f::MDFFileV2)::Union{Array{Int64, 4}, Nothing} = @keyoptional f["/measurement/subsamplingIndices"]
 
 fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
 

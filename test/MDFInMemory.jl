@@ -41,6 +41,7 @@ end
 
   fnMeasV2_converted = joinpath(tmpdir,"mdfim","measurement_V2_converted.mdf")
   fnSMV2_converted = joinpath(tmpdir,"mdfim","systemMatrix_V2_converted.mdf")
+  fnPart_converted = joinpath(tmpdir,"mdfim","imparts.mdf")
 
   @testset "Conversion" begin
     @testset "Fields" begin
@@ -396,7 +397,8 @@ end
       order = "xyz",
       positions = fill(0.0, (3, O)),
       size = [1, 1, 1],
-      snr = fill(0.0, (K, C, J))
+      snr = fill(0.0, (K, C, J)),
+      isMeanderingGrid = false # Not in specs for MDF v2!
     )
     mdf.reconstruction = MDFv2Reconstruction(
       data = fill(0, (S, P, Q)),
@@ -581,5 +583,149 @@ end
       test_mdf_replacement(mdf, :recoSize, [1, 1, 1, 1], "Inconsistent length in `size` in `reconstruction`.")
       test_mdf_replacement(mdf, :recoSize, [1, 1, 2], "The product of `size` with `[1, 1, 2]` must equal P.")
     end
+  end
+
+  @testset "Part retrieval" begin
+    A = 1 # tracer materials/injections for multi-color MPI
+    N = 2 # acquired frames (N = O + E), same as a spatial position for calibration
+    E = 1 # acquired background frames (E = N − O)
+    O = 1 # acquired foreground frames (O = N − E)
+    B = 1 # coefficients stored after sparsity transformation (B \\le O)
+    J = 1 # periods within one frame
+    Y = 1 # partitions of each patch position
+    C = 1 # receive channels
+    D = 1 # drive-field channels
+    F = 1 # frequencies describing the drive-field waveform
+    V = 800 # points sampled at receiver during one drive-field period
+    W = V # sampling points containing processed data (W = V if no frequency selection or bandwidth reduction has been applied)
+    K = Int(V/2 + 1)# frequencies describing the processed data (K = V/2 + 1 if no frequency selection or bandwidth reduction has been applied)
+    Q = 1 # frames in the reconstructed MPI data set
+    P = 1 # voxels in the reconstructed MPI data set
+    S = 1 # channels in the reconstructed MPI data set
+
+    mdf = MDFv2InMemory()
+    mdf.root = MDFv2Root(
+      time=DateTime("2021-04-26T17:12:21.686"),
+      uuid=UUID("946a039e-48de-47ee-957e-a15af437e0be"),
+      version=VersionNumber("2.1.0")
+    )
+    mdf.study = MDFv2Study(
+      description = "n.a.",
+      name = "n.a.",
+      number = 1,
+      time = DateTime("2021-04-26T17:12:21.686"),
+      uuid = UUID("f2f3ae66-2fc3-49f7-91f9-71c1c2dc15e7")
+    )
+    mdf.experiment = MDFv2Experiment(
+      description = "n.a.",
+      isSimulation = true,
+      name = "n.a.",
+      number = 1,
+      subject = "n.a.",
+      uuid = UUID("3076d4bc-a2ef-46ef-8a99-dcd047379b8a")
+    )
+    mdf.tracer = MDFv2Tracer(
+      batch = fill("n.a.", A),
+      concentration = fill(1.0, A),
+      injectionTime = fill(DateTime("2021-04-26T17:12:21.686"), A),
+      name = fill("MyAwesomeTracer", A),
+      solute = fill("n.a.", A),
+      vendor = fill("Me", A),
+      volume = fill(1.0, A),
+    )
+    mdf.scanner = MDFv2Scanner(
+      boreSize = 0.3,
+      facility = "MyAwesomeInstitute",
+      manufacturer = "MeMyselfAndI",
+      name = "MyAwesomeScanner",
+      operator = "JustMe",
+      topology = "FFL" # Of course ;)
+    )
+    drivefield = MDFv2Drivefield(
+      baseFrequency = 40e3,
+      cycle = 1600/40e3,
+      divider = fill(1600, (F, D)),
+      numChannels = D,
+      phase = fill(0.0, (F, D, J)),
+      strength = fill(1.0, (F, D, J)),
+      waveform = fill("sine", (F, D)),
+    )
+    receiver = MDFv2Receiver(
+      bandwidth = 20e3,
+      dataConversionFactor = repeat([1/2^16 0]', outer=(1, C)),
+      inductionFactor = fill(1.0, C),
+      numChannels = C,
+      numSamplingPoints = V,
+      transferFunction = fill(1+0.5im, (K, C)),
+      unit = "V"
+    )
+    mdf.acquisition = MDFv2Acquisition(
+      gradient = fill(0.0, (3, 3, Y, J)),
+      numAverages = 1,
+      numFrames = N,
+      numPeriodsPerFrame = J,
+      offsetField = fill(0.0, (3, Y, J)),
+      startTime = DateTime("2021-04-26T17:12:21.686"),
+      drivefield = drivefield,
+      receiver = receiver
+    )
+    mdf.measurement = MDFv2Measurement(;
+      data = fill(0, (K, C, J, N)),
+      # framePermutation = fill(0, N),
+      # frequencySelection = collect(1:K),
+      isBackgroundCorrected = false,
+      isBackgroundFrame = vcat(fill(true, E), fill(false, O)),
+      isFastFrameAxis = false,
+      isFourierTransformed = false,
+      isFramePermutation = false,
+      isFrequencySelection = false,
+      isSparsityTransformed = false,
+      isSpectralLeakageCorrected = false,
+      isTransferFunctionCorrected = false,
+      # sparsityTransformation = "DCT-I",
+      # subsamplingIndices = fill(0, (B, K, C, J))
+    )
+    mdf.calibration = MDFv2Calibration(
+      deltaSampleSize = fill(0.001, 3),
+      fieldOfView = fill(0.2, 3),
+      fieldOfViewCenter = fill(0.0, 3),
+      method = "robot",
+      offsetFields = fill(0.0, (3, O)),
+      order = "xyz",
+      positions = fill(0.0, (3, O)),
+      size = [1, 1, 1],
+      snr = fill(0.0, (K, C, J)),
+      isMeanderingGrid = false
+    )
+    mdf.reconstruction = MDFv2Reconstruction(
+      data = fill(0, (S, P, Q)),
+      fieldOfView = fill(0.2, 3),
+      fieldOfViewCenter = fill(0.0, 3),
+      isOverscanRegion = fill(false, P),
+      order = "xyz",
+      positions = fill(0.0, (3, P)),
+      size = [1, 1, 1]
+    )
+
+    saveasMDF(fnPart_converted, mdf)
+    file = MPIFile(fnPart_converted)
+
+    for partFieldnameStr in keys(MPIFiles.prefixes)
+      partInMemorySymbol = Symbol(lowercase(partFieldnameStr[6:end]))
+
+      partim = eval(Symbol(partFieldnameStr))(mdf)
+      part = eval(Symbol(partFieldnameStr))(file)
+      
+      if !(partFieldnameStr == "MDFv2Drivefield" || partFieldnameStr == "MDFv2Receiver")
+        @test partim == getfield(mdf, partInMemorySymbol)
+        @test all([getfield(part, fieldname_) == getfield(getfield(mdf, partInMemorySymbol), fieldname_) for fieldname_ ∈ fieldnames(typeof(part)) if fieldname_ ∉ [:drivefield, :receiver]])
+      else
+        @test partim == getfield(mdf.acquisition, partInMemorySymbol)
+        @test all([getfield(part, fieldname_) == getfield(getfield(mdf.acquisition, partInMemorySymbol), fieldname_) for fieldname_ ∈ fieldnames(typeof(part))])
+      end 
+    end
+
+    @test MDFv2Drivefield(MDFv2Acquisition(mdf)) == drivefield
+    @test MDFv2Receiver(MDFv2Acquisition(mdf)) == receiver
   end
 end
