@@ -46,6 +46,28 @@
     @test length(filterFrequencies(mdf, maxFreq = 0)) == numChannels skip = true
   end
 
+  @testset "Stop Bands" begin
+    @test length(filterFrequencies(mdf, stopBands = [(0, 0)])) == length(unfiltered) - numChannels
+    @test length(filterFrequencies(mdf, stopBands = [[0, 0]])) == length(unfiltered) - numChannels
+    @test length(filterFrequencies(mdf, stopBands = [0:0])) == length(unfiltered) - numChannels
+
+    @test length(filterFrequencies(mdf, stopBands = (0, 0))) == length(unfiltered) - numChannels
+    @test length(filterFrequencies(mdf, stopBands = [0, 0])) == length(unfiltered) - numChannels
+    @test length(filterFrequencies(mdf, stopBands = 0:0)) == length(unfiltered) - numChannels
+
+    @test length(filterFrequencies(mdf, stopBands = 0:bandwidth)) == 0
+
+    freqs = filterFrequencies(mdf, stopBands = 5:10)
+    @test length(freqs) == length(unfiltered) - length(5:10) * numChannels
+    @test !any(i -> in(i[1], (5:10) .+ 1), freqs)
+
+    stopBands = [(5, 10), [15, 20], 18:22]
+    freqs = filterFrequencies(mdf, stopBands = stopBands)
+    @test length(freqs) == length(unfiltered) - (length(5:10) + length(15:22)) * numChannels
+    @test !any(i -> in(i[1], (5:10) .+ 1) || in(i[1], (15:22) .+ 1), freqs)
+  end
+
+
   snr = fill(0.0, nFreq, numChannels, 1)
   # Each freq has an SNR equal to its index
   snr[:, :, 1] .= 1:nFreq
@@ -70,4 +92,5 @@
     freqs = filterFrequencies(mdf, numUsedFreqs = 1)
     @test all(i -> i[1] == nFreq, freqs) skip = true
   end
+
 end

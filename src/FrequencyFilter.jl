@@ -92,7 +92,7 @@ function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
   end
 
   if !isnothing(stopBands)
-    filterFrequenciesByStopBands!(freqIndices, stopBands)
+    filterFrequenciesByStopBands!(freqIndices, f, stopBands; numPeriodGrouping = numPeriodGrouping)
   end
 
   return collect(vec(freqIndices))
@@ -185,11 +185,28 @@ function filterFrequenciesByStepsize!(indices, stepsize)
 end
 
 export filterFrequenciesByStopBands!, filterFrequenciesByStopBand!
-function filterFrequenciesByStopBands!(indices, stopBands::Vector)
-  filter!(x -> any(stopBand -> !in(x[1], stopBand), stopBands), indices)
+function filterFrequenciesByStopBands!(indices, f::MPIFile, stopBands::Vector; kwargs...)
+  for stopBand in stopBands
+    filterFrequenciesByStopBand!(indices, f, stopBand; kwargs...)
+  end
 end
-filterFrequenciesByStopBands!(indices, stopBand) = filterFrequenciesByStopBands!(indices, [stopBand])
-filterFrequenciesByStopBand!(indices, stopBand) = filter!(x -> !in(x[1], stopBand), indices)
+filterFrequenciesByStopBands!(indices, f::MPIFile, stopBand::Union{Vector{Int64}, UnitRange, NTuple}; kwargs...) = filterFrequenciesByStopBands!(indices, f, [stopBand]; kwargs...)
+function filterFrequenciesByStopBand!(indices, f::MPIFile, stopBand::Vector{Int64}; numPeriodGrouping = 1)
+  if length(stopBand) != 2
+    error("Stop band are only defined for a start and stop value. Found $(length(stopBand)) values")
+  end
+  nFreq = rxNumFrequencies(f, numPeriodGrouping)
+  minIdx = floor(Int, first(stopBand) / rxBandwidth(f) * (nFreq-1) ) + 1
+  maxIdx = ceil(Int, last(stopBand) / rxBandwidth(f) * (nFreq-1) ) + 1
+  return filterFrequenciesByStopBand!(indices, minIdx, maxIdx)
+end
+function filterFrequenciesByStopBand!(indices, f::MPIFile, stopBand::Union{UnitRange, NTuple{2, Int64}}; numPeriodGrouping = 1)
+  nFreq = rxNumFrequencies(f, numPeriodGrouping)
+  minIdx = floor(Int, first(stopBand) / rxBandwidth(f) * (nFreq-1) ) + 1
+  maxIdx = ceil(Int, last(stopBand) / rxBandwidth(f) * (nFreq-1) ) + 1
+  return filterFrequenciesByStopBand!(indices, minIdx, maxIdx)
+end
+filterFrequenciesByStopBand!(indices, minIdx, maxIdx) = filter!(x-> x[1] < minIdx || x[1] > maxIdx, indices)
 
 function sortFrequencies(indices, f::MPIFile; numPeriodGrouping = 1, stepsize = 1, sortBySNR = false, sortByMixFactors = false)
   if sortBySNR && !sortByMixFactors
