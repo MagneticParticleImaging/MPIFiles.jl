@@ -278,11 +278,8 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
     J = size(data,1)
     dataF = rfft(data, 1)
-    dataF[2:end,:,:,:] ./= tf[2:end,:,:,:]
-
-    if all(tf[1,:,:,:] .!= 0) && !any(isnan.(tf[1,:,:,:]))
-      dataF[1,:,:,:] ./= tf[1,:,:,:]
-    end
+    dataF ./= tf
+    dataF[isnan.(dataF)] .= zero(eltype(dataF))
 
     @warn "This measurement has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
     if !isnothing(inductionFactor)
@@ -335,11 +332,7 @@ function getMeasurementsFD(f::MPIFile, args...;
       inductionFactor = ones(Float64, rxNumChannels(f))
     end
 
-    data[2:end,:,:,:] ./= tf[2:end,:,:,:]
-
-    if all(tf[1,:,:,:] .!= 0) && !any(isnan.(tf[1,:,:,:]))
-      data[1,:,:,:] ./= tf[1,:,:,:]
-    end
+    data ./= tf
 
     @warn "This measurement has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
     if !isnothing(inductionFactor)
