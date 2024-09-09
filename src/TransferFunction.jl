@@ -290,9 +290,9 @@ function setTF(b::BrukerFile, filenameTF::AbstractString)
   return
 end
 
+setTF(f::MDFFile, filenameTF::AbstractString) = setTF(f, TransferFunction(filenameTF), filenameTF)
 
-function setTF(f::MDFFile, filenameTF::AbstractString)
-  tmf = TransferFunction(filenameTF)
+function setTF(f::MDFFile, tmf::TransferFunction, filenameTF::Union{AbstractString,Nothing}=nothing)
   tf = sampleTF(tmf, f)
 
   # We need to close the HDF5 file handle before we can write to it
@@ -302,7 +302,9 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
 	  if haskey(file, "/acquisition/receiver/transferFunctionFileName")
       delete_object(file, "/acquisition/receiver/transferFunctionFileName")
     end
-    write(file, "/acquisition/receiver/transferFunctionFileName", filenameTF)
+    if !isnothing(filenameTF)
+      write(file, "/acquisition/receiver/transferFunctionFileName", filenameTF)
+    end
     if haskey(file, "/acquisition/receiver/transferFunction")
       delete_object(file, "/acquisition/receiver/transferFunction")
     end
@@ -312,6 +314,8 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
     end
     write(file, "/acquisition/receiver/inductionFactor", tmf.inductionFactor)
   end
+  # reopen filehandler so f stays usable
+  f.file = h5open(filepath(f), "r")
   return
 end
 
