@@ -153,6 +153,9 @@ function combine(tf1::TransferFunction, tf2::TransferFunction; interpolate=false
     return TransferFunction(freq, data, inductionFactor=inductionFactor, units=units)
 end
 
+combine(tf::TransferFunction, ::Nothing; interpolate=false) = combine(tf, TransferFunction(tf.freq, zeros(length(tf.freq))))
+combine(::Nothing, tf::TransferFunction; interpolate=false) = combine(TransferFunction(tf.freq, zeros(length(tf.freq))), tf) 
+
 """
 $(TYPEDSIGNATURES)
 
