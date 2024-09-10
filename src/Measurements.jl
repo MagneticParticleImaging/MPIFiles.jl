@@ -282,7 +282,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
     J = size(data,1)
     dataF = rfft(data, 1)
     dataF ./= tf
-    dataF[isnan.(dataF)] .= zero(eltype(dataF))
+    map!(x -> isnan(x) ? zero(eltype(dataF)) : x, dataF, dataF)
 
     @warn "This measurement has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
     if !isnothing(inductionFactor)
