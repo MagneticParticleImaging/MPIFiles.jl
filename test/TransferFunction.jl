@@ -2,24 +2,28 @@ using MPIFiles
 using Test
 
 fnMeasBruker = joinpath(datadir,"BrukerStore","20150915_102110_Wuerfelphantom_1_1","18")
+fnMeasMDFv1 = joinpath(datadir, "mdf", "measurement_V1.mdf")
+fnTmpMDFv1 = joinpath(tmpdir, "mdf", "measurement_V1_tmp.mdf")
+fnMeasMDFv2 = joinpath(tmpdir,"mdfim","measurement_V2.mdf")
 tfpath = joinpath(datadir,"transferFunction","example.s1p")
-tfh5path = joinpath(tmpdir,"transferFunction","example.h5")
+tfh5pathTmp = joinpath(tmpdir,"transferFunction","example.h5")
+tfh5path = joinpath(datadir,"transferFunction","tf.h5")
 
 @testset "Testing TransferFunction submodule" begin
   a = TransferFunction(tfpath, frequencyWeighting=true)
-  if isfile(tfh5path)
-    rm(tfh5path)
+  if isfile(tfh5pathTmp)
+    rm(tfh5pathTmp)
   end
-  MPIFiles.save(tfh5path, a)
-  b = TransferFunction(tfh5path)
+  MPIFiles.save(tfh5pathTmp, a)
+  b = TransferFunction(tfh5pathTmp)
 
   @test a.freq == b.freq
   @test a.data == b.data
   @test a[1,1] == a(0.0,1)
 
   c = MPIFiles.combine(MPIFiles.combine(a,a),a)
-  rm(tfh5path)
-  MPIFiles.save(tfh5path, c)
+  rm(tfh5pathTmp)
+  MPIFiles.save(tfh5pathTmp, c)
   @test a[1,1] == c[1,2]
   @test a[1,1] == c[1,3]
 
@@ -61,5 +65,38 @@ tfh5path = joinpath(tmpdir,"transferFunction","example.h5")
   @test_throws ErrorException tf_c = combine(tf1,tf2)
   tf_c = combine(tf1,tf2,interpolate=true)
   @test tf_c(101.5e3, :) ≈ [tf1(101.5e3) tf2(101.5e3)] atol=1e-12
+
+  # prepare files
+  cp(fnMeasMDFv1, fnTmpMDFv1, force=true)
+  chmod(fnTmpMDFv1, 0o777)
+  f_mdfv1 = MPIFile(fnMeasMDFv1)
+  f_mdfv1_tmp = MPIFile(fnTmpMDFv1)
+  f_mdfv2 = MPIFile(fnMeasMDFv2)
+  
+  
+  # create TF from file
+  tf = TransferFunction(f_mdfv2)
+  @test sampleTF(tf, f_mdfv2) ≈ rxTransferFunction(f_mdfv2)
+
+  # set TF to file that has no TF
+  @test_throws ErrorException getMeasurementsFD(f_mdfv1, tfCorrection=true)
+  newtf = TransferFunction([0,10e6],[1.0+0.0*im 1.0+0.0*im 1.0+0.0*im; 1.0+0.0*im 1.0+0.0*im 1.0+0.0*im])
+  setTF(f_mdfv1_tmp, newtf)
+  @test rxHasTransferFunction(f_mdfv1_tmp)
+  @test getMeasurementsFD(f_mdfv1_tmp, tfCorrection=true) == getMeasurementsFD(f_mdfv1_tmp, tfCorrection=false)
+
+  # read TF from h5 file
+  tf = TransferFunction(tfh5path)
+  # set TF using file path
+  setTF(f_mdfv1_tmp, tfh5path)
+  @test rxTransferFunction(f_mdfv1_tmp) == sampleTF(tf, f_mdfv1_tmp)
+
+  setTF(MDFv2InMemory(f_mdfv2), newtf)
+
+  # test printing
+  out = sprint() do io
+    show(io, MIME"text/plain"(),newtf)
+  end
+  @test out == "MPIFiles.TransferFunction: \n\t3 channel(s), units of [\"NoUnits\", \"NoUnits\", \"NoUnits\"]\n\t2 frequency samples from 0.0 Hz to 1.0e7 Hz"
 
 end

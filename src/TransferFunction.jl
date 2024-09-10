@@ -80,8 +80,12 @@ Create a `TransferFunction` from the tf data saved in a MPIFile (see `rxTransfer
 function TransferFunction(file::MPIFile)
   tf_file = rxTransferFunction(file)
   inductionFactor = rxInductionFactor(file)
-  f = collect(rfftfreq(rxNumSamplingPoints(file), rxBandwidth(file)*2))
-  return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor=inductionFactor)
+  f = rxFrequencies(file)
+  if isnothing(inductionFactor)
+    return TransferFunction(f, abs.(tf_file), angle.(tf_file))
+  else
+    return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor=inductionFactor)
+  end
 end
 
 """
@@ -322,4 +326,5 @@ end
 function setTF(f::MDFv2InMemory, tf::TransferFunction)
   rxTransferFunction(f, sampleTF(tf, f))
   rxInductionFactor(f, tf.inductionFactor)
+  return
 end
