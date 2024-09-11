@@ -99,4 +99,13 @@ tfh5path = joinpath(datadir,"transferFunction","tf.h5")
   end
   @test out == "MPIFiles.TransferFunction: \n\t3 channel(s), units of [\"NoUnits\", \"NoUnits\", \"NoUnits\"]\n\t2 frequency samples from 0.0 Hz to 1.0e7 Hz"
 
+
+  # loading and processing tf
+  tf1 = MPIFiles.load_tf_fromVNA(tfpath, R=50, N=8, A=1e-3^2*pi)
+  tf2 = MPIFiles.load_tf_fromVNA(tfpath, R=50, N=8, d=2e-3)
+  tf3 = MPIFiles.load_tf_fromVNA(tfpath, R=50, N=8, r=1e-3)
+  @test tf1.data == tf2.data == tf3.data
+  @test_throws ErrorException MPIFiles.load_tf_fromVNA(tfpath, R=50, d=2e-3)
+  @test_throws ErrorException MPIFiles.load_tf_fromVNA(tfpath, R=50, N=8, d=2e-3, r=2e-3)
+  MPIFiles.load_tf_fromVNA(tfpath, R=50, N=8, d=2e-3, frequencyWeighting=true)
 end

@@ -136,7 +136,6 @@ end
 
 """
 $(TYPEDSIGNATURES)
-
 Combine two `TransferFunctions` along their channel dimension. If interpolate=false, will only work if the frequency samples are identical.
 """
 function combine(tf1::TransferFunction, tf2::TransferFunction; interpolate=false)
@@ -158,7 +157,6 @@ combine(::Nothing, tf::TransferFunction; interpolate=false) = combine(TransferFu
 
 """
 $(TYPEDSIGNATURES)
-
 Save `tf` as a h5 file to `filename`
 """
 function save(filename::String, tf::TransferFunction)
@@ -169,13 +167,11 @@ function save(filename::String, tf::TransferFunction)
   return nothing
 end
 
-"""TODO: fix function and write docs"""
-function load_tf_fromVNA(filename::String;
-    frequencyWeighting=false,
-    R = 50.0, #Ω
-    N = 10, #5# Turns
-    A = 7.4894*10.0^-4) #m^2 #1.3e-3^2*pi;)
-
+"""
+$(TYPEDSIGNATURES)
+Read the data recorded with the VNA from file `filename` into three Julia arrays `freq`, `ampdata`, `phasedata`
+"""
+function readVNAdata(filename::String)
   file = open(filename)
   lines = readlines(file)
   apdata = Float64[]
@@ -238,11 +234,59 @@ function load_tf_fromVNA(filename::String;
     end
   end
   close(file)
-  if frequencyWeighting
-  	apdata ./= (freq.*2*pi) # As TF is defined as u_ADC = u_coil *TF the derivative from magnetic moment is applied as the division of the TF by w
+  return freq, apdata, aϕdata
+end
+
+"""
+$(TYPEDSIGNATURES)
+Load data receive calibration from file recorded with the VNA. Data will be processed by `processRxTransferFunction`, see there for keyword arguments
+"""
+function load_tf_fromVNA(filename::String; kwargs...)
+  freq, ampdata, phasedata = readVNAdata(filename)
+  compdata = ampdata.*exp.(im.*phasedata)
+  return processRxTransferFunction(freq, compdata; kwargs...)    
+end
+
+"""
+$(TYPEDSIGNATURES)
+Process the data from a receive calibration measurement using a calibration coil into a TransferFunction
+
+Keyword parameters:
+- `frequencyWeighting`: if true corrects for the frequency term in the TF, which results in a TF that does not integrate on application, but instead shows derivative of magnetic moment
+- `R`: value of the resistance of the calibration coil in Ω
+- `N`: number of turns of the calibration coil
+- `A`, `r`, `d`: Area in m² or radius/diameter in m of the calibration coil, define only one
+"""
+function processRxTransferFunction(freq, compdata; frequencyWeighting::Bool=false,
+  R::Union{Real,Nothing} = nothing, # Ω
+  N::Union{Real,Nothing} = nothing, # Turns
+  A::Union{Real,Nothing} = nothing, # m²
+  r::Union{Real,Nothing} = nothing, # m
+  d::Union{Real,Nothing} = nothing) # m
+
+  if sum(.!isnothing.([A,r,d])) > 1
+    error("You can only define one of the keyword parameters A, r or d defining the geometry of the calibration coil")
+  elseif !isnothing(d)
+    A = pi * (d/2)^2
+  elseif !isnothing(r)
+    A = pi * r^2
   end
 
-  return TransferFunction(freq, apdata, aϕdata)
+  if all(isnothing.([R,N,A]))
+    unit = u"V/V"
+    @warn "No calibration coil parameters set in `processRxTransferFunction`. Make sure this is intended"
+  elseif any(isnothing.([R,N,A]))
+    error("To process the rxTransferFunction all three parameters describing the calibration coil (R, N and A) need to be defined.")
+  else
+    unit = u"V/A*m^2"
+    compdata .*= R/(N*A)
+  end
+  
+  if frequencyWeighting
+    compdata ./= (im*freq.*2*pi) # As TF is defined as u_ADC = u_coil *TF the derivative from magnetic moment is applied as the division of the TF by jw
+  end
+
+  return TransferFunction(freq, compdata, units=[unit])
 end
 
 
