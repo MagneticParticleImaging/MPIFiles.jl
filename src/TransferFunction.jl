@@ -244,6 +244,9 @@ Load data receive calibration from file recorded with the VNA. Data will be proc
 function load_tf_fromVNA(filename::String; kwargs...)
   freq, ampdata, phasedata = readVNAdata(filename)
   compdata = ampdata.*exp.(im.*phasedata)
+  if any([:R,:N,:A] .∈ [keys(kwargs)])
+    @warn "In v0.16.1 and below load_tf_fromVNA mistakenly ignored the keyword parameters R, N and A. The current version includes these parametes if set, resulting in the correct scaling in magnetic moment domain."
+  end
   return processRxTransferFunction(freq, compdata; kwargs...)    
 end
 
