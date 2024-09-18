@@ -145,7 +145,7 @@ function combine(tf1::TransferFunction, tf2::TransferFunction; interpolate=false
     data = cat(tf1.data,tf2.data, dims=2)
   else
     freq = unique(sort(cat(tf1.freq, tf2.freq, dims=1)))
-    data = cat(tf1(freq, :), tf2(freq, :), dims=2)
+    data = cat(ustrip.(tf1(freq, :)), ustrip.(tf2(freq, :)), dims=2)
   end
     inductionFactor = cat(tf1.inductionFactor, tf2.inductionFactor, dims=1)
     units = cat(tf1.units, tf2.units, dims=1)
