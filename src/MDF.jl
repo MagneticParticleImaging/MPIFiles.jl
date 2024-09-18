@@ -252,17 +252,9 @@ function rxTransferFunction(f::MDFFile)
     return nothing
   end
 end
-function rxTransferFunctionFileName(f::MDFFile)
-  parameter = "/acquisition/receiver/transferFunctionFileName"
-  if haskey(f.file, parameter)
-    return f[parameter]
-  else
-    return nothing
-  end
-end
-function rxHasTransferFunction(f::MDFFile)
-  haskey(f.file, "/acquisition/receiver/transferFunction")
-end
+rxTransferFunctionFileName(f::MDFFile) = @keyoptional f["/acquisition/receiver/transferFunctionFileName"]
+rxHasTransferFunction(f::MDFFile) = haskey(f.file, "/acquisition/receiver/transferFunction")
+
 rxInductionFactor(f::MDFFileV1) = nothing
 rxInductionFactor(f::MDFFileV2) = @keyoptional f["/acquisition/receiver/inductionFactor"]
 

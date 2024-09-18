@@ -80,8 +80,12 @@ Create a `TransferFunction` from the tf data saved in a MPIFile (see `rxTransfer
 function TransferFunction(file::MPIFile)
   tf_file = rxTransferFunction(file)
   inductionFactor = rxInductionFactor(file)
-  f = collect(rfftfreq(rxNumSamplingPoints(file), rxBandwidth(file)*2))
-  return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor=inductionFactor)
+  f = rxFrequencies(file)
+  if isnothing(inductionFactor)
+    return TransferFunction(f, abs.(tf_file), angle.(tf_file))
+  else
+    return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor=inductionFactor)
+  end
 end
 
 """
@@ -132,7 +136,6 @@ end
 
 """
 $(TYPEDSIGNATURES)
-
 Combine two `TransferFunctions` along their channel dimension. If interpolate=false, will only work if the frequency samples are identical.
 """
 function combine(tf1::TransferFunction, tf2::TransferFunction; interpolate=false)
@@ -142,16 +145,18 @@ function combine(tf1::TransferFunction, tf2::TransferFunction; interpolate=false
     data = cat(tf1.data,tf2.data, dims=2)
   else
     freq = unique(sort(cat(tf1.freq, tf2.freq, dims=1)))
-    data = cat(tf1(freq, :), tf2(freq, :), dims=2)
+    data = cat(ustrip.(tf1(freq, :)), ustrip.(tf2(freq, :)), dims=2)
   end
     inductionFactor = cat(tf1.inductionFactor, tf2.inductionFactor, dims=1)
     units = cat(tf1.units, tf2.units, dims=1)
     return TransferFunction(freq, data, inductionFactor=inductionFactor, units=units)
 end
 
+combine(tf::TransferFunction, ::Nothing; interpolate=false) = combine(tf, TransferFunction(tf.freq, zeros(length(tf.freq))))
+combine(::Nothing, tf::TransferFunction; interpolate=false) = combine(TransferFunction(tf.freq, zeros(length(tf.freq))), tf) 
+
 """
 $(TYPEDSIGNATURES)
-
 Save `tf` as a h5 file to `filename`
 """
 function save(filename::String, tf::TransferFunction)
@@ -162,13 +167,11 @@ function save(filename::String, tf::TransferFunction)
   return nothing
 end
 
-"""TODO: fix function and write docs"""
-function load_tf_fromVNA(filename::String;
-    frequencyWeighting=false,
-    R = 50.0, #Ω
-    N = 10, #5# Turns
-    A = 7.4894*10.0^-4) #m^2 #1.3e-3^2*pi;)
-
+"""
+$(TYPEDSIGNATURES)
+Read the data recorded with the VNA from file `filename` into three Julia arrays `freq`, `ampdata`, `phasedata`
+"""
+function readVNAdata(filename::String)
   file = open(filename)
   lines = readlines(file)
   apdata = Float64[]
@@ -231,11 +234,62 @@ function load_tf_fromVNA(filename::String;
     end
   end
   close(file)
-  if frequencyWeighting
-  	apdata ./= (freq.*2*pi) # As TF is defined as u_ADC = u_coil *TF the derivative from magnetic moment is applied as the division of the TF by w
+  return freq, apdata, aϕdata
+end
+
+"""
+$(TYPEDSIGNATURES)
+Load data receive calibration from file recorded with the VNA. Data will be processed by `processRxTransferFunction`, see there for keyword arguments
+"""
+function load_tf_fromVNA(filename::String; kwargs...)
+  freq, ampdata, phasedata = readVNAdata(filename)
+  compdata = ampdata.*exp.(im.*phasedata)
+  if any([:R,:N,:A] .∈ [keys(kwargs)])
+    @warn "In v0.16.1 and below load_tf_fromVNA mistakenly ignored the keyword parameters R, N and A. The current version includes these parametes if set, resulting in the correct scaling in magnetic moment domain."
+  end
+  return processRxTransferFunction(freq, compdata; kwargs...)    
+end
+
+"""
+$(TYPEDSIGNATURES)
+Process the data from a receive calibration measurement using a calibration coil into a TransferFunction
+
+Keyword parameters:
+- `frequencyWeighting`: if true corrects for the frequency term in the TF, which results in a TF that does not integrate on application, but instead shows derivative of magnetic moment
+- `R`: value of the resistance of the calibration coil in Ω
+- `N`: number of turns of the calibration coil
+- `A`, `r`, `d`: Area in m² or radius/diameter in m of the calibration coil, define only one
+"""
+function processRxTransferFunction(freq, compdata; frequencyWeighting::Bool=false,
+  R::Union{Real,Nothing} = nothing, # Ω
+  N::Union{Real,Nothing} = nothing, # Turns
+  A::Union{Real,Nothing} = nothing, # m²
+  r::Union{Real,Nothing} = nothing, # m
+  d::Union{Real,Nothing} = nothing) # m
+
+  if sum(.!isnothing.([A,r,d])) > 1
+    error("You can only define one of the keyword parameters A, r or d defining the geometry of the calibration coil")
+  elseif !isnothing(d)
+    A = pi * (d/2)^2
+  elseif !isnothing(r)
+    A = pi * r^2
   end
 
-  return TransferFunction(freq, apdata, aϕdata)
+  if all(isnothing.([R,N,A]))
+    unit = u"V/V"
+    @warn "No calibration coil parameters set in `processRxTransferFunction`. Make sure this is intended"
+  elseif any(isnothing.([R,N,A]))
+    error("To process the rxTransferFunction all three parameters describing the calibration coil (R, N and A) need to be defined.")
+  else
+    unit = u"V/A*m^2"
+    compdata .*= R/(N*A)
+  end
+  
+  if frequencyWeighting
+    compdata ./= (im*freq.*2*pi) # As TF is defined as u_ADC = u_coil *TF the derivative from magnetic moment is applied as the division of the TF by jw
+  end
+
+  return TransferFunction(freq, compdata, units=[unit])
 end
 
 
@@ -290,9 +344,9 @@ function setTF(b::BrukerFile, filenameTF::AbstractString)
   return
 end
 
+setTF(f::MDFFile, filenameTF::AbstractString) = setTF(f, TransferFunction(filenameTF), filenameTF)
 
-function setTF(f::MDFFile, filenameTF::AbstractString)
-  tmf = TransferFunction(filenameTF)
+function setTF(f::MDFFile, tmf::TransferFunction, filenameTF::Union{AbstractString,Nothing}=nothing)
   tf = sampleTF(tmf, f)
 
   # We need to close the HDF5 file handle before we can write to it
@@ -302,7 +356,9 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
 	  if haskey(file, "/acquisition/receiver/transferFunctionFileName")
       delete_object(file, "/acquisition/receiver/transferFunctionFileName")
     end
-    write(file, "/acquisition/receiver/transferFunctionFileName", filenameTF)
+    if !isnothing(filenameTF)
+      write(file, "/acquisition/receiver/transferFunctionFileName", filenameTF)
+    end
     if haskey(file, "/acquisition/receiver/transferFunction")
       delete_object(file, "/acquisition/receiver/transferFunction")
     end
@@ -312,10 +368,13 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
     end
     write(file, "/acquisition/receiver/inductionFactor", tmf.inductionFactor)
   end
+  # reopen filehandler so f stays usable
+  f.file = h5open(filepath(f), "r")
   return
 end
 
 function setTF(f::MDFv2InMemory, tf::TransferFunction)
   rxTransferFunction(f, sampleTF(tf, f))
   rxInductionFactor(f, tf.inductionFactor)
+  return
 end
