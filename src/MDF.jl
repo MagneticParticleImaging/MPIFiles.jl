@@ -230,7 +230,7 @@ dfBaseFrequency(f::MDFFile)::Union{Float64, Missing} = @keyrequired f["/acquisit
 dfCustomWaveform(f::MDFFileV2)::Union{String, Nothing} = @keyoptional f["/acquisition/drivefield/customWaveform"]
 dfDivider(f::MDFFileV1) = @keyrequired addTrailingSingleton(
                 f["/acquisition/drivefield/divider"],2)
-dfDivider(f::MDFFileV2) = f["/acquisition/drivefield/divider"]
+dfDivider(f::MDFFileV2) = @keyrequired f["/acquisition/drivefield/divider"]
 dfWaveform(f::MDFFileV1) = "sine"
 function dfWaveform(f::MDFFileV2)::Union{Array{String, 2}, Missing}
   value = @keyrequired f["/acquisition/drivefield/waveform"]
