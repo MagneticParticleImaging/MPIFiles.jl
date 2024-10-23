@@ -37,36 +37,8 @@ end
 acqNumFGFrames(f::MPIFile) = acqNumFrames(f) - acqNumBGFrames(f)
 acqNumBGFrames(f::MPIFile) = sum(measIsBGFrame(f))
 
-function measBGFrameIdx(f::MPIFile)
-  idx = zeros(Int64, acqNumBGFrames(f))
-  j = 1
-  mask = measIsBGFrame(f)
-  for i=1:acqNumFrames(f)
-    if mask[i]
-      idx[j] = i
-      j += 1
-    end
-  end
-  return idx
-end
-
-function measFGFrameIdx(f::MPIFile)
-  mask = measIsBGFrame(f)
-  if !any(mask)
-    #shortcut
-    return 1:acqNumFrames(f)
-  end
-  idx = zeros(Int64, acqNumFGFrames(f))
-  j = 1
-  for i=1:acqNumFrames(f)
-    if !mask[i]
-      idx[j] = i
-      j += 1
-    end
-  end
-  return idx
-end
-
+measBGFrameIdx(f::MPIFile) = findall(measIsBGFrame(f))
+measFGFrameIdx(f::MPIFile) = findall(.!measIsBGFrame(f))
 
 function measBGFrameBlockLengths(mask)
   len = Vector{Int}(undef,0)
