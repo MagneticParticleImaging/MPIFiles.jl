@@ -4,19 +4,12 @@ export acqNumFGFrames, acqNumBGFrames, acqOffsetFieldShift, acqFramePeriod,
        rxNumFrequencies, rxFrequencies, rxTimePoints,
        measFGFrameIdx, measBGFrameIdx, measBGFrameBlockLengths
 
-rxNumFrequencies(f::MPIFile, numPeriodGrouping=1) = floor(Int,rxNumSamplingPoints(f)*numPeriodGrouping ./ 2 .+ 1)
+rxNumFrequencies(f::MPIFile, numPeriodGrouping=1) = length(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping))
 
-function rxFrequencies(f::MPIFile)
-  numFreq = rxNumFrequencies(f)
-  a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(f)
-  return a
-end
+rxFrequencies(f::MPIFile, numPeriodGrouping=1) = rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping, 2rxBandwidth(f)) |> collect
 
-function rxTimePoints(f::MPIFile)
-  numTP = rxNumSamplingPoints(f)
-  a = collect(0:(numTP-1))./(numTP).*dfCycle(f)
-  return a
-end
+rxTimePoints(f::MPIFile, numPeriodGrouping=1) = range(0, step=1/2rxBandwidth(f), length=rxNumSamplingPoints(f)*numPeriodGrouping) |> collect
+
 
 function acqGradientDiag(f::MPIFile)
   g = acqGradient(f)

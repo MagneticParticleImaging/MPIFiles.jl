@@ -335,10 +335,18 @@ end
   @test rxFrequencies(f)[2] ≈ 25e3
   @test rxNumFrequencies(f) == 313
   @test rxNumFrequencies(f, 10) == 3126
+  @test rxFrequencies(f,10)[1] ≈ 0
+  @test rxFrequencies(f,10)[2] ≈ 2500
+  @test rxFrequencies(f,10)[11] ≈ 25e3
+  @test rxTimePoints(f,10)[1:625] ≈ rxTimePoints(f)[1:625]
 
   f = MDFv2InMemory(Dict{Symbol,Any}(:rxNumSamplingPoints=>96, :rxBandwidth=>125e6/50/2))
   @test rxFrequencies(f)[1] ≈ 0.0
   @test rxFrequencies(f)[2] ≈ 26041.666666666666
   @test rxNumFrequencies(f) == 49
   @test rxNumFrequencies(f, 10) == 481
+  @test rxFrequencies(f,10)[1] ≈ 0
+  @test rxFrequencies(f,10)[2] ≈ 26041.666666666666/10
+  @test rxFrequencies(f,10)[11] ≈ 26041.666666666666
+  @test rxTimePoints(f,10)[1:96] ≈ rxTimePoints(f)[1:96]
 end
