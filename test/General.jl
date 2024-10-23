@@ -328,3 +328,17 @@ end
 	# test new measurement parameters
 	@test [any(measIsBGFrame(mdf))] == measIsBGFrame(mdfavg)
 end
+
+@testset "Testing rxFrequencies" begin
+  f = MDFv2InMemory(Dict{Symbol,Any}(:rxNumSamplingPoints=>625, :rxBandwidth=>125e6/8/2))
+  @test rxFrequencies(f)[1] ≈ 0.0
+  @test rxFrequencies(f)[2] ≈ 25e3
+  @test rxNumFrequencies(f) == 313
+  @test rxNumFrequencies(f, 10) == 3126
+
+  f = MDFv2InMemory(Dict{Symbol,Any}(:rxNumSamplingPoints=>96, :rxBandwidth=>125e6/50/2))
+  @test rxFrequencies(f)[1] ≈ 0.0
+  @test rxFrequencies(f)[2] ≈ 26041.666666666666
+  @test rxNumFrequencies(f) == 49
+  @test rxNumFrequencies(f, 10) == 481
+end
