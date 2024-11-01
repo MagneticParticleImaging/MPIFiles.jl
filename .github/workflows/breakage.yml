@@ -1,15 +1,13 @@
 name: Breakage 
 # Based on: https://github.com/JuliaSmoothOptimizers/LinearOperators.jl/blob/main/.github/workflows/Breakage.yml
 on:
-    pull_request:
-        branches:
-          - master
-    push:
-        branches:
-          - master
-        tags: '*'
+  issue_comment:
+    types: [created, edited]
+
 jobs:
   break:
+    name: Breakage
+    if: ${{ github.event.issue.pull_request && github.event.issue.user.type != 'Bot' && contains(github.event.comment.body, '[breakage]') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
