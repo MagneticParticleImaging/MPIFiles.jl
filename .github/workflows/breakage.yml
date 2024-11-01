@@ -6,7 +6,6 @@ on:
 
 jobs:
   break:
-    name: Breakage
     if: ${{ github.event.issue.pull_request && github.event.issue.user.type != 'Bot' && contains(github.event.comment.body, '[breakage]') }}
     runs-on: ubuntu-latest
     strategy:
