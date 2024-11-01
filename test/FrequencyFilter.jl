@@ -11,6 +11,7 @@
   @test length(unfiltered) == (bandwidth + 1) * numChannels
   @test eltype(unfiltered) == CartesianIndex{2}
   nFreq = bandwidth + 1
+  frequencies = rxFrequencies(mdf)
 
   @testset "Filter Receive Channels" begin
     @test length(filterFrequencies(mdf, recChannels = 1:numChannels)) == length(unfiltered)
@@ -36,14 +37,15 @@
 
   @testset "Min and Max Frequencies" begin
     # minFreq = 0 -> Offset Frequency with index 1
-    @test length(filterFrequencies(mdf, minFreq = 0)) == length(unfiltered)
-    @test length(filterFrequencies(mdf, minFreq = 1)) == length(unfiltered) - numChannels skip = true
-    @test length(filterFrequencies(mdf, minFreq = bandwidth)) == numChannels skip = true
-    @test length(filterFrequencies(mdf, minFreq = nFreq)) == 0
+    @test length(filterFrequencies(mdf, minFreq = frequencies[1])) == length(unfiltered)
+    @test length(filterFrequencies(mdf, minFreq = 1.0)) == length(unfiltered) - numChannels
+    @test length(filterFrequencies(mdf, minFreq = frequencies[end])) == numChannels
+    @test length(filterFrequencies(mdf, minFreq = frequencies[end] + 1.0)) == 0
 
-    @test length(filterFrequencies(mdf, maxFreq = bandwidth)) == length(unfiltered)
-    @test length(filterFrequencies(mdf, maxFreq = bandwidth - 1)) == length(unfiltered) - numChannels skip = true
-    @test length(filterFrequencies(mdf, maxFreq = 0)) == numChannels skip = true
+    @test length(filterFrequencies(mdf, maxFreq = frequencies[end])) == length(unfiltered)
+    @test length(filterFrequencies(mdf, maxFreq = frequencies[end - 1])) == length(unfiltered) - numChannels
+    @test length(filterFrequencies(mdf, maxFreq = 0.0)) == numChannels
+    @test isempty(filterFrequencies(mdf, maxFreq = -1.0))
   end
 
   @testset "Stop Bands" begin
@@ -89,8 +91,8 @@
     @test length(filterFrequencies(mdf, numUsedFreqs = nFreq + 1)) == length(unfiltered) skip = true
     @test length(filterFrequencies(mdf, numUsedFreqs = nFreq - 1)) == length(unfiltered) - numChannels skip = true
 
-    freqs = filterFrequencies(mdf, numUsedFreqs = 1)
-    @test all(i -> i[1] == nFreq, freqs) skip = true
+    #freqs = filterFrequencies(mdf, numUsedFreqs = 1)
+    #@test all(i -> i[1] == nFreq, freqs) skip = true
   end
 
 end

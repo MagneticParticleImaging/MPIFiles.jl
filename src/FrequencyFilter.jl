@@ -115,7 +115,7 @@ function filterFrequenciesByMinFreq!(indices, f::MPIFile, minFreq; numPeriodGrou
   minIdx = floor(Int, minFreq / rxBandwidth(f) * (nFreq-1) ) + 1
   return filterFrequenciesByMinIdx!(indices, minIdx)
 end
-filterFrequenciesByMinIdx!(indices, minIdx) = minIdx > 0 ?  filter!(x -> x[1] > minIdx, indices) : indices 
+filterFrequenciesByMinIdx!(indices, minIdx) = minIdx > 0 ?  filter!(x -> x[1] >= minIdx, indices) : indices 
 
 export filterFrequenciesByMaxFreq!
 function filterFrequenciesByMaxFreq!(indices, f::MPIFile, maxFreq; numPeriodGrouping = 1)
@@ -123,7 +123,7 @@ function filterFrequenciesByMaxFreq!(indices, f::MPIFile, maxFreq; numPeriodGrou
   maxIdx = ceil(Int, maxFreq / rxBandwidth(f) * (nFreq-1) ) + 1
   return filterFrequenciesByMaxIdx!(indices, maxIdx)
 end
-filterFrequenciesByMaxIdx!(indices, maxIdx) = filter!(x-> x[1] < maxIdx, indices)
+filterFrequenciesByMaxIdx!(indices, maxIdx) = filter!(x-> x[1] <= maxIdx, indices)
 
 export filterFrequenciesByMaxMixingOrder!
 filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, f::MPIFile) = filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, mixingFactors(f))
