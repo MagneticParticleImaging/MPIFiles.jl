@@ -489,8 +489,8 @@ function getindex(rpos::UniformRandomPositions{AxisAlignedBox}, i::Integer)
     throw(BoundsError(rpos,i))
   else
     # make sure Positions are randomly generated from given seed
-    mersenneTwister = MersenneTwister(seed(rpos))
-    rP = rand(mersenneTwister, 3, i)[:,i]
+    rng = StableRNG(seed(rpos))
+    rP = rand(rng, 3, i)[:,i]
     return (rP.-0.5).*fieldOfView(rpos)+fieldOfViewCenter(rpos)
   end
 end
@@ -500,9 +500,9 @@ function getindex(rpos::UniformRandomPositions{Ball}, i::Integer)
     throw(BoundsError(rpos,i))
   else
     # make sure Positions are randomly generated from given seed
-    mersenneTwister = MersenneTwister(seed(rpos))
-    D = rand(mersenneTwister, i)[i]
-    P = randn(mersenneTwister, 3, i)[:,i]
+    rng = StableRNG(seed(rpos))
+    D = rand(rng, i)[i]
+    P = randn(rng, 3, i)[:,i]
     return radius(rpos)*D^(1/3)*normalize(P)+fieldOfViewCenter(rpos)
   end
 end
