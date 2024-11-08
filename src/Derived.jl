@@ -4,19 +4,12 @@ export acqNumFGFrames, acqNumBGFrames, acqOffsetFieldShift, acqFramePeriod,
        rxNumFrequencies, rxFrequencies, rxTimePoints,
        measFGFrameIdx, measBGFrameIdx, measBGFrameBlockLengths
 
-rxNumFrequencies(f::MPIFile, numPeriodGrouping=1) = floor(Int,rxNumSamplingPoints(f)*numPeriodGrouping ./ 2 .+ 1)
+rxNumFrequencies(f::MPIFile, numPeriodGrouping=1) = length(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping))
 
-function rxFrequencies(f::MPIFile)
-  numFreq = rxNumFrequencies(f)
-  a = collect(0:(numFreq-1))./(numFreq-1).*rxBandwidth(f)
-  return a
-end
+rxFrequencies(f::MPIFile, numPeriodGrouping=1) = rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping, 2rxBandwidth(f)) |> collect
 
-function rxTimePoints(f::MPIFile)
-  numTP = rxNumSamplingPoints(f)
-  a = collect(0:(numTP-1))./(numTP).*dfCycle(f)
-  return a
-end
+rxTimePoints(f::MPIFile, numPeriodGrouping=1) = range(0, step=1/2rxBandwidth(f), length=rxNumSamplingPoints(f)*numPeriodGrouping) |> collect
+
 
 function acqGradientDiag(f::MPIFile)
   g = acqGradient(f)
@@ -44,36 +37,8 @@ end
 acqNumFGFrames(f::MPIFile) = acqNumFrames(f) - acqNumBGFrames(f)
 acqNumBGFrames(f::MPIFile) = sum(measIsBGFrame(f))
 
-function measBGFrameIdx(f::MPIFile)
-  idx = zeros(Int64, acqNumBGFrames(f))
-  j = 1
-  mask = measIsBGFrame(f)
-  for i=1:acqNumFrames(f)
-    if mask[i]
-      idx[j] = i
-      j += 1
-    end
-  end
-  return idx
-end
-
-function measFGFrameIdx(f::MPIFile)
-  mask = measIsBGFrame(f)
-  if !any(mask)
-    #shortcut
-    return 1:acqNumFrames(f)
-  end
-  idx = zeros(Int64, acqNumFGFrames(f))
-  j = 1
-  for i=1:acqNumFrames(f)
-    if !mask[i]
-      idx[j] = i
-      j += 1
-    end
-  end
-  return idx
-end
-
+measBGFrameIdx(f::MPIFile) = findall(measIsBGFrame(f))
+measFGFrameIdx(f::MPIFile) = findall(.!measIsBGFrame(f))
 
 function measBGFrameBlockLengths(mask)
   len = Vector{Int}(undef,0)

@@ -111,16 +111,14 @@ filterFrequenciesByChannel!(indices, channels, sorted = issorted(channels)) = fi
 
 export filterFrequenciesByMinFreq!
 function filterFrequenciesByMinFreq!(indices, f::MPIFile, minFreq; numPeriodGrouping = 1)
-  nFreq = rxNumFrequencies(f, numPeriodGrouping)
-  minIdx = floor(Int, minFreq / rxBandwidth(f) * (nFreq-1) ) + 1
+  minIdx = searchsortedfirst(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping, 2rxBandwidth(f)), minFreq)
   return filterFrequenciesByMinIdx!(indices, minIdx)
 end
 filterFrequenciesByMinIdx!(indices, minIdx) = minIdx > 0 ?  filter!(x -> x[1] >= minIdx, indices) : indices 
 
 export filterFrequenciesByMaxFreq!
 function filterFrequenciesByMaxFreq!(indices, f::MPIFile, maxFreq; numPeriodGrouping = 1)
-  nFreq = rxNumFrequencies(f, numPeriodGrouping)
-  maxIdx = ceil(Int, maxFreq / rxBandwidth(f) * (nFreq-1) ) + 1
+  maxIdx = searchsortedlast(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping, 2rxBandwidth(f)), maxFreq)
   return filterFrequenciesByMaxIdx!(indices, maxIdx)
 end
 filterFrequenciesByMaxIdx!(indices, maxIdx) = filter!(x-> x[1] <= maxIdx, indices)
@@ -196,14 +194,13 @@ function filterFrequenciesByStopBand!(indices, f::MPIFile, stopBand::Vector{Int6
     error("Stop band are only defined for a start and stop value. Found $(length(stopBand)) values")
   end
   nFreq = rxNumFrequencies(f, numPeriodGrouping)
-  minIdx = floor(Int, first(stopBand) / rxBandwidth(f) * (nFreq-1) ) + 1
-  maxIdx = ceil(Int, last(stopBand) / rxBandwidth(f) * (nFreq-1) ) + 1
+  minIdx = searchsortedlast(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping, 2rxBandwidth(f)), first(stopBand))
+  maxIdx = searchsortedlast(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping, 2rxBandwidth(f)), last(stopBand))
   return filterFrequenciesByStopBand!(indices, minIdx, maxIdx)
 end
 function filterFrequenciesByStopBand!(indices, f::MPIFile, stopBand::Union{UnitRange, NTuple{2, Int64}}; numPeriodGrouping = 1)
-  nFreq = rxNumFrequencies(f, numPeriodGrouping)
-  minIdx = floor(Int, first(stopBand) / rxBandwidth(f) * (nFreq-1) ) + 1
-  maxIdx = ceil(Int, last(stopBand) / rxBandwidth(f) * (nFreq-1) ) + 1
+  minIdx = searchsortedlast(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping, 2rxBandwidth(f)), first(stopBand))
+  maxIdx = searchsortedlast(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping, 2rxBandwidth(f)), last(stopBand))
   return filterFrequenciesByStopBand!(indices, minIdx, maxIdx)
 end
 filterFrequenciesByStopBand!(indices, minIdx, maxIdx) = filter!(x-> x[1] < minIdx || x[1] > maxIdx, indices)
