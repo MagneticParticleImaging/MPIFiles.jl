@@ -228,9 +228,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test domain.fov == fov
   @test domain.center == ctr
   rP1 = UniformRandomPositions(N,seed,domain)
-  @test rP1[1] == [0.09954904813158394,-0.13791259323857274,-1.446939519855107]Unitful.mm
-  @test rP1[2] == [-0.9812009131891462,1.3767776289892044,1.4206979394110573]Unitful.mm
-  @test rP1[3] == [-0.5883911667396526,-0.9692742011014337,1.3707474722677764]Unitful.mm
+  @test rP1[1] == [0.24154458805558643, -0.9262755616254505, 1.413400404619357]Unitful.mm
+  @test rP1[2] == [0.7303493695629726, -0.9870943521080697, 0.6143278667437428]Unitful.mm
+  @test rP1[3] == [-0.17686922698492702, 0.911915746834733, 0.817151846349423]Unitful.mm
   @test_throws BoundsError rP1[0]
   @test_throws BoundsError rP1[4]
   h5open(pospath, "w") do file
@@ -249,7 +249,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test domain.radius == radius
   @test domain.center == ctr
   rP3 = UniformRandomPositions(N,seed,domain)
-  @test rP3[1] == [-6.715713750009747,0.4103832286623821,-4.525933276650638]Unitful.mm
+  @test rP3[1] == [1.9129764588101597, 5.876973430472611, 5.6027641441895994]Unitful.mm
   @test_throws BoundsError rP3[0]
   @test_throws BoundsError rP3[4]
   h5open(pospath, "w") do file
