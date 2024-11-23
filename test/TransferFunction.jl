@@ -52,6 +52,19 @@ tfh5path = joinpath(datadir,"transferFunction","tf.h5")
   @test tf(0) == 1u"V/V"
   @test tf(0,2) == 1u"A/V"
 
+  tf = TransferFunction(f, data)
+  tf_kHz = TransferFunction(f*u"kHz", data)
+  @test tf(100) ≈ tf_kHz(100e3)
+
+  data_units = [1u"V/T" ./(1 .+im*f/1e4) 1u"V/(A*m^2)" ./(1 .+im*f/1e3)]
+  tf = TransferFunction(f, data_units)
+  @test_throws ErrorException TransferFunction([0,1], [1.0u"V/T" 1.0u"V/A"; 1.0u"V/T" 1.0u"m"])
+  
+  tf_comp = TransferFunction([0,1,2], [1,im*2,-im*3])
+  tf_deg = TransferFunction([0,1,2], [1,2,3], [0,90,270]u"°")
+  tf_rad = TransferFunction([0,1,2], [1,2,3], [0,π/2,-π/2])
+  @test all(tf_comp([0,1,2]) .≈ tf_deg([0,1,2]))
+  @test all(tf_deg([0,1,2]) .≈ tf_rad([0,1,2]))
 
   f1 = collect(range(0,1e6,step=1e3));
   data1 = 1 ./ (1 .+ im*f1/1e4 );

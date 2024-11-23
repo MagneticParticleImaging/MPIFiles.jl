@@ -5,13 +5,15 @@ $(TYPEDEF)
 $(TYPEDFIELDS)
 
 
-    TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Complex}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
+    TransferFunction(freq::Vector, data::Array, [phasedata]; [inductionFactor], [units])
 
-Create a `TransferFunction` from a complex data array at frequencies `freq_`.
+Create a `TransferFunction` from a data array `data` at frequencies `freq`.
+`freq` is given in Hz or should have a Unitful frequency unit attached
+`data` should have the shape [frequencies, channels]. `data` can be either complex or real, if `data` is real a second array `phasedata` can be passed representing the phase in radians. Both the amplitude and the phase can have Unitful units.
 
 # Optional Keyword-Arguments:
 - `inductionFactor::Vector{<:Real}`: induction factor for each channel
-- `units::Vector`: units for each channel, can be either Unitful.FreeUnits or a string that can be parsed as a Unitful unit 
+- `units::Vector`: units for each channel, can be either Unitful.FreeUnits or a string that can be parsed as a Unitful unit. Instead of using this keyword, `data` can also have Unitful units attached, then the units keyword-argument is ignored.
 
 """
 mutable struct TransferFunction
@@ -22,7 +24,7 @@ mutable struct TransferFunction
   units::Vector{Unitful.FreeUnits}
 
 
-  function TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Number}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
+  function TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Complex}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
     parsed_units = Unitful.FreeUnits[]
     for tmp in units
       if isa(tmp, String); tmp = uparse(tmp) end # get correct unit from unit strings
@@ -42,17 +44,30 @@ end
 
 Base.show(io::IO, ::MIME"text/plain", tf::TransferFunction) = print(io, "MPIFiles.TransferFunction: \n\t$(size(tf.data,2)) channel(s), units of $(string.(tf.units))\n\t$(size(tf.data,1)) frequency samples from $(tf.freq[1]) Hz to $(tf.freq[end]) Hz")
 
-"""
-$(TYPEDSIGNATURES)
-
-Create a `TransferFunction` from separate amplitude and phase arrays at frequencies `freq`.
-
-`ampdata` and `phasedata` should have the following shape: [frequencies, channels]
-"""
-function TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Real,N}, phasedata::Array{<:Real,N}; kwargs...) where N
+function TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Union{Real,Unitful.AbstractQuantity{<:Real}},N}, phasedata::Array{<:Real,N}; kwargs...) where N
   if size(ampdata) != size(phasedata); error("The size of ampdata and phasedata must match!") end
   data = ampdata.*exp.(im.*phasedata)
   return TransferFunction(freq, data; kwargs...)
+end
+
+TransferFunction(freq::Vector{<:Unitful.Frequency}, args...; kwargs...) = TransferFunction(ustrip.(u"Hz", freq), args...; kwargs...)
+TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Union{Real,Unitful.AbstractQuantity{<:Real}},N}, phasedata::Array{<:Unitful.DimensionlessQuantity{<:Real},N}; kwargs...) where N = TransferFunction(freq, ampdata, ustrip.(u"rad", phasedata); kwargs...)
+TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Union{Real,Unitful.AbstractQuantity{<:Real}},N}; kwargs...) where N = TransferFunction(freq, ampdata, zeros(size(ampdata)); kwargs...)
+
+function TransferFunction(freq::Vector{<:Real}, datain::Array{<:Unitful.AbstractQuantity{<:Complex},N}; units=nothing, kwargs...) where N
+  if !isnothing(units)
+    @warn "You passed explicit units combined with a Unitful data array. The explicit units will be ignored!"
+  end
+  units = Unitful.FreeUnits[]
+  for ch in eachcol(datain)
+    ch_units = Unitful.unit.(ch)
+    if all(y->y==ch_units[1], ch_units)
+      push!(units, ch_units[1])
+    else
+      error("One TransferFunction channel must have identical units!")
+    end
+  end
+  return TransferFunction(freq, ustrip.(datain); units=units, kwargs...)
 end
 
 """
@@ -60,7 +75,7 @@ $(TYPEDSIGNATURES)
 
 Create a `TransferFunction` from a data file at `filename`.
 
-The file can be either a h5-File created with this package. Keyword arguments will be passed to `load_tf_fromVNA` 
+The file can be either a h5-File created with this package or a file that is written by a VNA. Keyword arguments will be passed to `load_tf_fromVNA` 
 """
 function TransferFunction(filename::String; kargs...)
     filenamebase, ext = splitext(filename)
