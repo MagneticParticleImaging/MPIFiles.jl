@@ -226,7 +226,7 @@ dfBaseFrequency(f::MDFFile)::Union{Float64, Missing} = @keyrequired f["/acquisit
 dfCustomWaveform(f::MDFFileV2)::Union{String, Nothing} = @keyoptional f["/acquisition/drivefield/customWaveform"]
 dfDivider(f::MDFFileV1) = @keyrequired addTrailingSingleton(
                 f["/acquisition/drivefield/divider"],2)
-dfDivider(f::MDFFileV2) = f["/acquisition/drivefield/divider"]
+dfDivider(f::MDFFileV2) = @keyrequired f["/acquisition/drivefield/divider"]
 dfWaveform(f::MDFFileV1) = "sine"
 function dfWaveform(f::MDFFileV2)::Union{Array{String, 2}, Missing}
   value = @keyrequired f["/acquisition/drivefield/waveform"]
@@ -401,7 +401,7 @@ measFramePermutation(f::MDFFileV1)::Union{Vector{Int64}, Nothing} = nothing
 measFramePermutation(f::MDFFileV2)::Union{Vector{Int64}, Nothing} = @keyoptional f["/measurement/framePermutation"]
 measSparsityTransformation(f::MDFFileV1)::Union{String, Nothing} = nothing
 measSparsityTransformation(f::MDFFileV2)::Union{String, Nothing} = @keyoptional f["/measurement/sparsityTransformation"]
-measSubsamplingIndices(f::MDFFileV2)::Union{Array{Integer, 4}, Nothing} = @keyoptional f["/measurement/subsamplingIndices"]
+measSubsamplingIndices(f::MDFFileV2)::Union{Array{Int64, 4}, Nothing} = @keyoptional f["/measurement/subsamplingIndices"]
 
 fullFramePermutation(f::MDFFile) = fullFramePermutation(f, calibIsMeanderingGrid(f))
 

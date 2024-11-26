@@ -186,7 +186,7 @@ studyNameOld(b::BrukerFile) = string(latin1toutf8(b["VisuSubjectId"])*latin1tout
                                   b["VisuStudyNumber"])
 studyNumber(b::BrukerFile) = parse(Int64,b["VisuStudyNumber"])
 function studyUuid(b::BrukerFile)
-  rng = MersenneTwister(hash(b["VisuStudyUid"])) # use VisuStudyUid as seed to generate uuid4
+  rng = StableRNG(hash(b["VisuStudyUid"])) # use VisuStudyUid as seed to generate uuid4
   return uuid4(rng)
 end
 studyDescription(b::BrukerFile) = "n.a."
@@ -207,7 +207,7 @@ function experimentNumber(b::BrukerFile)
 end
 
 function experimentUuid(b::BrukerFile)
-  rng = MersenneTwister(hash(b["VisuUid"])) # use VisuUid as seed to generate uuid4
+  rng = StableRNG(hash(b["VisuUid"])) # use VisuUid as seed to generate uuid4
   return uuid4(rng)
 end
 experimentDescription(b::BrukerFile) = latin1toutf8(b["ACQ_scan_name"])
