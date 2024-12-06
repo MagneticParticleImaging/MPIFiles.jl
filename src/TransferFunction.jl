@@ -80,7 +80,7 @@ The file can be either a h5-File created with this package or a file that is wri
 function TransferFunction(filename::String; kargs...)
     filenamebase, ext = splitext(filename)
     if ext == ".h5"
-      tf = load_tf(filename)
+      tf = load_tf(filename; kargs...)
     else #if ext == "s1p" || ext == "s2p"
       tf = load_tf_fromVNA(filename; kargs...)
     end
@@ -136,17 +136,34 @@ Interpolated access to a `TransferFunction` at frequencies `f` and channels `cha
 
 (tf::TransferFunction)(f, ::Colon) = tf(f, axes(tf.data,2))
 
-function load_tf(filename::String)
-  tf = h5read(filename,"/transferFunction")
-  freq = h5read(filename,"/frequencies")
-  inductionFactor = h5read(filename,"/inductionFactor")
-  unit = []
-  try 
-    unit = h5read(filename, "/unit")
-  catch # if h5read fails, it should mean that there is no units, maybe do something better here
+"""
+    load_tf(filename::String; channels = nothing, kwargs...)
+
+Load a `TransferFunction` from a h5-file at `filename`. If `channels` is set, only the specified channels are loaded.
+"""
+function load_tf(filename::String; channels = nothing)
+  return h5open(filename, "r") do file
+    tf = read(file, "/transferFunction")
+    freq = read(file,"/frequencies")
+    inductionFactor = read(file,"/inductionFactor")
+
+    if !isnothing(channels)
+      tf = tf[:,channels]
+      inductionFactor = inductionFactor[channels]
+    end
+
+    if haskey(file, "/unit")
+      unit = uparse.(read(file, "/unit"))
+
+      if !isnothing(channels)
+        unit = unit[channels]
+      end
+
+      return TransferFunction(freq, tf, inductionFactor=inductionFactor, units=unit)
+    end
+
     return TransferFunction(freq, tf, inductionFactor=inductionFactor)
   end
-  return TransferFunction(freq, tf, inductionFactor=inductionFactor, units=uparse.(unit))
 end
 
 """
