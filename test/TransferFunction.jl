@@ -105,8 +105,10 @@ tfh5path = joinpath(datadir,"transferFunction","tf.h5")
   @test rxTransferFunction(f_mdfv1_tmp) == sampleTF(tf, f_mdfv1_tmp)
   # read TF from h5 file with channel selection
   tf2 = TransferFunction(tfh5path, channels=[1,3])
+  tf3 = TransferFunction(tfh5path, channels=2)
   @test tf[:, 1] == tf2[:, 1]
   @test tf[:, 3] == tf2[:, 2]
+  @test tf[:, 2] == tf3[:, 1]
 
   setTF(MDFv2InMemory(f_mdfv2), newtf)
 

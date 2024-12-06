@@ -142,6 +142,10 @@ Interpolated access to a `TransferFunction` at frequencies `f` and channels `cha
 Load a `TransferFunction` from a h5-file at `filename`. If `channels` is set, only the specified channels are loaded.
 """
 function load_tf(filename::String; channels = nothing)
+  if channels isa Integer
+    channels = [channels]
+  end
+
   return h5open(filename, "r") do file
     tf = read(file, "/transferFunction")
     freq = read(file,"/frequencies")
