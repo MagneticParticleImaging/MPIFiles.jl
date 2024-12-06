@@ -7,6 +7,7 @@ The `TransferFunction` object is constructed from samples in frequency space and
 
 ```@setup tf
 using MPIFiles
+using MPIFiles.Unitful
 ```
 ```@repl tf
     f = collect(range(0,1e6,step=1e3));
@@ -33,12 +34,22 @@ tf(1e4, [1,2])
 tf(1e4,:)
 ```
 ## Units 
-To attach units to the `TransferFunction` the keyword-parameter `units` can to be used to give a `Unitful` unit to every channel of the tf. This can be useful if the transfer function is not dimensionless but relates two physical quantities, e.g. voltage and current in the form of an impedance. All **interpolated** accesses to tf data then return a `Unitful.Quantity`.
+To attach units to the `TransferFunction` the keyword-parameter `units` can to be used to give a `Unitful` unit to every channel of the tf. Alternatively `data` can just be a Unitful.Quantity. Then `units` is ignored.
+
+This can be useful if the transfer function is not dimensionless but relates two physical quantities, e.g. voltage and current in the form of an impedance. All **interpolated** accesses to tf data then return a `Unitful.Quantity`.
 
 ```@repl tf
 R = 1; # Ohm
 L = 10e-6; # Henry
 RL = TransferFunction(f, R .+ im*2pi*f*L, units=["V/A"])
+RL([0,100e3])
+```
+
+```@repl tf
+f_unitful = collect(range(0u"Hz",1u"MHz",step=1u"kHz"));
+R = 1u"Ω";
+L = 10u"µH";
+RL = TransferFunction(f_unitful, R .+ im*2pi*f_unitful*L .|> u"V/A")
 RL([0,100e3])
 ```
 
@@ -50,20 +61,20 @@ MPIFiles.save(filename::String, tf::TransferFunction)
 MPIFiles.TransferFunction(::String)
 ```
 
-## Additional constructors
-
-In addition to the constructor taking a single (complex) array it is also possible to give two arrays representing amplitude and phase.
+## Constructors
+The `TransferFunction` constructor can take either a complex data array or two arrays representing the amplitude and phase of the transfer function. Unitful conversion is automatically done for all parameters.
 
 It is also possible to construct a `TransferFunction` from the transfer function data included in an `MPIFile`.
 
 ```@docs
-    MPIFiles.TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Real,N}, phasedata::Array{<:Real,N}) where N
+    TransferFunction
     MPIFiles.TransferFunction(::MPIFile)
 ```
 
 ## Other interesting functions
 ```@docs
-  TransferFunction
   combine(::TransferFunction, ::TransferFunction)
+  MPIFiles.load_tf_fromVNA
+  MPIFiles.processRxTransferFunction
 ```
 
