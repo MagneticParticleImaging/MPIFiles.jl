@@ -246,6 +246,16 @@ function MPIFile(filename::AbstractString; kargs...)
   end
 end
 
+export DMPIFile
+"""
+    DMPIFile(args...; worker)
+  
+Construct a distributed `MPIFile` using the given `args` on the given `worker` process.
+
+See `MPIFile`
+"""
+function DMPIFile end
+
 function show(io::IO, f::MPIFile)
   print(io, supertype(typeof(f)))
   print(io, "\n\tStudy: ")
