@@ -1,15 +1,16 @@
-struct DMPIFile{T <: MPIFile, C <: Dagger.Chunk{T}} <: MPIFile
+struct DaggerMPIFile{T <: MPIFile, C <: Dagger.Chunk{T}} <: DMPIFile
   file::C
   worker::Int64
 end
 function MPIFiles.DMPIFile(args...; worker::Int64)
   chunk = Dagger.@mutable worker = worker MPIFile(args...)
-  return DMPIFile(chunk, worker)
+  return DaggerMPIFile(chunk, worker)
 end  
 function MPIFiles.DMPIFile(mdf::MDFv2InMemory; worker::Int64)
   chunk = Dagger.@mutable worker = worker mdf
-  return DMPIFile(chunk, worker)
+  return DaggerMPIFile(chunk, worker)
 end
+MPIFiles.worker(dmdf::DaggerMPIFile) = dmdf.worker
 
 
 field_symbols = [
@@ -50,7 +51,7 @@ field_symbols = [
 
 for field in field_symbols
   @eval begin
-    function MPIFiles.$field(file::DMPIFile, args...; kwargs...)
+    function MPIFiles.$field(file::DaggerMPIFile, args...; kwargs...)
       fetch(Dagger.spawn(file.file) do f
         $field(f, args...; kwargs...)
       end)
@@ -60,7 +61,7 @@ end
 
 for fun in [:getMeasurements, :getMeasurementsFD, :filterFrequencies, :sortFrequencies]
   @eval begin
-    function MPIFiles.$fun(file::DMPIFile, args...; kwargs...)
+    function MPIFiles.$fun(file::DaggerMPIFile, args...; kwargs...)
       fetch(Dagger.spawn(file.file) do f
         $fun(f, args...; kwargs...)
       end)
