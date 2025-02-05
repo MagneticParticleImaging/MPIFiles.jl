@@ -19,7 +19,11 @@ saveRecoData(fnRecoV2b,c1)
 mdfv2b = MPIFile(fnRecoV2b)
 @test typeof(mdfv2b) <: MDFFileV2
 
-for mdf in (mdfv1,mdfv2,mdfv2b)
+dmdf = DMPIFile(fnRecoV2; worker = 1)
+@test typeof(dmdf) <: DMPIFile
+
+
+@testset for mdf in (mdfv1,mdfv2,mdfv2b,dmdf)
   @info "Test $mdf"
   @test recoSize(mdf) == [40,40,1]
   @test norm(recoFovCenter(mdf) - [0.0,0.0,0.0]) < eps() # Image conversion fails

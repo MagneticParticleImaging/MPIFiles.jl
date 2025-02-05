@@ -11,7 +11,10 @@ saveasMDF(fnMeasMultiV2, measBruker)
 mdfv2 = MPIFile(fnMeasMultiV2)
 @test typeof(mdfv2) <: MDFFileV2
 
-for mdf in (measBruker,mdfv2)
+dmdf = DMPIFile(fnMeasMultiV2; worker = 1)
+@test typeof(dmdf) <: DMPIFile
+
+@testset for mdf in (measBruker,mdfv2,dmdf)
   @info "Test $mdf"
   @test studyName(mdf) == "Wuerfelphantom"
   @test studyNumber(mdf) == 1
@@ -45,7 +48,7 @@ for mdf in (measBruker,mdfv2)
 
   @test dfNumChannels(mdf) == 3
 
-  if typeof(mdf) <: MDFFileV2 || typeof(mdf) <: MultiMPIFile # Different tests since the implementation of MDFv2 was made standard compliant
+  if typeof(mdf) <: MDFFileV2 || typeof(mdf) <: MultiMPIFile || typeof(mdf) <: DMPIFile # Different tests since the implementation of MDFv2 was made standard compliant
     @test dfWaveform(mdf) == fill("sine", (1, 1))
   else
     @warn typeof(mdf)
