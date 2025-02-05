@@ -256,7 +256,7 @@ Construct a distributed `MPIFile` using the given `args` on the given `worker` p
 
 See `MPIFile`
 """
-abstract type DMPIFile <: MPIFile end
+abstract type DMPIFile{T <: MPIFile} <: MPIFile end
 worker(dmdf::DMPIFile) = error("$(typeof(dmdf)) must implement `MPIFiles.worker`")
 
 function show(io::IO, f::MPIFile)

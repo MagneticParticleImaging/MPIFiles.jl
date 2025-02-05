@@ -1,4 +1,4 @@
-struct DaggerMPIFile{T <: MPIFile, C <: Dagger.Chunk{T}} <: DMPIFile
+struct DaggerMPIFile{T, C <: Dagger.Chunk{T}} <: DMPIFile{T}
   file::C
   worker::Int64
 end
@@ -35,7 +35,7 @@ field_symbols = [
 :dfWaveform, :dfCycle,
 # receiver parameters
 :rxNumChannels, :rxBandwidth, :rxNumSamplingPoints, :rxTransferFunction, :rxUnit,
-:rxDataConversionFactor, :rxInductionFactor,
+:rxDataConversionFactor, :rxInductionFactor, :rxHasTransferFunction, :rxTransferFunctionFileName,
 # measurements
 :measData, :measDataTDPeriods, :measIsFourierTransformed, :measIsTFCorrected,
 :measIsBGCorrected, :measIsFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
