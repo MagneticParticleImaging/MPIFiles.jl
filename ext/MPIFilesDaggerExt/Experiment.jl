@@ -1,18 +1,19 @@
-function MPIFile(e::Experiment{DaggerDatasetStore}; kwargs...)
+function MPIFiles.MPIFile(e::Experiment{<:DaggerDatasetStore}; kwargs...)
   # Worker last to overwrite potential worker in kwargs
-  return DMPIFile(path(e); kwargs..., worker = worker(e.study.store))
+  return DMPIFile(path(e); kwargs..., worker = MPIFiles.worker(getMDFStore(e)))
 end
 
-function getExperiment(study::Study{DaggerDataStore}, numExp::Integer)
-  return fetch(Dagger.spawn(getMDFStore(study)) do store
+function MPIFiles.getExperiment(study::Study{<:DaggerDatasetStore}, numExp::Integer)
+  return fetch(Dagger.spawn(getMDFStore(study).chunk) do store
     s = changeStore(study, store)
     exp = getExperiment(s, numExp)
-    return changeStore(exp, getMDFStore(study))
+    return isnothing(exp) ? nothing : changeStore(exp, getMDFStore(study))
   end)
 end
 
-function remove(exp::Experiment)
-  if isfile(path(exp))
-    rm(path(exp))
-  end
+function MPIFiles.remove(e::Experiment{<:DaggerDatasetStore})
+  return fetch(Dagger.spawn(getMDFStore(e).chunk) do store
+    exp = changeStore(e, store)
+    remove(exp)
+  end)
 end

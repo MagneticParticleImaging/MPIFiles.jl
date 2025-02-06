@@ -1,85 +1,92 @@
 struct DaggerDatasetStore{T, C <: Dagger.Chunk{T}} <: DDatasetStore{T}
   chunk::Dagger.Chunk{T}
   worker::Int64
+  # Differentiate between bruker and mdf store?
+  function MPIFiles.DDatasetStore(args...; worker::Int64)
+    chunk = Dagger.@mutable worker = worker MDFDatasetStore(args...)
+    return new{MDFDatasetStore, typeof(chunk)}(chunk, worker)
+  end
 end
-# Differentiate between bruker and mdf store?
-function DDataStore(args...; worker::Int64)
-  chunk = Dagger.@mutable worker = worker MDFDatasetStore(args...)
-  return DaggerDataStore(chunk, worker)
-end
-MPIFiles.worker(store::DaggerDataStore) = store.worker
+MPIFiles.worker(store::DaggerDatasetStore) = store.worker
 
 
-function changeStore(study::Study{DaggerDatasetStore}, store::DatasetStore)
+function changeStore(study::Study, store::DatasetStore)
   return Study(store, study.name, study.foldername, study.date, study.subject, study.uuid)
 end
-function changeStore(exp::Experiment{DaggerDatasetStore}, store::DatasetStore)
+function changeStore(exp::Experiment, store::DatasetStore)
   return Experiment(changeStore(exp.study, store), exp.num, exp.name, exp.numFrames, exp.df, exp.sfGradient, exp.numAverages, exp.operator, exp.time)
 end
 
-function path(e::Experiment{DaggerDataStore}) 
-  return fetch(Dagger.spawn(getMDFStore(e)) do store
+function MPIFiles.path(e::Experiment{<:DaggerDatasetStore}) 
+  return fetch(Dagger.spawn(getMDFStore(e).chunk) do store
     exp = changeStore(e, store)
     return path(exp)
   end)
 end
-function path(s::Study{DaggerDataStore}, numExp::Integer) 
-  return fetch(Dagger.spawn(getMDFStore(s)) do store
+function MPIFiles.path(s::Study{<:DaggerDatasetStore}, numExp::Integer) 
+  return fetch(Dagger.spawn(getMDFStore(s).chunk) do store
     study = changeStore(s, store)
     return path(study, numExp)
   end)
 end
-MPIFiles.readonly(store::DaggerDataStore) = fetch(Dagger.@spawn readonly(store.chunk))
-MPIFiles.studydir(store::DaggerDataStore) = fetch(Dagger.@spawn studydir(store.chunk))
-Base.empty!(store::DaggerDataStore) = fetch(Dagger.@spawn empty!(store.chunk))
+MPIFiles.readonly(store::DaggerDatasetStore) = fetch(Dagger.spawn(readonly, store.chunk))
+MPIFiles.studydir(store::DaggerDatasetStore) = fetch(Dagger.spawn(studydir, store.chunk))
+Base.empty!(store::DaggerDatasetStore) = fetch(Dagger.spawn(empty!, store.chunk))
 
 
-function iscalib(e::Experiment{DaggerDataStore})
-  return fetch(Dagger.spawn(getMDFStore(e)) do store
+function MPIFiles.iscalib(e::Experiment{<:DaggerDatasetStore})
+  return fetch(Dagger.spawn(getMDFStore(e).chunk) do store
     exp = changeStore(e, store)
-    return iscalib(e)
+    return MPIFiles.iscalib(exp)
   end)
 end
-# TODO
-changeParam(e::Experiment{DaggerDataStore}, paramName::AbstractString, paramValue) =
-               changeParam(path(e), paramName, paramValue)
+function MPIFiles.changeParam(e::Experiment{<:DaggerDatasetStore}, paramName::AbstractString, paramValue)
+  wait(Dagger.spawn(getMDFStore(e).chunk) do store
+    exp = changeStore(e, store)
+    changeParam(path(exp), paramName, paramValue)
+  end)
+end
 
-studydir(d::DaggerDataStore) = fetch(Dagger.@spawn studydir(store.chunk))
-calibdir(d::DaggerDataStore) = fetch(Dagger.@spawn calibdir(store.chunk))
+MPIFiles.calibdir(store::DaggerDatasetStore) = fetch(Dagger.spawn(calibdir, store.chunk))
 
-function getMDFStore(study::Study{DaggerDataStore})
+function MPIFiles.getMDFStore(study::Study{<:DaggerDatasetStore})
     return study.store
 end
 
-function getMDFStore(experiment::Experiment{DaggerDataStore})
+function MPIFiles.getMDFStore(experiment::Experiment{<:DaggerDatasetStore})
     return getMDFStore(experiment.study)
 end
 
-function getStudy(d::DaggerDataStore, studyfolder::String)
+function MPIFiles.getStudy(d::DaggerDatasetStore, studyfolder::String)
   return fetch(Dagger.spawn(d.chunk) do store
     study = getStudy(store, studyfolder)
     return changeStore(study, d)
   end)
 end
 
-function getCalibStudy(d::DaggerDataStore)
+function MPIFiles.getCalibStudy(d::DaggerDatasetStore)
   return fetch(Dagger.spawn(d.chunk) do store
     study = getCalibStudy(store)
     return changeStore(study, d)
   end)
 end
 
-function getExperiments(s::Study{DaggerDataStore})
+function MPIFiles.getExperiments(s::Study{<:DaggerDatasetStore})
   return fetch(Dagger.spawn(getMDFStore(s).chunk) do store
     study = changeStore(s, store)
-    exps = getExperiments(s)
-    return map(exp -> changeStore(exp, s), exps)
+    exps = getExperiments(study)
+    return map(exp -> changeStore(exp, getMDFStore(s)), exps)
   end)
 end
 
-getMDFStudyFolderName(study::Study{DaggerDatasetStore}) = fetch(Dagger.@spawn getMDFStudyFolderName(study.chunk))
+function MPIFiles.getMDFStudyFolderName(s::Study{<:DaggerDatasetStore}) 
+  return fetch(Dagger.spawn(getMDFStore(s).chunk) do store
+    study = changeStore(s, store)
+    return getMDFStudyFolderName(study)
+  end)
+end
 
-function addStudy(d::DaggerDataStore, s::Study{DaggerDatasetStore})
+function MPIFiles.addStudy(d::DaggerDatasetStore, s::Study{<:DaggerDatasetStore})
   # Fetch to get errors
   return fetch(Dagger.spawn(d.chunk) do store
     study = changeStore(s, store)
@@ -88,5 +95,5 @@ function addStudy(d::DaggerDataStore, s::Study{DaggerDatasetStore})
   end)
 end
 
-MPIFiles.getNewCalibNum(d::DaggerDataStore) = fetch(Dagger.@spawn getNewCalibNum(d.chunk))
-MPIFiles.getNewCalibPath(d::DaggerDataStore) = fetch(Dagger.@spawn getNewCalibPath(d.chunk))
+MPIFiles.getNewCalibNum(d::DaggerDatasetStore) = fetch(Dagger.spawn(getNewCalibNum, d.chunk))
+MPIFiles.getNewCalibPath(d::DaggerDatasetStore) = fetch(Dagger.spawn(MPIFiles.getNewCalibPath, d.chunk))

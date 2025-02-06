@@ -1,21 +1,21 @@
 export Study, getStudy, getStudies, validate, enforceStudy, changeStudy
 
-function path(s::Study{DaggerDataStore})
-  return fetch(Dagger.spawn(getMDFStore(s)) do store
+function MPIFiles.path(s::Study{<:DaggerDatasetStore})
+  return fetch(Dagger.spawn(getMDFStore(s).chunk) do store
     study = changeStore(s, store)
     return path(study)
   end)
 end
 
-function getStudies(d::DaggerDataStore, name::String="")
+function MPIFiles.getStudies(d::DaggerDatasetStore, name::String="")
   return fetch(Dagger.spawn(d.chunk) do store
-    studies = getStudies(d, name)
+    studies = getStudies(store, name)
     return map(s -> changeStore(s, d), studies)
   end)
 end
 
-function remove(s::Study{DaggerDataStore})
-  fetcH(Dagger.spawn(getMDFStore(s).chunk) do store
+function MPIFiles.remove(s::Study{<:DaggerDatasetStore})
+  fetch(Dagger.spawn(getMDFStore(s).chunk) do store
     study = changeStore(s, store)
     remove(study)
     return nothing
@@ -23,29 +23,29 @@ function remove(s::Study{DaggerDataStore})
 end
 
 
-function getNewExperimentNum(s::Study{DaggerDataStore})
-  return fetch(Dagger.spawn(getMDFStore(s)) do store
+function MPIFiles.getNewExperimentNum(s::Study{<:DaggerDatasetStore})
+  return fetch(Dagger.spawn(getMDFStore(s).chunk) do store
     study = changeStore(s, store)
-    getNewExperimentNum(store)
+    getNewExperimentNum(study)
   end)
 end
 
-function getNewExperimentPath(s::Study{DaggerDataStore})
-  return fetch(Dagger.spawn(getMDFStore(s)) do store
+function MPIFiles.getNewExperimentPath(s::Study{<:DaggerDatasetStore})
+  return fetch(Dagger.spawn(getMDFStore(s).chunk) do store
     study = changeStore(s, store)
-    getNewExperimentPath(store)
+    getNewExperimentPath(study)
   end)
 end
 
-function changeStudy(s::Study{DaggerDataStore}, newStudyName::AbstractString; date::DateTime = now()) 
-  return fetch(Dagger.spawn(getMDFStore(s)) do store
+function MPIFiles.changeStudy(s::Study{<:DaggerDatasetStore}, newStudyName::AbstractString; kwargs...) 
+  return fetch(Dagger.spawn(getMDFStore(s).chunk) do store
     study = changeStore(s, store)
-    changeStudy(store, newStudyName; date)
+    changeStudy(study, newStudyName; kwargs...)
   end)
 end
 
-function validate(s::Study{DaggerDataStore})
-  return fetch(Dagger.spawn(getMDFStore(s)) do store
+function MPIFiles.validate(s::Study{<:DaggerDatasetStore})
+  return fetch(Dagger.spawn(getMDFStore(s).chunk) do store
     study = changeStore(s, store)
     validate(store)
   end)
