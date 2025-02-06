@@ -39,5 +39,6 @@ include("MDFInMemory.jl")
 include("TransferFunction.jl")
 include("FrequencyFilter.jl")
 include("MagneticFieldMeasurement.jl")
+include("DatasetStore.jl")
 
 @info "The unit tests are done!"
