@@ -2,8 +2,8 @@ struct DaggerMPIFile{T, C <: Dagger.Chunk{T}} <: DMPIFile{T}
   file::C
   worker::Int64
 end
-function MPIFiles.DMPIFile(args...; worker::Int64)
-  chunk = Dagger.@mutable worker = worker MPIFile(args...)
+function MPIFiles.DMPIFile(args...; worker::Int64, kwargs...)
+  chunk = Dagger.@mutable worker = worker MPIFile(args...; kwargs...)
   return DaggerMPIFile(chunk, worker)
 end  
 function MPIFiles.DMPIFile(mdf::MDFv2InMemory; worker::Int64)
