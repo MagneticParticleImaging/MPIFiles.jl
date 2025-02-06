@@ -90,8 +90,8 @@ studiesC = getStudies(storeC)
   @test studydir(localStore) == studydir(remoteStore)
   @test calibdir(localStore) == calibdir(remoteStore)
   @test getCalibStudy(localStore).uuid == getCalibStudy(remoteStore).uuid
-  @test getnewCalibNum(localStore) == getnewCalibNum(remoteStore)
-  @test getNewCalibPath(localStore)[1:end-5] == getNewCalibPath(remoteStore)[1:end-5] # this command creates files so we skip "X.mdf"
+  @test MPIFiles.getNewCalibNum(localStore) == MPIFiles.getNewCalibNum(remoteStore)
+  @test MPIFiles.getNewCalibPath(localStore)[1:end-5] == MPIFiles.getNewCalibPath(remoteStore)[1:end-5] # this command creates files so we skip "X.mdf"
 
   @test length(getStudies(localStore)) == length(getStudies(remoteStore))
   localStudy = getStudy(localStore, "Wuerfelphantom")
