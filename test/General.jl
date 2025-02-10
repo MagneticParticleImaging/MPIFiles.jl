@@ -29,7 +29,9 @@
     mdfv2InMemory = MDFv2InMemory(mdfv2)
     @test typeof(mdfv2InMemory) <: MDFv2InMemory
 
-    for mdf in (measBruker, mdfv2, mdfv2InMemory)
+    dmdf = DMPIFile(fnMeasV2; worker = 1)
+
+    @testset for mdf in (measBruker, mdfv2, mdfv2InMemory, dmdf)
       @info "Test $mdf"
 
       @test length(mdf) == 1
@@ -128,6 +130,9 @@
     smInMemory = MDFv2InMemory(smv2)
     @test typeof(smInMemory) <: MDFv2InMemory
 
+    smdmdf = DMPIFile(fnSMV2; worker = 1)
+    @test typeof(smdmdf) <: DMPIFile
+
     smBrukerPretendToBeMeas = MPIFile(fnSMBruker, isCalib=false)
     saveasMDF(fnSMV3, smBrukerPretendToBeMeas, applyCalibPostprocessing=true)
 
@@ -137,7 +142,7 @@
     # Bruker specific test
     @test rawDataLengthConsistent(smBruker)
 
-    for sm in (smBruker,smv2,smv3,smInMemory)
+    @testset for sm in (smBruker,smv2,smv3,smInMemory,smdmdf)
       @info "Test $sm"
 
       @test size( systemMatrixWithBG(sm) ) == (1959,817,3,1)
@@ -249,7 +254,10 @@
     smInMemory1D = MDFv2InMemory(sm1D)
     @test typeof(smInMemory1D) <: MDFv2InMemory
 
-    for sm in (sm1DBruker,sm1D, smInMemory1D)
+    smd1D = DMPIFile(fnSM1DV1; worker = 1)
+    @test typeof(smd1D) <: DMPIFile
+
+    @testset for sm in (sm1DBruker,sm1D, smInMemory1D, smd1D)
       @info "Test $sm"
 
       @test size( systemMatrixWithBG(sm) ) == (67,52,3,1)
@@ -272,7 +280,10 @@
     sm1DMeasInMemory = MDFv2InMemory(sm1DMeas)
     @test typeof(sm1DMeasInMemory) <: MDFv2InMemory
 
-    for sm in (sm1DBrukerMeas,sm1DMeas,sm1DMeasInMemory)
+    smd1DMeas = DMPIFile(fnSM1DV2; worker = 1)
+    @test typeof(smd1DMeas) <: DMPIFile
+
+    @testset for sm in (sm1DBrukerMeas,sm1DMeas,sm1DMeasInMemory,smd1DMeas)
       @info "Test $sm"
 
       @test size(measData(sm)) == (102, 3, 1, 67)
@@ -290,9 +301,12 @@
     sm1DMeasAllFramesInMemory = MDFv2InMemory(sm1DMeasAllFrames)
     @test typeof(sm1DMeasAllFramesInMemory) <: MDFv2InMemory
 
+    smD1DMeasAllFrames = DMPIFile(fnSM1DV3; worker = 1)
+    @test typeof(smD1DMeasAllFrames) <: DMPIFile
+
     @test MPIFiles.numSubPeriods(sm1DBrukerMeasAllFrames) == 528
 
-    for sm in (sm1DBrukerMeasAllFrames,sm1DMeasAllFrames,sm1DMeasAllFramesInMemory)
+    @testset for sm in (sm1DBrukerMeasAllFrames,sm1DMeasAllFrames,sm1DMeasAllFramesInMemory,smD1DMeasAllFrames)
       @info "Test $sm"
 
       @test size(measData(sm)) == (102, 3, 1, 35376)

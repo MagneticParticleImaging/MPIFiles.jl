@@ -191,14 +191,15 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
       bgCorrection=false, bgFrames = 1:length(measBGFrameIdx(f)), interpolateBG=false, tfCorrection=rxHasTransferFunction(f),
       sortFrames=false, numAverages=1, numPeriodGrouping=1, kargs...)
 
+  idxBG = measBGFrameIdx(f)[bgFrames]
+  hasBGFrames = length(idxBG) > 0
+  
   if neglectBGFrames
     idx = measFGFrameIdx(f)
 
     data = getAveragedMeasurements(f; frames=idx[frames],
                                       numAverages=numAverages, kargs...)
     
-    idxBG = measBGFrameIdx(f)[bgFrames]
-    hasBGFrames = length(idxBG) > 0
     if bgCorrection && !hasBGFrames
       @warn "Background correction was selected but there are no background frames in the file."
     elseif bgCorrection && hasBGFrames
@@ -271,6 +272,9 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
+    if isnothing(tf)
+      error("No transfer function available in file, please use tfCorrection=false")
+    end
     if isnothing(inductionFactor)
       @warn "The file is missing the induction factor. The induction factor will be set to 1."
       inductionFactor = ones(Float64, rxNumChannels(f))
@@ -278,11 +282,8 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
     J = size(data,1)
     dataF = rfft(data, 1)
-    dataF[2:end,:,:,:] ./= tf[2:end,:,:,:]
-
-    if all(tf[1,:,:,:] .!= 0) && !any(isnan.(tf[1,:,:,:]))
-      dataF[1,:,:,:] ./= tf[1,:,:,:]
-    end
+    dataF ./= tf
+    map!(x -> isnan(x) ? zero(eltype(dataF)) : x, dataF, dataF)
 
     @warn "This measurement has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
     if !isnothing(inductionFactor)
@@ -330,16 +331,15 @@ function getMeasurementsFD(f::MPIFile, args...;
   if tfCorrection && !measIsTFCorrected(f)
     tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
+    if isnothing(tf)
+      error("No transfer function available in file, please use tfCorrection=false")
+    end
     if isnothing(inductionFactor)
       @warn "The file is missing the induction factor. The induction factor will be set to 1."
       inductionFactor = ones(Float64, rxNumChannels(f))
     end
 
-    data[2:end,:,:,:] ./= tf[2:end,:,:,:]
-
-    if all(tf[1,:,:,:] .!= 0) && !any(isnan.(tf[1,:,:,:]))
-      data[1,:,:,:] ./= tf[1,:,:,:]
-    end
+    data ./= tf
 
     @warn "This measurement has been corrected with a Transfer Function. Name of TF: $(rxTransferFunctionFileName(f))"
     if !isnothing(inductionFactor)

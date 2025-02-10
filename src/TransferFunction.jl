@@ -5,13 +5,15 @@ $(TYPEDEF)
 $(TYPEDFIELDS)
 
 
-    TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Complex}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
+    TransferFunction(freq::Vector, data::Array, [phasedata]; [inductionFactor], [units])
 
-Create a `TransferFunction` from a complex data array at frequencies `freq_`.
+Create a `TransferFunction` from a data array `data` at frequencies `freq`.
+`freq` is given in Hz or should have a Unitful frequency unit attached
+`data` should have the shape [frequencies, channels]. `data` can be either complex or real, if `data` is real a second array `phasedata` can be passed representing the phase in radians. Both the amplitude and the phase can have Unitful units.
 
 # Optional Keyword-Arguments:
 - `inductionFactor::Vector{<:Real}`: induction factor for each channel
-- `units::Vector`: units for each channel, can be either Unitful.FreeUnits or a string that can be parsed as a Unitful unit 
+- `units::Vector`: units for each channel, can be either Unitful.FreeUnits or a string that can be parsed as a Unitful unit. Instead of using this keyword, `data` can also have Unitful units attached, then the units keyword-argument is ignored.
 
 """
 mutable struct TransferFunction
@@ -22,7 +24,7 @@ mutable struct TransferFunction
   units::Vector{Unitful.FreeUnits}
 
 
-  function TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Number}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
+  function TransferFunction(freq_::Vector{<:Real}, datain::Array{<:Complex}; inductionFactor::Vector{<:Real}=ones(size(datain, 2)), units::Vector=Unitful.FreeUnits[Unitful.NoUnits for i in 1:size(datain, 2)])
     parsed_units = Unitful.FreeUnits[]
     for tmp in units
       if isa(tmp, String); tmp = uparse(tmp) end # get correct unit from unit strings
@@ -42,17 +44,30 @@ end
 
 Base.show(io::IO, ::MIME"text/plain", tf::TransferFunction) = print(io, "MPIFiles.TransferFunction: \n\t$(size(tf.data,2)) channel(s), units of $(string.(tf.units))\n\t$(size(tf.data,1)) frequency samples from $(tf.freq[1]) Hz to $(tf.freq[end]) Hz")
 
-"""
-$(TYPEDSIGNATURES)
-
-Create a `TransferFunction` from separate amplitude and phase arrays at frequencies `freq`.
-
-`ampdata` and `phasedata` should have the following shape: [frequencies, channels]
-"""
-function TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Real,N}, phasedata::Array{<:Real,N}; kwargs...) where N
+function TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Union{Real,Unitful.AbstractQuantity{<:Real}},N}, phasedata::Array{<:Real,N}; kwargs...) where N
   if size(ampdata) != size(phasedata); error("The size of ampdata and phasedata must match!") end
   data = ampdata.*exp.(im.*phasedata)
   return TransferFunction(freq, data; kwargs...)
+end
+
+TransferFunction(freq::Vector{<:Unitful.Frequency}, args...; kwargs...) = TransferFunction(ustrip.(u"Hz", freq), args...; kwargs...)
+TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Union{Real,Unitful.AbstractQuantity{<:Real}},N}, phasedata::Array{<:Unitful.DimensionlessQuantity{<:Real},N}; kwargs...) where N = TransferFunction(freq, ampdata, ustrip.(u"rad", phasedata); kwargs...)
+TransferFunction(freq::Vector{<:Real}, ampdata::Array{<:Union{Real,Unitful.AbstractQuantity{<:Real}},N}; kwargs...) where N = TransferFunction(freq, ampdata, zeros(size(ampdata)); kwargs...)
+
+function TransferFunction(freq::Vector{<:Real}, datain::Array{<:Unitful.AbstractQuantity{<:Complex},N}; units=nothing, kwargs...) where N
+  if !isnothing(units)
+    @warn "You passed explicit units combined with a Unitful data array. The explicit units will be ignored!"
+  end
+  units = Unitful.FreeUnits[]
+  for ch in eachcol(datain)
+    ch_units = Unitful.unit.(ch)
+    if all(y->y==ch_units[1], ch_units)
+      push!(units, ch_units[1])
+    else
+      error("One TransferFunction channel must have identical units!")
+    end
+  end
+  return TransferFunction(freq, ustrip.(datain); units=units, kwargs...)
 end
 
 """
@@ -60,12 +75,12 @@ $(TYPEDSIGNATURES)
 
 Create a `TransferFunction` from a data file at `filename`.
 
-The file can be either a h5-File created with this package. Keyword arguments will be passed to `load_tf_fromVNA` 
+The file can be either a h5-File created with this package or a file that is written by a VNA. Keyword arguments will be passed to `load_tf_fromVNA` 
 """
 function TransferFunction(filename::String; kargs...)
     filenamebase, ext = splitext(filename)
     if ext == ".h5"
-      tf = load_tf(filename)
+      tf = load_tf(filename; kargs...)
     else #if ext == "s1p" || ext == "s2p"
       tf = load_tf_fromVNA(filename; kargs...)
     end
@@ -80,8 +95,12 @@ Create a `TransferFunction` from the tf data saved in a MPIFile (see `rxTransfer
 function TransferFunction(file::MPIFile)
   tf_file = rxTransferFunction(file)
   inductionFactor = rxInductionFactor(file)
-  f = collect(rfftfreq(rxNumSamplingPoints(file), rxBandwidth(file)*2))
-  return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor=inductionFactor)
+  f = rxFrequencies(file)
+  if isnothing(inductionFactor)
+    return TransferFunction(f, abs.(tf_file), angle.(tf_file))
+  else
+    return TransferFunction(f, abs.(tf_file), angle.(tf_file), inductionFactor=inductionFactor)
+  end
 end
 
 """
@@ -117,22 +136,42 @@ Interpolated access to a `TransferFunction` at frequencies `f` and channels `cha
 
 (tf::TransferFunction)(f, ::Colon) = tf(f, axes(tf.data,2))
 
-function load_tf(filename::String)
-  tf = h5read(filename,"/transferFunction")
-  freq = h5read(filename,"/frequencies")
-  inductionFactor = h5read(filename,"/inductionFactor")
-  unit = []
-  try 
-    unit = h5read(filename, "/unit")
-  catch # if h5read fails, it should mean that there is no units, maybe do something better here
+"""
+    load_tf(filename::String; channels = nothing, kwargs...)
+
+Load a `TransferFunction` from a h5-file at `filename`. If `channels` is set, only the specified channels are loaded.
+"""
+function load_tf(filename::String; channels = nothing)
+  if channels isa Integer
+    channels = [channels]
+  end
+
+  return h5open(filename, "r") do file
+    tf = read(file, "/transferFunction")
+    freq = read(file,"/frequencies")
+    inductionFactor = read(file,"/inductionFactor")
+
+    if !isnothing(channels)
+      tf = tf[:,channels]
+      inductionFactor = inductionFactor[channels]
+    end
+
+    if haskey(file, "/unit")
+      unit = uparse.(read(file, "/unit"))
+
+      if !isnothing(channels)
+        unit = unit[channels]
+      end
+
+      return TransferFunction(freq, tf, inductionFactor=inductionFactor, units=unit)
+    end
+
     return TransferFunction(freq, tf, inductionFactor=inductionFactor)
   end
-  return TransferFunction(freq, tf, inductionFactor=inductionFactor, units=uparse.(unit))
 end
 
 """
 $(TYPEDSIGNATURES)
-
 Combine two `TransferFunctions` along their channel dimension. If interpolate=false, will only work if the frequency samples are identical.
 """
 function combine(tf1::TransferFunction, tf2::TransferFunction; interpolate=false)
@@ -142,16 +181,18 @@ function combine(tf1::TransferFunction, tf2::TransferFunction; interpolate=false
     data = cat(tf1.data,tf2.data, dims=2)
   else
     freq = unique(sort(cat(tf1.freq, tf2.freq, dims=1)))
-    data = cat(tf1(freq, :), tf2(freq, :), dims=2)
+    data = cat(ustrip.(tf1(freq, :)), ustrip.(tf2(freq, :)), dims=2)
   end
     inductionFactor = cat(tf1.inductionFactor, tf2.inductionFactor, dims=1)
     units = cat(tf1.units, tf2.units, dims=1)
     return TransferFunction(freq, data, inductionFactor=inductionFactor, units=units)
 end
 
+combine(tf::TransferFunction, ::Nothing; interpolate=false) = combine(tf, TransferFunction(tf.freq, zeros(length(tf.freq))))
+combine(::Nothing, tf::TransferFunction; interpolate=false) = combine(TransferFunction(tf.freq, zeros(length(tf.freq))), tf) 
+
 """
 $(TYPEDSIGNATURES)
-
 Save `tf` as a h5 file to `filename`
 """
 function save(filename::String, tf::TransferFunction)
@@ -162,13 +203,11 @@ function save(filename::String, tf::TransferFunction)
   return nothing
 end
 
-"""TODO: fix function and write docs"""
-function load_tf_fromVNA(filename::String;
-    frequencyWeighting=false,
-    R = 50.0, #Ω
-    N = 10, #5# Turns
-    A = 7.4894*10.0^-4) #m^2 #1.3e-3^2*pi;)
-
+"""
+$(TYPEDSIGNATURES)
+Read the data recorded with the VNA from file `filename` into three Julia arrays `freq`, `ampdata`, `phasedata`
+"""
+function readVNAdata(filename::String)
   file = open(filename)
   lines = readlines(file)
   apdata = Float64[]
@@ -231,11 +270,62 @@ function load_tf_fromVNA(filename::String;
     end
   end
   close(file)
-  if frequencyWeighting
-  	apdata ./= (freq.*2*pi) # As TF is defined as u_ADC = u_coil *TF the derivative from magnetic moment is applied as the division of the TF by w
+  return freq, apdata, aϕdata
+end
+
+"""
+$(TYPEDSIGNATURES)
+Load data receive calibration from file recorded with the VNA. Data will be processed by `processRxTransferFunction`, see there for keyword arguments
+"""
+function load_tf_fromVNA(filename::String; kwargs...)
+  freq, ampdata, phasedata = readVNAdata(filename)
+  compdata = ampdata.*exp.(im.*phasedata)
+  if any([:R,:N,:A] .∈ [keys(kwargs)])
+    @warn "In v0.16.1 and below load_tf_fromVNA mistakenly ignored the keyword parameters R, N and A. The current version includes these parametes if set, resulting in the correct scaling in magnetic moment domain."
+  end
+  return processRxTransferFunction(freq, compdata; kwargs...)    
+end
+
+"""
+$(TYPEDSIGNATURES)
+Process the data from a receive calibration measurement using a calibration coil into a TransferFunction
+
+Keyword parameters:
+- `frequencyWeighting`: if true corrects for the frequency term in the TF, which results in a TF that does not integrate on application, but instead shows derivative of magnetic moment
+- `R`: value of the resistance of the calibration coil in Ω
+- `N`: number of turns of the calibration coil
+- `A`, `r`, `d`: Area in m² or radius/diameter in m of the calibration coil, define only one
+"""
+function processRxTransferFunction(freq, compdata; frequencyWeighting::Bool=false,
+  R::Union{Real,Nothing} = nothing, # Ω
+  N::Union{Real,Nothing} = nothing, # Turns
+  A::Union{Real,Nothing} = nothing, # m²
+  r::Union{Real,Nothing} = nothing, # m
+  d::Union{Real,Nothing} = nothing) # m
+
+  if sum(.!isnothing.([A,r,d])) > 1
+    error("You can only define one of the keyword parameters A, r or d defining the geometry of the calibration coil")
+  elseif !isnothing(d)
+    A = pi * (d/2)^2
+  elseif !isnothing(r)
+    A = pi * r^2
   end
 
-  return TransferFunction(freq, apdata, aϕdata)
+  if all(isnothing.([R,N,A]))
+    unit = u"V/V"
+    @warn "No calibration coil parameters set in `processRxTransferFunction`. Make sure this is intended"
+  elseif any(isnothing.([R,N,A]))
+    error("To process the rxTransferFunction all three parameters describing the calibration coil (R, N and A) need to be defined.")
+  else
+    unit = u"V/A*m^2"
+    compdata .*= R/(N*A)
+  end
+  
+  if frequencyWeighting
+    compdata ./= (im*freq.*2*pi) # As TF is defined as u_ADC = u_coil *TF the derivative from magnetic moment is applied as the division of the TF by jw
+  end
+
+  return TransferFunction(freq, compdata, units=[unit])
 end
 
 
@@ -290,9 +380,9 @@ function setTF(b::BrukerFile, filenameTF::AbstractString)
   return
 end
 
+setTF(f::MDFFile, filenameTF::AbstractString) = setTF(f, TransferFunction(filenameTF), filenameTF)
 
-function setTF(f::MDFFile, filenameTF::AbstractString)
-  tmf = TransferFunction(filenameTF)
+function setTF(f::MDFFile, tmf::TransferFunction, filenameTF::Union{AbstractString,Nothing}=nothing)
   tf = sampleTF(tmf, f)
 
   # We need to close the HDF5 file handle before we can write to it
@@ -302,7 +392,9 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
 	  if haskey(file, "/acquisition/receiver/transferFunctionFileName")
       delete_object(file, "/acquisition/receiver/transferFunctionFileName")
     end
-    write(file, "/acquisition/receiver/transferFunctionFileName", filenameTF)
+    if !isnothing(filenameTF)
+      write(file, "/acquisition/receiver/transferFunctionFileName", filenameTF)
+    end
     if haskey(file, "/acquisition/receiver/transferFunction")
       delete_object(file, "/acquisition/receiver/transferFunction")
     end
@@ -312,10 +404,13 @@ function setTF(f::MDFFile, filenameTF::AbstractString)
     end
     write(file, "/acquisition/receiver/inductionFactor", tmf.inductionFactor)
   end
+  # reopen filehandler so f stays usable
+  f.file = h5open(filepath(f), "r")
   return
 end
 
 function setTF(f::MDFv2InMemory, tf::TransferFunction)
   rxTransferFunction(f, sampleTF(tf, f))
   rxInductionFactor(f, tf.inductionFactor)
+  return
 end

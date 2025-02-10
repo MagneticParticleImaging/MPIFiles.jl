@@ -96,22 +96,32 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
 end
 
 function systemMatrixWithBG(f::Union{MDFFileV2, MDFv2InMemory})
-  if !experimentHasMeasurement(f) || !measIsFastFrameAxis(f) || !measIsFourierTransformed(f)
+  if !experimentHasMeasurement(f) || !measIsFourierTransformed(f)
     return nothing
   end
 
   data_ = measDataRaw(f)
+
+  if !measIsFastFrameAxis(f)
+    data_ = permutedims(data_, [4, 1, 2, 3])
+  end
+  
   data = data_[:, :, :, :]
   return data
 end
 
 # This is a special variant used for matrix compression
 function systemMatrixWithBG(f::Union{MDFFileV2, MDFv2InMemory}, freq)
-  if !experimentHasMeasurement(f) || !measIsFastFrameAxis(f) || !measIsFourierTransformed(f)
+  if !experimentHasMeasurement(f) || !measIsFourierTransformed(f)
     return nothing
   end
 
   data_ = measDataRaw(f)
+
+  if !measIsFastFrameAxis(f)
+    data_ = permutedims(data_, [4, 1, 2, 3])
+  end
+
   data = data_[:, freq, :, :]
   return data
 end
