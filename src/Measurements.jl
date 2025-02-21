@@ -282,6 +282,14 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
     J = size(data,1)
     dataF = rfft(data, 1)
+
+    # Pad transfer function in frequency-selected data to prevent errors after conversion from frequency to time domain.
+    if (size(tf, 1) != size(dataF)) && measIsFrequencySelection(f)
+      tfPadded = fill(eltype(tf)(Inf), (rxNumFrequencies(f), size(tf, 2)))
+      tfPadded[measFrequencySelection(f), :] = tf
+      tf = tfPadded
+    end
+
     dataF ./= tf
     map!(x -> isnan(x) ? zero(eltype(dataF)) : x, dataF, dataF)
 
@@ -337,6 +345,13 @@ function getMeasurementsFD(f::MPIFile, args...;
     if isnothing(inductionFactor)
       @warn "The file is missing the induction factor. The induction factor will be set to 1."
       inductionFactor = ones(Float64, rxNumChannels(f))
+    end
+
+    # Pad transfer function in frequency-selected data to prevent errors after conversion from frequency to time domain.
+    if (size(tf, 1) != size(data)) && measIsFrequencySelection(f)
+      tfPadded = fill(eltype(tf)(Inf), (rxNumFrequencies(f), size(tf, 2)))
+      tfPadded[measFrequencySelection(f), :] = tf
+      tf = tfPadded
     end
 
     data ./= tf
