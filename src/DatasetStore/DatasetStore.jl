@@ -1,8 +1,9 @@
-export DatasetStore, studydir, path, readonly, remove
+export DatasetStore, DDatasetStore, studydir, path, readonly, remove
 
 include("Utils.jl")
 
 abstract type DatasetStore end
+abstract type DDatasetStore{T<:DatasetStore} <: DatasetStore end
 
 # mandatory functions
 @mustimplement studydir(::DatasetStore)

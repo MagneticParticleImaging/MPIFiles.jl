@@ -246,6 +246,19 @@ function MPIFile(filename::AbstractString; kargs...)
   end
 end
 
+# Can't get https://github.com/JuliaLang/julia/pull/56368 to work, therefore we expor the abstract type here
+# for other extensions/packages to dispatch on
+export DMPIFile
+"""
+    DMPIFile(args...; worker)
+  
+Construct a distributed `MPIFile` using the given `args` on the given `worker` process.
+
+See `MPIFile`
+"""
+abstract type DMPIFile{T <: MPIFile} <: MPIFile end
+worker(dmdf::DMPIFile) = error("$(typeof(dmdf)) must implement `MPIFiles.worker`")
+
 function show(io::IO, f::MPIFile)
   print(io, supertype(typeof(f)))
   print(io, "\n\tStudy: ")

@@ -10,6 +10,7 @@ using Unitful
 using Scratch
 using LazyArtifacts
 using Aqua
+using Dagger
 
 const datadir = joinpath(artifact"data", "data")
 @info "The test data is located at $datadir."
@@ -38,5 +39,6 @@ include("MDFInMemory.jl")
 include("TransferFunction.jl")
 include("FrequencyFilter.jl")
 include("MagneticFieldMeasurement.jl")
+include("DatasetStore.jl")
 
 @info "The unit tests are done!"

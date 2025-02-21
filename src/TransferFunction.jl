@@ -95,7 +95,8 @@ Create a `TransferFunction` from the tf data saved in a MPIFile (see `rxTransfer
 function TransferFunction(file::MPIFile)
   tf_file = rxTransferFunction(file)
   inductionFactor = rxInductionFactor(file)
-  f = rxFrequencies(file)
+  f = measIsFrequencySelection(file) ? rxFrequencies(file)[measFrequencySelection(file)] : rxFrequencies(file)
+  
   if isnothing(inductionFactor)
     return TransferFunction(f, abs.(tf_file), angle.(tf_file))
   else
