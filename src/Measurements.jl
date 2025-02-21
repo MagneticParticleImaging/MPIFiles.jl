@@ -285,6 +285,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 
     # Pad transfer function in frequency-selected data to prevent errors after conversion from frequency to time domain.
     if (size(tf, 1) != size(dataF)) && measIsFrequencySelection(f)
+      @warn "This MDF is saved in the frequency domain and has been frequency-selected. Converting to time domain is inherently missing frequency components."
       tfPadded = fill(eltype(tf)(Inf), (rxNumFrequencies(f), size(tf, 2)))
       tfPadded[measFrequencySelection(f), :] = tf
       tf = tfPadded
