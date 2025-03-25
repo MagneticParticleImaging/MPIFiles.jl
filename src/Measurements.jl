@@ -273,15 +273,15 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
   end
 
   if tfCorrection && !measIsTFCorrected(f)
-    tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
-    if isnothing(tf)
+    if isnothing(rxTransferFunction(f))
       error("No transfer function available in file, please use tfCorrection=false")
     end
     if isnothing(inductionFactor)
       @warn "The file is missing the induction factor. The induction factor will be set to 1."
       inductionFactor = ones(Float64, rxNumChannels(f))
     end
+    tf = sampleTF(TransferFunction(f), f, numPeriodGrouping=numPeriodGrouping) 
 
     J = size(data,1)
     dataF = rfft(data, 1)
@@ -341,15 +341,15 @@ function getMeasurementsFD(f::MPIFile, args...;
   data = rfft(data, 1)
 
   if tfCorrection && !measIsTFCorrected(f)
-    tf = rxTransferFunction(f)
     inductionFactor = rxInductionFactor(f)
-    if isnothing(tf)
+    if isnothing(rxTransferFunction(f))
       error("No transfer function available in file, please use tfCorrection=false")
     end
     if isnothing(inductionFactor)
       @warn "The file is missing the induction factor. The induction factor will be set to 1."
       inductionFactor = ones(Float64, rxNumChannels(f))
     end
+    tf = sampleTF(TransferFunction(f), f, numPeriodGrouping=get(kargs, :numPeriodGrouping, 1)) 
 
     # Pad transfer function in frequency-selected data to prevent errors after conversion from frequency to time domain.
     if (size(tf, 1) != size(data)) && measIsFrequencySelection(f)
