@@ -162,6 +162,9 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f), size(data,4))
   elseif numPeriodAverages > 1
     newNumPeriods = div(acqNumPeriodsPerFrame(f), numPeriodAverages)
+    if rem(acqNumPeriodsPerFrame(f), numPeriodAverages) != 0
+      error("getAveragedMeasurements: numPeriodAverages=$numPeriodAverages does not divide the $(acqNumPeriodsPerFrame(f)) period(s) in the file.")
+    end
     data_ = reshape(data, rxNumSamplingPoints(f), rxNumChannels(f), numPeriodAverages, newNumPeriods, size(data,4))
     dataAv = mean(data_, dims=3)
     return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f), newNumPeriods, size(data,4))    
