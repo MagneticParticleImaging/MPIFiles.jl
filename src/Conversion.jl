@@ -839,8 +839,13 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
     end
     if hasKeyAndValue(params, :recoParameters)
       ## Workaround to save new parameters to MDF, maybe not the best way to do it...
-      params[:recoParameters][:solver] = string(params[:recoParameters][:solver])
-      params[:recoParameters][:reg] = string(params[:recoParameters][:reg])
+      # In the future we could serialize a recoplan/algorithm to a string here
+      if haskey(params[:recoParameters], :solver) 
+        params[:recoParameters][:solver] = string(params[:recoParameters][:solver])
+      end
+      if haskey(params[:recoParameters], :reg) 
+        params[:recoParameters][:reg] = string(params[:recoParameters][:reg])
+      end
       saveParams(file, "/reconstruction/_parameters", params[:recoParameters])
     end
   end
