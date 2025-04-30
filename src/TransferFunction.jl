@@ -94,8 +94,12 @@ Create a `TransferFunction` from the tf data saved in a MPIFile (see `rxTransfer
 """
 function TransferFunction(file::MPIFile)
   tf_file = rxTransferFunction(file)
+  if isnothing(tf_file)
+    return nothing
+  end
   inductionFactor = rxInductionFactor(file)
-  f = rxFrequencies(file)
+  f = measIsFrequencySelection(file) ? rxFrequencies(file)[measFrequencySelection(file)] : rxFrequencies(file)
+  
   if isnothing(inductionFactor)
     return TransferFunction(f, abs.(tf_file), angle.(tf_file))
   else
@@ -328,9 +332,12 @@ function processRxTransferFunction(freq, compdata; frequencyWeighting::Bool=fals
   return TransferFunction(freq, compdata, units=[unit])
 end
 
-
-function sampleTF(tf::TransferFunction, f::MPIFile)
-  freq = rxFrequencies(f)
+"""
+$(TYPEDSIGNATURES)
+Sample the `tf` at the frequencies defined by the measurement `f`, optionally with `numPeriodGrouping`
+"""
+function sampleTF(tf::TransferFunction, f::MPIFile; numPeriodGrouping=1)
+  freq = rxFrequencies(f, numPeriodGrouping)
   if measIsFrequencySelection(f)
     freq = freq[measFrequencySelection(f)]
   end
