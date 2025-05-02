@@ -27,9 +27,14 @@ end
 
 function calcPrefactors(b::MPIFile)
   freqNumber = rxNumFrequencies(b)
-  mask = collect((dfStrength(b)[1,:,1] .>= 0.0000001))
-  divider = vec(dfDivider(b))
-  #mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
+  if any(dfStrength(b)[2:end,:,1] .>= 0.0000001)
+      mask = collect(diag((dfStrength(b)[:,:,1]) .>= 0.0000001))
+      divider = diag(dfDivider(b))
+  else
+      mask = collect((dfStrength(b)[1,:,1] .>= 0.0000001))
+      divider = dfDivider(b)
+  end
+  
   mxyz_ = dfBaseFrequency(b)*dfCycle(b)./divider
   mxyz = max.(1,round.(Int64,mxyz_.*mask))
 
