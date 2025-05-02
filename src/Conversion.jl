@@ -158,11 +158,11 @@ function appendBGDataset(params::Dict, filenameBG::String; kargs...)
   return params
 end
 
-function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
-  paramsBG = loadDataset(fBG, frames=frames)
+function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG), kargs...)
+  paramsBG = loadDataset(fBG, frames=frames; kargs...)
   paramsBG[:measIsBGFrame][:] .= true
 
-  params[:measData] = cat(params[:measData], paramsBG[:measData], dims=4)
+  params[:measData] = cat(params[:measData], paramsBG[:measData], dims=if params[:measIsFastFrameAxis]; 1 else 4 end)
   params[:measIsBGFrame] = cat(params[:measIsBGFrame], paramsBG[:measIsBGFrame], dims=1)
   params[:acqNumFrames] += paramsBG[:acqNumFrames]
 
@@ -770,7 +770,7 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
     params[:rxUnit] = "V"
   end
   write(file, "/acquisition/receiver/unit",  params[:rxUnit])
-  write(file, "/acquisition/receiver/dataConversionFactor",  params[:rxDataConversionFactor])
+  writeIfAvailable(file, "/acquisition/receiver/dataConversionFactor",  params, :rxDataConversionFactor)
   if hasKeyAndValue(params,:rxTransferFunction)
     tf = params[:rxTransferFunction]
     group = file["/acquisition/receiver"]
