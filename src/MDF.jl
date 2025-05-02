@@ -388,7 +388,17 @@ function measIsFramePermutation(f::MDFFileV1)
 end
 measIsFramePermutation(f::MDFFileV2)::Union{Bool, Missing} = @keyrequired Bool(f["/measurement/isFramePermutation"])
 measIsBGFrame(f::MDFFileV1)::Union{Vector{Bool}, Missing} = zeros(Bool, acqNumFrames(f))
-measIsBGFrame(f::MDFFileV2)::Union{Vector{Bool}, Missing} = @keyrequired convert(Array{Bool},f["/measurement/isBackgroundFrame"])
+function measIsBGFrame(f::MDFFileV2)::Union{Vector{Bool}, Missing} 
+  try 
+      res = @keyrequired convert(Array{Bool},f["/measurement/isBackgroundFrame"]) 
+      if !ismissing(res) && (length(res) != acqNumFrames(f))
+          return zeros(Bool, acqNumFrames(f))
+      end
+      return res
+  catch; 
+      return zeros(Bool, acqNumFrames(f)) 
+  end#
+end
 measFramePermutation(f::MDFFileV1)::Union{Vector{Int64}, Nothing} = nothing
 measFramePermutation(f::MDFFileV2)::Union{Vector{Int64}, Nothing} = @keyoptional f["/measurement/framePermutation"]
 measSparsityTransformation(f::MDFFileV1)::Union{String, Nothing} = nothing
