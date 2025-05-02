@@ -59,7 +59,7 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
     fgdata = dataBackTrafo
   end
 
-  if bgCorrection && length(measBGFrameIdx(f)) > 0 # this assumes equidistant bg frames
+  if bgCorrection && (length(measFramePermutation(f))==length(measIsBGFrame(f))) # this assumes equidistant bg frames
     @debug "Applying bg correction on system matrix (MDF)"
     bgdata = data[measBGFrameIdx(f),:]
 
@@ -76,7 +76,7 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
       mean(bgdata[st:st+blockLen[j]-1,:], dims=1)
       st += blockLen[j]
     end
-
+    @info "Interpolating BG"
     bgdataInterp = interpolate(bgdata, (BSpline(Linear()), NoInterp()))
     # Cubic does not work for complex numbers
     M = size(fgdata,1)
@@ -89,8 +89,10 @@ function systemMatrix(f::Union{MDFFileV2, MDFv2InMemory}, rows, bgCorrection=tru
         fgdata[m,k] -= bgdataInterp(alpha,k)
       end
     end
-  elseif bgCorrection && length(measBGFrameIdx(f)) == 0
-    @warn "Ignoring parameter `bgCorrection` since there are no background frames in the file."
+  elseif bgCorrection
+    @info "Not interpolating BG"
+    bgdata = mean(data[measBGFrameIdx(f),:],dims=1)
+    fgdata .-= bgdata
   end
   return fgdata
 end
