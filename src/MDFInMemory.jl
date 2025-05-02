@@ -618,7 +618,7 @@ function defaultMDFv2InMemory()
 end
 
 function check(part::MDFv2Root, variables::MDFv2Variables)
-  @assert part.version > VersionNumber("2") "The version should be at least version 2."
+  @assert part.version >= VersionNumber("2") "The version should be at least version 2."
 end
 
 function check(part::MDFv2Study, variables::MDFv2Variables)
