@@ -2,7 +2,10 @@ export BrukerDatasetStore, findBrukerFiles, getNewCalibNum
 
 struct BrukerDatasetStore <: DatasetStore
   path::String
+  readonly::Bool
 end
+
+BrukerDatasetStore(path::String) = BrukerDatasetStore(path, true)
 
 @static if ispath("/opt/mpidata")
   export BrukerStore
@@ -15,7 +18,7 @@ iscalib(e::Experiment{BrukerDatasetStore}) = _iscalib(path(e))
 
 ###  Implementations of abstract interfaces ###
 
-readonly(::BrukerDatasetStore) = true
+readonly(d::BrukerDatasetStore) = d.readonly
 
 studydir(d::BrukerDatasetStore) = d.path
 calibdir(d::BrukerDatasetStore) = error("BrukerDatasetStore has no calibdir")
@@ -81,7 +84,7 @@ function getExperiments(s::Study{BrukerDatasetStore})
   end
 
   experiments = Experiment[]
-
+  
   for file in files
     prefix, ext = splitext(splitpath(file)[end])
     num = tryparse(Int64, prefix)
