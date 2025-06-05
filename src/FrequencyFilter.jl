@@ -125,7 +125,7 @@ filterFrequenciesByMaxIdx!(indices, maxIdx) = filter!(x-> x[1] <= maxIdx, indice
 
 export filterFrequenciesByMaxMixingOrder!
 filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, f::MPIFile) = filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, mixingFactors(f))
-filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, mf::Matrix) = filter!(x-> mf[x[1], 4] <= maxMixingOrder, indices)
+filterFrequenciesByMaxMixingOrder!(indices, maxMixingOrder, mf::Matrix) = filter!(x-> 0 <= mf[x[1], 4] <= maxMixingOrder, indices)
 
 export filterFrequenciesByNumSidebandFreqs!
 function filterFrequenciesByNumSidebandFreqs!(indices, numSidebandFreqs::Int64, f::MPIFile; numPeriodGrouping = 1)
