@@ -8,12 +8,19 @@ function try_chmod(path, mode; recursive=true)
   return
 end
 
-function ishidden(filename::AbstractString)
+function ishidden(filename::String)
   @static if Sys.isunix()
     s = basename(filename)
     return (!isempty(s) && s[1] == '.')
   else
-    attr = ccall((:GetFileAttributesA), stdcall, Cint, (Cstring,),filename)
+    # The windows API only supports unicode via UTF-16
+    # We therefore have to translate our UTF8 string to UTF16
+    # in case it contains non-ascii characters
+    utf16 = transcode(UInt16, filename)
+    push!(utf16, 0) # Transcode is not null terminated
+    # GetFilesAttributesW expects LPCWSTR which is a pointer to 16-bit values
+    lpcwstr = pointer(utf16)
+    attr = GC.@preserve ccall((:GetFileAttributesW), Cint, (Ptr{Cwchar_t},),lpcwstr)
     return attr & 0x2 > 0
   end
 end
