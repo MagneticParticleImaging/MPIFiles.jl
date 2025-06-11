@@ -158,11 +158,11 @@ function appendBGDataset(params::Dict, filenameBG::String; kargs...)
   return params
 end
 
-function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG))
-  paramsBG = loadDataset(fBG, frames=frames)
-  paramsBG[:measIsBGFrame][:] = true
+function appendBGDataset(params::Dict, fBG::MPIFile; frames=1:acqNumFrames(fBG), kargs...)
+  paramsBG = loadDataset(fBG, frames=frames; kargs...)
+  paramsBG[:measIsBGFrame][:] .= true
 
-  params[:measData] = cat(4, params[:measData], paramsBG[:measData])
+  params[:measData] = cat(params[:measData], paramsBG[:measData], dims=if params[:measIsFastFrameAxis]; 1 else 4 end)
   params[:measIsBGFrame] = cat(params[:measIsBGFrame], paramsBG[:measIsBGFrame], dims=1)
   params[:acqNumFrames] += paramsBG[:acqNumFrames]
 
@@ -770,7 +770,7 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
     params[:rxUnit] = "V"
   end
   write(file, "/acquisition/receiver/unit",  params[:rxUnit])
-  write(file, "/acquisition/receiver/dataConversionFactor",  params[:rxDataConversionFactor])
+  writeIfAvailable(file, "/acquisition/receiver/dataConversionFactor",  params, :rxDataConversionFactor)
   if hasKeyAndValue(params,:rxTransferFunction)
     tf = params[:rxTransferFunction]
     group = file["/acquisition/receiver"]
@@ -838,6 +838,14 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
       write(file, "/reconstruction/positions", params[:recoPositions])
     end
     if hasKeyAndValue(params, :recoParameters)
+      ## Workaround to save new parameters to MDF, maybe not the best way to do it...
+      # In the future we could serialize a recoplan/algorithm to a string here
+      if haskey(params[:recoParameters], :solver) 
+        params[:recoParameters][:solver] = string(params[:recoParameters][:solver])
+      end
+      if haskey(params[:recoParameters], :reg) 
+        params[:recoParameters][:reg] = string(params[:recoParameters][:reg])
+      end
       saveParams(file, "/reconstruction/_parameters", params[:recoParameters])
     end
   end
