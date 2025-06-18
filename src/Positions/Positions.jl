@@ -752,6 +752,7 @@ end
 
 getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] + tdes.center
 
+const DEFAULT_TDESIGNS = @path joinpath(@__DIR__, "TDesigns.hd5")
 """
     loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{V}=[0.0,0.0,0.0]Unitful.mm, filename::String=joinpath(@__DIR__, "TDesigns.hd5")) where {S,V<:Unitful.Length}
 *Description:* Returns the t-design array for chosen degree t and number of points N\\
@@ -766,7 +767,7 @@ getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] 
 *Output:*
 - t-design of type SphericalTDesign in Cartesian coordinates containing t, radius, center and positions (which are located on the unit sphere unless `getindex(tdes,i)` is used)
 """
-function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{V}=[0.0,0.0,0.0]Unitful.mm, filename::String=joinpath(@__DIR__, "TDesigns.hd5")) where {S,V<:Unitful.Length}
+function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{V}=[0.0,0.0,0.0]Unitful.mm, filename = DEFAULT_TDESIGNS) where {S,V<:Unitful.Length}
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
