@@ -1,4 +1,4 @@
-export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR
+export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR, calibAxis
 
 """
   getSystemMatrix(f, [neglectBGFrames]; kargs...) => Array{ComplexF32,4}
@@ -177,4 +177,19 @@ function converttoreal(S::AbstractArray{Complex{T},2}) where {T}
     S[N+1:end,l] = tmp[2:2:end]
   end
   return reshape(S,(N,2*M))
+end
+
+function calibAxis(f::MPIFile, axis)
+  fov = calibFov(f)
+  size = calibSize(f)
+  center = calibFovCenter(f)
+  #try
+    if size[axis]==1
+      return [center[axis]]
+    else
+      return range(start=-fov[axis]/2,stop=fov[axis]/2,length=size[axis]).+center[axis]
+    end
+  #catch
+  #  return nothing
+  #end
 end
