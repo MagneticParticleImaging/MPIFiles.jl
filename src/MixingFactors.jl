@@ -50,6 +50,9 @@ function mixingFactors(b::MPIFile)
     Nx,Ny,Nz = round.(Int64,freqNumber./mxyz.*mask)
 
     return _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
+  elseif length(mxyz) == 2
+    Nx,Ny = round.(Int64,freqNumber./mxyz.*mask)
+    return _mixingFactors(MoList, mxyz, Nx, Ny, freqNumber)
   else
     MoList[:,1] = MoList[:,4] = 0:(freqNumber-1)
     return MoList
@@ -73,6 +76,24 @@ function _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
           end
        end
     end
+  end
+  return MoList
+end
+
+function _mixingFactors(MoList, mxy, Nx, Ny, freqNumber)
+  for mx = -Nx:Nx
+    #for my = abs(mx)-n0:n0-abs(mx)
+    for my = -Ny:Ny
+        k = (mx*mxy[1]+my*mxy[2])+1
+          if k>=1 &&
+             k<=freqNumber &&
+             (MoList[k,4]<0 || MoList[k,4]>=abs(mx)+abs(my))
+           MoList[k,1] = mx
+           MoList[k,2] = my
+           MoList[k,3] = 0
+           MoList[k,4] = abs(mx)+abs(my)
+          end
+       end
   end
   return MoList
 end
