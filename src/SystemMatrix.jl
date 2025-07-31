@@ -179,17 +179,21 @@ function converttoreal(S::AbstractArray{Complex{T},2}) where {T}
   return reshape(S,(N,2*M))
 end
 
-function calibAxis(f::MPIFile, axis)
+"""
+Gives the center positions of pixels along grid-dimension `axis` of a calibration measurement.
+"""
+function calibAxis(f::MPIFile, axis::Integer)
+  if !(1<=axis<=3); error("Can´t access axis $(axis). A MDF calibration can only have three axes!") end
+
   fov = calibFov(f)
   size = calibSize(f)
   center = calibFovCenter(f)
-  #try
-    if size[axis]==1
-      return [center[axis]]
-    else
-      return range(start=-fov[axis]/2,stop=fov[axis]/2,length=size[axis]).+center[axis]
-    end
-  #catch
-  #  return nothing
-  #end
+  stepSize = calibFov(f)./calibSize(f)
+
+  if size[axis]==1
+    return [center[axis]]
+  else
+    return range( start=(-fov[axis]+stepSize[axis])/2+center[axis], step=stepSize[axis], length=size[axis] )
+  end
+
 end
