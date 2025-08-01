@@ -40,8 +40,7 @@ function findSFFilesMDF(path::AbstractString)
 
   for file in files
     prefix, ext = splitext(file)
-    if !isdir(file) && tryparse(Int64,prefix) != nothing &&
-       (ext == ".mdf" || ext == ".hdf" || ext == ".h5") && !occursin("td.mdf",file)
+    if !isdir(file) && (ext == ".mdf" || ext == ".hdf" || ext == ".h5") && !occursin("td.mdf",file)
       try
         filename = joinpath(path,file)
         MPIFile(filename) # check if file can be opened as an MPIFile
