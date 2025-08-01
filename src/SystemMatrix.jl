@@ -183,7 +183,7 @@ end
 Gives the center positions of pixels along grid-dimension `axis` of a calibration measurement.
 """
 function calibAxis(f::MPIFile, axis::Integer)
-  if !(1<=axis<=3); error("Can´t access axis $(axis). A MDF calibration can only have three axes!") end
+  if !(1<=axis<=3); error("Can't access axis $(axis). A MDF calibration can only have three axes!") end
 
   fov = calibFov(f)
   size = calibSize(f)
