@@ -1,4 +1,4 @@
-export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR
+export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR, calibAxis
 
 """
   getSystemMatrix(f, [neglectBGFrames]; kargs...) => Array{ComplexF32,4}
@@ -177,4 +177,23 @@ function converttoreal(S::AbstractArray{Complex{T},2}) where {T}
     S[N+1:end,l] = tmp[2:2:end]
   end
   return reshape(S,(N,2*M))
+end
+
+"""
+Gives the center positions of pixels along grid-dimension `axis` of a calibration measurement.
+"""
+function calibAxis(f::MPIFile, axis::Integer)
+  if !(1<=axis<=3); error("Can't access axis $(axis). A MDF calibration can only have three axes!") end
+
+  fov = calibFov(f)
+  size = calibSize(f)
+  center = calibFovCenter(f)
+  stepSize = calibFov(f)./calibSize(f)
+
+  if size[axis]==1
+    return [center[axis]]
+  else
+    return range( start=(-fov[axis]+stepSize[axis])/2+center[axis], step=stepSize[axis], length=size[axis] )
+  end
+
 end
