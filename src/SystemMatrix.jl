@@ -182,18 +182,28 @@ end
 """
 Gives the center positions of pixels along grid-dimension `axis` of a calibration measurement.
 """
-function calibAxis(f::MPIFile, axis::Integer)
+function calibAxis(f::MPIFile, axis::Integer; attach_units=false)
   if !(1<=axis<=3); error("Can't access axis $(axis). A MDF calibration can only have three axes!") end
 
-  fov = calibFov(f)
   size = calibSize(f)
+  fov = calibFov(f)
+  if isnothing(fov)
+    fov = ones(length(size))
+  end
   center = calibFovCenter(f)
-  stepSize = calibFov(f)./calibSize(f)
-
-  if size[axis]==1
-    return [center[axis]]
+  if isnothing(center)
+    center = zeros(length(size))
+  end
+  stepSize = fov./size
+  if attach_units
+    unit = if calibMethod(f)=="hybrid"; u"T" else u"m" end 
   else
-    return range( start=(-fov[axis]+stepSize[axis])/2+center[axis], step=stepSize[axis], length=size[axis] )
+    unit = 1
+  end
+  if size[axis]==1
+    return [center[axis]]*unit
+  else
+    return range( start=(-fov[axis]+stepSize[axis])/2+center[axis], step=stepSize[axis], length=size[axis] )*unit
   end
 
 end
