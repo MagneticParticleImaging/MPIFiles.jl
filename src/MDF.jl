@@ -290,7 +290,7 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
     end
 
     dataFD = reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4)))
-    dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
+    dataTD = real.(irfft(dataFD, 2*(size(data,2)-1), 1))
     return reshape(dataTD,size(dataTD,1),size(dataTD,2),1,size(dataTD,3))
   end
 end
@@ -310,7 +310,7 @@ function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
   data = f.mmap_measData[:, :, receivers, periods]
 
   dataFD = reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4)))
-  dataTD = irfft(dataFD, 2*(size(data,2)-1), 1)
+  dataTD = real.(irfft(dataFD, 2*(size(data,2)-1), 1))
   return dataTD
   end
 end
