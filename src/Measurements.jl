@@ -21,13 +21,17 @@ function measDataConv(::FrequencyDomain, f::MPIFile, args...)
   data = measDataFD(f, args...)
   a = rxDataConversionFactor(f)
 
-  hasDCFrequency = !measIsFrequencySelection(f) || in(1, measFrequencySelection(f))
+  dcIndex = nothing
+  if measIsFrequencySelection(f) 
+    dcIndex = findfirst(isequal(1), measFrequencySelection(f))
+  end
+  
   if !isnothing(a)
     for d=1:size(data,2)
       slice = view(data,:,d,:,:)
       rmul!(slice, a[1,d])
-      if hasDCFrequency
-        slice[1, :, :] .+= a[2,d] * rxNumSamplingPoints(f)
+      if !isnothing(dcIndex)
+        slice[dcIndex, :, :] .+= a[2,d] * rxNumSamplingPoints(f)
       end
     end
   end
