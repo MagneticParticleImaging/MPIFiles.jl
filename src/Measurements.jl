@@ -159,8 +159,10 @@ function getAveragedMeasurements(f::MPIFile; domain = TimeDomain(), frames=1:acq
 
   if domain isa TimeDomain
     numDataPoints = rxNumSamplingPoints(f)
+    eltype = Float32
   else
     numDataPoints = rxNumFrequencies(f)
+    eltype = ComplexF32
   end
   @debug "frequency and frame selection" numDataPoints rxNumChannels(f) acqNumFrames(f)
 
@@ -175,7 +177,7 @@ function getAveragedMeasurements(f::MPIFile; domain = TimeDomain(), frames=1:acq
               Last Block will be averaged over less than $numAverages Frames."
     end
 
-    data = zeros(Float32, numDataPoints, rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
+    data = zeros(eltype, numDataPoints, rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
 
     for i = 1:nBlocks
       index1 = 1 + (i-1)*numAverages
