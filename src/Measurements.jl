@@ -21,7 +21,7 @@ function measDataConv(::FrequencyDomain, f::MPIFile, args...)
   data = measDataFD(f, args...)
   a = rxDataConversionFactor(f)
 
-  hasDCFrequency = !measIsFrequencySelection(f) || contains(measFrequencySelection(f), 1)
+  hasDCFrequency = !measIsFrequencySelection(f) || in(1, measFrequencySelection(f))
   if !isnothing(a)
     for d=1:size(data,2)
       slice = view(data,:,d,:,:)
@@ -414,7 +414,7 @@ function getMeasurementsFD(f::MPIFile, args...;
 
   if tfCorrection && !measIsTFCorrected(f)
     inductionFactor = rxInductionFactor(f)
-    if isnothing(rxTransferFunction(f))
+    if !rxHasTransferFunction(f)
       error("No transfer function available in file, please use tfCorrection=false")
     end
     if isnothing(inductionFactor)
@@ -423,8 +423,8 @@ function getMeasurementsFD(f::MPIFile, args...;
     end
     tf = sampleTF(TransferFunction(f), f, numPeriodGrouping=get(kargs, :numPeriodGrouping, 1)) 
 
-    # Pad transfer function in frequency-selected data to prevent errors after conversion from frequency to time domain.
-    if (size(tf, 1) != size(data)) && measIsFrequencySelection(f)
+    # Pad transfer function in case measurement was derived from time domain, i.e. is not frequency filtered
+    if (size(tf, 1) != size(data, 1))
       tfPadded = fill(eltype(tf)(Inf), (rxNumFrequencies(f), size(tf, 2)))
       tfPadded[measFrequencySelection(f), :] = tf
       tf = tfPadded
@@ -447,6 +447,9 @@ function getMeasurementsFD(f::MPIFile, args...;
 
   if !isnothing(frequencies)
     # here we merge frequencies and channels
+    if measIsFrequencySelection(f)
+      frequencies = rowsToSubsampledRows(f, frequencies)
+    end
     data = data[frequencies, :, :]
   end
 
