@@ -40,14 +40,14 @@
       uMPI = getMeasurementsFD(mpiMeas)
       uMem = getMeasurementsFD(memMeas)
       @test isapprox(uBruker, uMPI)
-      @test isapprox(uBruker, uMem)
+      @test isapprox(uMPI, uMem)
       
       # With time domain processing such as spectralLeakageCorrection
       uBruker = getMeasurementsFD(brukerMeas, spectralLeakageCorrection = true)
       uMPI = getMeasurementsFD(mpiMeas, spectralLeakageCorrection = true)
       uMem = getMeasurementsFD(memMeas, spectralLeakageCorrection = true)
       @test isapprox(uBruker, uMPI)
-      @test isapprox(uBruker, uMem)
+      @test isapprox(uMPI, uMem)
       
       # With frequency filtering
       uBruker = getMeasurementsFD(brukerMeas, frequencies = freqs)
@@ -56,7 +56,7 @@
       uMPI = getMeasurementsFD(mpiMeas, frequencies = freqs)
       uMem = getMeasurementsFD(memMeas, frequencies = freqs)
       @test isapprox(uBruker, uMPI)
-      @test isapprox(uBruker, uMem)
+      @test isapprox(uMPI, uMem)
       
       # Without time domain processing
       uAvgBruker = getMeasurementsFD(brukerMeas, frequencies = freqs, numAverages = acqNumFGFrames(brukerMeas))
@@ -65,7 +65,7 @@
       uAvgMPI = getMeasurementsFD(mpiMeas, frequencies = freqs, numAverages = acqNumFGFrames(brukerMeas))
       uAvgMem = getMeasurementsFD(memMeas, frequencies = freqs, numAverages = acqNumFGFrames(brukerMeas))
       @test isapprox(uAvgBruker, uAvgMPI)
-      @test isapprox(uAvgBruker, uAvgMem)
+      @test isapprox(uAvgMPI, uAvgMem)
     end
 
     @testset "System Matrix" begin
@@ -76,14 +76,14 @@
       uMPI = getMeasurementsFD(mpiSM, frames = 1:50)
       uMem = getMeasurementsFD(memSM, frames = 1:50)
       @test isapprox(uBruker, uMPI)
-      @test isapprox(uBruker, uMem)
+      @test isapprox(uMPI, uMem)
       
       # With time domain processing such as spectralLeakageCorrection
-      uBruker = getMeasurementsFD(brukerSM, frames = 1:50, spectralLeakageCorrection = true)
-      uMPI = getMeasurementsFD(mpiSM, frames = 1:50, spectralLeakageCorrection = true)
-      uMem = getMeasurementsFD(memSM, frames = 1:50, spectralLeakageCorrection = true)
+      uBruker = getMeasurements(brukerSM, frames = 1:50, spectralLeakageCorrection = true)
+      uMPI = getMeasurements(mpiSM, frames = 1:50, spectralLeakageCorrection = true)
+      uMem = getMeasurements(memSM, frames = 1:50, spectralLeakageCorrection = true)
       @test isapprox(uBruker, uMPI)
-      @test isapprox(uBruker, uMem)
+      @test isapprox(uMPI, uMem)
       
       # With frequency filtering
       uBruker = getMeasurementsFD(brukerSM, frames = 1:50, frequencies = freqs)
@@ -92,7 +92,7 @@
       uMPI = getMeasurementsFD(mpiSM, frames = 1:50, frequencies = freqs)
       uMem = getMeasurementsFD(memSM, frames = 1:50, frequencies = freqs)
       @test isapprox(uBruker, uMPI)
-      @test isapprox(uBruker, uMem)
+      @test isapprox(uMPI, uMem)
       
       # Without time domain processing
       uAvgBruker = getMeasurementsFD(brukerSM, frames = 1:50, frequencies = freqs, numAverages = 50)
@@ -101,7 +101,7 @@
       uAvgMPI = getMeasurementsFD(mpiSM, frames = 1:50, frequencies = freqs, numAverages = 50)
       uAvgMem = getMeasurementsFD(memSM, frames = 1:50, frequencies = freqs, numAverages = 50)
       @test isapprox(uAvgBruker, uAvgMPI)
-      @test isapprox(uAvgBruker, uAvgMem)
+      @test isapprox(uAvgMPI, uAvgMem)
 
       # With background frames
       bgFrames = measBGFrameIdx(brukerSM)
@@ -112,7 +112,7 @@
       uMPI = getMeasurementsFD(mpiSM, false, frames = bgFrames, frequencies = freqs)
       uMem = getMeasurementsFD(memSM, false, frames = bgFrames, frequencies = freqs)
       @test isapprox(uBruker, uMPI)
-      @test isapprox(uBruker, uMem)
+      @test isapprox(uMPI, uMem)
 
       # Frequency filtered file
       uBruker = getMeasurementsFD(brukerSM, false, frames = bgFrames, frequencies = freqs)
@@ -120,16 +120,16 @@
       uMemFiltered = getMeasurementsFD(memFiltered, false, frames = bgFrames)
       @test size(uMPIFiltered) == (256, 3, 1, 23)
       @test isapprox(uBruker, reshape(uMPIFiltered, :, 1, 23))
-      @test isapprox(uBruker, reshape(uMemFiltered, :, 1, 23))
+      @test isapprox(reshape(uMPIFiltered, :, 1, 23), reshape(uMemFiltered, :, 1, 23))
       uMPIFiltered = getMeasurementsFD(mpiFiltered, false, frames = bgFrames, frequencies = freqs)
       uMemFiltered = getMeasurementsFD(memFiltered, false, frames = bgFrames, frequencies = freqs)
       @test isapprox(uBruker, uMPIFiltered)
-      @test isapprox(uBruker, uMemFiltered)
+      @test isapprox(uMPI, uMemFiltered)
       uBruker = getMeasurementsFD(brukerSM, false, frames = bgFrames, frequencies = freqs[1:2:end])
       uMPIFiltered = getMeasurementsFD(mpiFiltered, false, frames = bgFrames, frequencies = freqs[1:2:end])
       uMemFiltered = getMeasurementsFD(memFiltered, false, frames = bgFrames, frequencies = freqs[1:2:end])
       @test isapprox(uBruker, uMPIFiltered)
-      @test isapprox(uBruker, uMemFiltered)
+      @test isapprox(uMPI, uMemFiltered)
     end
   end
 end
