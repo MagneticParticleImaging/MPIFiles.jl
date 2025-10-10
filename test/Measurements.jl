@@ -11,18 +11,18 @@
   brukerSM = MPIFile(fnSMBruker)
 
   fnMPIMeas = joinpath(tmpdir, "getMeas", "meas.mdf")
-  saveasMDF(fnMPIMeas, brukerMeas)
+  #saveasMDF(fnMPIMeas, brukerMeas)
   mpiMeas = MPIFile(fnMPIMeas)
   memMeas = MDFv2InMemory(mpiMeas)
 
   fnMPISM = joinpath(tmpdir, "getMeas", "sm.mdf")
-  saveasMDF(fnMPISM, brukerSM)
+  #saveasMDF(fnMPISM, brukerSM)
   mpiSM = MPIFile(fnMPISM)
   memSM = MDFv2InMemory(mpiSM)
 
   snr = 2
   fnFiltered = joinpath(tmpdir, "getMeas", "filtered.mdf")
-  saveasMDF(fnFiltered, mpiSM; SNRThresh = snr)
+  #saveasMDF(fnFiltered, mpiSM; SNRThresh = snr)
   mpiFiltered = MPIFile(fnFiltered)
   memFiltered = MDFv2InMemory(mpiFiltered)
   freqs = vec([CartesianIndex(f,c) for f in measFrequencySelection(mpiFiltered), c in 1:rxNumChannels(mpiFiltered)])
@@ -130,6 +130,13 @@
       uMemFiltered = getMeasurementsFD(memFiltered, false, frames = bgFrames, frequencies = freqs[1:2:end])
       @test isapprox(uBruker, uMPIFiltered)
       @test isapprox(uMPIFiltered, uMemFiltered)
+
+      # Compare with getSystemMatrix
+      for file in [brukerSM, mpiMeas, mpiSM, mpiFiltered]
+        u = reshape(getMeasurementsFD(file, frequencies = freqs), length(freqs), :)
+        sm = getSystemMatrix(file, freqs)
+        @test isapprox(transpose(u), sm)
+      end
     end
   end
 end
