@@ -21,7 +21,7 @@ function measDataConv(::FrequencyDomain, f::MPIFile, args...)
   data = measDataFD(f, args...)
   a = rxDataConversionFactor(f)
 
-  dcIndex = nothing
+  dcIndex = 1
   if measIsFrequencySelection(f) 
     dcIndex = findfirst(isequal(1), measFrequencySelection(f))
   end
