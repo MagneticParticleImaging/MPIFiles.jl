@@ -129,7 +129,7 @@
       uMPIFiltered = getMeasurementsFD(mpiFiltered, false, frames = bgFrames, frequencies = freqs[1:2:end])
       uMemFiltered = getMeasurementsFD(memFiltered, false, frames = bgFrames, frequencies = freqs[1:2:end])
       @test isapprox(uBruker, uMPIFiltered)
-      @test isapprox(uMPI, uMemFiltered)
+      @test isapprox(uMPIFiltered, uMemFiltered)
     end
   end
 end
