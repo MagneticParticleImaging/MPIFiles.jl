@@ -44,14 +44,14 @@ This function returns a lookup table with columns
 for all frequencies in `freq = frequencies(bSF)`, where only the lowest order
 mixing coefficients `mx`, `my`, and `mz` are listed.
 """
-function mixingFactors(b::MPIFile)
+function mixingFactors(b::MPIFile; maxFactor=200)
   mxyz, mask, freqNumber = calcPrefactors(b)
   MoList = zeros(Int64,freqNumber,4)
   MoList[:,4] .= -1 # set all mixing orders to -1 initially to change them later
   if length(mxyz) == 3
-    Nx,Ny,Nz = round.(Int64,freqNumber./mxyz.*mask)
+    #Nx,Ny,Nz = round.(Int64,freqNumber./mxyz.*mask)
 
-    return _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
+    return _mixingFactors(MoList, mxyz, maxFactor,maxFactor,maxFactor, freqNumber)
   elseif length(mxyz) == 2
     Nx,Ny = round.(Int64,freqNumber./mxyz.*mask)
     return _mixingFactors(MoList, mxyz, Nx, Ny, freqNumber)
