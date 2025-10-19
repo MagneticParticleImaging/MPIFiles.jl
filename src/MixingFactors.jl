@@ -25,16 +25,18 @@ function mixFactorToFreqIdx(b::MPIFile,mx,my,mz=0)
   return freqidx + 1
 end
 
-function calcPrefactors(b::MPIFile)
-  freqNumber = rxNumFrequencies(b)
-  mask = collect((dfStrength(b)[1,:,1] .>= 0.0000001))
-  divider = vec(dfDivider(b))
+
+function calcPrefactors(numFreq, dfStrength, divider, baseFreq, cycle)
+  mask = collect((dfStrength[1,:,1] .>= 0.0000001))
+  divider = vec(divider)
   #mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
-  mxyz_ = dfBaseFrequency(b)*dfCycle(b)./divider
+  mxyz_ = baseFreq*cycle./divider
   mxyz = max.(1,round.(Int64,mxyz_.*mask))
 
-  return mxyz, mask, freqNumber
+  return mxyz, mask, numFreq
 end
+
+calcPrefactors(b::MPIFile) = calcPrefactors(rxNumFrequencies(b), dfStrength(b), dfDivider(b), dfBaseFrequency(b), dfCycle(b))
 
 """
 This function returns a lookup table with columns
