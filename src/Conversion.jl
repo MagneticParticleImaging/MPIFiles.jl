@@ -104,18 +104,16 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
 
   # If no explicit frequences were given, check if frequency filtering is necessary
   filteringRequired = false
-  if isnothing(frequencies)
-    filteringRequired |= SNRThresh > 0
-    filteringRequired |= maxMixingOrder != -1
-    filteringRequired |= minFreq != 0
-    filteringRequired |= maxFreq != rxBandwidth(f)
-    filteringRequired |= numUsedFreqs != -1
-    filteringRequired |= stepsize != 1
-    filteringRequired |= numSidebandFreqs != -1
-    filteringRequired |= !isnothing(stopBands)
-  end
+  filteringRequired |= SNRThresh > 0
+  filteringRequired |= maxMixingOrder != -1
+  filteringRequired |= minFreq != 0
+  filteringRequired |= maxFreq != rxBandwidth(f)
+  filteringRequired |= numUsedFreqs != -1
+  filteringRequired |= stepsize != 1
+  filteringRequired |= numSidebandFreqs != -1
+  filteringRequired |= !isnothing(stopBands)
   if !isnothing(frequencies) && filteringRequired
-    @warn "Explicit frequency selection and frequency filtering keywords were used together. Only the explicit frequency selection is used for MDF conversion"
+    throw(ArgumentError("Explicit frequency selection and frequency filtering keywords were used together. Only the explicit frequency selection is used for MDF conversion"))
   elseif filteringRequired
     frequencies = filterFrequencies(f; SNRThresh, minFreq, maxFreq, numUsedFreqs, stepsize, maxMixingOrder,
         numPeriodGrouping, numSidebandFreqs, stopBands)
@@ -135,7 +133,7 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
     # We don't want a vector, because we want to preserve our two freq and channel dimensions
     frequencies = [CartesianIndex(i, j) for i in sort(frequencies), j in 1:rxNumChannels(f)]
     if measIsFrequencySelection(f)
-      frequencies = rowsToSubsampledRows(f, frequencies), :, rxNumChannels(f)
+      frequencies = rowsToSubsampledRows(f, frequencies)
     end
   end
 
@@ -147,7 +145,9 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
       setparam!(params, :measData, measData(f, frames))
       setparam!(params, :acqNumFrames, length(frames))
       setparam!(params, :measIsBGFrame, measIsBGFrame(f)[frames])
-      setparam!(params, :measFramePermutation, sortperm(measFramePermutation(f)[frames]))
+      if !isnothing(measFramePermutation(f))
+        setparam!(params, :measFramePermutation, sortperm(measFramePermutation(f)[frames]))
+      end
     else
       setparam!(params, :measData, measData(f))
     end
@@ -178,7 +178,8 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
     params[:measData] = data
     params[:measIsFourierTransformed] = true
     params[:measIsFrequencySelection] = true
-    params[:measFrequencySelection] = unique([f[1] for f in frequencies])
+    freqComponents = [f[1] for f in view(frequencies, :, 1)]
+    params[:measFrequencySelection] = measIsFrequencySelection(f) ? measFrequencySelection(f)[freqComponents] : freqComponents
   end
 
   return params
