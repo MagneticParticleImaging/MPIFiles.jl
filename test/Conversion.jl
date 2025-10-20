@@ -42,11 +42,29 @@
   end
 
   @testset "Frequency Filtering" begin
+    params = Dict{Symbol, Any}()
+    params[:SNRThresh] = 2
+    params[:maxMixingOrder] = 5
+    
     @testset "Time Domain Origin" begin
+      freqSelectionTDOrigin = joinpath(tmpdir, "conversion", "freq_td.mdf")
+      saveasMDF(joinpath(tmpdir, "conversion", "freq_td_1.mdf"), brukerMeas; params..., SNRThresh = -1) # measurements have no SNR
+      MPIFile(freqSelectionTDOrigin) do freqTD
+        @test measIsFrequencySelection(freqTD)
+        @test measIsFourierTransformed(freqTD)
+        freqs = [CartesianIndex(f,c) for f in measFrequencySelection(freqTD), c in 1:rxNumChannels(freqTD)]
+        @test prod(size(measData(freqTD))[1:2]) == length(freqs)
+        @test isapprox(getMeasurementsFD(brukerMeas, false, frequencies = freqs), getMeasurementsFD(freqTD, false))
+      end
     end
+    
     @testset "Frequency Domain Origin" begin
     end
+    
     @testset "Frequency Selected Origin" begin
+    end
+
+    @testset "Frequency Selection Parameters & Handling" begin
     end
   end
 end
