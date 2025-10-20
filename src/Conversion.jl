@@ -105,14 +105,14 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
   # If no explicit frequences were given, check if frequency filtering is necessary
   filteringRequired = false
   if isnothing(frequencies)
-    filteringRequired &= numPeriodGrouping != 1
-    filteringRequired &= SNRThresh > 0
-    filteringRequired &= minFreq != 0
-    filteringRequired &= maxFreq != rxBandwidth(f)
-    filteringRequired &= numUsedFreqs != -1
-    filteringRequired &= stepsize != 1
-    filteringRequired &= numSidebandFreqs != -1
-    filteringRequired &= !isnothing(stopBands)
+    filteringRequired |= SNRThresh > 0
+    filteringRequired |= maxMixingOrder != -1
+    filteringRequired |= minFreq != 0
+    filteringRequired |= maxFreq != rxBandwidth(f)
+    filteringRequired |= numUsedFreqs != -1
+    filteringRequired |= stepsize != 1
+    filteringRequired |= numSidebandFreqs != -1
+    filteringRequired |= !isnothing(stopBands)
   end
   if !isnothing(frequencies) && filteringRequired
     @warn "Explicit frequency selection and frequency filtering keywords were used together. Only the explicit frequency selection is used for MDF conversion"
@@ -125,11 +125,11 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
   # MDF has the same frequency component for each channel, while MPIFiles supports different frequencies per channel
   # We have to find all unique frequencie components and get them from each channel
   if !isnothing(frequencies) 
-    if eltype(frequencies) isa CartesianIndex
+    if eltype(frequencies) <: CartesianIndex{2}
       # Extract pure components
       frequencies = unique([f[1] for f in frequencies])
-    elseif !(eltype(frequencies) isa Integer)
-      error("Unexpected frequency datatype for frequency components")
+    elseif !(eltype(frequencies) <: Integer)
+      error("Unexpected frequency datatype for frequency components: $(eltype(frequencies))")
     end
     # Expand pure components to (freq, channel) for our functions, while remaining compatbile with MDF
     # We don't want a vector, because we want to preserve our two freq and channel dimensions
@@ -160,21 +160,23 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
   setparam!(params, :measFrequencySelection, measFrequencySelection(f))
   if !isnothing(frequencies)
     data = params[:measData]
-    isTimeSignal = !(applyCalibPostprocessing || measIsFourierTransformed(f))
-    # Fast frame axis
+    
+    # If it is a time signal, we have to apply same pipeline as calibPostProcessing, i.e. getMeasurementsFD
+    if !(applyCalibPostprocessing || measIsFourierTransformed(f))
+      params[:measData] = nothing # free dict, to potentially allow GC
+      data = getMeasurementsFD(f, false, frames = frames, transposed = measIsFastFrameAxis(f),
+        tfCorrection = false, spectralLeakageCorrection = false, numPeriodGrouping = numPeriodGrouping)
+    end
+
+    # Apply frequency filtering
     if applyCalibPostprocessing || measIsFastFrameAxis(f)
-      if isTimeSignal
-        data = rfft(data, 2)
-      end
       data = data[:, frequencies, :]
     else
-      if isTimeSignal
-        data = rfft(data, 1)
-      end
       data = data[frequencies, :, :]
     end
 
     params[:measData] = data
+    params[:measIsFourierTransformed] = true
     params[:measIsFrequencySelection] = true
     params[:measFrequencySelection] = unique([f[1] for f in frequencies])
   end
@@ -271,10 +273,10 @@ end
 
 function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, enforceConversion=false, kargs...)
   # This is a hack. Needs to be fixed properly
-  if(haskey(kargs, :SNRThresh) || haskey(kargs, :sparsityTrafoRedFactor)) && !isnothing(calibSNR(f))
-    compressCalibMDF(filenameOut, f; kargs...)
-    return
-  end
+  #if(haskey(kargs, :SNRThresh) || haskey(kargs, :sparsityTrafoRedFactor)) && !isnothing(calibSNR(f))
+  #  compressCalibMDF(filenameOut, f; kargs...)
+  #  return
+  #end
   
   if enforceConversion || isConvertibleToMDF(f)
     params = loadDataset(f; kargs...)
