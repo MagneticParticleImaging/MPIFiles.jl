@@ -631,6 +631,7 @@ fullFramePermutation(f::BrukerFile) = fullFramePermutation(f, true)
 
 measIsSpectralLeakageCorrected(b::BrukerFile) = get(b.params, "ACQ_MPI_spectral_cleaningl", "No") != "No"
 measIsFrequencySelection(b::BrukerFile) = false
+measFrequencySelection(b::BrukerFile) = nothing
 measIsSparsityTransformed(b::BrukerFile) = false
 
 # calibrations

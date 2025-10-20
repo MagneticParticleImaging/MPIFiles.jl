@@ -77,20 +77,19 @@ function loadCalibParams(f, params = Dict{Symbol,Any}())
 end
 
 function loadMeasParams(f, params=Dict{Symbol,Any}(); skipMeasData = false, kargs...)
-  if !experimentHasMeasurement(f)
+  if experimentHasMeasurement(f)
     for op in [:measIsFourierTransformed, :measIsTFCorrected,
-                 :measIsBGCorrected,
+                 :measIsBGCorrected, :measFrequencySelection,
                  :measIsFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
                  :measIsSpectralLeakageCorrected,
                  :measFramePermutation, :measIsBGFrame]
       setparam!(params, op, eval(op)(f))
     end
-  end
 
-  if !skipMeasData
-    setparam!(params, :measData, measData(f))
-  elseif measIsFrequencySelection(f)
-    setparam!(params, :measFrequencySelection, measFrequencySelection(f))
+    if !skipMeasData
+      # Can overwrite some of the parameters set above depending on the kargs
+      loadMeasData(f, params; kargs...)
+    end
   end
 
   return params
