@@ -10,67 +10,14 @@ function setparam!(params::Dict, parameter, value)
 end
 
 # we do not support all conversion possibilities
-function loadDataset(f::MPIFile; frames=1:acqNumFrames(f), applyCalibPostprocessing=false,
-                     numPeriodAverages=1, numPeriodGrouping=1, experimentNumber=missing,
-                     fixDistortions=false, kargs...)
+function loadDataset(f::MPIFile; experimentNumber=missing, kargs...)
   params = loadMetadata(f)
 
   if !ismissing(experimentNumber)
     params[:experimentNumber] = experimentNumber
   end
 
-  # call API function and store result in a parameter Dict
-  if experimentHasMeasurement(f)
-    loadMeasParams(f, params, skipMeasData = true)
-    if !applyCalibPostprocessing
-      if frames!=1:acqNumFrames(f)
-        setparam!(params, :measData, measData(f,frames))
-        setparam!(params, :acqNumFrames, length(frames))
-        setparam!(params, :measIsBGFrame, measIsBGFrame(f)[frames])
-      else
-        setparam!(params, :measData, measData(f))
-      end
-
-      if fixDistortions
-        detectAndFixDistortions!(params[:measData], 0.3)
-      end
-    else
-        @info "load measurement data"
-        data = getMeasurementsFD(f, false, frames=1:acqNumFrames(f), sortFrames=true,
-                       spectralLeakageCorrection=false, transposed=true, tfCorrection=false,
-                       numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping,
-                       fixDistortions=fixDistortions)
-
-          @info size(data)
-        setparam!(params, :measData, data)
-        setparam!(params, :measIsFourierTransformed, true)
-        setparam!(params, :measIsFastFrameAxis, true)
-        setparam!(params, :measIsFramePermutation, true)
-        setparam!(params, :measFramePermutation, fullFramePermutation(f))
-
-        if numPeriodAverages > 1
-          params[:acqNumAverages] *= numPeriodAverages
-          params[:acqNumPeriodsPerFrame] = div(params[:acqNumPeriodsPerFrame],numPeriodAverages)
-        end
-        if numPeriodGrouping > 1
-          params[:acqNumPeriodsPerFrame] = div(params[:acqNumPeriodsPerFrame],numPeriodGrouping)
-          params[:dfCycle] *= numPeriodGrouping # Not sure about this one
-
-          params[:rxNumSamplingPoints] *= numPeriodGrouping
-        end
-
-        setparam!(params, :measIsBGFrame,
-          cat(zeros(Bool,acqNumFGFrames(f)),ones(Bool,acqNumBGFrames(f)), dims=1))
-
-        snr = calibSNR(f)
-	      if isnothing(snr)
-          @info "calculate SNR"
-          snr = calculateSystemMatrixSNR(f, data, numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
-        end
-        setparam!(params, :calibSNR, snr)
-    end
-  end
-
+  loadMeasParams(f, params, kargs...)
   loadCalibParams(f, params)
   loadRecoParams(f, params)
 
@@ -129,8 +76,8 @@ function loadCalibParams(f, params = Dict{Symbol,Any}())
   return params
 end
 
-function loadMeasParams(f, params = Dict{Symbol,Any}(); skipMeasData = false)
-  if experimentHasMeasurement(f)
+function loadMeasParams(f, params=Dict{Symbol,Any}(); skipMeasData = false, kargs...)
+  if !experimentHasMeasurement(f)
     for op in [:measIsFourierTransformed, :measIsTFCorrected,
                  :measIsBGCorrected,
                  :measIsFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
@@ -142,12 +89,142 @@ function loadMeasParams(f, params = Dict{Symbol,Any}(); skipMeasData = false)
 
   if !skipMeasData
     setparam!(params, :measData, measData(f))
-  end
-
-  if measIsFrequencySelection(f)
+  elseif measIsFrequencySelection(f)
     setparam!(params, :measFrequencySelection, measFrequencySelection(f))
   end
 
+  return params
+end
+
+
+
+function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), frequencies = nothing, applyCalibPostprocessing=false,
+              fixDistortions=false, SNRThresh=-1, minFreq=0,
+               maxFreq=rxBandwidth(f), numUsedFreqs=-1, stepsize=1,
+                maxMixingOrder=-1, numPeriodAverages=1, numPeriodGrouping=1, numSidebandFreqs = -1, stopBands = nothing, kargs...)
+
+  # If no explicit frequences were given, check if frequency filtering is necessary
+  filteringRequired = false
+  if isnothing(frequencies)
+    filteringRequired &= numPeriodGrouping != 1
+    filteringRequired &= SNRThresh > 0
+    filteringRequired &= minFreq != 0
+    filteringRequired &= maxFreq != rxBandwidth(f)
+    filteringRequired &= numUsedFreqs != -1
+    filteringRequired &= stepsize != 1
+    filteringRequired &= numSidebandFreqs != -1
+    filteringRequired &= !isnothing(stopBands)
+  end
+  if !isnothing(frequencies) && filteringRequired
+    @warn "Explicit frequency selection and frequency filtering keywords were used together. Only the explicit frequency selection is used for MDF conversion"
+  elseif filteringRequired
+    frequencies = filterFrequencies(f; SNRThresh, minFreq, maxFreq, numUsedFreqs, stepsize, maxMixingOrder,
+        numPeriodGrouping, numSidebandFreqs, stopBands)
+  end
+
+  # MDF and MPIFiles have different concepts of frequencies
+  # MDF has the same frequency component for each channel, while MPIFiles supports different frequencies per channel
+  # We have to find all unique frequencie components and get them from each channel
+  if !isnothing(frequencies) 
+    if eltype(frequencies) isa CartesianIndex
+      # Extract pure components
+      frequencies = unique([f[1] for f in frequencies])
+    elseif !(eltype(frequencies) isa Integer)
+      error("Unexpected frequency datatype for frequency components")
+    end
+    # Expand pure components to (freq, channel) for our functions, while remaining compatbile with MDF
+    # We don't want a vector, because we want to preserve our two freq and channel dimensions
+    frequencies = [CartesianIndex(i, j) for i in sort(frequencies), j in 1:rxNumChannels(f)]
+    if measIsFrequencySelection(f)
+      frequencies = rowsToSubsampledRows(f, frequencies), :, rxNumChannels(f)
+    end
+  end
+
+  # Load data with frame selection, but no frequency selection (yet)
+  if applyCalibPostprocessing
+    calibPostProcessing(f, params; frames, fixDistortions, numPeriodAverages, numPeriodGrouping)
+  else
+    if frames != 1:acqNumFrames(f)
+      setparam!(params, :measData, measData(f, frames))
+      setparam!(params, :acqNumFrames, length(frames))
+      setparam!(params, :measIsBGFrame, measIsBGFrame(f)[frames])
+    else
+      setparam!(params, :measData, measData(f))
+    end
+
+    if fixDistortions && !measIsFourierTransformed(f)
+      detectAndFixDistortions!(params[:measData], 0.3)
+    end
+  end
+
+  setparam!(params, :measFrequencySelection, measFrequencySelection(f))
+  if !isnothing(frequencies)
+    data = params[:measData]
+    isTimeSignal = !(applyCalibPostprocessing || measIsFourierTransformed(f))
+    # Fast frame axis
+    if applyCalibPostprocessing || measIsFastFrameAxis(f)
+      if isTimeSignal
+        data = rfft(data, 2)
+      end
+      data = data[:, frequencies, :]
+    else
+      if isTimeSignal
+        data = rfft(data, 1)
+      end
+      data = data[frequencies, :, :]
+    end
+
+    params[:measData] = data
+    params[:measIsFrequencySelection] = true
+    params[:measFrequencySelection] = unique([f[1] for f in frequencies])
+  end
+
+  return params
+end
+
+
+function calibPostProcessing(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fixDistortions=false, numPeriodAverages=1, numPeriodGrouping=1)
+  @info "load measurement data"
+  # We don't filter data here, because it would break SNR calculation
+  data = getMeasurementsFD(f, false, frames=1:acqNumFrames(f), sortFrames=true,
+    spectralLeakageCorrection=false, transposed=true, tfCorrection=false,
+    numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping,
+    fixDistortions=fixDistortions)
+
+  @info size(data)
+  setparam!(params, :measData, data)
+  setparam!(params, :measIsFourierTransformed, true)
+  setparam!(params, :measIsFastFrameAxis, true)
+  setparam!(params, :measIsFramePermutation, true)
+  setparam!(params, :measFramePermutation, fullFramePermutation(f))
+
+  if numPeriodAverages > 1
+    params[:acqNumAverages] *= numPeriodAverages
+    params[:acqNumPeriodsPerFrame] = div(params[:acqNumPeriodsPerFrame], numPeriodAverages)
+  end
+  if numPeriodGrouping > 1
+    params[:acqNumPeriodsPerFrame] = div(params[:acqNumPeriodsPerFrame], numPeriodGrouping)
+    params[:dfCycle] *= numPeriodGrouping # Not sure about this one
+
+    params[:rxNumSamplingPoints] *= numPeriodGrouping
+  end
+
+  setparam!(params, :measIsBGFrame,
+    cat(zeros(Bool, acqNumFGFrames(f)), ones(Bool, acqNumBGFrames(f)), dims=1))
+
+  snr = calibSNR(f)
+  if isnothing(snr)
+    @info "calculate SNR"
+    snr = calculateSystemMatrixSNR(f, data, numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
+  end
+  setparam!(params, :calibSNR, snr)
+
+  # apply frame selection
+  if frames != 1:acqNumFrames(f)
+    params[:measData] = params[:measData][frames, :, :, :]
+    params[:measFramePermutation] = sortperm(params[:measFramePermutation])
+    params[:measIsBGFrame] = params[:measIsBGFrame][frames]
+  end
   return params
 end
 
