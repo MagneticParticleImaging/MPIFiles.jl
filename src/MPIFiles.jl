@@ -213,6 +213,9 @@ abstract type MPIFile end
 # additional functions that should be implemented by an MPIFile
 @mustimplement filepath(f::MPIFile)
 
+abstract type AbstractValueDomain end
+struct TimeDomain <: AbstractValueDomain end
+struct FrequencyDomain <: AbstractValueDomain end
 
 include("Derived.jl")
 include("Custom.jl")

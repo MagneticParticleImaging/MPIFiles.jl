@@ -100,6 +100,7 @@ end
 
 mkpath(joinpath(tmpdir,"mdf"))
 mkpath(joinpath(tmpdir,"mdfim"))
+mkpath(joinpath(tmpdir, "getMeas"))
 mkpath(joinpath(tmpdir,"positions"))
 mkpath(joinpath(tmpdir,"transferFunction"))
 mkpath(joinpath(tmpdir,"conversion"))
@@ -122,5 +123,6 @@ include("TransferFunction.jl")
 include("FrequencyFilter.jl")
 include("MagneticFieldMeasurement.jl")
 include("DatasetStore.jl")
+include("Measurements.jl")
 
 @info "The unit tests are done!"

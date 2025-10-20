@@ -115,3 +115,22 @@ function measDataTD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
   end
   return dataTD
 end
+function measDataFD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
+                  receivers=1:rxNumChannels(f))
+  data1 = measData(f,frames,periods,receivers)
+
+  if measIsFastFrameAxis(f)
+    data2 = permutedims(data1, invperm([4,1,2,3]))
+  else
+    data2 = data1
+  end
+
+  # TODO: frequencySelection
+  if !measIsFourierTransformed(f)
+    dataFD = rfft(data2, 1)
+  else
+    dataFD = data2
+  end
+
+  return dataFD
+end
