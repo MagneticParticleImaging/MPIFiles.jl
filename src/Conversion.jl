@@ -17,7 +17,7 @@ function loadDataset(f::MPIFile; experimentNumber=missing, kargs...)
     params[:experimentNumber] = experimentNumber
   end
 
-  loadMeasParams(f, params, kargs...)
+  loadMeasParams(f, params; kargs...)
   loadCalibParams(f, params)
   loadRecoParams(f, params)
 
@@ -147,6 +147,7 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
       setparam!(params, :measData, measData(f, frames))
       setparam!(params, :acqNumFrames, length(frames))
       setparam!(params, :measIsBGFrame, measIsBGFrame(f)[frames])
+      setparam!(params, :measFramePermutation, sortperm(measFramePermutation(f)[frames]))
     else
       setparam!(params, :measData, measData(f))
     end
