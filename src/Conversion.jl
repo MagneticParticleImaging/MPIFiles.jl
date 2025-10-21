@@ -67,7 +67,17 @@ function loadCalibParams(f, params = Dict{Symbol,Any}())
       setparam!(params, op, eval(op)(f))
     end
     if !haskey(params, :calibSNR)
-      setparam!(params, :calibSNR, calibSNR(f))
+      snr = calibSNR(f)
+      if haskey(params, :measFrequencySelection) && measFrequencySelection(f) != params[:measFrequencySelection]
+        freqComponents = params[:measFrequencySelection]
+        if measIsFrequencySelection(f)
+          rows = [CartesianIndex(i, j) for i in freqComponents, j in 1:params[:rxNumChannels]]
+          rows = rowsToSubsampledRows(f, rows)
+          freqComponents = [f[1] for f in view(rows, :, 1)]
+        end
+        snr = snr[freqComponents, :, :]
+      end
+      setparam!(params, :calibSNR, snr)
     end
     if !haskey(params, :calibIsMeanderingGrid)
       setparam!(params, :calibIsMeanderingGrid, calibIsMeanderingGrid(f))
@@ -178,8 +188,10 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
     params[:measData] = data
     params[:measIsFourierTransformed] = true
     params[:measIsFrequencySelection] = true
+    # Freq components are already mapped to (potentially) already selected frequencies
     freqComponents = [f[1] for f in view(frequencies, :, 1)]
     params[:measFrequencySelection] = measIsFrequencySelection(f) ? measFrequencySelection(f)[freqComponents] : freqComponents
+    params[:rxTransferFunction] = params[:rxTransferFunction][freqComponents, :]
   end
 
   return params

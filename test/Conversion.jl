@@ -55,6 +55,7 @@
         freqs = [CartesianIndex(f,c) for f in measFrequencySelection(freqTD), c in 1:rxNumChannels(freqTD)]
         @test prod(size(measData(freqTD))[1:2]) == length(freqs)
         @test isapprox(getMeasurementsFD(brukerMeas, false, frequencies = freqs), getMeasurementsFD(freqTD, false))
+        @test isapprox(rxTransferFunction(freqTD), rxTransferFunction(brukerMeas)[freqs])
       end
     end
     
@@ -67,22 +68,27 @@
         freqs = [CartesianIndex(f,c) for f in measFrequencySelection(freqFD), c in 1:rxNumChannels(freqFD)]
         @test prod(size(measData(freqFD))[2:3]) == length(freqs)
         @test isapprox(getMeasurementsFD(brukerSM, false, frequencies = freqs), getMeasurementsFD(freqFD, false))
+        @test size(calibSNR(freqFD), 1) == length(measFrequencySelection(freqFD))
+        @test isapprox(calibSNR(freqFD), calibSNR(brukerSM)[measFrequencySelection(freqFD), :, :])
+        @test isapprox(rxTransferFunction(freqFD), rxTransferFunction(brukerSM)[freqs])
       end
     end
     
     @testset "Frequency Selected Origin" begin
-      freqSelectionTDOrigin = joinpath(tmpdir, "conversion", "freq_td.mdf")
+      freqSelectionFDOrigin = joinpath(tmpdir, "conversion", "freq_fd.mdf")
       freqSelectionDoubleFiltered = joinpath(tmpdir, "conversion", "freq_double.mdf")
-      if !isfile(freqSelectionTDOrigin)
-        saveasMDF(joinpath(tmpdir, "conversion", "freq_td.mdf"), brukerMeas; params..., SNRThresh = -1) # measurements have no SNR
+      if !isfile(freqSelectionFDOrigin)
+        saveasMDF(joinpath(tmpdir, "conversion", "freq_fd.mdf"), brukerSM; params...,)
       end
-      saveasMDF(freqSelectionDoubleFiltered, brukerMeas; maxMixingOrder = params[:maxMixingOrder] - 1)
+      saveasMDF(freqSelectionDoubleFiltered, MPIFile(freqSelectionFDOrigin); maxMixingOrder = params[:maxMixingOrder] - 1)
       MPIFile(freqSelectionDoubleFiltered) do freqDouble
         @test measIsFrequencySelection(freqDouble)
         @test measIsFourierTransformed(freqDouble)
         freqs = [CartesianIndex(f,c) for f in measFrequencySelection(freqDouble), c in 1:rxNumChannels(freqDouble)]
-        @test prod(size(measData(freqDouble))[1:2]) == length(freqs)
-        @test isapprox(getMeasurementsFD(brukerMeas, false, frequencies = freqs), getMeasurementsFD(freqDouble, false))
+        @test prod(size(measData(freqDouble))[2:3]) == length(freqs)
+        @test isapprox(getMeasurementsFD(brukerSM, false, frequencies = freqs), getMeasurementsFD(freqDouble, false))
+        @test isapprox(calibSNR(freqDouble), calibSNR(brukerSM)[measFrequencySelection(freqDouble), :, :])
+        @test isapprox(rxTransferFunction(freqDouble), rxTransferFunction(brukerSM)[freqs])
       end
     end
 
