@@ -98,7 +98,7 @@ function TransferFunction(file::MPIFile)
     return nothing
   end
   inductionFactor = rxInductionFactor(file)
-  f = rxFrequencies(file)
+  f = measIsFrequencySelection(file) ? rxFrequencies(file)[measFrequencySelection(file)] : rxFrequencies(file)
   
   if isnothing(inductionFactor)
     return TransferFunction(f, abs.(tf_file), angle.(tf_file))
