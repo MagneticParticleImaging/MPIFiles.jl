@@ -89,7 +89,7 @@ end
 function loadMeasParams(f, params=Dict{Symbol,Any}(); skipMeasData = false, kargs...)
   if experimentHasMeasurement(f)
     for op in [:measIsFourierTransformed, :measIsTFCorrected,
-                 :measIsBGCorrected, :measFrequencySelection,
+                 :measIsBGCorrected,
                  :measIsFastFrameAxis, :measIsFramePermutation, :measIsFrequencySelection,
                  :measIsSpectralLeakageCorrected,
                  :measFramePermutation, :measIsBGFrame]
@@ -167,7 +167,10 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
     end
   end
 
-  setparam!(params, :measFrequencySelection, measFrequencySelection(f))
+  if measIsFrequencySelection(f)
+    # Not all file types implement this method
+    setparam!(params, :measFrequencySelection, measFrequencySelection(f))
+  end
   if !isnothing(frequencies)
     data = params[:measData]
     
@@ -191,7 +194,9 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
     # Freq components are already mapped to (potentially) already selected frequencies
     freqComponents = [f[1] for f in view(frequencies, :, 1)]
     params[:measFrequencySelection] = measIsFrequencySelection(f) ? measFrequencySelection(f)[freqComponents] : freqComponents
-    params[:rxTransferFunction] = params[:rxTransferFunction][freqComponents, :]
+    if haskey(params, :rxTransferFunction)
+      params[:rxTransferFunction] = params[:rxTransferFunction][freqComponents, :]
+    end
   end
 
   return params
