@@ -19,6 +19,8 @@ function loadDataset(f::MPIFile; experimentNumber=missing, kargs...)
 
   loadMeasParams(f, params; kargs...)
   loadCalibParams(f, params)
+  compressCalibData(f, params; kargs...)
+
   loadRecoParams(f, params)
 
   return params
@@ -289,13 +291,7 @@ function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
   return
 end
 
-function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, enforceConversion=false, kargs...)
-  # This is a hack. Needs to be fixed properly
-  #if(haskey(kargs, :SNRThresh) || haskey(kargs, :sparsityTrafoRedFactor)) && !isnothing(calibSNR(f))
-  #  compressCalibMDF(filenameOut, f; kargs...)
-  #  return
-  #end
-  
+function saveasMDF(filenameOut::String, f::MPIFile; filenameBG = nothing, enforceConversion=false, kargs...)  
   if enforceConversion || isConvertibleToMDF(f)
     params = loadDataset(f; kargs...)
     if !isnothing(filenameBG)
@@ -399,6 +395,65 @@ function compressCalibMDF(filenameOut::String, f::MPIFile, idx::Vector{Int64};
   end
 
   saveasMDF(filenameOut, params)
+end
+
+
+function compressCalibData(f::MPIFile, params::Dict; sparsityTrafoRedFactor = 1.0, sparsityTrafo = "DCT-IV", kargs...)
+  if sparsityTrafoRedFactor != 1.0
+    if !get(params, :measIsFourierTransformed, false)
+      throw(ArgumentError("Sparsity transformation was requested, but the data is not fourier transformed"))
+    end
+
+    if !get(params, :measIsFastFrameAxis, false)
+      throw(ArgumentError("Sparsity transformation was requested, but the data is not configured for fast frame axis"))  
+    end
+  
+    if !haskey(params, :calibSize)
+      throw(ArgumentError("Sparsity transformation was requested, but no calib size is set"))
+    end
+    frameOrder = get(params, :measIsBGFrame, measIsBGFrame(f))
+    bgIndex = findfirst(frameOrder)
+    calibSize = params[:calibSize]
+    if !(isnothing(bgIndex) || bgIndex == prod(calibSize) + 1)
+      throw(ArgumentError("Sparsity transformation was requested, but the foreground and background frames are not sorted correctly"))
+    end
+
+    data = params[:measData]
+    idx = get(params, :measFrequencySelection, 1:rxNumFrequencies(f))
+    B = createLinearOperator(sparsityTrafo, ComplexF32; shape=tuple(calibSize...))
+
+    N = prod(calibSize)
+    NBG = size(data,1) - N
+    D = size(data,3)
+    P = size(data,4)
+    NRed = max(1, floor(Int, sparsityTrafoRedFactor*N))
+    dataOut = similar(data, NBG+NRed, length(idx), D, P)
+    subsamplingIndices = zeros(Int32, NRed, length(idx), D, P)
+
+    fgFrameIdx = findall(.!frameOrder)
+    bgFrameIdx = findall((frameOrder))
+    fgdata = data[fgFrameIdx,:,:,:]
+    bgdata = data[bgFrameIdx,:,:,:]
+
+    dataOut[(NRed+1):end,:,:,:] = bgdata
+
+    for k=1:length(idx), d=1:D, p=1:P
+      I = B * fgdata[:,k,d,p]
+      subsamplingIndices[:,k,d,p] = round.(Int32,reverse(sortperm(abs.(I)),dims=1)[1:NRed])
+      dataOut[1:NRed,k,d,p] = I[vec(subsamplingIndices[:,k,d,p])]
+    end
+
+    params[:measData] = dataOut
+    params[:measIsSparsityTransformed] = true
+    params[:measSparsityTransformation] = sparsityTrafo
+    params[:measSubsamplingIndices] = subsamplingIndices
+
+    bgFrame = zeros(Bool, NRed+NBG)
+    bgFrame[(NRed+1):end] .= true
+    params[:measIsBGFrame] = bgFrame
+    params[:acqNumFrames] = NRed+NBG
+  end
+
 end
 
 

@@ -127,4 +127,36 @@
       end
     end
   end
+
+  @testset "Frame Compression" begin
+    # Dont want to compress time domain files
+    @test_throws ArgumentError saveasMDF(joinpath(tmpdir, "conversion", "timeDomain.mdf"), brukerMeas; sparsityTrafoRedFactor = 0.1)
+    # Dont want to compress non fast frame axis files
+    freqSelectionTDOrigin = joinpath(tmpdir, "conversion", "freq_td.mdf")
+    if !isfile(freqSelectionTDOrigin)
+      saveasMDF(joinpath(tmpdir, "conversion", "freq_td.mdf"), brukerMeas; maxMixingOrder = 4) # measurements have no SNR
+    end
+    @test_throws ArgumentError saveasMDF(joinpath(tmpdir, "conversion", ".mdf"), MPIFile(freqSelectionTDOrigin); sparsityTrafoRedFactor = 0.1)
+
+    fnCompressedSM = joinpath(tmpdir, "conversion", "sm_compressed.mdf")
+    saveasMDF(fnCompressedSM, brukerSM; sparsityTrafoRedFactor = 0.2)
+    MPIFile(fnCompressedSM) do compressed
+      @test measIsSparsityTransformed(compressed)
+      @test measSubsamplingIndices(compressed) isa Array
+      @test measSparsityTransformation(compressed) isa String
+      @test size(measData(compressed))[2:end] == size(measData(brukerSM))[2:end]
+      @test size(measData(compressed))[1] != size(measData(brukerSM))[1]
+    end
+
+    fnFilteredSM = joinpath(tmpdir, "conversion", "sm_compressed_and_filtered.mdf")
+    saveasMDF(fnFilteredSM, brukerSM; sparsityTrafoRedFactor = 0.2, SNRThresh = 2, maxMixingOrder = 5)
+    MPIFile(fnFilteredSM) do filtered
+      @test measIsSparsityTransformed(filtered)
+      @test measSubsamplingIndices(filtered) isa Array
+      @test measSparsityTransformation(filtered) isa String
+      @test size(measData(compressed))[3:end] == size(measData(brukerSM))[3:end]
+      @test size(measData(filtered))[2] != size(measData(brukerSM))[2]
+      @test size(measData(filtered))[1] != size(measData(brukerSM))[1]
+    end
+  end
 end
