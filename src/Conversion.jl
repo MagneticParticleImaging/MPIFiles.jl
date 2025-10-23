@@ -127,6 +127,10 @@ function loadMeasData(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames(f), fr
   if !isnothing(frequencies) && filteringRequired
     throw(ArgumentError("Explicit frequency selection and frequency filtering keywords were used together. Only the explicit frequency selection is used for MDF conversion"))
   elseif filteringRequired
+    if SNRThresh > 0 && isnothing(calibSNR(f))
+      @warn "SNR thresholding was requested, but file has no calib snr. SNRThresh will be ignored" maxlog = 10
+      SNRThresh = -1
+    end 
     frequencies = filterFrequencies(f; SNRThresh, minFreq, maxFreq, numUsedFreqs, stepsize, maxMixingOrder,
         numPeriodGrouping, numSidebandFreqs, stopBands)
   end
