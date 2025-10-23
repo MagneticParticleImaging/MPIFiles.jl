@@ -154,7 +154,7 @@
       @test measIsSparsityTransformed(filtered)
       @test measSubsamplingIndices(filtered) isa Array
       @test measSparsityTransformation(filtered) isa String
-      @test size(measData(compressed))[3:end] == size(measData(brukerSM))[3:end]
+      @test size(measData(filtered))[3:end] == size(measData(brukerSM))[3:end]
       @test size(measData(filtered))[2] != size(measData(brukerSM))[2]
       @test size(measData(filtered))[1] != size(measData(brukerSM))[1]
     end
