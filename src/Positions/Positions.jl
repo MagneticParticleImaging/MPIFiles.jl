@@ -76,10 +76,10 @@ end
 function range(grid::RegularGridPositions, dim::Int)
   if grid.shape[dim] > 1
     sp = spacing(grid)
-    return range(grid.center[dim] - grid.fov[dim]/2 + sp[dim]/2,
-                 step=sp[dim], length=grid.shape[dim])
+    return range(grid.center[dim] - grid.sign[dim]*(grid.fov[dim]/2 - sp[dim]/2),
+                 step=grid.sign[dim]*sp[dim], length=grid.shape[dim])
   else
-    return 1:1
+    return grid.center[dim]:grid.center[dim]
   end
 end
 ndims(grid::RegularGridPositions) = length(grid.shape)
