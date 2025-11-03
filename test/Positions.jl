@@ -8,6 +8,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test shape(caG) == shp
   @test ndims(caG) == 3
   @test axes(caG) == ((-1.0:1.0:1.0)u"mm", (-1.0:1.0:1.0)u"mm", (-1.0:1.0:1.0)u"mm")
+  for ax in 1:3
+    @test collect(range(caG,ax)) == unique(getindex.(collect(caG),ax))
+  end
   @test fieldOfView(caG) == fov
   @test fieldOfViewCenter(caG) == ctr
   @test_throws BoundsError caG[0]
@@ -32,6 +35,17 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   for (i,pos) in enumerate(caG)
     @test posToLinIdx(caG,pos) == i
   end
+
+  shp2 = [3,3,1]
+  fov2 = [3.0,3.0,3.0]Unitful.mm
+  ctr2 = [0.0,0.0,0.0]Unitful.mm
+  sign2 = [1,-1,1]
+  caG2 = RegularGridPositions(shp2,fov2,ctr2,sign2)
+  for ax in 1:3
+    @test collect(range(caG2,ax)) == unique(getindex.(collect(caG2),ax))
+  end
+  @test range(caG2,2) == (1.0:-1.0:-1.0)u"mm"
+  @test range(caG2,3) == (0.0:0.0)u"mm"
 
   chG = ChebyshevGridPositions(shp,fov,ctr)
   @test shape(chG) == shp
