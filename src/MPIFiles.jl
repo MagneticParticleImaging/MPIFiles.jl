@@ -82,7 +82,8 @@ export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
   measIsBGCorrected, measIsBackgroundCorrected, measIsFastFrameAxis,
   measIsFramePermutation, measIsFrequencySelection,
   measIsBGFrame, measIsBackgroundFrame, measIsSpectralLeakageCorrected, measFramePermutation,
-  measFrequencySelection, measIsSparsityTransformed, measIsCalibProcessed
+  measFrequencySelection, measIsSparsityTransformed, measSparsityTransformation, measSubsamplingIndices,
+  measIsCalibProcessed
 
 # calibrations
 export calibSNR, calibSnr, calibFov, calibFieldOfView, calibFovCenter,
