@@ -1,6 +1,7 @@
 export getMeasurements, getMeasurementsFD
 
-function measDataConv(f::MPIFile, args...)
+measDataConv(f::MPIFile, args...) = measDataConv(TimeDomain(), f, args...)
+function measDataConv(::TimeDomain, f::MPIFile, args...)
   data = measDataTD(f, args...)
 
   if eltype(data) <: Integer
@@ -16,6 +17,27 @@ function measDataConv(f::MPIFile, args...)
   end
   return data
 end
+function measDataConv(::FrequencyDomain, f::MPIFile, args...)
+  data = measDataFD(f, args...)
+  a = rxDataConversionFactor(f)
+
+  dcIndex = 1
+  if measIsFrequencySelection(f) 
+    dcIndex = findfirst(isequal(1), measFrequencySelection(f))
+  end
+  
+  if !isnothing(a)
+    for d=1:size(data,2)
+      slice = view(data,:,d,:,:)
+      rmul!(slice, a[1,d])
+      if !isnothing(dcIndex)
+        slice[dcIndex, :, :] .+= a[2,d] * rxNumSamplingPoints(f)
+      end
+    end
+  end
+  return data
+end
+
 
 hannWindow(M) = (1.0 .- cos.(2*π/(M-1)*(0:(M-1))))/(M-1)*M
 
@@ -92,7 +114,8 @@ function measDataSpectralLeakageCorrectedMultiPatch(f::MPIFile, frames, periods)
   return data
 end
 
-function measDataSpectralLeakageCorrected(f::MPIFile, frames, periods)
+measDataSpectralLeakageCorrected(f::MPIFile, frames, periods) = measDataSpectralLeakageCorrected(TimeDomain(), f, frames, periods)
+function measDataSpectralLeakageCorrected(::TimeDomain, f::MPIFile, frames, periods)
   if acqNumPeriodsPerFrame(f) == 1
     return measDataSpectralLeakageCorrectedSinglePatch(f, frames)
   else
@@ -100,14 +123,29 @@ function measDataSpectralLeakageCorrected(f::MPIFile, frames, periods)
   end
 end
 
-function measDataLowLevel(f::MPIFile, args...; spectralLeakageCorrection=false)
+measDataLowLevel(f::MPIFile, args...; kargs...) = measDataLowLevel(TimeDomain(), f, args...; kargs...)
+function measDataLowLevel(dm::TimeDomain, f::MPIFile, args...; spectralLeakageCorrection=false, fixDistortions=false, distortionThresh = 0.3)
   if !spectralLeakageCorrection || measIsSpectralLeakageCorrected(f) ||
       acqNumFrames(f) == 1
-     tmp = measDataConv(f, args...)
+     tmp = measDataConv(dm, f, args...)
   else
-     tmp = measDataSpectralLeakageCorrected(f, args...)
+     tmp = measDataSpectralLeakageCorrected(dm, f, args...)
   end
+
+  if fixDistortions
+    detectAndFixDistortions!(tmp, distortionThresh)
+  end
+
   return tmp
+end
+function measDataLowLevel(dm::FrequencyDomain, f::MPIFile, args...; spectralLeakageCorrection=false, fixDistortions=false, distortionThresh = 0.3, kargs...)
+  if spectralLeakageCorrection
+    @warn "Cannot apply speactral leakage correction to frequency data. Will skip flag"
+  end
+  if fixDistortions
+    @warn "Cannot apply distortion correction to frequency data. Will skip flag"
+  end
+  return measDataConv(dm, f, args...)
 end
 
 function returnasreal(u::AbstractArray{Complex{T}}) where {T}
@@ -115,14 +153,21 @@ function returnasreal(u::AbstractArray{Complex{T}}) where {T}
 end
 returnasreal(u::AbstractArray{T}) where {T<:Real} = u
 
-function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
+function getAveragedMeasurements(f::MPIFile; domain = TimeDomain(), frames=1:acqNumFrames(f),
             numAverages=1,  periods=1:acqNumPeriodsPerFrame(f),
-            averagePeriodsPerPatch=false, numPeriodAverages=1, fixDistortions=false, kargs...)
+            averagePeriodsPerPatch=false, numPeriodAverages=1, kargs...)
 
-  @debug "frequency and frame selection" rxNumSamplingPoints(f) rxNumChannels(f) acqNumFrames(f)
+  if domain isa TimeDomain
+    numDataPoints = rxNumSamplingPoints(f)
+    eltype = Float32
+  else
+    numDataPoints = rxNumFrequencies(f)
+    eltype = ComplexF32
+  end
+  @debug "frequency and frame selection" numDataPoints rxNumChannels(f) acqNumFrames(f)
 
   if numAverages == 1
-    data = measDataLowLevel(f, frames, periods; kargs...)
+    data = measDataLowLevel(domain, f, frames, periods; kargs...)
   else
     nFrames = length(frames)
     nBlocks = ceil(Int, nFrames / numAverages)
@@ -132,19 +177,15 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
               Last Block will be averaged over less than $numAverages Frames."
     end
 
-    data = zeros(Float32, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
+    data = zeros(eltype, numDataPoints, rxNumChannels(f), acqNumPeriodsPerFrame(f), nBlocks)
 
     for i = 1:nBlocks
       index1 = 1 + (i-1)*numAverages
       index2 = min( index1 + numAverages-1, nFrames) # ensure that modulo is taken into account
 
-      tmp = measDataLowLevel(f, frames[index1:index2], periods; kargs...)
+      tmp = measDataLowLevel(domain, f, frames[index1:index2], periods; kargs...)
       data[:,:,:,i] = mean(tmp,dims=4)
     end
-  end
-
-  if fixDistortions
-    detectAndFixDistortions!(data, 0.3)
   end
 
   if numPeriodAverages > 1 && averagePeriodsPerPatch
@@ -155,46 +196,46 @@ function getAveragedMeasurements(f::MPIFile; frames=1:acqNumFrames(f),
     if periods != 1:acqNumPeriodsPerFrame(f)
       error("Option averagePeriodsPerPatch can only be used when all periods are selected")
     end
-    data_ = reshape(data, rxNumSamplingPoints(f), rxNumChannels(f),
+    data_ = reshape(data, numDataPoints, rxNumChannels(f),
                           acqNumPeriodsPerPatch(f), acqNumPatches(f), size(data,4))
     dataAv = mean(data_, dims=3)
 
-    return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f), acqNumPatches(f), size(data,4))
+    return reshape(dataAv, numDataPoints, rxNumChannels(f), acqNumPatches(f), size(data,4))
   elseif numPeriodAverages > 1
     newNumPeriods = div(acqNumPeriodsPerFrame(f), numPeriodAverages)
     if rem(acqNumPeriodsPerFrame(f), numPeriodAverages) != 0
       error("getAveragedMeasurements: numPeriodAverages=$numPeriodAverages does not divide the $(acqNumPeriodsPerFrame(f)) period(s) in the file.")
     end
-    data_ = reshape(data, rxNumSamplingPoints(f), rxNumChannels(f), numPeriodAverages, newNumPeriods, size(data,4))
+    data_ = reshape(data, numDataPoints, rxNumChannels(f), numPeriodAverages, newNumPeriods, size(data,4))
     dataAv = mean(data_, dims=3)
-    return reshape(dataAv, rxNumSamplingPoints(f), rxNumChannels(f), newNumPeriods, size(data,4))    
+    return reshape(dataAv, numDataPoints, rxNumChannels(f), newNumPeriods, size(data,4))    
   else
     return data
   end
 end
 
-
 """
-  getMeasurements(f, [neglectBGFrames]; kargs...) => Array{Float32,4}
+    getBGCorrectedMeasurements(f, [neglectBGFrames]; kargs...)
 
-Load the measurement data in time domain
+Load the measurement data with optional background correction, foregrund and background frame selection and frame sorting.
+Data can either be in frequency or time domain
 
 Supported keyword arguments:
 * frames
+* bgFrames
 * bgCorrection
 * interpolateBG
-* tfCorrection
 * sortFrames
 * numAverages
 * numPeriodAverages
-* spectralLeakageCorrection
-"""
-function getMeasurements(f::MPIFile, neglectBGFrames=true;
-      frames=neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
-      bgCorrection=false, bgFrames = 1:length(measBGFrameIdx(f)), interpolateBG=false, tfCorrection=rxHasTransferFunction(f),
-      sortFrames=false, numAverages=1, numPeriodGrouping=1, kargs...)
 
-  idxBG = measBGFrameIdx(f)[bgFrames]
+Further keyword arguments are passed to getAveragedMeasurements
+"""
+function getBGCorrectedMeasurements(f::MPIFile, neglectBGFrames=true;
+      frames= neglectBGFrames ? (1:acqNumFGFrames(f)) : (1:acqNumFrames(f)),
+      bgCorrection=false, bgFrames = 1:length(measBGFrameIdx(f)), interpolateBG=false,
+      sortFrames=false, numAverages=1, kargs...)
+    idxBG = measBGFrameIdx(f)[bgFrames]
   hasBGFrames = length(idxBG) > 0
   
   if neglectBGFrames
@@ -259,6 +300,29 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
       data[:,:,:,:] .-= mean(dataBG, dims=4)
     end
   end
+  return data
+end
+
+
+"""
+  getMeasurements(f, [neglectBGFrames]; kargs...) => Array{Float32,4}
+
+Load the measurement data in time domain
+
+Supported keyword arguments:
+* frames
+* bgCorrection
+* interpolateBG
+* tfCorrection
+* sortFrames
+* numAverages
+* numPeriodAverages
+* spectralLeakageCorrection
+"""
+function getMeasurements(f::MPIFile, args...;
+      tfCorrection=rxHasTransferFunction(f), numPeriodGrouping=1, kargs...)
+
+  data = getBGCorrectedMeasurements(f, args...; domain = TimeDomain(), kargs...)
 
   if numPeriodGrouping > 1
     tmp = permutedims(data, (1,3,2,4))
@@ -315,6 +379,17 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
 end
 
 
+function requireTimeDomainProcessing(kwargs)
+  if haskey(kwargs, :fixDistortions) && kwargs[:fixDistortions]
+    return true
+  elseif haskey(kwargs, :spectralLeakageCorrection) && kwargs[:spectralLeakageCorrection]
+    return true
+  elseif haskey(kwargs, :numPeriodGrouping) && kwargs[:numPeriodGrouping] > 1
+    return true
+  else
+    return false
+  end
+end
 """
   getMeasurementsFD(f, [neglectBGFrames]; kargs...) => Array{ComplexF32,4}
 
@@ -336,13 +411,16 @@ function getMeasurementsFD(f::MPIFile, args...;
       loadasreal=false, transposed=false, frequencies=nothing,
       tfCorrection=rxHasTransferFunction(f), kargs...)
 
-  data = getMeasurements(f, args..., tfCorrection=false; kargs...)
-  
-  data = rfft(data, 1)
+  if requireTimeDomainProcessing(kargs) || !measIsFourierTransformed(f)
+    data = getMeasurements(f, args..., tfCorrection=false; kargs...)
+    data = rfft(data, 1)
+  else
+    data = getBGCorrectedMeasurements(f, args...; domain = FrequencyDomain(), kargs...)
+  end
 
   if tfCorrection && !measIsTFCorrected(f)
     inductionFactor = rxInductionFactor(f)
-    if isnothing(rxTransferFunction(f))
+    if !rxHasTransferFunction(f)
       error("No transfer function available in file, please use tfCorrection=false")
     end
     if isnothing(inductionFactor)
@@ -351,8 +429,8 @@ function getMeasurementsFD(f::MPIFile, args...;
     end
     tf = sampleTF(TransferFunction(f), f, numPeriodGrouping=get(kargs, :numPeriodGrouping, 1)) 
 
-    # Pad transfer function in frequency-selected data to prevent errors after conversion from frequency to time domain.
-    if (size(tf, 1) != size(data)) && measIsFrequencySelection(f)
+    # Pad transfer function in case measurement was derived from time domain, i.e. is not frequency filtered
+    if (size(tf, 1) != size(data, 1))
       tfPadded = fill(eltype(tf)(Inf), (rxNumFrequencies(f), size(tf, 2)))
       tfPadded[measFrequencySelection(f), :] = tf
       tf = tfPadded
@@ -375,6 +453,9 @@ function getMeasurementsFD(f::MPIFile, args...;
 
   if !isnothing(frequencies)
     # here we merge frequencies and channels
+    if measIsFrequencySelection(f)
+      frequencies = rowsToSubsampledRows(f, frequencies)
+    end
     data = data[frequencies, :, :]
   end
 
