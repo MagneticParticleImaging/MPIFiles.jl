@@ -400,6 +400,7 @@ Supported keyword arguments:
 * bgCorrection
 * interpolateBG
 * tfCorrection
+* amplitudeScaling, determines if the spectrum should be normalized to reflect the correct amplitudes
 * sortFrames
 * numAverages
 * spectralLeakageCorrection
@@ -409,13 +410,23 @@ Supported keyword arguments:
 """
 function getMeasurementsFD(f::MPIFile, args...;
       loadasreal=false, transposed=false, frequencies=nothing,
-      tfCorrection=rxHasTransferFunction(f), kargs...)
+      tfCorrection=rxHasTransferFunction(f), amplitudeScaling=false, kargs...)
 
   if requireTimeDomainProcessing(kargs) || !measIsFourierTransformed(f)
     data = getMeasurements(f, args..., tfCorrection=false; kargs...)
     data = rfft(data, 1)
   else
     data = getBGCorrectedMeasurements(f, args...; domain = FrequencyDomain(), kargs...)
+  end
+
+  if amplitudeScaling
+    N = rxNumSamplingPoints(f) * get(kargs, :numPeriodGrouping, 1)
+    data = data ./ N            # normalize RFFT with number of time points
+    if iseven(N)
+      data[2:end-1,:,:,:] *= 2      # correct amplitudes (except DC) to account for negative half of spectrum
+    else
+      data[2:end,:,:,:] *= 2
+    end
   end
 
   if tfCorrection && !measIsTFCorrected(f)
