@@ -66,6 +66,11 @@
       uAvgMem = getMeasurementsFD(memMeas, frequencies = freqs, numAverages = acqNumFGFrames(brukerMeas))
       @test isapprox(uAvgBruker, uAvgMPI)
       @test isapprox(uAvgMPI, uAvgMem)
+
+      # with amplitude scaling
+      @test isapprox(getMeasurementsFD(brukerMeas, amplitudeScaling=true, tfCorrection=false)[1,1,1,1], mean(getMeasurements(brukerMeas, tfCorrection=false)[:,1,1,1]))
+      @test isapprox(getMeasurementsFD(mpiMeas, amplitudeScaling=true, tfCorrection=false)[1,1,1,1], mean(getMeasurements(mpiMeas, tfCorrection=false)[:,1,1,1]))
+      @test isapprox(getMeasurementsFD(memMeas, amplitudeScaling=true, tfCorrection=false)[1,1,1,1], mean(getMeasurements(memMeas, tfCorrection=false)[:,1,1,1]))
     end
 
     @testset "System Matrix" begin
