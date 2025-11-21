@@ -421,11 +421,27 @@ function getMeasurementsFD(f::MPIFile, args...;
 
   if amplitudeScaling
     N = rxNumSamplingPoints(f) * get(kargs, :numPeriodGrouping, 1)
-    data = data ./ N            # normalize RFFT with number of time points
+    # normalize RFFT with number of time points and multiply by two to account for negative half of spectrum
+    data = 2data ./ N            
+    
+    # since DC is in the spectrum only once, we have to undo the previous multiplication by 2
+    dcIndex = 1
+    if measIsFrequencySelection(f) 
+      dcIndex = findfirst(isequal(dcIndex), measFrequencySelection(f))
+    end
+    if !isnothing(dcIndex)
+      data[dcIndex,:,:,:] *= 0.5
+    end
+
+    # if N is even, the same thing is true for the last frequency
     if iseven(N)
-      data[2:end-1,:,:,:] *= 2      # correct amplitudes (except DC) to account for negative half of spectrum
-    else
-      data[2:end,:,:,:] *= 2
+      lastIndex = N÷2 + 1
+      if measIsFrequencySelection(f) 
+        lastIndex = findfirst(isequal(lastIndex), measFrequencySelection(f))
+      end
+      if !isnothing(lastIndex)
+        data[lastIndex,:,:,:] *= 0.5
+      end
     end
   end
 
