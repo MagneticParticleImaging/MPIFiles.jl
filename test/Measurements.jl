@@ -71,6 +71,10 @@
       @test isapprox(getMeasurementsFD(brukerMeas, amplitudeScaling=true, tfCorrection=false)[1,1,1,1], mean(getMeasurements(brukerMeas, tfCorrection=false)[:,1,1,1]))
       @test isapprox(getMeasurementsFD(mpiMeas, amplitudeScaling=true, tfCorrection=false)[1,1,1,1], mean(getMeasurements(mpiMeas, tfCorrection=false)[:,1,1,1]))
       @test isapprox(getMeasurementsFD(memMeas, amplitudeScaling=true, tfCorrection=false)[1,1,1,1], mean(getMeasurements(memMeas, tfCorrection=false)[:,1,1,1]))
+      # at least test that frequency filtered measurements do not error
+      getMeasurementsFD(mpiFiltered, amplitudeScaling=true, tfCorrection=false)[1,1,1,1]
+      getMeasurementsFD(memFiltered, amplitudeScaling=true, tfCorrection=false)[1,1,1,1]
+
     end
 
     @testset "System Matrix" begin
