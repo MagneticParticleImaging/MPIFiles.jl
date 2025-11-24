@@ -400,6 +400,7 @@ Supported keyword arguments:
 * bgCorrection
 * interpolateBG
 * tfCorrection
+* amplitudeScaling, determines if the spectrum should be normalized to reflect the correct amplitudes
 * sortFrames
 * numAverages
 * spectralLeakageCorrection
@@ -409,13 +410,39 @@ Supported keyword arguments:
 """
 function getMeasurementsFD(f::MPIFile, args...;
       loadasreal=false, transposed=false, frequencies=nothing,
-      tfCorrection=rxHasTransferFunction(f), kargs...)
+      tfCorrection=rxHasTransferFunction(f), amplitudeScaling=false, kargs...)
 
   if requireTimeDomainProcessing(kargs) || !measIsFourierTransformed(f)
     data = getMeasurements(f, args..., tfCorrection=false; kargs...)
     data = rfft(data, 1)
   else
     data = getBGCorrectedMeasurements(f, args...; domain = FrequencyDomain(), kargs...)
+  end
+
+  if amplitudeScaling
+    N = rxNumSamplingPoints(f) * get(kargs, :numPeriodGrouping, 1)
+    # normalize RFFT with number of time points and multiply by two to account for negative half of spectrum
+    data = 2data ./ N            
+    
+    # since DC is in the spectrum only once, we have to undo the previous multiplication by 2
+    dcIndex = 1
+    if measIsFrequencySelection(f) 
+      dcIndex = findfirst(isequal(dcIndex), measFrequencySelection(f))
+    end
+    if !isnothing(dcIndex)
+      data[dcIndex,:,:,:] *= 0.5
+    end
+
+    # if N is even, the same thing is true for the last frequency
+    if iseven(N)
+      lastIndex = N÷2 + 1
+      if measIsFrequencySelection(f) 
+        lastIndex = findfirst(isequal(lastIndex), measFrequencySelection(f))
+      end
+      if !isnothing(lastIndex)
+        data[lastIndex,:,:,:] *= 0.5
+      end
+    end
   end
 
   if tfCorrection && !measIsTFCorrected(f)
