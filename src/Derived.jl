@@ -106,9 +106,9 @@ function measDataTD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
     if measIsFrequencySelection(f)
       dataPadded = zeros(eltype(data2), (rxNumFrequencies(f), size(data2, 2), size(data2, 3), size(data2, 4)))
       dataPadded[measFrequencySelection(f), :, :, :] .= data2
-      dataTD = irfft(dataPadded, rxNumSamplingPoints(f), 1)
+      dataTD = real.(irfft(dataPadded, rxNumSamplingPoints(f), 1))
     else
-      dataTD = irfft(data2, rxNumSamplingPoints(f), 1)
+      dataTD = real.(irfft(data2, rxNumSamplingPoints(f), 1))
     end
   else
     dataTD = data2
