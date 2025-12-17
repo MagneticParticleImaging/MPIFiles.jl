@@ -136,7 +136,7 @@ function measDataFD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
 end
 
 function noiseEstimate(f::MPIFile; frequencies=nothing, numPeriodGrouping=1, numPeriodAverages=1, kwargs...)
-  if haskey(f.file, "/custom/noiseEstimate") && numPeriodGrouping==1 && numPeriodAverages==1
+  if hasfield(typeof(f), :file) && haskey(f.file, "/custom/noiseEstimate") && numPeriodGrouping==1 && numPeriodAverages==1
     if !isnothing(frequencies)
       return f["/custom/noiseEstimate"][frequencies]
     else
