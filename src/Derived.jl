@@ -136,11 +136,11 @@ function measDataFD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
 end
 
 function noiseEstimate(f::MPIFile; frequencies=nothing, numPeriodGrouping=1, numPeriodAverages=1, kwargs...)
-  if haskey(f.file, "/_custom/noiseEstimate") && numPeriodGrouping==1 && numPeriodAverages==1
+  if haskey(f.file, "/custom/noiseEstimate") && numPeriodGrouping==1 && numPeriodAverages==1
     if !isnothing(frequencies)
-      return f["/_custom/noiseEstimate"][frequencies]
+      return f["/custom/noiseEstimate"][frequencies]
     else
-      return f["/_custom/noiseEstimate"]
+      return f["/custom/noiseEstimate"]
     end
   else
     return std(getMeasurementsFD(f, false, frequencies=frequencies, frames=measBGFrameIdx(f), numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping, bgCorrection = false, kwargs...),dims=(3,4))[:,:,1,1]
