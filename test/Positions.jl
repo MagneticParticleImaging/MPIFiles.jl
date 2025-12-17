@@ -11,7 +11,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   for ax in 1:3
     @test collect(range(caG,ax)) == unique(getindex.(collect(caG),ax))
   end
-  @test caG .≈ axesToRegularGridPositions(axes(caG))
+  @test all(caG .≈ axesToRegularGridPositions(axes(caG)))
   @test fieldOfView(caG) == fov
   @test fieldOfViewCenter(caG) == ctr
   @test_throws BoundsError caG[0]
@@ -53,7 +53,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   ry = 5:-0.2:-5
   rz = 0.0:0.0
   caG3 = axesToRegularGridPositions(rx, ry, rz)
-  @test caG3.shape = [length(rx), length(ry), length(rz)]
+  @test caG3.shape == [length(rx), length(ry), length(rz)]
   @test all(caG3[1] .≈ [rx[1],ry[1],rz[1]])
   @test all(caG3[2] .≈ [rx[2],ry[1],rz[1]])
 
