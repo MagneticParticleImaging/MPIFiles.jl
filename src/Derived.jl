@@ -2,7 +2,7 @@ export acqNumFGFrames, acqNumBGFrames, acqOffsetFieldShift, acqFramePeriod,
        acqNumPeriods, acqNumPatches, acqNumPeriodsPerPatch, acqFov,
        acqGradientDiag,
        rxNumFrequencies, rxFrequencies, rxTimePoints,
-       measFGFrameIdx, measBGFrameIdx, measBGFrameBlockLengths
+       measFGFrameIdx, measBGFrameIdx, measBGFrameBlockLengths, noiseEstimate
 
 rxNumFrequencies(f::MPIFile, numPeriodGrouping=1) = length(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping))
 
@@ -133,4 +133,16 @@ function measDataFD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
   end
 
   return dataFD
+end
+
+function noiseEstimate(f::MPIFile; frequencies=nothing, numPeriodGrouping=1, numPeriodAverages=1, kwargs...)
+  if haskey(f.file, "/_custom/noiseEstimate") && numPeriodGrouping==1 && numPeriodAverages==1
+    if !isnothing(frequencies)
+      return f["/_custom/noiseEstimate"][frequencies]
+    else
+      return f["/_custom/noiseEstimate"]
+    end
+  else
+    return std(getMeasurementsFD(f, false, frequencies=frequencies, frames=measBGFrameIdx(f), numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping, bgCorrection = false, kwargs...),dims=(3,4))[:,:,1,1]
+  end
 end
