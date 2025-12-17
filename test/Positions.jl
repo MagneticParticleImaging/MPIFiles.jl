@@ -11,6 +11,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   for ax in 1:3
     @test collect(range(caG,ax)) == unique(getindex.(collect(caG),ax))
   end
+  @test caG .≈ axesToRegularGridPositions(axes(caG))
   @test fieldOfView(caG) == fov
   @test fieldOfViewCenter(caG) == ctr
   @test_throws BoundsError caG[0]
@@ -44,8 +45,17 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   for ax in 1:3
     @test collect(range(caG2,ax)) == unique(getindex.(collect(caG2),ax))
   end
+  @test all(caG2 .≈ axesToRegularGridPositions(axes(caG2)))
   @test range(caG2,2) == (1.0:-1.0:-1.0)u"mm"
   @test range(caG2,3) == (0.0:0.0)u"mm"
+
+  rx = -5:0.1:5
+  ry = 5:-0.2:-5
+  rz = 0.0:0.0
+  caG3 = axesToRegularGridPositions(rx, ry, rz)
+  @test caG3.shape = [length(rx), length(ry), length(rz)]
+  @test all(caG3[1] .≈ [rx[1],ry[1],rz[1]])
+  @test all(caG3[2] .≈ [rx[2],ry[1],rz[1]])
 
   chG = ChebyshevGridPositions(shp,fov,ctr)
   @test shape(chG) == shp
