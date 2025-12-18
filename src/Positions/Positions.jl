@@ -249,7 +249,7 @@ Automatically checks that the axes all have regular spacing.
 """
 axesToRegularGridPositions(axs::Tuple) = axesToRegularGridPositions(axs...)
 function axesToRegularGridPositions(x, y, z)
-  allsame(x) = length(x)==0 || all(≈(first(x)),x)
+  allsame(ax) = length(ax)==0 || all(≈(first(ax)),ax)
   if !allsame(diff(x)) || !allsame(diff(y)) || !allsame(diff(z)) 
     error("Axes do not produce a regular grid!")
   end
