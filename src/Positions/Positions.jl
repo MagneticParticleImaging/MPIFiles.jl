@@ -5,6 +5,7 @@ export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
 export posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid, toDict
+export axesToRegularGridPositions
 
 abstract type Positions end
 abstract type GridPositions<:Positions end
@@ -237,6 +238,28 @@ end
 function posToLinIdx(grid::RegularGridPositions, pos)
   return (LinearIndices(tuple(shape(grid)...)))[posToIdx(grid,pos)...]
 end
+
+"""
+Create a `RegularGridPositions` object from three axes definition the coordinates of the positions.
+
+Automatically checks that the axes all have regular spacing.
+
+- `axesToRegularGridPositions(axs::Tuple)`
+- `axesToRegularGridPositions(x, y, z)`
+"""
+axesToRegularGridPositions(axs::Tuple) = axesToRegularGridPositions(axs...)
+function axesToRegularGridPositions(x, y, z)
+  allsame(ax) = length(ax)==0 || all(≈(first(ax)),ax)
+  if !allsame(diff(x)) || !allsame(diff(y)) || !allsame(diff(z)) 
+    error("Axes do not produce a regular grid!")
+  end
+  shape = [length(ax) for ax in [x,y,z]]
+  fov = [abs(ax[end]-ax[1])*length(ax)/max(1,length(ax)-1) for ax in [x,y,z]]
+  center = [mean(ax) for ax in [x,y,z]]
+  sign = [if ax[end]<ax[1]; -1 else 1 end for ax in [x,y,z]]
+  return RegularGridPositions(shape, fov, center, sign)
+end
+
 
 # Chebyshev Grid
 mutable struct ChebyshevGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
