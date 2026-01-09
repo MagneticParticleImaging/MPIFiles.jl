@@ -308,7 +308,7 @@ function getMeasurements(f::MPIFile, neglectBGFrames=true;
        		dataF[:,k,:,:] ./= inductionFactor[k]
        	end
     end
-    data = real.(irfft(dataF,J,1))
+    data = irfft(dataF,J,1)
   end
 
   return map(Float32,data)
