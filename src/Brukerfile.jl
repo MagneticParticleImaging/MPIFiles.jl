@@ -477,10 +477,11 @@ function measData(b::BrukerFileCalib, frames=1:acqNumFrames(b), periods=1:acqNum
   rmul!(bgdata,1.0/acqNumAverages(b))
   S_ = cat(S,bgdata,dims=1)
   if numSubPeriods(b) == 1
-    return S_[frames,:,:,:]
+    result = S_[frames,:, receivers, periods]
   else
-    return S_[frames,1:numSubPeriods(b):end,:,:]
+    result = S_[frames,1:numSubPeriods(b):end,receivers,periods]
   end
+  return reshape(result, length(frames), size(result, 2), length(receivers), length(periods))
 end
 
 
@@ -631,6 +632,7 @@ fullFramePermutation(f::BrukerFile) = fullFramePermutation(f, true)
 
 measIsSpectralLeakageCorrected(b::BrukerFile) = get(b.params, "ACQ_MPI_spectral_cleaningl", "No") != "No"
 measIsFrequencySelection(b::BrukerFile) = false
+measFrequencySelection(b::BrukerFile) = nothing
 measIsSparsityTransformed(b::BrukerFile) = false
 
 # calibrations

@@ -82,7 +82,8 @@ export measData, measDataTDPeriods, measIsFourierTransformed, measIsTFCorrected,
   measIsBGCorrected, measIsBackgroundCorrected, measIsFastFrameAxis,
   measIsFramePermutation, measIsFrequencySelection,
   measIsBGFrame, measIsBackgroundFrame, measIsSpectralLeakageCorrected, measFramePermutation,
-  measFrequencySelection, measIsSparsityTransformed, measIsCalibProcessed
+  measFrequencySelection, measIsSparsityTransformed, measSparsityTransformation, measSubsamplingIndices,
+  measIsCalibProcessed
 
 # calibrations
 export calibSNR, calibSnr, calibFov, calibFieldOfView, calibFovCenter,
@@ -213,6 +214,9 @@ abstract type MPIFile end
 # additional functions that should be implemented by an MPIFile
 @mustimplement filepath(f::MPIFile)
 
+abstract type AbstractValueDomain end
+struct TimeDomain <: AbstractValueDomain end
+struct FrequencyDomain <: AbstractValueDomain end
 
 include("Derived.jl")
 include("Custom.jl")

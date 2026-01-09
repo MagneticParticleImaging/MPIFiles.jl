@@ -24,18 +24,18 @@ jobs:
     steps:
         # Checkout the repository.
       - name: Clone source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
         # Checkout custom rules
       - name: Checkout custom rules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: JuliaComputing/semgrep-rules-julia
           ref: main
           path: ./JuliaRules
 
         # Prepare Python
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.10'
 
@@ -54,13 +54,13 @@ jobs:
                 --exclude=JuliaRules
     
       - name: Save Semgrep report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: report.sarif
           path: report.sarif
       
       - name: Upload Semgrep report
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: report.sarif
           category: semgrep

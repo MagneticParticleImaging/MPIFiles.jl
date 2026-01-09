@@ -241,22 +241,33 @@ sortFrequenciesByMixFactors(indices, mfNorm::AbstractArray) = indices[sortperm(m
 function rowsToSubsampledRows(f::MPIFile, rows)
   if measIsFrequencySelection(f)
     # In this case we need to convert indices
-    tmp = Array{Union{Nothing, CartesianIndex{2}}}(undef, rxNumFrequencies(f), rxNumChannels(f))
+    # Creating a dict here is more inefficient than an array for larger freqs
+    # This assumes that frequency selection is same across all channel
+    # Which is true for MDFv2
+    numFreq = rxNumFrequencies(f)
+    tmp = zeros(Int64, numFreq)
     idxAvailable = measFrequencySelection(f)
     for (i, idx) in enumerate(idxAvailable)
-      for d=1:size(tmp, 2)
-        tmp[idx, d] = CartesianIndex(i, d)
+      # @assert 1 <= idx <= F
+      tmp[idx] = i
+    end
+    
+    result = similar(rows)
+    for (i, row) in enumerate(rows)
+      tmp_row = tmp[row[1]]
+      if iszero(tmp_row)
+        error("Index $row is not available in the file")
+      else
+        result[i] = CartesianIndex(tmp_row, row[2])
       end
     end
-    rows_ = tmp[rows]
-    if any(isnothing, rows_)
-      @error "Indices applied to systemMatrix are not available in the file"
-    end
-    return identity.(rows_) # Go from Vector{Union{Nothing, Index}} to Vector{Index}
-  else
-    rows_ = rows
+    
+    return result
   end
-  return rows_
+
+  return rows
 end
+
+
 
 
