@@ -143,6 +143,6 @@ function noiseEstimate(f::MPIFile; frequencies=nothing, numPeriodGrouping=1, num
       return f["/custom/noiseEstimate"]
     end
   else
-    return std(getMeasurementsFD(f, false, frequencies=frequencies, frames=measBGFrameIdx(f), numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping, bgCorrection = false, kwargs...),dims=(3,4))[:,:,1,1]
+    return std(getMeasurementsFD(f, false, frequencies=frequencies, frames=measBGFrameIdx(f), numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping, bgCorrection = false; kwargs...),dims=(3,4))[:,:,1,1]
   end
 end
