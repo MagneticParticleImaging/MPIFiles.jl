@@ -10,7 +10,7 @@ Type parameters:
 - D: spatial dimensionality
 - G: parent `Positions` concrete type
 """
-abstract type AbstractSubsampledPositions{T, D, G} <: Positions{T, D} end
+abstract type AbstractSubsampledPositions{T, D, G} <: NestedPositions{T, D, G} end
 """
     parent(grid::AbstractSubsampledPositions)
 

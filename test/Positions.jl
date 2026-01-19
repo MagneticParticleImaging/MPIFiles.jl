@@ -81,6 +81,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
 
   for grid in [caG,chG]
     mG = MeanderingGridPositions(grid)
+    @test parent(mG) == grid
     @test length(mG) == prod(shp)
     @test shape(mG) == shp
     @test fieldOfView(mG) == fov
@@ -111,7 +112,8 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     bgInd = collect(1:4:37)
     bgPos = [10.0,10.0,10.0]Unitful.mm
   for grid in [caG,chG]
-    bG = BreakpointGridPositions(grid,bgInd,bgPos)
+    bG = BreakpointPositions(grid,bgInd,bgPos)
+    @test parent(bG) == grid
     @test length(bG) == prod(shp)+length(bgInd)
     @test shape(bG) == shp
     @test fieldOfView(bG) == fov
@@ -171,7 +173,8 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     bgPos = [10.0,10.0,10.0]Unitful.mm
   for grid in [caG,chG]
     mG = MeanderingGridPositions(grid)
-    bG = BreakpointGridPositions(mG,bgInd,bgPos)
+    bG = BreakpointPositions(mG,bgInd,bgPos)
+    @test parent(bG) == mG
     @test length(bG) == prod(shp)+length(bgInd)
     @test shape(bG) == shp
     @test fieldOfView(bG) == fov

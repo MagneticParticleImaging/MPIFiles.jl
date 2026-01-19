@@ -1,6 +1,6 @@
-export Positions, GridPositions, RegularGridPositions, ChebyshevGridPositions,
+export Positions, GridPositions, NestedPositions, RegularGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions,
-       SphericalTDesign, BreakpointGridPositions
+       SphericalTDesign, BreakpointPositions
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
@@ -8,12 +8,15 @@ export posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid, toDict
 export axesToRegularGridPositions
 
 abstract type Positions{T, D} end
-abstract type GridPositions{T, D} <:Positions{T, D} end
+abstract type GridPositions{T, D} <: Positions{T, D} end
 ndims(pos::Positions{T, D}) where {T, D} = D
+
+abstract type NestedPositions{T, D, G <: Positions{T, D}} <: Positions{T, D} end
+parent(position::NestedPositions) = throw(error("$(typeof(positions)) must implement `parent`"))
 
 function Positions(file::HDF5.File)
   if haskey(file, "/positionsBreakpoint")
-    return BreakpointGridPositions(file)
+    return BreakpointPositions(file)
   end
 
   typ = read(file, "/positionsType")
@@ -40,7 +43,7 @@ end
 
 function Positions(params::Dict)
   if haskey(params, "positionsBreakpoint")
-    return BreakpointGridPositions(params)
+    return BreakpointPositions(params)
   end
 
   typ = params["positionsType"]
@@ -319,7 +322,7 @@ function getindex(grid::ChebyshevGridPositions, i::Integer)
 end
 
 # Meander regular grid positions
-struct MeanderingGridPositions{T, D, G <: GridPositions{T, D}} <: GridPositions{T, D}
+struct MeanderingGridPositions{T, D, G <: GridPositions{T, D}} <: NestedPositions{T, D, G}
   grid::G
 end
 
@@ -383,31 +386,31 @@ function getPermutation(grid::MeanderingGridPositions)
   return vec(perm)
 end
 
-struct BreakpointGridPositions{T, D, G <: GridPositions{T, D}} <: GridPositions{T, D}
+struct BreakpointPositions{T, D, G} <: NestedPositions{T, D, G}
   grid::G
   breakpointIndices::Vector{Int64}
   breakpointPosition::SVector{D, T}
 end
-BreakpointGridPositions(grid, indices, pos) = BreakpointGridPositions(grid, indices, SVector{length(pos)}(pos))
+BreakpointPositions(grid, indices, pos) = BreakpointPositions(grid, indices, SVector{length(pos)}(pos))
 
-function BreakpointGridPositions(file::HDF5.File)
+function BreakpointPositions(file::HDF5.File)
   typ = read(file, "/positionsType")
   breakpointPosition = read(file, "/positionsBreakpoint") * Unitful.m
   breakpointIndices = read(file, "/indicesBreakpoint")
 
   if typ == "MeanderingGridPositions"
     grid = MeanderingGridPositions(file)
-    return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
+    return BreakpointPositions(grid,breakpointIndices, breakpointPosition)
   elseif typ == "RegularGridPositions"
     grid = RegularGridPositions(file)
-    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
+    return BreakpointPositions(grid, breakpointIndices, breakpointPosition)
   elseif typ == "ChebyshevGridPositions"
     grid = ChebyshevGridPositions(file)
-    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
+    return BreakpointPositions(grid, breakpointIndices, breakpointPosition)
   end
 end
 
-function BreakpointGridPositions(params::Dict)
+function BreakpointPositions(params::Dict)
   typ = params["positionsType"]
 
   breakpointPosition = params["positionsBreakpoint"]
@@ -419,37 +422,37 @@ function BreakpointGridPositions(params::Dict)
 
   if haskey(params, "positionsMeandering")
     grid = MeanderingGridPositions(params)
-    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
+    return BreakpointPositions(grid, breakpointIndices, breakpointPosition)
   elseif typ == "RegularGridPositions"
     grid = RegularGridPositions(params)
-    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
+    return BreakpointPositions(grid, breakpointIndices, breakpointPosition)
   elseif typ == "ChebyshevGridPositions"
     grid = ChebyshevGridPositions(params)
-    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
+    return BreakpointPositions(grid, breakpointIndices, breakpointPosition)
   end
 end
 
-function write(file::HDF5.File, positions::BreakpointGridPositions)
+function write(file::HDF5.File, positions::BreakpointPositions)
   write(file,"/positionsBreakpoint", Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.breakpointPosition)))))
   write(file,"/indicesBreakpoint", positions.breakpointIndices)
   write(file, positions.grid)
 end
 
-function toDict(positions::BreakpointGridPositions)
+function toDict(positions::BreakpointPositions)
   params = toDict(positions.grid)
   params["positionsBreakpoint"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.breakpointPosition))))
   params["indicesBreakpoint"] = positions.breakpointIndices
   return params
 end
 
-function getmask(grid::BreakpointGridPositions)
+function getmask(grid::BreakpointPositions)
   bgind=grid.breakpointIndices
   mask = zeros(Bool, length(grid.grid)+length(bgind))
   mask[bgind] .= true
   return mask
 end
 
-function getindex(grid::BreakpointGridPositions, i::Integer)
+function getindex(grid::BreakpointPositions, i::Integer)
 
   bgind=grid.breakpointIndices
 
@@ -736,14 +739,14 @@ end
 fieldOfView(grid::GridPositions) = grid.fov
 fieldOfView(grid::UniformRandomPositions{T, D, <:AxisAlignedBox}) where {T, D} = grid.domain.fov
 fieldOfView(mgrid::MeanderingGridPositions) = fieldOfView(mgrid.grid)
-fieldOfView(bgrid::BreakpointGridPositions) = fieldOfView(bgrid.grid)
+fieldOfView(bgrid::BreakpointPositions) = fieldOfView(bgrid.grid)
 shape(grid::GridPositions) = grid.shape
 shape(mgrid::MeanderingGridPositions) = shape(mgrid.grid)
-shape(bgrid::BreakpointGridPositions) = shape(bgrid.grid)
+shape(bgrid::BreakpointPositions) = shape(bgrid.grid)
 fieldOfViewCenter(grid::GridPositions) = grid.center
 fieldOfViewCenter(grid::UniformRandomPositions) = grid.domain.center
 fieldOfViewCenter(mgrid::MeanderingGridPositions) = fieldOfViewCenter(mgrid.grid)
-fieldOfViewCenter(bgrid::BreakpointGridPositions) = fieldOfViewCenter(bgrid.grid)
+fieldOfViewCenter(bgrid::BreakpointPositions) = fieldOfViewCenter(bgrid.grid)
 
 spacing(grid::GridPositions) = grid.fov ./ grid.shape
 
@@ -870,7 +873,7 @@ length(apos::ArbitraryPositions) = size(apos.positions,2)
 length(grid::GridPositions) = prod(grid.shape)
 length(rpos::UniformRandomPositions) = rpos.N
 length(mgrid::MeanderingGridPositions) = length(mgrid.grid)
-length(bgrid::BreakpointGridPositions) = length(bgrid.grid)+length(bgrid.breakpointIndices)
+length(bgrid::BreakpointPositions) = length(bgrid.grid)+length(bgrid.breakpointIndices)
 
 start_(grid::Positions) = 1
 next_(grid::Positions,state) = (grid[state],state+1)
