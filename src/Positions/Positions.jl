@@ -1,6 +1,6 @@
 export Positions, GridPositions, NestedPositions, RegularGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SortedPositions,
-       SphericalTDesign, BreakpointPositions
+       SphericalTDesign, BreakpointPositions, BreakpointGridPositions
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
@@ -391,6 +391,7 @@ struct BreakpointPositions{T, D, G} <: NestedPositions{T, D, G}
   breakpointIndices::Vector{Int64}
   breakpointPosition::SVector{D, T}
 end
+const BreakpointGridPositions = BreakpointPositions
 BreakpointPositions(grid, indices, pos) = BreakpointPositions(grid, indices, SVector{length(pos)}(pos))
 
 function BreakpointPositions(file::HDF5.File)
