@@ -40,6 +40,12 @@
     sub5 = view(grid, 1:2:4)
     @test parentindices(sub5) == parentindices(sub3)
 
+    # Positions constructor
+    sub6 = SubsampledPositions(grid, hcat(collect(sub1)...))
+    @test parentindices(sub6) == parentindices(sub1)
+    sub6a = SubsampledPositions(grid.shape, grid.fov, grid.center, hcat(collect(sub1)...))
+    @test parentindices(sub6a) == parentindices(sub1)
+
     # Different seeds should typically produce different selections
     sub_diff = SubsampledPositions(grid, 5; seed = 0xdeadbeef)
     @test sub_diff.indices != sub1.indices
@@ -64,6 +70,12 @@
       @test_throws ArgumentError SubsampledPositions(grid, length(grid) + 1)
       # Invalid arguments, invalid indices
       @test_throws ArgumentError SubsampledPositions(grid, [length(grid) + 1])
+      # Invalid arguments, incorrect position matrix size, > D
+      @test_throws ArgumentError SubsampledPositions(grid, fill(0.0, length(first(grid)) + 1, 1))
+      # Invalid arguments, incorrect position matrix size, < D 
+      @test_throws ArgumentError SubsampledPositions(grid, fill(0.0, length(first(grid)) - 1, 1))
+      # Invalid arguments, no matching position found
+      @test_throws ArgumentError SubsampledPositions(grid, fill(1.0, length(first(grid)), 1))
     end
   end
 

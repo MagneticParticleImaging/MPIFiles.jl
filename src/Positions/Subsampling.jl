@@ -83,6 +83,51 @@ Create a subsample of `grid` with the specified iterable of linear indices. The 
 are collected into vector in the provided order.
 """
 SubsampledPositions(grid, other) = SubsampledPositions(grid, collect(other))
+"""
+    SubsampledPositions(grid::Positions{T}, positions::AbstractMatrix{T}) where T
+
+Construct a `SubsampledPositions` by locating each column of `positions` (a D×N matrix of
+coordinates with element type `T`) in the iterable `grid::Positions{T}`. Each column is matched
+by exact equality against the coordinates returned by iterating `grid`, and the resulting
+subsample preserves the column order and allows duplicates.
+
+Notes:
+- Matching is exact (no tolerance). Coordinate types must match (`T`) and values must be equal.
+- Order and duplicate columns are preserved in the resulting subsample.
+"""
+function SubsampledPositions(grid::Positions{T, D}, positions::AbstractMatrix{T}) where {T, D}
+  if size(positions, 1) != D
+    throw(ArgumentError("Dimension of grid $D does not match dimension of positions $(size(positions, 1))"))
+  end
+
+  # This method uses exact equality atm, one could also implement an approximate version.
+  # That would be more expensive (O(n^2)) though
+  # Enforce known "key" type
+  helper = Dict{SVector{D, T}, Int64}(SVector{D}(pos) => i for (i, pos) in enumerate(grid))
+  indices = fill(0, size(positions, 2))
+
+  for (i, pos) in enumerate(eachcol(positions))
+    # Use same "key" type
+    posV = SVector{D}(pos)
+    indices[i] = get(helper, posV, 0)
+  end
+
+  # All positions should have been found
+  noMatchingIndex = findall(idx -> idx == 0, indices)
+  if !isempty(noMatchingIndex)
+    throw(ArgumentError("Found no matching position in the grid for positions in columns: $noMatchingIndex"))
+  end
+
+  return SubsampledPositions(grid, indices)
+end
+"""
+    SubsampledPositions(shape, fov, center::AbstractVector{T}, positions::AbstractMatrix{T})
+
+Convenience constructor that builds a `RegularGridPositions(shape, fov, center)` and then
+creates a `SubsampledPositions` by locating each column of `positions` in that grid.
+"""
+SubsampledPositions(shape, fov, center::AbstractVector{T}, positions::AbstractMatrix{T}) where T = SubsampledPositions(RegularGridPositions(shape, fov, center), positions) 
+
 view(grid::Positions, inds...) = SubsampledPositions(grid, inds...)
 length(grid::SubsampledPositions) = length(grid.indices)
 parent(grid::SubsampledPositions) = grid.parent
