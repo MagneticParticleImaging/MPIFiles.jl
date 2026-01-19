@@ -93,6 +93,22 @@
       @test bggrid[1] == bgPos
       @test bggrid[2 + div(length(csgrid), 2)] == bgPos
       @test bggrid[length(bggrid)] == bgPos
+
+      # Test "SM" with bg measurements and sorting
+      grid = RegularGridPositions((3, 3, 3), (3.0, 2.0, 3.0), (0.0, 0.0, 0.0)) # 27 points
+      csgrid = SubsampledPositions(grid, 1:2:length(grid))
+      sortedgrid = SortedPositions(csgrid)
+      # BG Meas at the start, middle and end
+      bgInd = Int64.(collect(range(1, length(csgrid) + 3, length = 3)))
+      bgPos = [10.0, 10.0, 10.0]
+      bggrid = BreakpointPositions(csgrid, bgInd, bgPos)
+      @test length(bggrid) == length(csgrid) + length(bgInd)
+      @test shape(bggrid) == shape(grid)
+      @test fieldOfView(bggrid) == fieldOfView(grid)
+      @test fieldOfViewCenter(bggrid) == fieldOfViewCenter(grid)
+      @test bggrid[1] == bgPos
+      @test bggrid[2 + div(length(csgrid), 2)] == bgPos
+      @test bggrid[length(bggrid)] == bgPos
     end
   end
 

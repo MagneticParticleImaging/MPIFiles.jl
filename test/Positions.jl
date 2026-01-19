@@ -398,4 +398,47 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     positions = ChebyshevGridPositions(params)
     @test eltype(positions[1]) <: Unitful.Length
   end
+
+  @testset "SortedPositions" begin
+    posmat = [0.0 1.0 1.0 2.0;
+              0.0 100.0 0.0 100.0]
+    apos = ArbitraryPositions(posmat)
+    @test length(apos) == 4
+
+    sp = SortedPositions(apos)  # default start = first(apos) = [0,0]
+    @test parent(sp) === apos
+    @test length(sp) == length(apos)
+
+    # Indices form a permutation of 1:N
+    @test sort(sp.indices) == collect(1:length(apos))
+    @test length(unique(sp.indices)) == length(apos)
+
+    # Forwarding of getindex
+    for i in 1:length(sp)
+      @test sp[i] == apos[sp.indices[i]]
+    end
+
+    # Greedy sorted
+    @test sp.indices == [1, 3, 2, 4]
+
+    # Custom start that exists: last point [1,1]
+    start_last = apos[length(apos)]
+    sp_last = SortedPositions(apos, start_last)
+    ref_last = _greedy_indices_ref(positions, start_last)
+    @test sp_last.indices == [4, 2, 3, 1]
+
+    # Custom start not on the set
+    start_off = apos[1] .+ SVector(0.1, 0.1)
+    sp_off = SortedPositions(apos, start_off)
+    # First index is the nearest to the provided start
+    dists = [norm(p - start_off) for p in positions]
+    (_, nearest_idx) = findmin(dists)
+    @test sp_off.indices[1] == nearest_idx
+
+    sorted_grid = SortedPositions(caG)
+    @test shape(sorted_grid) == shape(caG)
+    @test fieldOfView(sorted_grid) == fieldOfView(caG)
+    @test fieldOfViewCenter(sorted_grid) == fieldOfViewCenter(grcaGid)
+  end
+
 end

@@ -1,5 +1,5 @@
 export Positions, GridPositions, NestedPositions, RegularGridPositions, ChebyshevGridPositions,
-       MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions,
+       MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SortedPositions,
        SphericalTDesign, BreakpointPositions
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
@@ -704,37 +704,6 @@ function posToLinIdx(grid::TubularRegularGridPositions, pos)
 end
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # General functions for handling grids
 fieldOfView(grid::GridPositions) = grid.fov
 fieldOfView(grid::UniformRandomPositions{T, D, <:AxisAlignedBox}) where {T, D} = grid.domain.fov
@@ -855,6 +824,39 @@ function ArbitraryPositions(file::HDF5.File)
   pos = read(file, "/positionsPositions")*Unitful.m
   return ArbitraryPositions(pos)
 end
+
+"""
+    SortedPositions{T, D, G} <: NestedPositions{T, D, G}
+    SortedPositions(grid::G, start::AbstractVector{T}=first(grid)) where {T, D, G <: Positions{T, D}}
+
+Positions container which returns all points of the parent `grid` in a greedy nearest-neighbor order.
+"""
+struct SortedPositions{T, D, G} <: NestedPositions{T, D, G}
+  parent::G
+  indices::Vector{Int64}
+  function SortedPositions(grid::G, start::AbstractVector{T} = first(grid)) where {T, D, G <: Positions{T, D}}
+    current = start
+    positions = collect(grid)
+    sortedpos = Vector{typeof(start)}()
+    indices = Int64[]
+    # Greedily pick next position with smallest value
+    while length(sortedpos) != length(grid)
+      (val, idx) = findmin(map(x-> norm(x - current), positions))
+      current = positions[idx]
+      push!(sortedpos, current)
+      push!(indices, idx)
+      positions[idx] = [typemax(T) for i = 1:D]
+    end
+    return new{T, D, G}(grid, indices)
+  end
+end
+parent(grid::SortedPositions) = grid.parent
+parentindices(grid::SortedPositions) = parent(grid)[parentindices(grid)[i]]
+getindex(grid::SortedPositions, i) = parent(grid)[grid.indices[i]]
+fieldOfView(grid::SortedPositions) = fieldOfView(parent(grid))
+fieldOfViewCenter(grid::SortedPositions) = fieldOfViewCenter(parent(grid))
+shape(grid::SortedPositions) = shape(parent(grid))
+spacing(grid::SortedPositions) = spacing(parent(grid))
 
 # TODO: Specialize to make it faster
 function Base.:(==)(val1::Positions, val2::Positions)
