@@ -879,3 +879,4 @@ iterate(grid::Positions, s=start_(grid)) = done_(grid, s) ? nothing : next_(grid
 eltype(::Positions{T, D}) where {T, D} = SVector{D, T}
 
 include("Interpolation.jl")
+include("Subsampling.jl")
