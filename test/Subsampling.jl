@@ -55,6 +55,14 @@
     subf = SubsampledPositions(grid, 0.25; seed = seed)
     @test length(subf) == round(Int, length(grid) * 0.25)
 
+    # (Linear) sorting works for random indices
+    sub7 = SubsampledPositions(grid, 5; seed = seed, sorted = true)
+    @test parentindices(sub7) != parentindices(sub1)
+    @test parentindices(sub7) == sort(parentindices(sub1))
+    sub8 = SubsampledPositions(grid, 0.25; seed = seed, sorted = true)
+    @test parentindices(sub8) != parentindices(subf)
+    @test parentindices(sub8) == sort(parentindices(subf))
+
     @testset "Edge cases" begin
       grid = RegularGridPositions((1, 1), (0.0, 0.0), (0.0, 0.0))  # single point
       @test length(grid) == 1

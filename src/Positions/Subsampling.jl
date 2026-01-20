@@ -51,7 +51,7 @@ struct SubsampledPositions{T, D, G <: Positions{T, D}} <: AbstractSubsampledPosi
   end
 end
 """
-    SubsampledPositions(grid, factor::Float64; seed = rand(UInt64))
+    SubsampledPositions(grid, factor::Float64; seed = rand(UInt64), kwargs...)
 
 Create a subsample of `grid` by selecting `round(length(grid) * factor)` unique positions
 at random using a stable RNG seeded with `seed`. The selection is a uniform shuffle of
@@ -61,19 +61,23 @@ Notes:
 - The returned indices are unique and in random order.
 - The same `seed` yields identical indices for the same `grid` length/indices.
 """
-SubsampledPositions(grid, factor::Float64; seed = rand(UInt64)) = SubsampledPositions(grid, round(UInt64, length(grid) * factor); seed = seed)
+SubsampledPositions(grid, factor::Float64; seed = rand(UInt64), kwargs...) = SubsampledPositions(grid, round(UInt64, length(grid) * factor); seed = seed, kwargs...)
 """
-    SubsampledPositions(grid, numIndices::Integer; seed = rand(UInt64))
+    SubsampledPositions(grid, numIndices::Integer; seed = rand(UInt64), sorted::Bool = false)
 
 Create a subsample of `grid` by selecting `numIndices` unique positions uniformly at random
-(using a stable RNG seeded with `seed`) from `1:length(grid)`. The indices are stored in random order.
+(using a stable RNG seeded with `seed`) from `1:length(grid)`. The indices are stored in random order unless the `sorted` flag is set.
+In that case they are stored in linear order, which in the case of grids defaults to cartesian order.
 """
-function SubsampledPositions(grid, numIndices::Integer; seed = rand(UInt64))
+function SubsampledPositions(grid, numIndices::Integer; seed = rand(UInt64), sorted::Bool = false)
   if numIndices > length(grid)
     throw(ArgumentError("Requested more random `SubsampledPositions` indices ($numIndices) than exist in the parent grid ($(length(grid)))"))
   end
   rng = StableRNG(seed)
   indices = shuffle(rng, 1:length(grid))[1:numIndices]
+  if sorted
+    indices = sort(indices)
+  end
   return SubsampledPositions(grid, indices)
 end
 """
