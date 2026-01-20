@@ -722,11 +722,11 @@ fieldOfViewCenter(bgrid::BreakpointPositions) = fieldOfViewCenter(bgrid.grid)
 
 spacing(grid::GridPositions) = grid.fov ./ grid.shape
 
-struct SphericalTDesign{EL, D, S, V} <: Positions{EL, D}
-  T::Unsigned
+struct SphericalTDesign{S, D, N, EL} <: Positions{S, D}
+  T::UInt64
   radius::S
-  positions::Matrix{EL}
-  center::SVector{D, V}
+  positions::SMatrix{D, N, EL}
+  center::SVector{D, S}
 end
 
 function SphericalTDesign(file::HDF5.File)
@@ -765,20 +765,20 @@ const DEFAULT_TDESIGNS = @path joinpath(@__DIR__, "TDesigns.hd5")
 *Input:*
 - `t` - degree
 - `N` - number of points
-- `radius` - radius of the sphere (default: 10mm)
+- `radius` - radius of the sphere (default: 10.0mm)
 - `center` - center of the sphere (default: [0.0,0.0,0.0]mm)
 - `filename` - name of the file containing the t-designs (default loads TDesign.hd5)
 
 *Output:*
 - t-design of type SphericalTDesign in Cartesian coordinates containing t, radius, center and positions (which are located on the unit sphere unless `getindex(tdes,i)` is used)
 """
-function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{V}=[0.0,0.0,0.0]Unitful.mm, filename = DEFAULT_TDESIGNS) where {S,V<:Unitful.Length}
+function loadTDesign(t::Int64, N::Int64, radius::S=10.00Unitful.mm, center::Vector{S}=[0.0,0.0,0.0]Unitful.mm, filename = DEFAULT_TDESIGNS) where {S<:Unitful.Length}
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
   if haskey(h5file, address)
     positions = copy(transpose(read(h5file, address)))
-    return SphericalTDesign(UInt(t),radius, positions, SVector{length(center)}(center))
+    return SphericalTDesign(UInt(t),radius, SMatrix{3, size(positions, 2)}(positions), SVector{length(center)}(center))
   else
     if haskey(h5file, "/$t-Design/")
       Ns = Int[]
