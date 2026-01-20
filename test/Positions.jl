@@ -303,7 +303,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test_throws DomainError loadTDesign(10,1)
   t = 1
   N = 2
-  radius = 5Unitful.mm
+  radius = 5.0Unitful.mm
   tDesign = loadTDesign(t,N, radius)
   @test length(tDesign) == N
   @test length(collect(tDesign)) == length(tDesign)
@@ -333,7 +333,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   end
 
   @testset "Tubular regular grid positions" begin
-    grid = TubularRegularGridPositions([81, 81, 1], [40, 40 ,0]u"mm", [0, 0, 0]u"mm", 3, 1)
+    grid = TubularRegularGridPositions([81, 81, 1], [40.0, 40.0 ,0.0]u"mm", [0.0, 0.0, 0.0]u"mm", 3, 1)
 
     params = Dict{String, Any}()
     params["positionsType"] = "TubularRegularGridPositions"
@@ -432,21 +432,20 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     # Custom start that exists: last point [1,1]
     start_last = apos[length(apos)]
     sp_last = SortedPositions(apos, start_last)
-    ref_last = _greedy_indices_ref(positions, start_last)
     @test sp_last.indices == [4, 2, 3, 1]
 
     # Custom start not on the set
-    start_off = apos[1] .+ SVector(0.1, 0.1)
+    start_off = apos[1] .+ [0.1, 0.1]
     sp_off = SortedPositions(apos, start_off)
     # First index is the nearest to the provided start
-    dists = [norm(p - start_off) for p in positions]
+    dists = [norm(p - start_off) for p in sp_off]
     (_, nearest_idx) = findmin(dists)
     @test sp_off.indices[1] == nearest_idx
 
     sorted_grid = SortedPositions(caG)
     @test shape(sorted_grid) == shape(caG)
     @test fieldOfView(sorted_grid) == fieldOfView(caG)
-    @test fieldOfViewCenter(sorted_grid) == fieldOfViewCenter(grcaGid)
+    @test fieldOfViewCenter(sorted_grid) == fieldOfViewCenter(caG)
   end
 
 end
