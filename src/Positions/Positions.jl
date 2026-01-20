@@ -12,7 +12,7 @@ abstract type GridPositions{T, D} <: Positions{T, D} end
 ndims(pos::Positions{T, D}) where {T, D} = D
 
 abstract type NestedPositions{T, D, G <: Positions{T, D}} <: Positions{T, D} end
-parent(position::NestedPositions) = throw(error("$(typeof(positions)) must implement `parent`"))
+parent(position::NestedPositions) = throw(error("$(typeof(position)) must implement `parent`"))
 
 function Positions(file::HDF5.File)
   if haskey(file, "/positionsBreakpoint")
@@ -325,6 +325,7 @@ end
 struct MeanderingGridPositions{T, D, G <: GridPositions{T, D}} <: NestedPositions{T, D, G}
   grid::G
 end
+parent(grid::MeanderingGridPositions) = grid.grid
 
 function MeanderingGridPositions(file::HDF5.File)
   typ = read(file, "/positionsType")
@@ -393,6 +394,7 @@ struct BreakpointPositions{T, D, G} <: NestedPositions{T, D, G}
 end
 const BreakpointGridPositions = BreakpointPositions
 BreakpointPositions(grid, indices, pos) = BreakpointPositions(grid, indices, SVector{length(pos)}(pos))
+parent(grid::BreakpointPositions) = grid.grid
 
 function BreakpointPositions(file::HDF5.File)
   typ = read(file, "/positionsType")
@@ -851,6 +853,7 @@ struct SortedPositions{T, D, G} <: NestedPositions{T, D, G}
     return new{T, D, G}(grid, indices)
   end
 end
+length(grid::SortedPositions) = length(grid.indices)
 parent(grid::SortedPositions) = grid.parent
 parentindices(grid::SortedPositions) = parent(grid)[parentindices(grid)[i]]
 getindex(grid::SortedPositions, i) = parent(grid)[grid.indices[i]]
