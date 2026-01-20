@@ -63,6 +63,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test fieldOfViewCenter(chG) == ctr
   @test_throws BoundsError chG[0]
   @test_throws BoundsError chG[28]
+  @test length(collect(chG)) == length(chG)
   @test chG[1] ≈ cos(π/6)*3/2*caG[1]
   @test chG[2] ≈ cos(π/6)*3/2*caG[2]
   @test chG[3] ≈ cos(π/6)*3/2*caG[3]
@@ -83,6 +84,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     mG = MeanderingGridPositions(grid)
     @test parent(mG) == grid
     @test length(mG) == prod(shp)
+    @test length(collect(mG)) == length(mG)
     @test shape(mG) == shp
     @test fieldOfView(mG) == fov
     @test fieldOfViewCenter(mG) == ctr
@@ -115,6 +117,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     bG = BreakpointPositions(grid,bgInd,bgPos)
     @test parent(bG) == grid
     @test length(bG) == prod(shp)+length(bgInd)
+    @test length(collect(bG)) == length(bG)
     @test shape(bG) == shp
     @test fieldOfView(bG) == fov
     @test fieldOfViewCenter(bG) == ctr
@@ -176,6 +179,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     bG = BreakpointPositions(mG,bgInd,bgPos)
     @test parent(bG) == mG
     @test length(bG) == prod(shp)+length(bgInd)
+    @test length(collect(bG)) == length(bG)
     @test shape(bG) == shp
     @test fieldOfView(bG) == fov
     @test fieldOfViewCenter(bG) == ctr
@@ -231,6 +235,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
 
   positions = [1 2 3 4; 0 1 2 3;-4 -3 -2 -1]Unitful.mm
   aG1 = ArbitraryPositions(positions)
+  @test length(collect(aG1)) == length(aG1)
   @test aG1[1] == [1,0,-4]*Unitful.mm
   @test aG1[2] == [2,1,-3]Unitful.mm
   @test aG1[3] == [3,2,-2]Unitful.mm
@@ -301,6 +306,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   radius = 5Unitful.mm
   tDesign = loadTDesign(t,N, radius)
   @test length(tDesign) == N
+  @test length(collect(tDesign)) == length(tDesign)
   @test tDesign.T == t
   @test tDesign.radius == radius
   @test any(tDesign.positions .== [1 -1; 0 0; 0 0])
@@ -352,6 +358,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test params["positionsRadiusAxis"] == paramsFromGrid["positionsRadiusAxis"]
     
     @test length(grid) == 5169
+    @test length(collect(grid)) == length(grid)
     @test MPIFiles.radius(grid) == 20u"mm"
 
     filename = joinpath(tmpdir, "TubularRegularGridPositionsTest.h5")
@@ -408,6 +415,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     sp = SortedPositions(apos)  # default start = first(apos) = [0,0]
     @test parent(sp) === apos
     @test length(sp) == length(apos)
+    @test length(collect(sp)) == length(sp)
 
     # Indices form a permutation of 1:N
     @test sort(sp.indices) == collect(1:length(apos))

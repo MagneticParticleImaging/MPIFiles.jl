@@ -13,6 +13,7 @@
     @test sub1.indices == sub2.indices  # reproducible
     @test all(1 <= i <= length(grid) for i in sub1.indices)
     @test length(unique(sub1.indices)) == 5
+    @test length(collect(sub1)) == length(sub1)
 
     # getindex should forward to parent at selected indices
     for i in 1:length(sub1)
