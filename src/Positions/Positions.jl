@@ -855,7 +855,7 @@ struct SortedPositions{T, D, G} <: NestedPositions{T, D, G}
 end
 length(grid::SortedPositions) = length(grid.indices)
 parent(grid::SortedPositions) = grid.parent
-parentindices(grid::SortedPositions) = parent(grid)[parentindices(grid)[i]]
+parentindices(grid::SortedPositions) = grid.indices
 getindex(grid::SortedPositions, i) = parent(grid)[grid.indices[i]]
 fieldOfView(grid::SortedPositions) = fieldOfView(parent(grid))
 fieldOfViewCenter(grid::SortedPositions) = fieldOfViewCenter(parent(grid))

@@ -418,6 +418,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test length(collect(sp)) == length(sp)
 
     # Indices form a permutation of 1:N
+    @test parentindices(sp) == sp.indices
     @test sort(sp.indices) == collect(1:length(apos))
     @test length(unique(sp.indices)) == length(apos)
 
