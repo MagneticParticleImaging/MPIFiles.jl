@@ -214,7 +214,15 @@ function calibGrid(f::MPIFile; attach_units = false)
     return nothing
   end
 
-  grid = axesToRegularGridPositions(Tuple(calibAxis(f, i; attach_units = attach_units) for i = 1:length(size)))
+  # TODO: axesToRegularGridPositions doesn't always produce equal RegularGridPositions as other code
+  #grid = axesToRegularGridPositions(Tuple(calibAxis(f, i; attach_units = attach_units) for i = 1:length(size)))
+  if attach_units
+    u = if calibMethod(f)=="hybrid"; u"T" else u"m" end 
+  else
+    u = 1
+  end
+
+  grid = RegularGridPositions(calibSize(f), calibFov(f)*u, calibFovCenter(f)*u)
 
   if calibIsMeanderingGrid(f)
     grid = MeanderingGridPositions(grid)
