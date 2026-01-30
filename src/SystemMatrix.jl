@@ -209,8 +209,8 @@ function calibAxis(f::MPIFile, axis::Integer; attach_units=false)
 end
 
 function calibGrid(f::MPIFile; attach_units = false)
-  size = calibSize(f)
-  if isnothing(size)
+  shape = calibSize(f)
+  if isnothing(shape)
     return nothing
   end
 
@@ -242,10 +242,10 @@ function calibGrid(f::MPIFile; attach_units = false)
     positions = !isnothing(calibPositions(f)) ? calibPositions(f) : calibOffsetFields(f)
 
     if attach_units
-      positions .*= unit(first(grid)[1])      
+      positions = positions .* unit(first(grid)[1])
     end
 
-    if size(positions, 2) < prod(size)
+    if size(positions, 2) < prod(shape)
       return SubsampledPositions(grid, positions)
     end
   end
