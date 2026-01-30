@@ -121,4 +121,60 @@
     end
   end
 
+   @testset "calibGrid Subsampling" begin
+    mdf = MDFv2InMemory()
+    calibration = MDFv2Calibration()
+    mdf.calibration = calibration
+
+    shp = [5,7,9]
+    fov = [3.0,4.0,3.0]
+    ctr = [0.0,0.0,0.0]
+    grid = RegularGridPositions(shp,fov,ctr)
+    calibration.fieldOfView = fieldOfView(grid)
+    calibration.fieldOfViewCenter = fieldOfViewCenter(grid)
+    calibration.size = shape(grid)
+    calibration.isMeanderingGrid = false
+    calibration.method = "robot"
+    positions = SubsampledPositions(grid, 0.5)
+    calibration.positions = stack(collect(positions))
+
+
+    @testset "regular" begin
+      cgrid = calibGrid(mdf)
+      @test cgrid isa SubsampledPositions
+      @test all(isapprox.(collect(cgrid), collect(positions)))
+
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa SubsampledPositions
+      @test unit(first(cgrid[1])) == u"m"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(positions)))
+
+      calibration.method = "hybrid"
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa SubsampledPositions
+      @test unit(first(cgrid[1])) == u"T"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(positions)))
+      calibration.method = "robot"
+    end
+
+    @testset "meandering" begin
+      calibration.isMeanderingGrid = true
+
+      cgrid = calibGrid(mdf)
+      @test cgrid isa SubsampledPositions
+      @test all(isapprox.(collect(cgrid), collect(positions)))
+
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa SubsampledPositions
+      @test unit(first(cgrid[1])) == u"m"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(positions)))
+
+      calibration.method = "hybrid"
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa SubsampledPositions
+      @test unit(first(cgrid[1])) == u"T"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(positions)))
+      calibration.method = "robot"
+    end
+  end 
 end

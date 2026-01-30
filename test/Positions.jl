@@ -449,4 +449,59 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test fieldOfViewCenter(sorted_grid) == fieldOfViewCenter(caG)
   end
 
+  @testset "calibGrid" begin
+    mdf = MDFv2InMemory()
+    calibration = MDFv2Calibration()
+    mdf.calibration = calibration
+
+    shp = [5,7,9]
+    fov = [3.0,4.0,3.0]
+    ctr = [0.0,0.0,0.0]
+    grid = RegularGridPositions(shp,fov,ctr)
+    calibration.fieldOfView = fieldOfView(grid)
+    calibration.fieldOfViewCenter = fieldOfViewCenter(grid)
+    calibration.size = shape(grid)
+    calibration.isMeanderingGrid = false
+    calibration.method = "robot"
+
+    @testset "calibGrid Regular" begin
+      cgrid = calibGrid(mdf)
+      @test cgrid isa RegularGridPositions
+      @test all(isapprox.(collect(cgrid), collect(grid)))
+
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa RegularGridPositions
+      @test unit(first(cgrid[1])) == u"m"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(grid)))
+
+      calibration.method = "hybrid"
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa RegularGridPositions
+      @test unit(first(cgrid[1])) == u"T"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(grid)))
+      calibration.method = "robot"
+    end
+
+    @testset "calibGrid Meandering" begin
+      calibration.isMeanderingGrid = true
+      mgrid = MeanderingGridPositions(grid)
+
+      cgrid = calibGrid(mdf)
+      @test cgrid isa MeanderingGridPositions
+      @test all(isapprox.(collect(cgrid), collect(mgrid)))
+
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa MeanderingGridPositions
+      @test unit(first(cgrid[1])) == u"m"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(mgrid)))
+
+      calibration.method = "hybrid"
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa MeanderingGridPositions
+      @test unit(first(cgrid[1])) == u"T"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(mgrid)))
+      calibration.method = "robot"
+    end
+  end
+
 end
