@@ -1,4 +1,4 @@
-export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR, calibAxis
+export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR, calibAxis, calibGrid
 
 """
   getSystemMatrix(f, [neglectBGFrames]; kargs...) => Array{ComplexF32,4}
@@ -206,4 +206,41 @@ function calibAxis(f::MPIFile, axis::Integer; attach_units=false)
     return range( start=(-fov[axis]+stepSize[axis])/2+center[axis], step=stepSize[axis], length=size[axis] )*unit
   end
 
+end
+
+function calibGrid(f::MPIFile; attach_units = false)
+  size = calibSize(f)
+  if isnothing(size)
+    return nothing
+  end
+
+  grid = axesToRegularGridPositions(Tuple(calibAxis(f, i; attach_units = attach_units) for i = 1:length(size)))
+
+  if calibIsMeanderingGrid(f)
+    grid = MeanderingGridPositions(grid)
+  end
+
+  # Regular grid setting
+  if isnothing(calibPositions(f))
+    return grid
+  end
+
+  # Compressed Sensing
+  if !isnothing(calibPositions(f)) && !isnothing(calibOffsetFields(f))
+    throw(ArgumentError("MPIFile defines both `calibPositions` and `calibOffsetFields`"))
+  end
+
+  if !isnothing(calibPositions(f)) || !isnothing(calibOffsetFields(f))
+    positions = !isnothing(calibPositions(f)) ? calibPositions(f) : calibOffsetFields(f)
+
+    if attach_units
+      positions .*= unit(first(grid)[1])      
+    end
+
+    if size(positions, 2) < prod(size)
+      return SubsampledPositions(grid, positions)
+    end
+  end
+
+  return nothing
 end
