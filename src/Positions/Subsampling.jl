@@ -99,12 +99,26 @@ Notes:
 - Matching is exact (no tolerance). Coordinate types must match (`T`) and values must be equal.
 - Order and duplicate columns are preserved in the resulting subsample.
 """
-function SubsampledPositions(grid::Positions{T, D}, positions::AbstractMatrix{T}) where {T, D}
+function SubsampledPositions(grid::Positions{T, D}, positions::AbstractMatrix{T}; exact::Bool = false) where {T, D}
   if size(positions, 1) != D
     throw(ArgumentError("Dimension of grid $D does not match dimension of positions $(size(positions, 1))"))
   end
 
-  # This method uses exact equality atm, one could also implement an approximate version.
+  if exact
+    indices = find_exact_indices(grid, positions)
+  else
+    indices = find_nearest_indices(grid, positions)
+  end
+
+  # All positions should have been found
+  noMatchingIndex = findall(idx -> idx == 0, indices)
+  if !isempty(noMatchingIndex)
+    throw(ArgumentError("Found no matching position in the grid for positions in columns: $noMatchingIndex"))
+  end
+
+  return SubsampledPositions(grid, indices)
+end
+function find_exact_indices(grid::Positions{T, D}, positions::AbstractMatrix{T}) where {T, D}
   # That would be more expensive (O(n^2)) though
   # Enforce known "key" type
   helper = Dict{SVector{D, T}, Int64}(SVector{D}(pos) => i for (i, pos) in enumerate(grid))
@@ -115,14 +129,27 @@ function SubsampledPositions(grid::Positions{T, D}, positions::AbstractMatrix{T}
     posV = SVector{D}(pos)
     indices[i] = get(helper, posV, 0)
   end
+  return indices
+end
+function find_nearest_indices(grid::Positions{T, D}, positions::AbstractMatrix{T}) where {T, D}
+  indices = fill(0, size(positions, 2))
+  for (i, pos) in enumerate(eachcol(positions))
+    best_idx = 0
+    best_dist = typemax(T)
 
-  # All positions should have been found
-  noMatchingIndex = findall(idx -> idx == 0, indices)
-  if !isempty(noMatchingIndex)
-    throw(ArgumentError("Found no matching position in the grid for positions in columns: $noMatchingIndex"))
+    @inbounds for (j, g) in enumerate(grid)
+      d = norm(pos - g)
+      if d < best_dist
+        best_dist = d
+        best_idx = j
+      end
+    end
+
+    # TODO: Failure criteria
+    indices[i] = best_idx
   end
 
-  return SubsampledPositions(grid, indices)
+  return indices
 end
 """
     SubsampledPositions(shape, fov, center::AbstractVector{T}, positions::AbstractMatrix{T})
