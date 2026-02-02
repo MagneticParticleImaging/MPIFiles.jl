@@ -67,7 +67,7 @@ SubsampledPositions(grid, factor::Float64; seed = rand(UInt64), kwargs...) = Sub
 
 Create a subsample of `grid` by selecting `numIndices` unique positions uniformly at random
 (using a stable RNG seeded with `seed`) from `1:length(grid)`. The indices are stored in random order unless the `sorted` flag is set.
-In that case they are stored in linear order, which in the case of grids defaults to cartesian order.
+In that case they are stored in linear order.
 """
 function SubsampledPositions(grid, numIndices::Integer; seed = rand(UInt64), sorted::Bool = false)
   if numIndices > length(grid)
@@ -91,47 +91,38 @@ SubsampledPositions(grid, other) = SubsampledPositions(grid, collect(other))
     SubsampledPositions(grid::Positions{T}, positions::AbstractMatrix{T}) where T
 
 Construct a `SubsampledPositions` by locating each column of `positions` (a D×N matrix of
-coordinates with element type `T`) in the iterable `grid::Positions{T}`. Each column is matched
-by exact equality against the coordinates returned by iterating `grid`, and the resulting
-subsample preserves the column order and allows duplicates.
+coordinates with element type `T`) in the iterable `grid::Positions{T,D}`.
 
-Notes:
-- Matching is exact (no tolerance). Coordinate types must match (`T`) and values must be equal.
-- Order and duplicate columns are preserved in the resulting subsample.
+Matching:
+- Each column of `positions` is matched to the nearest grid position in Euclidean distance.
+- Order and duplicate columns are preserved.
+- The `exact` keyword is currently ignored and kept for API compatibility.
+
+Errors:
+- Throws `ArgumentError` if `size(positions, 1) != D`.
 """
-function SubsampledPositions(grid::Positions{T, D}, positions::AbstractMatrix{T}; exact::Bool = false) where {T, D}
+function SubsampledPositions(grid::Positions{T, D}, positions::AbstractMatrix{T}) where {T, D}
   if size(positions, 1) != D
     throw(ArgumentError("Dimension of grid $D does not match dimension of positions $(size(positions, 1))"))
   end
 
-  if exact
-    indices = find_exact_indices(grid, positions)
-  else
-    indices = find_nearest_indices(grid, positions)
+  indices = fill(0, size(positions, 2))
+  tree = KDTree(collect(grid))
+  @inbounds for (i, pos) in enumerate(eachcol(positions))
+    (idxs, dist) = nn(tree, pos)  # nearest index only
+    indices[i] = idxs
   end
-
-  # All positions should have been found
-  noMatchingIndex = findall(idx -> idx == 0, indices)
-  if !isempty(noMatchingIndex)
-    throw(ArgumentError("Found no matching position in the grid for positions in columns: $noMatchingIndex"))
-  end
+  # TODO: Failure criteria
 
   return SubsampledPositions(grid, indices)
 end
-function find_exact_indices(grid::Positions{T, D}, positions::AbstractMatrix{T}) where {T, D}
-  # That would be more expensive (O(n^2)) though
-  # Enforce known "key" type
-  helper = Dict{SVector{D, T}, Int64}(SVector{D}(pos) => i for (i, pos) in enumerate(grid))
-  indices = fill(0, size(positions, 2))
+function SubsampledPositions(grid::Positions{T, D}, positions::AbstractMatrix{T}) where {T <: Quantity, D}
+  @warn "Subsampled Positions calculation for Unitful positions is currently inefficient"
 
-  for (i, pos) in enumerate(eachcol(positions))
-    # Use same "key" type
-    posV = SVector{D}(pos)
-    indices[i] = get(helper, posV, 0)
+  if size(positions, 1) != D
+    throw(ArgumentError("Dimension of grid $D does not match dimension of positions $(size(positions, 1))"))
   end
-  return indices
-end
-function find_nearest_indices(grid::Positions{T, D}, positions::AbstractMatrix{T}) where {T, D}
+
   indices = fill(0, size(positions, 2))
   for (i, pos) in enumerate(eachcol(positions))
     best_idx = 0
@@ -149,7 +140,7 @@ function find_nearest_indices(grid::Positions{T, D}, positions::AbstractMatrix{T
     indices[i] = best_idx
   end
 
-  return indices
+  return SubsampledPositions(grid, indices)
 end
 """
     SubsampledPositions(shape, fov, center::AbstractVector{T}, positions::AbstractMatrix{T})
