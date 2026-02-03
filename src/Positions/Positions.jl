@@ -730,6 +730,13 @@ function SphericalTDesign(file::HDF5.File)
   center = read(file, "/positionsCenter")*Unitful.m
   return loadTDesign(Int64(T),N,radius,center)
 end
+function SphericalTDesign(params::Dict)
+  T = params["T"]
+  N = params["N"]
+  radius = params["radius"]*Unitful.m
+  center = params["center"]*Unitful.m
+  return loadTDesign(T, N, radius, center)
+end
 
 function write(file::HDF5.File, positions::SphericalTDesign)
   write(file,"/positionsType", "SphericalTDesign")
@@ -747,7 +754,7 @@ function toDict(positions::SphericalTDesign)
   params["radius"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.radius)))
   params["center"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center))))
   return params
-end					
+end
 
 getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] + tdes.center
 
@@ -766,7 +773,7 @@ const DEFAULT_TDESIGNS = @path joinpath(@__DIR__, "TDesigns.hd5")
 *Output:*
 - t-design of type SphericalTDesign in Cartesian coordinates containing t, radius, center and positions (which are located on the unit sphere unless `getindex(tdes,i)` is used)
 """
-function loadTDesign(t::Int64, N::Int64, radius::S=10.00Unitful.mm, center::Vector{S}=[0.0,0.0,0.0]Unitful.mm, filename = DEFAULT_TDESIGNS) where {S<:Unitful.Length}
+function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=[0.0,0.0,0.0]Unitful.mm, filename = DEFAULT_TDESIGNS) where {S<:Unitful.Length}
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
