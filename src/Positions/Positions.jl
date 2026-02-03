@@ -70,6 +70,8 @@ function Positions(params::Dict)
   return positions
 end
 
+getPositionUnit(params::Dict) = haskey(params, "unit") ? uparse(params["unit"]) : 1  
+
 # Cartesian grid
 struct RegularGridPositions{T, D} <: GridPositions{T, D}
   shape::SVector{D, Int64}
@@ -101,20 +103,17 @@ function RegularGridPositions(file::HDF5.File)
 end
 
 function RegularGridPositions(params::Dict)
-  if params["type"] != "RegularGridPositions"
-    throw(ArgumentError("Unexpected positions type $(params["type"])"))
-  end
-
   shape = params["shape"]
 
+  unit = getPositionUnit(params)
   fov = params["fov"]
   if !(eltype(fov) <: Quantity)
-    fov = fov.*Unitful.m
+    fov = fov*unit
   end
 
   center = params["center"]
   if !(eltype(center) <: Quantity)
-    center = center.*Unitful.m
+    center = center*unit
   end
 
   return RegularGridPositions(shape, fov, center)
@@ -180,12 +179,15 @@ function write(file::HDF5.File, positions::RegularGridPositions)
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center)))) )
 end
 
-function toDict(positions::RegularGridPositions)
+function toDict(positions::RegularGridPositions{T}) where T
   params = Dict{String,Any}()
   params["type"] = "RegularGridPositions"
   params["shape"] = positions.shape
-  params["fov"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.fov)))
-  params["center"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
+  params["fov"] = Float64.(ustrip.(positions.fov))
+  params["center"] = Float64.(ustrip.(positions.center))
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
   return params
 end
 
@@ -284,12 +286,15 @@ function write(file::HDF5.File, positions::ChebyshevGridPositions)
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center)))) )
 end
 
-function toDict(positions::ChebyshevGridPositions)
+function toDict(positions::ChebyshevGridPositions{T}) where T
   params = Dict{String,Any}()
   params["type"] = "ChebyshevGridPositions"
   params["shape"] = Array(positions.shape)
-  params["fov"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.fov))))
-  params["center"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center))))
+  params["fov"] = Float64.(ustrip.(Array(positions.fov)))
+  params["center"] = Float64.(ustrip.(Array(positions.center)))
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
   return params
 end
 
@@ -301,20 +306,17 @@ function ChebyshevGridPositions(file::HDF5.File)
 end
 
 function ChebyshevGridPositions(params::Dict)
-  if params["type"] != "ChebyshevGridPositions"
-    throw(ArgumentError("Unexpected positions type $(params["type"])"))
-  end
-
   shape = params["shape"]
 
+  unit = getPositionUnit(params)
   fov = params["fov"]
   if !(eltype(fov) <: Quantity)
-    fov = fov.*Unitful.m
+    fov = fov.*unit
   end
 
   center = params["center"]
   if !(eltype(center) <: Quantity)
-    center = center.*Unitful.m
+    center = center.*unit
   end
 
   return ChebyshevGridPositions(shape,fov,center)
@@ -417,9 +419,10 @@ function BreakpointPositions(file::HDF5.File)
 end
 
 function BreakpointPositions(params::Dict)
+  unit = getPositionUnit(params)
   breakpointPosition = params["breakpoint"]
   if !(eltype(breakpointPosition) <: Quantity)
-    breakpointPosition = breakpointPosition.*Unitful.m
+    breakpointPosition = breakpointPosition.*unit
   end
 
   breakpointIndices = params["indices"]
@@ -433,12 +436,15 @@ function write(file::HDF5.File, positions::BreakpointPositions)
   write(file, positions.grid)
 end
 
-function toDict(positions::BreakpointPositions)
+function toDict(positions::BreakpointPositions{T}) where T
   params = Dict{String, Any}()
   params["positions"] = toDict(positions.grid)
   params["type"] = "BreakpointPositions"
-  params["breakpoint"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.breakpointPosition))))
+  params["breakpoint"] = Float64.(ustrip.(Array(positions.breakpointPosition)))
   params["indices"] = positions.breakpointIndices
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
   return params
 end
 
@@ -590,14 +596,15 @@ end
 function TubularRegularGridPositions(params::Dict)
   shape = params["shape"]
 
+  unit = getPositionUnit(params)
   fov = params["fov"]
   if !(eltype(fov) <: Quantity)
-    fov = fov.*Unitful.m
+    fov = fov.*unit
   end
 
   center = params["center"]
   if !(eltype(center) <: Quantity)
-    center = center.*Unitful.m
+    center = center.*unit
   end
 
   mainAxis = params["mainAxis"]
@@ -630,14 +637,17 @@ function write(file::HDF5.File, positions::TubularRegularGridPositions)
   write(file, "/positionsRadiusAxis", positions.radiusAxis)
 end
 
-function toDict(positions::TubularRegularGridPositions)
+function toDict(positions::TubularRegularGridPositions{T}) where T
   params = Dict{String,Any}()
   params["type"] = "TubularRegularGridPositions"
   params["shape"] = Array(positions.shape)
-  params["fov"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.fov))))
-  params["center"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center))))
+  params["fov"] = Float64.(ustrip.(Array(positions.fov)))
+  params["center"] = Float64.(ustrip.(Array(positions.center)))
   params["mainAxis"] = positions.mainAxis
   params["radiusAxis"] = positions.radiusAxis
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
   return params
 end
 
@@ -733,8 +743,9 @@ end
 function SphericalTDesign(params::Dict)
   T = params["T"]
   N = params["N"]
-  radius = params["radius"]*Unitful.m
-  center = params["center"]*Unitful.m
+  unit = getPositionUnit(params)
+  radius = params["radius"]*unit
+  center = params["center"]*unit
   return loadTDesign(T, N, radius, center)
 end
 
@@ -746,13 +757,16 @@ function write(file::HDF5.File, positions::SphericalTDesign)
   write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center)))) )
 end
 					
-function toDict(positions::SphericalTDesign)
+function toDict(positions::SphericalTDesign{T}) where T
   params = Dict{String,Any}()
   params["type"] = "SphericalTDesign"
   params["T"] = positions.T
   params["N"] = size(positions.positions,2)
-  params["radius"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.radius)))
-  params["center"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center))))
+  params["radius"] = Float64.(ustrip.(positions.radius))
+  params["center"] = Float64.(ustrip.(Array(positions.center)))
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
   return params
 end
 
@@ -838,21 +852,33 @@ Positions container which returns all points of the parent `grid` in a greedy ne
 struct SortedPositions{T, D, G} <: NestedPositions{T, D, G}
   parent::G
   indices::Vector{Int64}
-  function SortedPositions(grid::G, start::AbstractVector{T} = first(grid)) where {T, D, G <: Positions{T, D}}
-    current = start
-    positions = collect(grid)
-    sortedpos = Vector{typeof(start)}()
-    indices = Int64[]
-    # Greedily pick next position with smallest value
-    while length(sortedpos) != length(grid)
-      (val, idx) = findmin(map(x-> norm(x - current), positions))
-      current = positions[idx]
-      push!(sortedpos, current)
-      push!(indices, idx)
-      positions[idx] = [typemax(T) for i = 1:D]
-    end
-    return new{T, D, G}(grid, indices)
+end
+function SortedPositions(grid::G, start::AbstractVector{T} = first(grid)) where {T, D, G <: Positions{T, D}}
+  current = start
+  positions = collect(grid)
+  sortedpos = Vector{typeof(start)}()
+  indices = Int64[]
+  # Greedily pick next position with smallest value
+  while length(sortedpos) != length(grid)
+    (val, idx) = findmin(map(x-> norm(x - current), positions))
+    current = positions[idx]
+    push!(sortedpos, current)
+    push!(indices, idx)
+    positions[idx] = [typemax(T) for i = 1:D]
   end
+  return SortedPositions{T, D, G}(grid, indices)
+end
+function SortedPositions(params::Dict)
+  positions = Positions(params["positions"])
+  indices = params["indices"]
+  return SortedPositions{eltype(first(positions)), ndims(positions), typeof(positions)}(positions, indices)
+end
+function toDict(grid::SortedPositions)
+  params = Dict{String, Any}()
+  params["type"] = "SortedPositions"
+  params["positions"] = toDict(parent(grid))
+  params["indices"] = parentindices(grid)
+  return params
 end
 length(grid::SortedPositions) = length(grid.indices)
 parent(grid::SortedPositions) = grid.parent
