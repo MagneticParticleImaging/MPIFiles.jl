@@ -36,6 +36,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   for (i,pos) in enumerate(caG)
     @test posToLinIdx(caG,pos) == i
   end
+  dict = toDict(caG)
+  caG2 = Positions(dict)
+  @test collect(caG) == collect(caG2)
 
   shp2 = [3,3,1]
   fov2 = [3.0,3.0,3.0]Unitful.mm
@@ -79,6 +82,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test fieldOfView(chG1) == fov
     @test fieldOfViewCenter(chG1) == ctr
   end
+  dict = toDict(chG)
+  chG2 = Positions(dict)
+  @test collect(chG) == collect(chG2)
 
   for grid in [caG,chG]
     mG = MeanderingGridPositions(grid)
@@ -109,6 +115,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
       @test fieldOfView(mG1) == fov
       @test fieldOfViewCenter(mG1) == ctr
     end
+    dict = toDict(mG)
+    mG2 = Positions(dict)
+    @test collect(mG) == collect(mG2)
   end
 #BG Test
     bgInd = collect(1:4:37)
@@ -169,6 +178,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
       @test fieldOfView(bG1) == fov
       @test fieldOfViewCenter(bG1) == ctr
     end
+    dict = toDict(bG)
+    bG2 = Positions(dict)
+    @test collect(bG) == collect(bG2)
   end
 
 #BG+Meander Test
@@ -231,6 +243,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
       @test fieldOfView(bG1) == fov
       @test fieldOfViewCenter(bG1) == ctr
     end
+    dict = toDict(bG)
+    bG2 = Positions(dict)
+    @test collect(bG) == collect(bG2)
   end
 
   positions = [1 2 3 4; 0 1 2 3;-4 -3 -2 -1]Unitful.mm
@@ -322,6 +337,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test tDesign1.center == tDesign.center
     @test tDesign1.positions == tDesign.positions
   end
+  dict = toDict(tDesign)
+  tDesign2 = Positions(dict)
+  @test collect(tDesign) == collect(tDesign2)
 
   @test length(caG) == prod(shp)
   @test length(chG) == prod(shp)
@@ -336,12 +354,12 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     grid = TubularRegularGridPositions([81, 81, 1], [40.0, 40.0 ,0.0]u"mm", [0.0, 0.0, 0.0]u"mm", 3, 1)
 
     params = Dict{String, Any}()
-    params["positionsType"] = "TubularRegularGridPositions"
-    params["positionsShape"] = [81, 81, 1]
-    params["positionsFov"] = [40, 40 ,0]u"mm"
-    params["positionsCenter"] = [0, 0, 0]u"mm"
-    params["positionsMainAxis"] = 3
-    params["positionsRadiusAxis"] = 1
+    params["type"] = "TubularRegularGridPositions"
+    params["shape"] = [81, 81, 1]
+    params["fov"] = [40, 40 ,0]u"mm"
+    params["center"] = [0, 0, 0]u"mm"
+    params["mainAxis"] = 3
+    params["radiusAxis"] = 1
     gridByParams = TubularRegularGridPositions(params)
 
     @test grid == gridByParams
@@ -350,12 +368,13 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test grid == gridByParamsGeneral
 
     paramsFromGrid = toDict(grid)
-    @test params["positionsType"] == paramsFromGrid["positionsType"] 
-    @test all(params["positionsShape"] .== paramsFromGrid["positionsShape"])
-    @test all(ustrip.(u"m", params["positionsFov"]) .≈ paramsFromGrid["positionsFov"])
-    @test all(ustrip.(u"m", params["positionsCenter"]) .≈ paramsFromGrid["positionsCenter"])
-    @test params["positionsMainAxis"] == paramsFromGrid["positionsMainAxis"]
-    @test params["positionsRadiusAxis"] == paramsFromGrid["positionsRadiusAxis"]
+    @test params["type"] == paramsFromGrid["type"] 
+    @test all(params["shape"] .== paramsFromGrid["shape"])
+    @test all(ustrip.(params["fov"]) .≈ paramsFromGrid["fov"])
+    @test all(ustrip.(params["center"]) .≈ paramsFromGrid["center"])
+    @test paramsFromGrid["unit"] == string("mm")
+    @test params["mainAxis"] == paramsFromGrid["mainAxis"]
+    @test params["radiusAxis"] == paramsFromGrid["radiusAxis"]
     
     @test length(grid) == 5169
     @test length(collect(grid)) == length(grid)
@@ -395,9 +414,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @testset "Squared positions regression test" begin
     # When supplying a dict already equipped with Unitful units, the positions were squared
     params = Dict{String, Any}()
-    params["positionsShape"] = [3, 3, 3]
-    params["positionsFov"] = [3.0u"mm", 3.0u"mm", 3.0u"mm"]
-    params["positionsCenter"] = [0.0u"mm", 0.0u"mm", 0.0u"mm"]
+    params["shape"] = [3, 3, 3]
+    params["fov"] = [3.0u"mm", 3.0u"mm", 3.0u"mm"]
+    params["center"] = [0.0u"mm", 0.0u"mm", 0.0u"mm"]
 
     positions = RegularGridPositions(params)
     @test eltype(positions[1]) <: Unitful.Length
@@ -447,6 +466,10 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test shape(sorted_grid) == shape(caG)
     @test fieldOfView(sorted_grid) == fieldOfView(caG)
     @test fieldOfViewCenter(sorted_grid) == fieldOfViewCenter(caG)
+
+    dict = toDict(sorted_grid)
+    sorted_grid2 = Positions(dict)
+    @test collect(sorted_grid) == collect(sorted_grid2)
   end
 
   @testset "calibGrid" begin

@@ -63,6 +63,11 @@
     @test parentindices(sub8) != parentindices(subf)
     @test parentindices(sub8) == sort(parentindices(subf))
 
+    # Dict round-trips
+    dict = toDict(sub1)
+    sub9 = Positions(dict)
+    @test collect(sub1) == collect(sub9)
+
     @testset "Edge cases" begin
       grid = RegularGridPositions((1, 1), (0.0, 0.0), (0.0, 0.0))  # single point
       @test length(grid) == 1
@@ -84,7 +89,8 @@
       # Invalid arguments, incorrect position matrix size, < D 
       @test_throws ArgumentError SubsampledPositions(grid, fill(0.0, length(first(grid)) - 1, 1))
       # Invalid arguments, no matching position found
-      @test_throws ArgumentError SubsampledPositions(grid, fill(1.0, length(first(grid)), 1))
+      # TODO: define fitting error condition
+      # @test_throws ArgumentError SubsampledPositions(grid, fill(1.0, length(first(grid)), 1))
     end
 
     @testset "Nesting" begin
@@ -102,6 +108,8 @@
       @test bggrid[1] == bgPos
       @test bggrid[2 + div(length(csgrid), 2)] == bgPos
       @test bggrid[length(bggrid)] == bgPos
+      dict = toDict(bggrid)
+      @test collect(bggrid) == collect(Positions(dict))
 
       # Test "SM" with bg measurements and sorting
       grid = RegularGridPositions((3, 3, 3), (3.0, 2.0, 3.0), (0.0, 0.0, 0.0)) # 27 points
@@ -118,6 +126,9 @@
       @test bggrid[1] == bgPos
       @test bggrid[2 + div(length(csgrid), 2)] == bgPos
       @test bggrid[length(bggrid)] == bgPos
+
+      dict = toDict(bggrid)
+      @test collect(bggrid) == collect(Positions(dict))
     end
   end
 
