@@ -42,29 +42,29 @@ function Positions(file::HDF5.File)
 end
 
 function Positions(params::Dict)
-  if haskey(params, "positionsBreakpoint")
-    return BreakpointPositions(params)
-  end
-
-  typ = params["positionsType"]
-  if typ == "RegularGridPositions"
+  type = params["type"]
+  if type == "RegularGridPositions"
     positions = RegularGridPositions(params)
-  elseif typ == "ChebyshevGridPositions"
+  elseif type == "MeanderingGridPositions"
+    positions = MeanderingGridPositions(params)
+  elseif type == "ChebyshevGridPositions"
     positions = ChebyshevGridPositions(params)
-  elseif typ == "SphericalTDesign"
+  elseif type == "BreakpointPositions"
+    positions = BreakpointPositions(params)
+  elseif type == "SphericalTDesign"
     positions = SphericalTDesign(params)
-  elseif typ == "UniformRandomPositions"
+  elseif type == "UniformRandomPositions"
     positions = UniformRandomPositions(params)
-  elseif typ == "ArbitraryPositions"
+  elseif type == "ArbitraryPositions"
     positions = ArbitraryPositions(params)
-  elseif typ == "TubularRegularGridPositions"
+  elseif type == "SortedPositions"
+    positions = SortedPositions(params)
+  elseif type == "TubularRegularGridPositions"
     positions = TubularRegularGridPositions(params)
+  elseif type == "SubsampledPositions"
+    positions = SubsampledPositions(params)
   else
     throw(ErrorException("No grid found to load from dict $params"))
-  end
-
-  if haskey(params, "positionsMeandering") && typ in ["RegularGridPositions","ChebyshevGridPositions"] && params["positionsMeandering"]
-    positions = MeanderingGridPositions(positions)
   end
 
   return positions
@@ -101,14 +101,18 @@ function RegularGridPositions(file::HDF5.File)
 end
 
 function RegularGridPositions(params::Dict)
-  shape = params["positionsShape"]
+  if params["type"] != "RegularGridPositions"
+    throw(ArgumentError("Unexpected positions type $(params["type"])"))
+  end
 
-  fov = params["positionsFov"]
+  shape = params["shape"]
+
+  fov = params["fov"]
   if !(eltype(fov) <: Quantity)
     fov = fov.*Unitful.m
   end
 
-  center = params["positionsCenter"]
+  center = params["center"]
   if !(eltype(center) <: Quantity)
     center = center.*Unitful.m
   end
@@ -178,10 +182,10 @@ end
 
 function toDict(positions::RegularGridPositions)
   params = Dict{String,Any}()
-  params["positionsType"] = "RegularGridPositions"
-  params["positionsShape"] = positions.shape
-  params["positionsFov"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.fov)))
-  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
+  params["type"] = "RegularGridPositions"
+  params["shape"] = positions.shape
+  params["fov"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.fov)))
+  params["center"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
   return params
 end
 
@@ -282,10 +286,10 @@ end
 
 function toDict(positions::ChebyshevGridPositions)
   params = Dict{String,Any}()
-  params["positionsType"] = "ChebyshevGridPositions"
-  params["positionsShape"] = Array(positions.shape)
-  params["positionsFov"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.fov))))
-  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center))))
+  params["type"] = "ChebyshevGridPositions"
+  params["shape"] = Array(positions.shape)
+  params["fov"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.fov))))
+  params["center"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center))))
   return params
 end
 
@@ -297,14 +301,18 @@ function ChebyshevGridPositions(file::HDF5.File)
 end
 
 function ChebyshevGridPositions(params::Dict)
-  shape = params["positionsShape"]
+  if params["type"] != "ChebyshevGridPositions"
+    throw(ArgumentError("Unexpected positions type $(params["type"])"))
+  end
 
-  fov = params["positionsFov"]
+  shape = params["shape"]
+
+  fov = params["fov"]
   if !(eltype(fov) <: Quantity)
     fov = fov.*Unitful.m
   end
 
-  center = params["positionsCenter"]
+  center = params["center"]
   if !(eltype(center) <: Quantity)
     center = center.*Unitful.m
   end
@@ -339,14 +347,8 @@ function MeanderingGridPositions(file::HDF5.File)
 end
 
 function MeanderingGridPositions(params::Dict)
-  typ = params["positionsType"]
-  if typ == "RegularGridPositions"
-    grid = RegularGridPositions(params)
-    return MeanderingGridPositions(grid)
-  elseif typ == "ChebyshevGridPositions"
-    grid = ChebyshevGridPositions(params)
-    return MeanderingGridPositions(grid)
-  end
+  pos = Positions(params["positions"])
+  return MeanderingGridPositions(pos)
 end
 
 function write(file::HDF5.File, positions::MeanderingGridPositions)
@@ -355,8 +357,9 @@ function write(file::HDF5.File, positions::MeanderingGridPositions)
 end
 
 function toDict(positions::MeanderingGridPositions)
-  params = toDict(positions.grid)
-  params["positionsMeandering"] = true
+  params = Dict{String,Any}()
+  params["positions"] = toDict(positions.grid)
+  params["type"] = "MeanderingGridPositions"
   return params
 end
 
@@ -414,25 +417,14 @@ function BreakpointPositions(file::HDF5.File)
 end
 
 function BreakpointPositions(params::Dict)
-  typ = params["positionsType"]
-
-  breakpointPosition = params["positionsBreakpoint"]
+  breakpointPosition = params["breakpoint"]
   if !(eltype(breakpointPosition) <: Quantity)
     breakpointPosition = breakpointPosition.*Unitful.m
   end
 
-  breakpointIndices = params["indicesBreakpoint"]
-
-  if haskey(params, "positionsMeandering")
-    grid = MeanderingGridPositions(params)
-    return BreakpointPositions(grid, breakpointIndices, breakpointPosition)
-  elseif typ == "RegularGridPositions"
-    grid = RegularGridPositions(params)
-    return BreakpointPositions(grid, breakpointIndices, breakpointPosition)
-  elseif typ == "ChebyshevGridPositions"
-    grid = ChebyshevGridPositions(params)
-    return BreakpointPositions(grid, breakpointIndices, breakpointPosition)
-  end
+  breakpointIndices = params["indices"]
+  positions = Positions(params["positions"])
+  return BreakpointGridPositions(positions, breakpointIndices, breakpointPosition)
 end
 
 function write(file::HDF5.File, positions::BreakpointPositions)
@@ -442,9 +434,11 @@ function write(file::HDF5.File, positions::BreakpointPositions)
 end
 
 function toDict(positions::BreakpointPositions)
-  params = toDict(positions.grid)
-  params["positionsBreakpoint"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.breakpointPosition))))
-  params["indicesBreakpoint"] = positions.breakpointIndices
+  params = Dict{String, Any}()
+  params["positions"] = toDict(positions.grid)
+  params["type"] = "BreakpointPositions"
+  params["breakpoint"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.breakpointPosition))))
+  params["indices"] = positions.breakpointIndices
   return params
 end
 
@@ -594,20 +588,20 @@ function TubularRegularGridPositions(shape, fov, center, mainAxis, radius)
 end
 
 function TubularRegularGridPositions(params::Dict)
-  shape = params["positionsShape"]
+  shape = params["shape"]
 
-  fov = params["positionsFov"]
+  fov = params["fov"]
   if !(eltype(fov) <: Quantity)
     fov = fov.*Unitful.m
   end
 
-  center = params["positionsCenter"]
+  center = params["center"]
   if !(eltype(center) <: Quantity)
     center = center.*Unitful.m
   end
 
-  mainAxis = params["positionsMainAxis"]
-  radiusAxis = params["positionsRadiusAxis"]
+  mainAxis = params["mainAxis"]
+  radiusAxis = params["radiusAxis"]
 
   return TubularRegularGridPositions(shape, fov, center, mainAxis, radiusAxis)
 end
@@ -638,12 +632,12 @@ end
 
 function toDict(positions::TubularRegularGridPositions)
   params = Dict{String,Any}()
-  params["positionsType"] = "TubularRegularGridPositions"
-  params["positionsShape"] = Array(positions.shape)
-  params["positionsFov"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.fov))))
-  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center))))
-  params["positionsMainAxis"] = positions.mainAxis
-  params["positionsRadiusAxis"] = positions.radiusAxis
+  params["type"] = "TubularRegularGridPositions"
+  params["shape"] = Array(positions.shape)
+  params["fov"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.fov))))
+  params["center"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center))))
+  params["mainAxis"] = positions.mainAxis
+  params["radiusAxis"] = positions.radiusAxis
   return params
 end
 
@@ -747,11 +741,11 @@ end
 					
 function toDict(positions::SphericalTDesign)
   params = Dict{String,Any}()
-  params["positionsType"] = "SphericalTDesign"
-  params["positionsTDesignT"] = positions.T
-  params["positionsTDesignN"] = size(positions.positions,2)
-  params["positionsTDesignRadius"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.radius)))
-  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center))))
+  params["type"] = "SphericalTDesign"
+  params["T"] = positions.T
+  params["N"] = size(positions.positions,2)
+  params["radius"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.radius)))
+  params["center"] = Float64.(ustrip.(uconvert.(Unitful.m, Array(positions.center))))
   return params
 end					
 
