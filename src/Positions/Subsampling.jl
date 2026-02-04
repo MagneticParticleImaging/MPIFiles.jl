@@ -149,16 +149,14 @@ Convenience constructor that builds a `RegularGridPositions(shape, fov, center)`
 creates a `SubsampledPositions` by locating each column of `positions` in that grid.
 """
 SubsampledPositions(shape, fov, center::AbstractVector{T}, positions::AbstractMatrix{T}) where T = SubsampledPositions(RegularGridPositions(shape, fov, center), positions) 
-function SubsampledPositions(params::Dict)
-  indices = params["indices"]
-  positions = Positions(params["positions"])
+function SubsampledPositions(params::PosFromFileOrDict)
+  indices = getDictOrH5Value(params, "indices")
+  positions = Positions(getDictOrH5Value(params, "positions"))
   return SubsampledPositions(positions, indices)
 end
-function toDict(positions::SubsampledPositions)
-  params = Dict{String, Any}()
-  params["positions"] = Dict{String, Any}()
+function write(params::PosFromFileOrDict, positions::SubsampledPositions)
   params["type"] = "SubsampledPositions"
-  params["positions"] = toDict(parent(positions))
+  write(params, "positions", parent(positions))
   params["indices"] = parentindices(positions)
   return params
 end
