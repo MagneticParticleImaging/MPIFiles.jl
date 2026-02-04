@@ -291,7 +291,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test rP2.domain.fov == fov
     @test rP2.domain.center == ctr
   end
-  radius = 10Unitful.mm
+  radius = 10.0Unitful.mm
   domain = Ball(radius,ctr)
   @test domain.radius == radius
   @test domain.center == ctr
