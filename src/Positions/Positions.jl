@@ -160,8 +160,8 @@ end
 function write(params::PosFromFileOrDict, positions::RegularGridPositions{T}) where T
   params["type"] = "RegularGridPositions"
   params["shape"] = Array(positions.shape)
-  params["fov"] = Array(Float64.(ustrip.(positions.fov)))
-  params["center"] = Array(Float64.(ustrip.(positions.center)))
+  params["fov"] = Array(ustrip.(positions.fov))
+  params["center"] = Array(ustrip.(positions.center))
   if !isnothing(unit(T))
     params["unit"] = string(unit(T))
   end
@@ -259,8 +259,8 @@ ChebyshevGridPositions(shape, fov, center) = ChebyshevGridPositions(SVector{leng
 function write(params::PosFromFileOrDict, positions::ChebyshevGridPositions{T}) where T
   params["type"] = "ChebyshevGridPositions"
   params["shape"] = Array(positions.shape)
-  params["fov"] = Float64.(ustrip.(Array(positions.fov)))
-  params["center"] = Float64.(ustrip.(Array(positions.center)))
+  params["fov"] = ustrip.(Array(positions.fov))
+  params["center"] = ustrip.(Array(positions.center))
   if !isnothing(unit(T))
     params["unit"] = string(unit(T))
   end
@@ -347,7 +347,7 @@ end
 function write(params::PosFromFileOrDict, positions::BreakpointPositions{T}) where T
   write(params, "positions", positions.grid)
   params["type"] = "BreakpointPositions"
-  params["breakpoint"] = Float64.(ustrip.(Array(positions.breakpointPosition)))
+  params["breakpoint"] = ustrip.(Array(positions.breakpointPosition))
   params["indices"] = positions.breakpointIndices
   if !isnothing(unit(T))
     params["unit"] = string(unit(T))
@@ -397,8 +397,8 @@ end
 
 function write(params::PosFromFileOrDict, domain::AxisAlignedBox{T}) where T
   params["domain"] = "AxisAlignedBox"
-  params["fieldOfView"] = Float64.(ustrip.(domain.fov))
-  params["center"] = Float64.(ustrip.(domain.center))
+  params["fieldOfView"] = ustrip.(domain.fov)
+  params["center"] = ustrip.(domain.center)
   if !isnothing(unit(T))
     params["unit"] = string(unit(T))
   end
@@ -419,8 +419,8 @@ end
 
 function write(params::PosFromFileOrDict, domain::Ball{T}) where T
   params["domain"] = "Ball"
-  params["radius"] = Float64.(ustrip.(domain.radius))
-  params["center"] = Float64.(ustrip.(domain.center))
+  params["radius"] = ustrip.(domain.radius)
+  params["center"] = ustrip.(domain.center)
   if !isnothing(unit(T))
     params["unit"] = string(unit(T))
   end
@@ -541,8 +541,8 @@ radius(grid::TubularRegularGridPositions) = grid.fov[grid.radiusAxis] / 2
 function write(params::PosFromFileOrDict, positions::TubularRegularGridPositions{T}) where T
   params["type"] = "TubularRegularGridPositions"
   params["shape"] = Array(positions.shape)
-  params["fov"] = Float64.(ustrip.(Array(positions.fov)))
-  params["center"] = Float64.(ustrip.(Array(positions.center)))
+  params["fov"] = ustrip.(Array(positions.fov))
+  params["center"] = ustrip.(Array(positions.center))
   params["mainAxis"] = positions.mainAxis
   params["radiusAxis"] = positions.radiusAxis
   if !isnothing(unit(T))
@@ -646,8 +646,8 @@ function write(params::PosFromFileOrDict, positions::SphericalTDesign{T}) where 
   params["type"] = "SphericalTDesign"
   params["T"] = positions.T
   params["N"] = size(positions.positions,2)
-  params["radius"] = Float64.(ustrip.(positions.radius))
-  params["center"] = Float64.(ustrip.(Array(positions.center)))
+  params["radius"] = ustrip.(positions.radius)
+  params["center"] = ustrip.(Array(positions.center))
   if !isnothing(unit(T))
     params["unit"] = string(unit(T))
   end
@@ -719,7 +719,7 @@ end
 
 function write(params::PosFromFileOrDict, apos::ArbitraryPositions{T}) where T
   params["type"] = "ArbitraryPositions"
-  params["positions"] = Float64.(ustrip.(Array(apos.positions)))
+  params["positions"] = ustrip.(Array(apos.positions))
   if !isnothing(unit(T))
     params["unit"] = string(unit(T))
   end
