@@ -184,28 +184,7 @@ Gives the center positions of pixels along grid-dimension `axis` of a calibratio
 """
 function calibAxis(f::MPIFile, axis::Integer; attach_units=false)
   if !(1<=axis<=3); error("Can't access axis $(axis). A MDF calibration can only have three axes!") end
-
-  size = calibSize(f)
-  fov = calibFov(f)
-  if isnothing(fov)
-    fov = ones(length(size))
-  end
-  center = calibFovCenter(f)
-  if isnothing(center)
-    center = zeros(length(size))
-  end
-  stepSize = fov./size
-  if attach_units
-    unit = if calibMethod(f)=="hybrid"; u"T" else u"m" end 
-  else
-    unit = 1
-  end
-  if size[axis]==1
-    return [center[axis]]*unit
-  else
-    return range( start=(-fov[axis]+stepSize[axis])/2+center[axis], step=stepSize[axis], length=size[axis] )*unit
-  end
-
+  return range(calibGrid(f; attach_units), axis)
 end
 
 function calibGrid(f::MPIFile; attach_units = false)
@@ -214,7 +193,13 @@ function calibGrid(f::MPIFile; attach_units = false)
     return nothing
   end
 
-  grid = axesToRegularGridPositions(Tuple(calibAxis(f, i; attach_units = attach_units) for i = 1:length(shape)))
+  if attach_units
+    u = if calibMethod(f)=="hybrid"; u"T" else u"m" end 
+  else
+    u = 1
+  end
+
+  grid = RegularGridPositions(calibSize(f), calibFov(f)*u, calibFovCenter(f)*u)
 
   if calibIsMeanderingGrid(f)
     grid = MeanderingGridPositions(grid)
