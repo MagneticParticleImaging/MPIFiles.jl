@@ -249,9 +249,9 @@ end
 
 
 # Chebyshev Grid
-struct ChebyshevGridPositions{T, D, S} <: GridPositions{T, D}
+struct ChebyshevGridPositions{T, D} <: GridPositions{T, D}
   shape::SVector{D, Int64}
-  fov::SVector{D, S}
+  fov::SVector{D, T}
   center::SVector{D, T}
 end
 ChebyshevGridPositions(shape, fov, center) = ChebyshevGridPositions(SVector{length(shape)}(shape), SVector{length(fov)}(fov), SVector{length(center)}(center))
@@ -626,11 +626,11 @@ fieldOfViewCenter(bgrid::BreakpointPositions) = fieldOfViewCenter(bgrid.grid)
 
 spacing(grid::GridPositions) = grid.fov ./ grid.shape
 
-struct SphericalTDesign{S, D, N, EL} <: Positions{S, D}
+struct SphericalTDesign{T, D, N, EL} <: Positions{T, D}
   T::UInt64
-  radius::S
+  radius::T
   positions::SMatrix{D, N, EL}
-  center::SVector{D, S}
+  center::SVector{D, T}
 end
 
 function SphericalTDesign(params::PosFromFileOrDict)
