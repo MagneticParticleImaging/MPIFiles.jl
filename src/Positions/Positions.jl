@@ -80,8 +80,19 @@ struct RegularGridPositions{T, D} <: GridPositions{T, D}
   fov::SVector{D, T}
   center::SVector{D, T}
   sign::SVector{D, Int64}
+  function RegularGridPositions(shape::NTuple{D},
+                              fov::NTuple{D},
+                              center::NTuple{D},
+                              sign::NTuple{D}) where {D}
+    T = promote_type(typeof.(fov)..., typeof.(center)...)
+    return new{T,D}(
+        SVector{D,Int64}(shape),
+        SVector{D,T}(T.(fov)),
+        SVector{D,T}(T.(center)),
+        SVector{D,Int64}(sign))
+  end
 end
-RegularGridPositions(shape, fov, center, signs) = RegularGridPositions(SVector{length(shape)}(shape), SVector{length(fov)}(fov), SVector{length(center)}(center), SVector{length(signs)}(signs))
+RegularGridPositions(shape, fov, center, signs) = RegularGridPositions(Tuple(shape), Tuple(fov), Tuple(center), Tuple(signs))
 
 function range(grid::RegularGridPositions, dim::Int)
   if grid.shape[dim] > 1
@@ -253,8 +264,17 @@ struct ChebyshevGridPositions{T, D} <: GridPositions{T, D}
   shape::SVector{D, Int64}
   fov::SVector{D, T}
   center::SVector{D, T}
+  function ChebyshevGridPositions(shape::NTuple{D},
+                              fov::NTuple{D},
+                              center::NTuple{D}) where {D}
+    T = promote_type(typeof.(fov)..., typeof.(center)...)
+    return new{T,D}(
+        SVector{D,Int64}(shape),
+        SVector{D,T}(T.(fov)),
+        SVector{D,T}(T.(center)))
+  end
 end
-ChebyshevGridPositions(shape, fov, center) = ChebyshevGridPositions(SVector{length(shape)}(shape), SVector{length(fov)}(fov), SVector{length(center)}(center))
+ChebyshevGridPositions(shape, fov, center) = ChebyshevGridPositions(Tuple(shape), Tuple(fov), Tuple(center))
 
 function write(params::PosFromFileOrDict, positions::ChebyshevGridPositions{T}) where T
   params["type"] = "ChebyshevGridPositions"
@@ -518,9 +538,20 @@ struct TubularRegularGridPositions{T, D} <: GridPositions{T, D}
   mainAxis::Int64
   "Radius-defining axis of the tube"
   radiusAxis::Int64
+  function TubularRegularGridPositions(shape::NTuple{D},
+                              fov::NTuple{D},
+                              center::NTuple{D},
+                              mainAxis, radius) where {D}
+    T = promote_type(typeof.(fov)..., typeof.(center)...)
+    return new{T,D}(
+        SVector{D,Int64}(shape),
+        SVector{D,T}(T.(fov)),
+        SVector{D,T}(T.(center)),
+        mainAxis, radius)
+  end
 end
 function TubularRegularGridPositions(shape, fov, center, mainAxis, radius) 
-  TubularRegularGridPositions(SVector{length(shape)}(shape), SVector{length(fov)}(fov), SVector{length(center)}(center), mainAxis, radius)
+  TubularRegularGridPositions(Tuple(shape), Tuple(fov), Tuple(center), mainAxis, radius)
 end
 
 function TubularRegularGridPositions(params::PosFromFileOrDict)
