@@ -85,6 +85,9 @@ struct RegularGridPositions{T, D} <: GridPositions{T, D}
                               center::NTuple{D},
                               sign::NTuple{D}) where {D}
     T = promote_type(typeof.(fov)..., typeof.(center)...)
+    if !isconcretetype(T)
+      throw(ArgumentError("Can't promote fov and center to a concrete data type. This is most likely caused by a mismatch in units"))
+    end
     return new{T,D}(
         SVector{D,Int64}(shape),
         SVector{D,T}(T.(fov)),
@@ -268,6 +271,9 @@ struct ChebyshevGridPositions{T, D} <: GridPositions{T, D}
                               fov::NTuple{D},
                               center::NTuple{D}) where {D}
     T = promote_type(typeof.(fov)..., typeof.(center)...)
+    if !isconcretetype(T)
+      throw(ArgumentError("Can't promote fov and center to a concrete data type. This is most likely caused by a mismatch in units"))
+    end
     return new{T,D}(
         SVector{D,Int64}(shape),
         SVector{D,T}(T.(fov)),
@@ -543,6 +549,9 @@ struct TubularRegularGridPositions{T, D} <: GridPositions{T, D}
                               center::NTuple{D},
                               mainAxis, radius) where {D}
     T = promote_type(typeof.(fov)..., typeof.(center)...)
+    if !isconcretetype(T)
+      throw(ArgumentError("Can't promote fov and center to a concrete data type. This is most likely caused by a mismatch in units"))
+    end
     return new{T,D}(
         SVector{D,Int64}(shape),
         SVector{D,T}(T.(fov)),

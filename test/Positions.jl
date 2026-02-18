@@ -60,6 +60,8 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test all(caG3[1] .≈ [rx[1],ry[1],rz[1]])
   @test all(caG3[2] .≈ [rx[2],ry[1],rz[1]])
 
+  @test_throws ArgumentError RegularGridPositions([5,5],[1.0u"mm",1.0u"mm"],[0.0u"mT",0.0u"mT"])
+
   chG = ChebyshevGridPositions(shp,fov,ctr)
   @test shape(chG) == shp
   @test fieldOfView(chG) == fov
@@ -85,6 +87,8 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   dict = toDict(chG)
   chG2 = Positions(dict)
   @test collect(chG) == collect(chG2)
+
+  @test_throws ArgumentError ChebyshevGridPositions([5,5],[1.0u"mm",1.0u"mm"],[0.0u"mT",0.0u"mT"])
 
   for grid in [caG,chG]
     mG = MeanderingGridPositions(grid)
@@ -409,6 +413,8 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
 
     @test posToLinIdx(grid, [-2.962962962962963, -19.753086419753085, 0.0]u"mm") == 1
     @test posToLinIdx(grid, [-9.382716049382715, -3.45679012345679, 0.0]u"mm") == 2000
+
+    @test_throws ArgumentError TubularRegularGridPositions([81, 81, 1], [40.0, 40.0 ,0.0]u"mT", [0.0, 0.0, 0.0]u"mm", 3, 1)
   end
 
   @testset "Squared positions regression test" begin
