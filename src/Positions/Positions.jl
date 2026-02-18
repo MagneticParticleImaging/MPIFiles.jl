@@ -830,7 +830,7 @@ start_(grid::Positions) = 1
 next_(grid::Positions,state) = (grid[state],state+1)
 done_(grid::Positions,state) = state > length(grid)
 iterate(grid::Positions, s=start_(grid)) = done_(grid, s) ? nothing : next_(grid, s)
-eltype(::Positions{T, D}) where {T, D} = SVector{D, T}
+eltype(grid::Positions{T, D}) where {T, D} = typeof(first(grid))
 
 include("Interpolation.jl")
 include("Subsampling.jl")
