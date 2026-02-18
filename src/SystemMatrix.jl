@@ -214,7 +214,7 @@ function calibGrid(f::MPIFile; attach_units = false)
     return nothing
   end
 
-  grid = axesToRegularGridPositions(Tuple(calibAxis(f, i; attach_units = attach_units) for i = 1:length(size)))
+  grid = axesToRegularGridPositions(Tuple(calibAxis(f, i; attach_units = attach_units) for i = 1:length(shape)))
 
   if calibIsMeanderingGrid(f)
     grid = MeanderingGridPositions(grid)
