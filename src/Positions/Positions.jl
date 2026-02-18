@@ -95,6 +95,7 @@ struct RegularGridPositions{T, D} <: GridPositions{T, D}
         SVector{D,Int64}(sign))
   end
 end
+RegularGridPositions(shape::Tuple, fov::Tuple, center::Tuple, signs::Tuple) = throw(DimensionMismatch("Position arguments don't have matching dimensions"))
 RegularGridPositions(shape, fov, center, signs) = RegularGridPositions(Tuple(shape), Tuple(fov), Tuple(center), Tuple(signs))
 
 function range(grid::RegularGridPositions, dim::Int)
@@ -280,6 +281,7 @@ struct ChebyshevGridPositions{T, D} <: GridPositions{T, D}
         SVector{D,T}(T.(center)))
   end
 end
+ChebyshevGridPositions(shape::Tuple, fov::Tuple, center::Tuple) = throw(DimensionMismatch("Position arguments don't have matching dimensions"))
 ChebyshevGridPositions(shape, fov, center) = ChebyshevGridPositions(Tuple(shape), Tuple(fov), Tuple(center))
 
 function write(params::PosFromFileOrDict, positions::ChebyshevGridPositions{T}) where T
@@ -559,6 +561,7 @@ struct TubularRegularGridPositions{T, D} <: GridPositions{T, D}
         mainAxis, radius)
   end
 end
+TubularRegularGridPositions(shape::Tuple, fov::Tuple, center::Tuple, mainAxis, radius) = throw(DimensionMismatch("Position arguments don't have matching dimensions"))
 function TubularRegularGridPositions(shape, fov, center, mainAxis, radius) 
   TubularRegularGridPositions(Tuple(shape), Tuple(fov), Tuple(center), mainAxis, radius)
 end
