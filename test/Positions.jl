@@ -36,6 +36,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   for (i,pos) in enumerate(caG)
     @test posToLinIdx(caG,pos) == i
   end
+  dict = toDict(caG)
+  caG2 = Positions(dict)
+  @test collect(caG) == collect(caG2)
 
   shp2 = [3,3,1]
   fov2 = [3.0,3.0,3.0]Unitful.mm
@@ -57,12 +60,18 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test all(caG3[1] .≈ [rx[1],ry[1],rz[1]])
   @test all(caG3[2] .≈ [rx[2],ry[1],rz[1]])
 
+  @test_throws ArgumentError RegularGridPositions([5,5],[1.0u"mm",1.0u"mm"],[0.0u"mT",0.0u"mT"])
+  @test_throws DimensionMismatch RegularGridPositions([5],[1.0u"mm",1.0u"mm"],[0.0u"mT",0.0u"mT"])
+  @test_throws DimensionMismatch RegularGridPositions([5,5],[1.0u"mm"],[0.0u"mT",0.0u"mT"])
+  @test_throws DimensionMismatch RegularGridPositions([5,5],[1.0u"mm",1.0u"mm"],[0.0u"mT"])
+
   chG = ChebyshevGridPositions(shp,fov,ctr)
   @test shape(chG) == shp
   @test fieldOfView(chG) == fov
   @test fieldOfViewCenter(chG) == ctr
   @test_throws BoundsError chG[0]
   @test_throws BoundsError chG[28]
+  @test length(collect(chG)) == length(chG)
   @test chG[1] ≈ cos(π/6)*3/2*caG[1]
   @test chG[2] ≈ cos(π/6)*3/2*caG[2]
   @test chG[3] ≈ cos(π/6)*3/2*caG[3]
@@ -78,10 +87,21 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test fieldOfView(chG1) == fov
     @test fieldOfViewCenter(chG1) == ctr
   end
+  dict = toDict(chG)
+  chG2 = Positions(dict)
+  @test collect(chG) == collect(chG2)
+
+  @test_throws ArgumentError ChebyshevGridPositions([5,5],[1.0u"mm",1.0u"mm"],[0.0u"mT",0.0u"mT"])
+  @test_throws DimensionMismatch ChebyshevGridPositions([5],[1.0u"mm",1.0u"mm"],[0.0u"mT",0.0u"mT"])
+  @test_throws DimensionMismatch ChebyshevGridPositions([5,5],[1.0u"mm"],[0.0u"mT",0.0u"mT"])
+  @test_throws DimensionMismatch ChebyshevGridPositions([5,5],[1.0u"mm",1.0u"mm"],[0.0u"mT"])
+
 
   for grid in [caG,chG]
     mG = MeanderingGridPositions(grid)
+    @test parent(mG) == grid
     @test length(mG) == prod(shp)
+    @test length(collect(mG)) == length(mG)
     @test shape(mG) == shp
     @test fieldOfView(mG) == fov
     @test fieldOfViewCenter(mG) == ctr
@@ -106,13 +126,18 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
       @test fieldOfView(mG1) == fov
       @test fieldOfViewCenter(mG1) == ctr
     end
+    dict = toDict(mG)
+    mG2 = Positions(dict)
+    @test collect(mG) == collect(mG2)
   end
 #BG Test
     bgInd = collect(1:4:37)
     bgPos = [10.0,10.0,10.0]Unitful.mm
   for grid in [caG,chG]
-    bG = BreakpointGridPositions(grid,bgInd,bgPos)
+    bG = BreakpointPositions(grid,bgInd,bgPos)
+    @test parent(bG) == grid
     @test length(bG) == prod(shp)+length(bgInd)
+    @test length(collect(bG)) == length(bG)
     @test shape(bG) == shp
     @test fieldOfView(bG) == fov
     @test fieldOfViewCenter(bG) == ctr
@@ -164,6 +189,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
       @test fieldOfView(bG1) == fov
       @test fieldOfViewCenter(bG1) == ctr
     end
+    dict = toDict(bG)
+    bG2 = Positions(dict)
+    @test collect(bG) == collect(bG2)
   end
 
 #BG+Meander Test
@@ -171,8 +199,10 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     bgPos = [10.0,10.0,10.0]Unitful.mm
   for grid in [caG,chG]
     mG = MeanderingGridPositions(grid)
-    bG = BreakpointGridPositions(mG,bgInd,bgPos)
+    bG = BreakpointPositions(mG,bgInd,bgPos)
+    @test parent(bG) == mG
     @test length(bG) == prod(shp)+length(bgInd)
+    @test length(collect(bG)) == length(bG)
     @test shape(bG) == shp
     @test fieldOfView(bG) == fov
     @test fieldOfViewCenter(bG) == ctr
@@ -224,10 +254,14 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
       @test fieldOfView(bG1) == fov
       @test fieldOfViewCenter(bG1) == ctr
     end
+    dict = toDict(bG)
+    bG2 = Positions(dict)
+    @test collect(bG) == collect(bG2)
   end
 
   positions = [1 2 3 4; 0 1 2 3;-4 -3 -2 -1]Unitful.mm
   aG1 = ArbitraryPositions(positions)
+  @test length(collect(aG1)) == length(aG1)
   @test aG1[1] == [1,0,-4]*Unitful.mm
   @test aG1[2] == [2,1,-3]Unitful.mm
   @test aG1[3] == [3,2,-2]Unitful.mm
@@ -268,7 +302,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test rP2.domain.fov == fov
     @test rP2.domain.center == ctr
   end
-  radius = 10Unitful.mm
+  radius = 10.0Unitful.mm
   domain = Ball(radius,ctr)
   @test domain.radius == radius
   @test domain.center == ctr
@@ -295,9 +329,10 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test_throws DomainError loadTDesign(10,1)
   t = 1
   N = 2
-  radius = 5Unitful.mm
+  radius = 5.0Unitful.mm
   tDesign = loadTDesign(t,N, radius)
   @test length(tDesign) == N
+  @test length(collect(tDesign)) == length(tDesign)
   @test tDesign.T == t
   @test tDesign.radius == radius
   @test any(tDesign.positions .== [1 -1; 0 0; 0 0])
@@ -313,6 +348,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test tDesign1.center == tDesign.center
     @test tDesign1.positions == tDesign.positions
   end
+  dict = toDict(tDesign)
+  tDesign2 = Positions(dict)
+  @test collect(tDesign) == collect(tDesign2)
 
   @test length(caG) == prod(shp)
   @test length(chG) == prod(shp)
@@ -324,15 +362,15 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   end
 
   @testset "Tubular regular grid positions" begin
-    grid = TubularRegularGridPositions([81, 81, 1], [40, 40 ,0]u"mm", [0, 0, 0]u"mm", 3, 1)
+    grid = TubularRegularGridPositions([81, 81, 1], [40.0, 40.0 ,0.0]u"mm", [0.0, 0.0, 0.0]u"mm", 3, 1)
 
     params = Dict{String, Any}()
-    params["positionsType"] = "TubularRegularGridPositions"
-    params["positionsShape"] = [81, 81, 1]
-    params["positionsFov"] = [40, 40 ,0]u"mm"
-    params["positionsCenter"] = [0, 0, 0]u"mm"
-    params["positionsMainAxis"] = 3
-    params["positionsRadiusAxis"] = 1
+    params["type"] = "TubularRegularGridPositions"
+    params["shape"] = [81, 81, 1]
+    params["fov"] = [40, 40 ,0]u"mm"
+    params["center"] = [0, 0, 0]u"mm"
+    params["mainAxis"] = 3
+    params["radiusAxis"] = 1
     gridByParams = TubularRegularGridPositions(params)
 
     @test grid == gridByParams
@@ -341,14 +379,16 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test grid == gridByParamsGeneral
 
     paramsFromGrid = toDict(grid)
-    @test params["positionsType"] == paramsFromGrid["positionsType"] 
-    @test all(params["positionsShape"] .== paramsFromGrid["positionsShape"])
-    @test all(ustrip.(u"m", params["positionsFov"]) .≈ paramsFromGrid["positionsFov"])
-    @test all(ustrip.(u"m", params["positionsCenter"]) .≈ paramsFromGrid["positionsCenter"])
-    @test params["positionsMainAxis"] == paramsFromGrid["positionsMainAxis"]
-    @test params["positionsRadiusAxis"] == paramsFromGrid["positionsRadiusAxis"]
+    @test params["type"] == paramsFromGrid["type"] 
+    @test all(params["shape"] .== paramsFromGrid["shape"])
+    @test all(ustrip.(params["fov"]) .≈ paramsFromGrid["fov"])
+    @test all(ustrip.(params["center"]) .≈ paramsFromGrid["center"])
+    @test paramsFromGrid["unit"] == string("mm")
+    @test params["mainAxis"] == paramsFromGrid["mainAxis"]
+    @test params["radiusAxis"] == paramsFromGrid["radiusAxis"]
     
     @test length(grid) == 5169
+    @test length(collect(grid)) == length(grid)
     @test MPIFiles.radius(grid) == 20u"mm"
 
     filename = joinpath(tmpdir, "TubularRegularGridPositionsTest.h5")
@@ -380,14 +420,19 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
 
     @test posToLinIdx(grid, [-2.962962962962963, -19.753086419753085, 0.0]u"mm") == 1
     @test posToLinIdx(grid, [-9.382716049382715, -3.45679012345679, 0.0]u"mm") == 2000
+
+    @test_throws ArgumentError TubularRegularGridPositions([81, 81, 1], [40.0, 40.0 ,0.0]u"mT", [0.0, 0.0, 0.0]u"mm", 3, 1)
+    @test_throws DimensionMismatch TubularRegularGridPositions([81, 81], [40.0, 40.0 ,0.0]u"mT", [0.0, 0.0, 0.0]u"mm", 3, 1)
+    @test_throws DimensionMismatch TubularRegularGridPositions([81, 81, 1], [40.0, 40.0]u"mT", [0.0, 0.0, 0.0]u"mm", 3, 1)
+    @test_throws DimensionMismatch TubularRegularGridPositions([81, 81, 1], [40.0, 40.0 ,0.0]u"mT", [0.0, 0.0]u"mm", 3, 1)
   end
 
   @testset "Squared positions regression test" begin
     # When supplying a dict already equipped with Unitful units, the positions were squared
     params = Dict{String, Any}()
-    params["positionsShape"] = [3, 3, 3]
-    params["positionsFov"] = [3.0u"mm", 3.0u"mm", 3.0u"mm"]
-    params["positionsCenter"] = [0.0u"mm", 0.0u"mm", 0.0u"mm"]
+    params["shape"] = [3, 3, 3]
+    params["fov"] = [3.0u"mm", 3.0u"mm", 3.0u"mm"]
+    params["center"] = [0.0u"mm", 0.0u"mm", 0.0u"mm"]
 
     positions = RegularGridPositions(params)
     @test eltype(positions[1]) <: Unitful.Length
@@ -395,4 +440,107 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     positions = ChebyshevGridPositions(params)
     @test eltype(positions[1]) <: Unitful.Length
   end
+
+  @testset "SortedPositions" begin
+    posmat = [0.0 1.0 1.0 2.0;
+              0.0 100.0 0.0 100.0]
+    apos = ArbitraryPositions(posmat)
+    @test length(apos) == 4
+
+    sp = SortedPositions(apos)  # default start = first(apos) = [0,0]
+    @test parent(sp) === apos
+    @test length(sp) == length(apos)
+    @test length(collect(sp)) == length(sp)
+
+    # Indices form a permutation of 1:N
+    @test parentindices(sp) == sp.indices
+    @test sort(sp.indices) == collect(1:length(apos))
+    @test length(unique(sp.indices)) == length(apos)
+
+    # Forwarding of getindex
+    for i in 1:length(sp)
+      @test sp[i] == apos[sp.indices[i]]
+    end
+
+    # Greedy sorted
+    @test sp.indices == [1, 3, 2, 4]
+
+    # Custom start that exists: last point [1,1]
+    start_last = apos[length(apos)]
+    sp_last = SortedPositions(apos, start_last)
+    @test sp_last.indices == [4, 2, 3, 1]
+
+    # Custom start not on the set
+    start_off = apos[1] .+ [0.1, 0.1]
+    sp_off = SortedPositions(apos, start_off)
+    # First index is the nearest to the provided start
+    dists = [norm(p - start_off) for p in sp_off]
+    (_, nearest_idx) = findmin(dists)
+    @test sp_off.indices[1] == nearest_idx
+
+    sorted_grid = SortedPositions(caG)
+    @test shape(sorted_grid) == shape(caG)
+    @test fieldOfView(sorted_grid) == fieldOfView(caG)
+    @test fieldOfViewCenter(sorted_grid) == fieldOfViewCenter(caG)
+
+    dict = toDict(sorted_grid)
+    sorted_grid2 = Positions(dict)
+    @test collect(sorted_grid) == collect(sorted_grid2)
+  end
+
+  @testset "calibGrid" begin
+    mdf = MDFv2InMemory()
+    calibration = MDFv2Calibration()
+    mdf.calibration = calibration
+
+    shp = [5,7,9]
+    fov = [3.0,4.0,3.0]
+    ctr = [0.0,0.0,0.0]
+    grid = RegularGridPositions(shp,fov,ctr)
+    calibration.fieldOfView = fieldOfView(grid)
+    calibration.fieldOfViewCenter = fieldOfViewCenter(grid)
+    calibration.size = shape(grid)
+    calibration.isMeanderingGrid = false
+    calibration.method = "robot"
+
+    @testset "calibGrid Regular" begin
+      cgrid = calibGrid(mdf)
+      @test cgrid isa RegularGridPositions
+      @test all(isapprox.(collect(cgrid), collect(grid)))
+
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa RegularGridPositions
+      @test unit(first(cgrid[1])) == u"m"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(grid)))
+
+      calibration.method = "hybrid"
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa RegularGridPositions
+      @test unit(first(cgrid[1])) == u"T"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(grid)))
+      calibration.method = "robot"
+    end
+
+    @testset "calibGrid Meandering" begin
+      calibration.isMeanderingGrid = true
+      mgrid = MeanderingGridPositions(grid)
+
+      cgrid = calibGrid(mdf)
+      @test cgrid isa MeanderingGridPositions
+      @test all(isapprox.(collect(cgrid), collect(mgrid)))
+
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa MeanderingGridPositions
+      @test unit(first(cgrid[1])) == u"m"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(mgrid)))
+
+      calibration.method = "hybrid"
+      cgrid = calibGrid(mdf; attach_units = true)
+      @test cgrid isa MeanderingGridPositions
+      @test unit(first(cgrid[1])) == u"T"
+      @test all(isapprox.(ustrip.(collect(cgrid)), collect(mgrid)))
+      calibration.method = "robot"
+    end
+  end
+
 end

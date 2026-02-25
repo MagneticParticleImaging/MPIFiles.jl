@@ -33,6 +33,7 @@ using StableRNGs
 using StaticArrays
 using REPL: fielddoc
 using DocStringExtensions
+using NearestNeighbors
 
 ### global import list ###
 

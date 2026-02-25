@@ -1,4 +1,4 @@
-export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR, calibAxis
+export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR, calibAxis, calibGrid
 
 """
   getSystemMatrix(f, [neglectBGFrames]; kargs...) => Array{ComplexF32,4}
@@ -184,26 +184,48 @@ Gives the center positions of pixels along grid-dimension `axis` of a calibratio
 """
 function calibAxis(f::MPIFile, axis::Integer; attach_units=false)
   if !(1<=axis<=3); error("Can't access axis $(axis). A MDF calibration can only have three axes!") end
+  return range(calibGrid(f; attach_units), axis)
+end
 
-  size = calibSize(f)
-  fov = calibFov(f)
-  if isnothing(fov)
-    fov = ones(length(size))
+function calibGrid(f::MPIFile; attach_units = false)
+  shape = calibSize(f)
+  if isnothing(shape)
+    return nothing
   end
-  center = calibFovCenter(f)
-  if isnothing(center)
-    center = zeros(length(size))
-  end
-  stepSize = fov./size
+
   if attach_units
-    unit = if calibMethod(f)=="hybrid"; u"T" else u"m" end 
+    u = if calibMethod(f)=="hybrid"; u"T" else u"m" end 
   else
-    unit = 1
-  end
-  if size[axis]==1
-    return [center[axis]]*unit
-  else
-    return range( start=(-fov[axis]+stepSize[axis])/2+center[axis], step=stepSize[axis], length=size[axis] )*unit
+    u = 1
   end
 
+  grid = RegularGridPositions(calibSize(f), calibFov(f)*u, calibFovCenter(f)*u)
+
+  if calibIsMeanderingGrid(f)
+    grid = MeanderingGridPositions(grid)
+  end
+
+  # Regular grid setting
+  if isnothing(calibPositions(f))
+    return grid
+  end
+
+  # Compressed Sensing
+  if !isnothing(calibPositions(f)) && !isnothing(calibOffsetFields(f))
+    throw(ArgumentError("MPIFile defines both `calibPositions` and `calibOffsetFields`"))
+  end
+
+  if !isnothing(calibPositions(f)) || !isnothing(calibOffsetFields(f))
+    positions = !isnothing(calibPositions(f)) ? calibPositions(f) : calibOffsetFields(f)
+
+    if attach_units
+      positions = positions .* unit(first(grid)[1])
+    end
+
+    if size(positions, 2) < prod(shape)
+      return SubsampledPositions(grid, positions)
+    end
+  end
+
+  return nothing
 end

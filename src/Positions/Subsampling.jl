@@ -10,7 +10,7 @@ Type parameters:
 - D: spatial dimensionality
 - G: parent `Positions` concrete type
 """
-abstract type AbstractSubsampledPositions{T, D, G} <: Positions{T, D} end
+abstract type AbstractSubsampledPositions{T, D, G} <: NestedPositions{T, D, G} end
 """
     parent(grid::AbstractSubsampledPositions)
 
@@ -51,7 +51,7 @@ struct SubsampledPositions{T, D, G <: Positions{T, D}} <: AbstractSubsampledPosi
   end
 end
 """
-    SubsampledPositions(grid, factor::Float64; seed = rand(UInt64))
+    SubsampledPositions(grid, factor::Float64; seed = rand(UInt64), kwargs...)
 
 Create a subsample of `grid` by selecting `round(length(grid) * factor)` unique positions
 at random using a stable RNG seeded with `seed`. The selection is a uniform shuffle of
@@ -61,19 +61,23 @@ Notes:
 - The returned indices are unique and in random order.
 - The same `seed` yields identical indices for the same `grid` length/indices.
 """
-SubsampledPositions(grid, factor::Float64; seed = rand(UInt64)) = SubsampledPositions(grid, round(UInt64, length(grid) * factor); seed = seed)
+SubsampledPositions(grid, factor::Float64; seed = rand(UInt64), kwargs...) = SubsampledPositions(grid, round(UInt64, length(grid) * factor); seed = seed, kwargs...)
 """
-    SubsampledPositions(grid, numIndices::Integer; seed = rand(UInt64))
+    SubsampledPositions(grid, numIndices::Integer; seed = rand(UInt64), sorted::Bool = false)
 
 Create a subsample of `grid` by selecting `numIndices` unique positions uniformly at random
-(using a stable RNG seeded with `seed`) from `1:length(grid)`. The indices are stored in random order.
+(using a stable RNG seeded with `seed`) from `1:length(grid)`. The indices are stored in random order unless the `sorted` flag is set.
+In that case they are stored in linear order.
 """
-function SubsampledPositions(grid, numIndices::Integer; seed = rand(UInt64))
+function SubsampledPositions(grid, numIndices::Integer; seed = rand(UInt64), sorted::Bool = false)
   if numIndices > length(grid)
     throw(ArgumentError("Requested more random `SubsampledPositions` indices ($numIndices) than exist in the parent grid ($(length(grid)))"))
   end
   rng = StableRNG(seed)
   indices = shuffle(rng, 1:length(grid))[1:numIndices]
+  if sorted
+    indices = sort(indices)
+  end
   return SubsampledPositions(grid, indices)
 end
 """
@@ -87,35 +91,53 @@ SubsampledPositions(grid, other) = SubsampledPositions(grid, collect(other))
     SubsampledPositions(grid::Positions{T}, positions::AbstractMatrix{T}) where T
 
 Construct a `SubsampledPositions` by locating each column of `positions` (a D×N matrix of
-coordinates with element type `T`) in the iterable `grid::Positions{T}`. Each column is matched
-by exact equality against the coordinates returned by iterating `grid`, and the resulting
-subsample preserves the column order and allows duplicates.
+coordinates with element type `T`) in the iterable `grid::Positions{T,D}`.
 
-Notes:
-- Matching is exact (no tolerance). Coordinate types must match (`T`) and values must be equal.
-- Order and duplicate columns are preserved in the resulting subsample.
+Matching:
+- Each column of `positions` is matched to the nearest grid position in Euclidean distance.
+- Order and duplicate columns are preserved.
+- The `exact` keyword is currently ignored and kept for API compatibility.
+
+Errors:
+- Throws `ArgumentError` if `size(positions, 1) != D`.
 """
 function SubsampledPositions(grid::Positions{T, D}, positions::AbstractMatrix{T}) where {T, D}
   if size(positions, 1) != D
     throw(ArgumentError("Dimension of grid $D does not match dimension of positions $(size(positions, 1))"))
   end
 
-  # This method uses exact equality atm, one could also implement an approximate version.
-  # That would be more expensive (O(n^2)) though
-  # Enforce known "key" type
-  helper = Dict{SVector{D, T}, Int64}(SVector{D}(pos) => i for (i, pos) in enumerate(grid))
   indices = fill(0, size(positions, 2))
+  tree = KDTree(collect(grid))
+  @inbounds for (i, pos) in enumerate(eachcol(positions))
+    (idxs, dist) = nn(tree, pos)  # nearest index only
+    indices[i] = idxs
+  end
+  # TODO: Failure criteria
 
-  for (i, pos) in enumerate(eachcol(positions))
-    # Use same "key" type
-    posV = SVector{D}(pos)
-    indices[i] = get(helper, posV, 0)
+  return SubsampledPositions(grid, indices)
+end
+function SubsampledPositions(grid::Positions{T, D}, positions::AbstractMatrix{T}) where {T <: Quantity, D}
+  @warn "Subsampled Positions calculation for Unitful positions is currently inefficient"
+
+  if size(positions, 1) != D
+    throw(ArgumentError("Dimension of grid $D does not match dimension of positions $(size(positions, 1))"))
   end
 
-  # All positions should have been found
-  noMatchingIndex = findall(idx -> idx == 0, indices)
-  if !isempty(noMatchingIndex)
-    throw(ArgumentError("Found no matching position in the grid for positions in columns: $noMatchingIndex"))
+  indices = fill(0, size(positions, 2))
+  for (i, pos) in enumerate(eachcol(positions))
+    best_idx = 0
+    best_dist = typemax(T)
+
+    @inbounds for (j, g) in enumerate(grid)
+      d = norm(pos - g)
+      if d < best_dist
+        best_dist = d
+        best_idx = j
+      end
+    end
+
+    # TODO: Failure criteria
+    indices[i] = best_idx
   end
 
   return SubsampledPositions(grid, indices)
@@ -127,6 +149,17 @@ Convenience constructor that builds a `RegularGridPositions(shape, fov, center)`
 creates a `SubsampledPositions` by locating each column of `positions` in that grid.
 """
 SubsampledPositions(shape, fov, center::AbstractVector{T}, positions::AbstractMatrix{T}) where T = SubsampledPositions(RegularGridPositions(shape, fov, center), positions) 
+function SubsampledPositions(params::PosFromFileOrDict)
+  indices = getDictOrH5Value(params, "indices")
+  positions = Positions(getDictOrH5Value(params, "positions"))
+  return SubsampledPositions(positions, indices)
+end
+function write(params::PosFromFileOrDict, positions::SubsampledPositions)
+  params["type"] = "SubsampledPositions"
+  write(params, "positions", parent(positions))
+  params["indices"] = parentindices(positions)
+  return params
+end
 
 view(grid::Positions, inds...) = SubsampledPositions(grid, inds...)
 length(grid::SubsampledPositions) = length(grid.indices)
