@@ -262,7 +262,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   end
   h5open(pospath, "r") do file
     rP2 = Positions(file)
-    @test typeof(rP2) <: UniformRandomPositions{AxisAlignedBox}
+    @test typeof(rP2) <: UniformRandomPositions{T, D, <:AxisAlignedBox} where {T, D}
     @test rP2.N == N
     @test rP2.seed == seed
     @test rP2.domain.fov == fov
@@ -281,7 +281,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   end
   h5open(pospath, "r") do file
     rP4 = Positions(file)
-    @test typeof(rP4) <: UniformRandomPositions{Ball}
+    @test typeof(rP4) <: UniformRandomPositions{T, D, <: Ball} where {T, D}
     @test rP4.N == N
     @test rP4.seed == seed
     @test rP4.domain.radius == radius
