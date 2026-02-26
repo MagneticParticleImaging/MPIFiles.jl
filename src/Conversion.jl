@@ -243,6 +243,7 @@ function calibPostProcessing(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames
     @info "calculate SNR"
     snr = calculateSystemMatrixSNR(f, data, numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
   end
+  setparam!(params, :noiseEstimate, noiseEstimate(f)) # TODO, check if it is worth it to integrate into calculateSystemMatrixSNR to save time
   setparam!(params, :calibSNR, snr)
 
   # apply frame selection
@@ -1007,4 +1008,5 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
   end
 
   writeIfAvailable(file, "/custom/auxiliaryData", params, :auxiliaryData)
+  writeIfAvailable(file, "/custom/noiseEstimate", params, :noiseEstimate)
 end
