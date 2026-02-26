@@ -143,6 +143,18 @@ function noiseEstimate(f::MPIFile; frequencies=nothing, numPeriodGrouping=1, num
       return f["/custom/noiseEstimate"]
     end
   else
+    # Efficient shortcut useful for noise whitening during reconstruction
+    if measIsCalibProcessed(f) && numPeriodGrouping==1 && numPeriodAverages==1
+      data_ = measDataRaw(f)
+      if !measIsFastFrameAxis(f)
+        data_ = permutedims(data_, [4, 1, 2, 3])
+      end
+      if !isnothing(frequencies)
+        return std(data_[measBGFrameIdx(f), frequencies, :],dims=1)[1,:,]
+      else 
+        return std(data_[measBGFrameIdx(f), :, :, :],dims=1)[1,:,:,]
+      end
+    end
     return std(getMeasurementsFD(f, false, frequencies=frequencies, frames=measBGFrameIdx(f), numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping, bgCorrection = false; kwargs...),dims=(3,4))[:,:,1,1]
   end
 end
