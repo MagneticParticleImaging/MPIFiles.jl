@@ -121,9 +121,10 @@ end
 
 # Find a joint grid
 function RegularGridPositions(positions::Vector{T}) where T<:RegularGridPositions
-  posMin = positions[1].center .- 0.5*positions[1].fov
-  posMax = positions[1].center .+ 0.5*positions[1].fov
-  minSpacing = spacing(positions[1])
+  # Move to Vector s.t. min and max are mutable
+  posMin = Vector(positions[1].center .- 0.5*positions[1].fov)
+  posMax = Vector(positions[1].center .+ 0.5*positions[1].fov)
+  minSpacing = Vector(spacing(positions[1]))
   for position in positions
     sp = spacing(position)
     for d=1:length(posMin)
@@ -151,7 +152,7 @@ end
 
 function deriveSubgrid(grid::RegularGridPositions, subgrid::RegularGridPositions)
   minI = ones(Int,length(subgrid.shape))
-  maxI = copy(subgrid.shape)
+  maxI = Vector(subgrid.shape)
   for d=1:length(minI)
     if subgrid.sign[d] == -1
       minI[d] = subgrid.shape[d]-minI[d]+1
@@ -207,7 +208,7 @@ function getindex(grid::RegularGridPositions, i::Integer)
   return ((-shape(grid).+(2 .*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
 end
 
-function getindex(grid::RegularGridPositions, idx::Vector{T}) where T<:Number
+function getindex(grid::RegularGridPositions, idx::AbstractVector{T}) where T<:Number
   for d=1:length(idx)
     if grid.sign[d] == -1
       idx[d] = grid.shape[d]-idx[d]+1

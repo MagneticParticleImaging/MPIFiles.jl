@@ -543,4 +543,171 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     end
   end
 
+  @testset "Multi-Patch" begin
+    @testset "Joining" begin
+      @testset "Two adjacent non-overlapping 1D grids" begin
+        # Grid1: center=0, fov=1 -> spans [-0.5, 0.5]
+        # Grid2: center=1, fov=1 -> spans [0.5, 1.5]
+        grid1 = RegularGridPositions((10,), (1.0,), (0.0,))
+        grid2 = RegularGridPositions((10,), (1.0,), (1.0,))
+        combined = RegularGridPositions([grid1, grid2])
+
+        # Combined spans [-0.5, 1.5], FOV=2.0, center=0.5
+        @test fieldOfViewCenter(combined)[1] ≈ 0.5
+        @test shape(combined)[1] == 20  # 2.0 / 0.1 spacing
+        @test fieldOfView(combined)[1] ≈ 2.0
+      end
+      @testset "Two overlapping 1D grids" begin
+        # Grid1: center=0, fov=1 -> spans [-0.5, 0.5]
+        # Grid2: center=0.25, fov=1 -> spans [-0.25, 0.75]
+        grid1 = RegularGridPositions((10,), (1.0,), (0.0,))
+        grid2 = RegularGridPositions((10,), (1.0,), (0.25,))
+        combined = RegularGridPositions([grid1, grid2])
+
+        # Combined spans [-0.5, 0.75], center=0.125
+        @test fieldOfViewCenter(combined)[1] ≈ 0.125
+      end
+      @testset "Grids with different spacings uses minimum" begin
+        grid1 = RegularGridPositions((10,), (1.0,), (0.0,))   # spacing = 0.1
+        grid2 = RegularGridPositions((20,), (1.0,), (0.0,))   # spacing = 0.05
+        combined = RegularGridPositions([grid1, grid2])
+
+        @test spacing(combined)[1] ≈ 0.05  # minimum spacing
+        @test shape(combined)[1] == 20     # 1.0 / 0.05
+      end
+      @testset "2D grids combination" begin
+        grid1 = RegularGridPositions((10, 10), (1.0, 1.0), (0.0, 0.0))
+        grid2 = RegularGridPositions((10, 10), (1.0, 1.0), (1.0, 0.5))
+        combined = RegularGridPositions([grid1, grid2])
+
+        @test length(shape(combined)) == 2
+        # x: spans [-0.5, 1.5], center=0.5
+        @test fieldOfViewCenter(combined)[1] ≈ 0.5
+        # y: spans [-0.5, 1.0], center=0.25
+        @test fieldOfViewCenter(combined)[2] ≈ 0.25
+      end
+    end
+
+    @testset "isSubgrid" begin
+      @testset "Identical grids are subgrids of each other" begin
+        grid = RegularGridPositions((10,), (1.0,), (0.0,))
+        @test isSubgrid(grid, grid)
+      end
+      @testset "Properly aligned smaller subgrid" begin
+        grid = RegularGridPositions((20,), (2.0,), (0.0,))
+        subgrid = RegularGridPositions((10,), (1.0,), (0.0,))
+        @test isSubgrid(grid, subgrid)
+      end
+      @testset "Aligned subgrid at offset position" begin
+        grid = RegularGridPositions((20,), (2.0,), (0.0,))
+        subgrid = RegularGridPositions((5,), (0.5,), (0.25,))
+        @test isSubgrid(grid, subgrid)
+      end
+      @testset "Subgrid larger than grid returns false" begin
+        grid = RegularGridPositions((10,), (1.0,), (0.0,))
+        subgrid = RegularGridPositions((20,), (2.0,), (0.0,))
+        @test !isSubgrid(grid, subgrid)
+      end
+      @testset "Different spacing returns false" begin
+        grid = RegularGridPositions((10,), (1.0,), (0.0,))      # spacing=0.1
+        subgrid = RegularGridPositions((20,), (1.0,), (0.0,))   # spacing=0.05
+        @test !isSubgrid(grid, subgrid)
+      end
+      @testset "2D aligned subgrid" begin
+          grid = RegularGridPositions((20, 20), (2.0, 2.0), (0.0, 0.0))
+          subgrid = RegularGridPositions((10, 10), (1.0, 1.0), (0.0, 0.0))
+          @test isSubgrid(grid, subgrid)
+      end
+      @testset "2D partially misaligned returns false" begin
+          grid = RegularGridPositions((20, 20), (2.0, 2.0), (0.0, 0.0))
+          # Aligned in x, misaligned in y
+          subgrid = RegularGridPositions((10, 10), (1.0, 1.0), (0.0, 0.05))
+          @test !isSubgrid(grid, subgrid)
+      end
+    end
+
+    @testset "deriveSubgrid" begin
+
+      @testset "Subgrid at same center preserves shape" begin
+        grid = RegularGridPositions((20,), (2.0,), (0.0,), (1,))
+        subgrid = RegularGridPositions((10,), (1.0,), (0.0,), (1,))
+        derived = deriveSubgrid(grid, subgrid)
+
+        @test all(shape(derived) .== shape(subgrid))
+        @test all(isapprox.(spacing(derived), spacing(grid), rtol=1e-10))
+      end
+
+      @testset "Derived subgrid has same FOV as input" begin
+        grid = RegularGridPositions((20,), (2.0,), (0.0,), (1,))
+        subgrid = RegularGridPositions((10,), (1.0,), (0.0,), (1,))
+        derived = deriveSubgrid(grid, subgrid)
+
+        @test all(isapprox.(fieldOfView(derived), fieldOfView(subgrid), rtol=1e-10))
+      end
+
+      @testset "Subgrid with negative sign preserved" begin
+        grid = RegularGridPositions((20,), (2.0,), (0.0,), (1,))
+        subgrid = RegularGridPositions((10,), (1.0,), (0.0,), (-1,))
+        derived = deriveSubgrid(grid, subgrid)
+
+        @test all(derived.sign .== subgrid.sign)
+        @test all(shape(derived) .== shape(subgrid))
+      end
+
+      @testset "Offset subgrid aligns to main grid" begin
+        grid = RegularGridPositions((20,), (2.0,), (0.0,), (1,))       # spacing=0.1
+        subgrid = RegularGridPositions((5,), (0.5,), (0.5,), (1,))     # offset subgrid
+        derived = deriveSubgrid(grid, subgrid)
+
+        # Derived center should align to grid positions
+        @test all(shape(derived) .== shape(subgrid))
+        @test all(isapprox.(spacing(derived), spacing(grid), rtol=1e-10))
+      end
+
+      @testset "2D deriveSubgrid preserves dimensions" begin
+        grid = RegularGridPositions((20, 20), (2.0, 2.0), (0.0, 0.0), (1, 1))
+        subgrid = RegularGridPositions((10, 10), (1.0, 1.0), (0.0, 0.0), (1, 1))
+        derived = deriveSubgrid(grid, subgrid)
+
+        @test length(shape(derived)) == 2
+        @test all(shape(derived) .== shape(subgrid))
+      end
+
+      @testset "2D with mixed signs" begin
+        grid = RegularGridPositions((20, 20), (2.0, 2.0), (0.0, 0.0), (1, 1))
+        subgrid = RegularGridPositions((10, 10), (1.0, 1.0), (0.0, 0.0), (1, -1))
+        derived = deriveSubgrid(grid, subgrid)
+
+        @test derived.sign[1] == 1
+        @test derived.sign[2] == -1
+      end
+
+      @testset "Derived subgrid positions match original grid" begin
+        grid = RegularGridPositions((20,), (2.0,), (0.0,), (1,))
+        subgrid = RegularGridPositions((10,), (1.0,), (0.0,), (1,))
+        derived = deriveSubgrid(grid, subgrid)
+
+        # First and last positions of derived should be on grid
+        first_pos = derived[[1]]
+        last_pos = derived[[shape(derived)[1]]]
+
+        first_idx = posToIdx(grid, first_pos)
+        last_idx = posToIdx(grid, last_pos)
+
+        @test all(isapprox.(first_idx, round.(Int, first_idx), rtol=1e-5))
+        @test all(isapprox.(last_idx, round.(Int, last_idx), rtol=1e-5))
+      end
+
+      @testset "3D case" begin
+        grid = RegularGridPositions((20, 20, 20), (2.0, 2.0, 2.0), (0.0, 0.0, 0.0), (1, 1, 1))
+        subgrid = RegularGridPositions((10, 10, 10), (1.0, 1.0, 1.0), (0.0, 0.0, 0.0), (1, 1, -1))
+        derived = deriveSubgrid(grid, subgrid)
+
+        @test length(shape(derived)) == 3
+        @test all(shape(derived) .== shape(subgrid))
+        @test derived.sign[3] == -1
+      end
+    end
+  end
+
 end
