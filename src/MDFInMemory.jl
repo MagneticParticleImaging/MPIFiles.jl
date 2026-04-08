@@ -604,6 +604,7 @@ mutable struct MDFv2InMemory <: MPIFile # TODO: Not sure, if MPIFile is a good f
   end
 end
 
+MDFv2InMemory(mdfFile::MDFv2InMemory) = deepcopy(mdffile)
 MDFv2InMemory(mdfFile::MDFFileV2) = inMemoryMDFFromMDFFileV2(mdfFile)
 MDFv2InMemory(dict::Dict) = inMemoryMDFFromDict(dict)
 
