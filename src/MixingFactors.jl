@@ -9,9 +9,12 @@ given by the mixing factors `mx`, `my`, and `mz`. I.e. the integer value, for
 which k*F = mx*fx + my*fy* + mz*fz, where F is the measurement cycle frequency
 and fx, fy, and fz are the excitation frequencies for the x,y, and z channel.
 """
-function mixFactorToFreq(b::MPIFile,mx,my,mz=0)
-  mxyz, mask, freqNumber = calcPrefactors(b)
-  k = (mx*mxyz[1]+my*mxyz[2]+mz*mxyz[3])
+function mixFactorToFreq(b::MPIFile,mixFactors...)
+  prefactors = calcPrefactors(b)
+  if length(mixFactors) != length(prefactors)
+    error("The MPIFile defines $(length(prefactors)) prefactors but you provided $(length(mixFactors)) mixing factors!")
+  end
+  k = sum(mixFactors.*prefactors)
   return k
 end
 
@@ -20,20 +23,28 @@ This function returns the index `freqidx` of the frequency given by the mixing
 factors `mx`, `my`, and `mz` with respect to the frequency list
 `freq = frequencies(bSF)`.
 """
-function mixFactorToFreqIdx(b::MPIFile,mx,my,mz=0)
-  freqidx = mixFactorToFreq(b,mx,my,mz)
-  return freqidx + 1
-end
+mixFactorToFreqIdx(b::MPIFile,mx...) = mixFactorToFreq(b,mx...)+1
 
-function calcPrefactors(b::MPIFile)
-  freqNumber = rxNumFrequencies(b)
-  mask = collect((dfStrength(b)[1,:,1] .>= 0.0000001))
-  divider = vec(dfDivider(b))
+
+function calcPrefactors(dfStrength, divider, baseFreq, cycle)
+  mask = collect((dfStrength[1,:,1] .>= 0.0000001))
+  divider = vec(divider)
   #mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
-  mxyz_ = dfBaseFrequency(b)*dfCycle(b)./divider
+  mxyz_ = baseFreq*cycle./divider
   mxyz = max.(1,round.(Int64,mxyz_.*mask))
 
-  return mxyz, mask, freqNumber
+  return Tuple(mxyz)
+end
+
+calcPrefactors(b::MPIFile) = calcPrefactors(dfStrength(b), dfDivider(b), dfBaseFrequency(b), dfCycle(b))
+
+function calcPrefactors(f::MDFFileV2)
+  if haskey(f.file, "/measurement/_manualPrefactors")
+    prefactors = f.file["/measurement/_manualPrefactors"]
+    return Tuple(prefactors[])
+  else
+    return calcPrefactors(dfStrength(f), dfDivider(f), dfBaseFrequency(f), dfCycle(f))
+  end
 end
 
 """
@@ -42,58 +53,23 @@ This function returns a lookup table with columns
 for all frequencies in `freq = frequencies(bSF)`, where only the lowest order
 mixing coefficients `mx`, `my`, and `mz` are listed.
 """
-function mixingFactors(b::MPIFile)
-  mxyz, mask, freqNumber = calcPrefactors(b)
-  MoList = zeros(Int64,freqNumber,4)
-  MoList[:,4] .= -1 # set all mixing orders to -1 initially to change them later
-  if length(mxyz) == 3
-    Nx,Ny,Nz = round.(Int64,freqNumber./mxyz.*mask)
-
-    return _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
-  elseif length(mxyz) == 2
-    Nx,Ny = round.(Int64,freqNumber./mxyz.*mask)
-    return _mixingFactors(MoList, mxyz, Nx, Ny, freqNumber)
-  else
-    MoList[:,1] = MoList[:,4] = 0:(freqNumber-1)
-    return MoList
-  end
+function mixingFactors(b::MPIFile; maxFactor=100)
+  prefactors = calcPrefactors(b)
+  return _mixingFactors(prefactors, rxNumFrequencies(b), maxFactor)
 end
 
-function _mixingFactors(MoList, mxyz, Nx,Ny,Nz, freqNumber)
-  for mx = -Nx:Nx
-    #for my = abs(mx)-n0:n0-abs(mx)
-    for my = -Ny:Ny
-      for mz = -Nz:Nz
-        k = (mx*mxyz[1]+my*mxyz[2]+mz*mxyz[3])+1
-
-          if k>=1 &&
-             k<=freqNumber &&
-             (MoList[k,4]<0 || MoList[k,4]>=abs(mx)+abs(my)+abs(mz))
-           MoList[k,1] = mx
-           MoList[k,2] = my
-           MoList[k,3] = mz
-           MoList[k,4] = abs(mx)+abs(my)+abs(mz)
-          end
-       end
-    end
+function _mixingFactors(prefactors::NTuple{Nt,Int}, numFreqs::Integer, N::Integer) where Nt
+  mixingOrderList = zeros(Int, numFreqs, length(prefactors)+1)
+  mixingOrderList[:,end] .= -1
+  loop = CartesianIndices(ntuple(x->(-N:N), length(prefactors)))
+  for mixFactors in loop
+    mixFactorsTup = Tuple(mixFactors)
+    k = sum(mixFactorsTup.*prefactors)
+    mixOrder = mapreduce(abs,+,mixFactorsTup)
+    if 1<=k<=numFreqs && (mixingOrderList[k,end]<0 || mixingOrderList[k,end]>=mixOrder)
+          mixingOrderList[k,1:end-1] .= mixFactorsTup
+          mixingOrderList[k,end] = mixOrder
+        end
   end
-  return MoList
-end
-
-function _mixingFactors(MoList, mxy, Nx, Ny, freqNumber)
-  for mx = -Nx:Nx
-    #for my = abs(mx)-n0:n0-abs(mx)
-    for my = -Ny:Ny
-        k = (mx*mxy[1]+my*mxy[2])+1
-          if k>=1 &&
-             k<=freqNumber &&
-             (MoList[k,4]<0 || MoList[k,4]>=abs(mx)+abs(my))
-           MoList[k,1] = mx
-           MoList[k,2] = my
-           MoList[k,3] = 0
-           MoList[k,4] = abs(mx)+abs(my)
-          end
-       end
-  end
-  return MoList
+  return mixingOrderList
 end
