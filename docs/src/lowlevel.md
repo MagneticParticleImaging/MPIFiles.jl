@@ -49,7 +49,7 @@ recoData, recoFov, recoFovCenter, recoSize, recoOrder, recoPositions
 filepath, systemMatrixWithBG, systemMatrix, selectedChannels
 ```
 The interface is structured in a similar way as the parameters within the [MDF](https://github.com/MagneticParticleImaging/MDF). Basically, there is a direct mapping between the MDF parameters
-and the MPIFiles interface. For instance the parameter `acqNumAvarages` maps to the MDF parameter `/acquisition/numAverages`. Also the dimensionality of the parameters described in the [MDF](https://github.com/MagneticParticleImaging/MDF) is preserved. Thus, the MDF specification can be used as
+and the MPIFiles interface. For instance the parameter `acqNumAverages` maps to the MDF parameter `/acquisition/numAverages`. Also the dimensionality of the parameters described in the [MDF](https://github.com/MagneticParticleImaging/MDF) is preserved. Thus, the MDF specification can be used as
 a documentation of the low level interface of MPIFiles.
 
 ## In-memory MDF

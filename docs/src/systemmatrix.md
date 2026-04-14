@@ -15,8 +15,8 @@ function getSystemMatrix(f::MPIFile,
 `loadasreal` can again be used when using a solver requiring real numbers.
 The most important parameter is `frequencies`, which defaults to all possible
 frequencies over all receive channels. In practice, one will determine the
-frequencies using the the [Frequency Filter](@ref) functionality. The parameter
-`bgCorrection` controls if a  background correction is applied while loading the
+frequencies using the [Frequency Filter](@ref) functionality. The parameter
+`bgCorrection` controls if a background correction is applied while loading the
 system matrix. The return value of `getSystemMatrix` is a matrix of type `ComplexF32`
 or `Float32` with the rows encoding the spatial dimension and the columns encoding
 the dimensions frequency, receive channels, and patches.

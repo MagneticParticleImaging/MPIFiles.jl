@@ -147,20 +147,62 @@ abstract type MPIFile end
 
 # acquisition parameters
 @mustimplement acqStartTime(f::MPIFile)
+"""
+    acqNumAverages(f::MPIFile) -> Integer
+
+Number of block averages per drive-field period
+"""
 @mustimplement acqNumAverages(f::MPIFile)
 @mustimplement acqNumPeriodsPerFrame(f::MPIFile)
 @mustimplement acqNumFrames(f::MPIFile)
 @mustimplement acqGradient(f::MPIFile)
 @mustimplement acqOffsetField(f::MPIFile)
 
-# drive-field parameters
+# drive-field parameters, group /acquisition/drivefield
+"""
+    dfNumChannels(f::MPIFile) -> Integer
+
+Number of drive field channels, denoted by D
+"""
 @mustimplement dfNumChannels(f::MPIFile)
+"""
+    dfStrength(f::MPIFile) -> Array{Real}
+
+Applied drive field strength in Tµ₀⁻¹, size (F, D, J) 
+"""
 @mustimplement dfStrength(f::MPIFile)
+"""
+    dfPhase(f::MPIFile) -> Array{Real}
+
+Applied drive field phase ϕ in rad, size (F, D, J)
+"""
 @mustimplement dfPhase(f::MPIFile)
+"""
+    dfBaseFrequency(f::MPIFile) -> Real
+
+Base frequency to derive drive field frequencies in Hz
+"""
 @mustimplement dfBaseFrequency(f::MPIFile)
 @mustimplement dfCustomWaveform(f::MPIFile)
+"""
+    dfDivider(f::MPIFile) -> Array{Integer}
+
+Divider of the `dfBaseFrequency` to determine the drive field frequencies
+"""
 @mustimplement dfDivider(f::MPIFile)
+"""
+    dfWaveform(f::MPIFile) -> Array{String}
+
+Waveform type: sine, triangle or custom, size (F, D)
+"""
 @mustimplement dfWaveform(f::MPIFile)
+"""
+    dfCycle(f::MPIFile) -> Real
+
+Trajectory cycle is determined by `lcm(dfDivider)/dfBaseFrequency`. It will not change
+when averaging was applied. The duration for measuring the V data points (i.e. the
+drive-field period) is given by the product of `dfCycle` and `acqNumAverages`
+"""
 @mustimplement dfCycle(f::MPIFile)
 
 # receiver properties

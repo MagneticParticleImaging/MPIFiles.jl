@@ -3,7 +3,7 @@ using Documenter, MPIFiles
 makedocs(
     format = Documenter.HTML(prettyurls = false),
     modules = [MPIFiles],
-    sitename = "MPI Files",
+    sitename = "MPIFiles",
     authors = "Tobias Knopp et al.",
     pages = [
         "Home" => "index.md",
@@ -14,7 +14,8 @@ makedocs(
         "System Matrices" => "systemmatrix.md",
         "Frequency Filter" => "frequencyFilter.md",
         "Reconstruction Results" => "reconstruction.md",
-        "Transfer Functions" => "transferfunction.md"
+        "Transfer Functions" => "transferfunction.md",
+        "Reference" => "reference.md"
       #  "Positions" => "positions.md"
     ],
     warnonly = [:missing_docs]

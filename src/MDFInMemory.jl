@@ -1069,27 +1069,27 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
 
         @eval begin
           @doc $"""
-              $functionSymbol(mdfPart)
+              $functionSymbol(mdfPart::$fieldtype)
 
-          $fieldDocstring
+          Get $fieldDocstring
           """
           function $(functionSymbol)(mdfPart::$fieldtype)::Union{$partFieldtype, $missingOrNothing}
             return mdfPart.$partFieldname
           end
 
           @doc $"""
-              $functionSymbol(mdfPart, value)
+              $functionSymbol(mdfPart::$fieldtype, value::$partFieldtype)
 
-          $fieldDocstring
+          Set $fieldDocstring
           """
           function $(functionSymbol)(mdfPart::$fieldtype, value::Union{$partFieldtype, $missingOrNothing})
             mdfPart.$partFieldname = value
           end
 
           @doc $"""
-              $functionSymbol(mdf)
+              $functionSymbol(mdf::MDFv2InMemory)
 
-          $fieldDocstring
+          Get $fieldDocstring
           """
           function $(functionSymbol)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing}
             if !(isnothing($fieldname(mdf)) || ismissing($fieldname(mdf)))
@@ -1100,9 +1100,9 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
           end
 
           @doc $"""
-              $functionSymbol(mdf, value)
+              $functionSymbol(mdf::MDFv2InMemory, value::$partFieldtype)
 
-          $fieldDocstring
+          Set $fieldDocstring
           """
           function $(functionSymbol)(mdf::MDFv2InMemory, value::Union{$partFieldtype, $missingOrNothing})
             # Automatically create fields if they do not exist
@@ -1120,16 +1120,16 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
           alias = aliases[functionSymbol]
           @eval begin
             @doc $"""
-              $alias(mdf)
+                $alias(mdf::MDFv2InMemory)
 
-            $fieldDocstring
+            Get $fieldDocstring
             """
             $(alias)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing} = $(functionSymbol)(mdf)
 
             @doc $"""
-              $alias(mdf, value)
+                $alias(mdf::MDFv2InMemory, value::$partFieldtype)
 
-            $fieldDocstring
+            Set $fieldDocstring
             """
             $(alias)(mdf::MDFv2InMemory, value::$partFieldtype) = $(functionSymbol)(mdf, value)
 
@@ -1144,27 +1144,27 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
         # Create getter and for the whole group
         @eval begin
           @doc $"""
-              $partFieldname(mdfPart)
+              $partFieldname(mdfPart::$fieldtype)
 
-          $fieldDocstring
+          Get $fieldDocstring
           """
           function $(partFieldname)(mdfPart::$fieldtype)::Union{$partFieldtype, $missingOrNothing}
             return mdfPart.$partFieldname
           end
 
           @doc $"""
-              $partFieldname(mdfPart, value)
+              $partFieldname(mdfPart::$fieldtype, value::$partFieldtype)
 
-          $fieldDocstring
+          Set $fieldDocstring
           """
           function $(partFieldname)(mdfPart::$fieldtype, value::Union{$partFieldtype, $missingOrNothing})
             mdfPart.$partFieldname = value
           end
 
           @doc $"""
-              $partFieldname(mdf)
+              $partFieldname(mdf::MDFv2InMemory)
 
-          $fieldDocstring
+          Get $fieldDocstring
           """
           function $(partFieldname)(mdf::MDFv2InMemory)::Union{$partFieldtype, $missingOrNothing}
             if !(isnothing($fieldname(mdf)) || ismissing($fieldname(mdf)))
@@ -1175,9 +1175,9 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
           end
 
           @doc $"""
-              $partFieldname(mdfPart, value)
+              $partFieldname(mdf::MDFv2InMemory, value::$partFieldtype)
 
-          $fieldDocstring
+          Set $fieldDocstring
           """
           function $(partFieldname)(mdf::MDFv2InMemory, value::Union{$partFieldtype, $missingOrNothing})
             # Automatically create fields if they do not exist
@@ -1205,27 +1205,27 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
           # Create getter and setter for the respective field  within the naming scheme
           @eval begin
             @doc $"""
-              $functionSymbol(mdfPart)
+                $functionSymbol(mdfPart::$partFieldtype)
 
-            $subPartFieldDocstring
+            Get $subPartFieldDocstring
             """
             function $(functionSymbol)(mdfPart::$partFieldtype)::Union{$subPartFieldtype, $subPartMissingOrNothing}
               return mdfPart.$subPartFieldname
             end
 
             @doc $"""
-              $functionSymbol(mdfPart, value)
+                $functionSymbol(mdfPart::$partFieldtype, value::$subPartFieldtype)
 
-            $subPartFieldDocstring
+            Set $subPartFieldDocstring
             """
             function $(functionSymbol)(mdfPart::$partFieldtype, value::Union{$subPartFieldtype, $subPartMissingOrNothing})
               mdfPart.$subPartFieldname = value
             end
 
             @doc $"""
-              $functionSymbol(mdfPart)
+                $functionSymbol(mdfPart::$fieldtype)
 
-            $subPartFieldDocstring
+            Get $subPartFieldDocstring
             """
             function $(functionSymbol)(mdfPart::$fieldtype)::Union{$partFieldtype, $subPartMissingOrNothing}
               if !(isnothing($partFieldname(mdfPart)) || ismissing($partFieldname(mdfPart)))
@@ -1236,9 +1236,9 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
             end
 
             @doc $"""
-              $functionSymbol(mdfPart, value)
+                $functionSymbol(mdfPart::$fieldtype, value::$partFieldtype)
 
-            $subPartFieldDocstring
+            Set $subPartFieldDocstring
             """
             function $(functionSymbol)(mdfPart::$fieldtype, value::Union{$partFieldtype, $subPartMissingOrNothing})
               # Automatically create fields if they do not exist
@@ -1251,9 +1251,9 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
             end
 
             @doc $"""
-              $functionSymbol(mdf)
+                $functionSymbol(mdf::MDFv2InMemory)
 
-            $subPartFieldDocstring
+            Get $subPartFieldDocstring
             """
             function $(functionSymbol)(mdf::MDFv2InMemory)::Union{$subPartFieldtype, $subPartMissingOrNothing}
               if !(isnothing($fieldname(mdf)) || ismissing($fieldname(mdf)))
@@ -1268,9 +1268,9 @@ for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InM
             end
   
             @doc $"""
-              $functionSymbol(mdf, value)
+                $functionSymbol(mdf::MDFv2InMemory, value::$subPartFieldtype)
 
-            $subPartFieldDocstring
+            Set $subPartFieldDocstring
             """
             function $(functionSymbol)(mdf::MDFv2InMemory, value::Union{$subPartFieldtype, $subPartMissingOrNothing})
               # Automatically create fields if they do not exist
@@ -1313,7 +1313,7 @@ for (partFieldnameStr, partPrefix) ∈ prefixes
 
   @eval begin
     @doc $"""
-      $partFieldnameStr(file::MDFFile)
+        $partFieldnameStr(file::MDFFile)
 
     Create a `$partFieldnameStr` from the respective section in the given `file`.
     """
@@ -1330,7 +1330,7 @@ for (partFieldnameStr, partPrefix) ∈ prefixes
   if !(partFieldnameStr == "MDFv2Drivefield" || partFieldnameStr == "MDFv2Receiver")
     @eval begin
       @doc $"""
-        $partFieldnameStr(file::MDFv2InMemory)
+          $partFieldnameStr(file::MDFv2InMemory)
 
       Create a `$partFieldnameStr` from the respective section in the given `file`.
       """
@@ -1341,7 +1341,7 @@ for (partFieldnameStr, partPrefix) ∈ prefixes
   else
     @eval begin
       @doc $"""
-        $partFieldnameStr(file::MDFv2InMemory)
+          $partFieldnameStr(file::MDFv2InMemory)
 
       Create a `$partFieldnameStr` from the respective section in the given `file`.
       """
