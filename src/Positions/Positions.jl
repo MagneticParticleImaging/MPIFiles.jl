@@ -1,77 +1,102 @@
-export Positions, GridPositions, RegularGridPositions, ChebyshevGridPositions,
-       MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions,
-       SphericalTDesign, BreakpointGridPositions
+export Positions, GridPositions, NestedPositions, RegularGridPositions, ChebyshevGridPositions,
+       MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SortedPositions,
+       SphericalTDesign, BreakpointPositions, BreakpointGridPositions
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
 export posToIdx, posToLinIdx, spacing, isSubgrid, deriveSubgrid, toDict
+export axesToRegularGridPositions
 
-abstract type Positions end
-abstract type GridPositions<:Positions end
+abstract type Positions{T, D} end
+abstract type GridPositions{T, D} <: Positions{T, D} end
+ndims(pos::Positions{T, D}) where {T, D} = D
 
-function Positions(file::HDF5.File)
-  if haskey(file, "/positionsBreakpoint")
-    return BreakpointGridPositions(file)
+abstract type NestedPositions{T, D, G <: Positions{T, D}} <: Positions{T, D} end
+parent(position::NestedPositions) = throw(error("$(typeof(position)) must implement `parent`"))
+
+
+const H5IO = Union{HDF5.File, HDF5.Group}
+const PosFromFileOrDict = Union{Dict, HDF5.File, HDF5.Group}
+function getDictOrH5Value(params::H5IO, key) 
+  value = params[key]
+  if value isa HDF5.Dataset
+    return value[]
   end
-
-  typ = read(file, "/positionsType")
-  if typ == "RegularGridPositions"
-    positions = RegularGridPositions(file)
-  elseif typ == "ChebyshevGridPositions"
-    positions = ChebyshevGridPositions(file)
-  elseif typ == "SphericalTDesign"
-    positions = SphericalTDesign(file)
-  elseif typ == "UniformRandomPositions"
-    positions = UniformRandomPositions(file)
-  elseif typ == "ArbitraryPositions"
-    positions = ArbitraryPositions(file)
-  else
-    throw(ErrorException("No grid found to load from $file"))
-  end
-
-  if haskey(file, "/positionsMeandering") && typ in ["RegularGridPositions","ChebyshevGridPositions"] && read(file, "/positionsMeandering") == Int8(1)
-    positions = MeanderingGridPositions(positions)
-  end
-
-  return positions
+  return value
 end
-
-function Positions(params::Dict)
-  if haskey(params, "positionsBreakpoint")
-    return BreakpointGridPositions(params)
+function getDictOrH5Value(params::PosFromFileOrDict, key, unit)
+  value = getDictOrH5Value(params, key)
+  if !(eltype(value) <: Quantity)
+    return value * unit
   end
-
-  typ = params["positionsType"]
-  if typ == "RegularGridPositions"
+  # TODO: complain about unit mismatch in elseif branch 
+  return value
+end
+getDictOrH5Value(params::Dict, key) = params[key]
+function Positions(params::PosFromFileOrDict)
+  type = getDictOrH5Value(params, "type")
+  if type == "RegularGridPositions"
     positions = RegularGridPositions(params)
-  elseif typ == "ChebyshevGridPositions"
+  elseif type == "MeanderingGridPositions"
+    positions = MeanderingGridPositions(params)
+  elseif type == "ChebyshevGridPositions"
     positions = ChebyshevGridPositions(params)
-  elseif typ == "SphericalTDesign"
+  elseif type == "BreakpointPositions"
+    positions = BreakpointPositions(params)
+  elseif type == "SphericalTDesign"
     positions = SphericalTDesign(params)
-  elseif typ == "UniformRandomPositions"
+  elseif type == "UniformRandomPositions"
     positions = UniformRandomPositions(params)
-  elseif typ == "ArbitraryPositions"
+  elseif type == "ArbitraryPositions"
     positions = ArbitraryPositions(params)
-  elseif typ == "TubularRegularGridPositions"
+  elseif type == "SortedPositions"
+    positions = SortedPositions(params)
+  elseif type == "TubularRegularGridPositions"
     positions = TubularRegularGridPositions(params)
+  elseif type == "SubsampledPositions"
+    positions = SubsampledPositions(params)
   else
     throw(ErrorException("No grid found to load from dict $params"))
   end
 
-  if haskey(params, "positionsMeandering") && typ in ["RegularGridPositions","ChebyshevGridPositions"] && params["positionsMeandering"]
-    positions = MeanderingGridPositions(positions)
-  end
-
   return positions
 end
 
-# Cartesian grid
-mutable struct RegularGridPositions{T} <: GridPositions where {T<:Unitful.Length}
-  shape::Vector{Int}
-  fov::Vector{T}
-  center::Vector{T}
-  sign::Vector{Int}
+getPositionUnit(params::PosFromFileOrDict) = haskey(params, "unit") ? uparse(getDictOrH5Value(params, "unit")) : 1
+function toDict(pos::Positions)
+  params = Dict{String, Any}()
+  write(params, pos)
+  return params
+end 
+write(params::Dict, key::String, pos::Positions) = params[key] = toDict(pos)
+function write(params::H5IO, key::String, pos::Positions)
+  group = haskey(params, key) ? params[key] : create_group(params, key)
+  return write(group, pos)
 end
+
+# Cartesian grid
+struct RegularGridPositions{T, D} <: GridPositions{T, D}
+  shape::SVector{D, Int64}
+  fov::SVector{D, T}
+  center::SVector{D, T}
+  sign::SVector{D, Int64}
+  function RegularGridPositions(shape::NTuple{D},
+                              fov::NTuple{D},
+                              center::NTuple{D},
+                              sign::NTuple{D}) where {D}
+    T = promote_type(typeof.(fov)..., typeof.(center)...)
+    if !isconcretetype(T)
+      throw(ArgumentError("Can't promote fov and center to a concrete data type. This is most likely caused by a mismatch in units"))
+    end
+    return new{T,D}(
+        SVector{D,Int64}(shape),
+        SVector{D,T}(T.(fov)),
+        SVector{D,T}(T.(center)),
+        SVector{D,Int64}(sign))
+  end
+end
+RegularGridPositions(shape::Tuple, fov::Tuple, center::Tuple, signs::Tuple) = throw(DimensionMismatch("Position arguments don't have matching dimensions"))
+RegularGridPositions(shape, fov, center, signs) = RegularGridPositions(Tuple(shape), Tuple(fov), Tuple(center), Tuple(signs))
 
 function range(grid::RegularGridPositions, dim::Int)
   if grid.shape[dim] > 1
@@ -82,40 +107,24 @@ function range(grid::RegularGridPositions, dim::Int)
     return range(start=grid.center[dim],stop=grid.center[dim],step=oneunit(grid.center[dim]))
   end
 end
-ndims(grid::RegularGridPositions) = length(grid.shape)
 Base.axes(grid::RegularGridPositions) = tuple([range(grid, i) for i in 1:ndims(grid)]...)
 
 RegularGridPositions(shape, fov, center) = RegularGridPositions(shape, fov, center, ones(Int,length(shape)))
 
-function RegularGridPositions(file::HDF5.File)
-  shape = read(file, "/positionsShape")
-  fov = read(file, "/positionsFov")*Unitful.m
-  center = read(file, "/positionsCenter")*Unitful.m
-
-  return RegularGridPositions(shape, fov, center)
-end
-
-function RegularGridPositions(params::Dict)
-  shape = params["positionsShape"]
-
-  fov = params["positionsFov"]
-  if !(eltype(fov) <: Quantity)
-    fov = fov.*Unitful.m
-  end
-
-  center = params["positionsCenter"]
-  if !(eltype(center) <: Quantity)
-    center = center.*Unitful.m
-  end
-
+function RegularGridPositions(params::PosFromFileOrDict)
+  shape = getDictOrH5Value(params, "shape")
+  unit = getPositionUnit(params)
+  fov = getDictOrH5Value(params, "fov", unit)
+  center = getDictOrH5Value(params, "center", unit)
   return RegularGridPositions(shape, fov, center)
 end
 
 # Find a joint grid
 function RegularGridPositions(positions::Vector{T}) where T<:RegularGridPositions
-  posMin = positions[1].center .- 0.5*positions[1].fov
-  posMax = positions[1].center .+ 0.5*positions[1].fov
-  minSpacing = spacing(positions[1])
+  # Move to Vector s.t. min and max are mutable
+  posMin = Vector(positions[1].center .- 0.5*positions[1].fov)
+  posMax = Vector(positions[1].center .+ 0.5*positions[1].fov)
+  minSpacing = Vector(spacing(positions[1]))
   for position in positions
     sp = spacing(position)
     for d=1:length(posMin)
@@ -143,7 +152,7 @@ end
 
 function deriveSubgrid(grid::RegularGridPositions, subgrid::RegularGridPositions)
   minI = ones(Int,length(subgrid.shape))
-  maxI = copy(subgrid.shape)
+  maxI = Vector(subgrid.shape)
   for d=1:length(minI)
     if subgrid.sign[d] == -1
       minI[d] = subgrid.shape[d]-minI[d]+1
@@ -164,19 +173,14 @@ function deriveSubgrid(grid::RegularGridPositions, subgrid::RegularGridPositions
   return RegularGridPositions(shp,fov,center,subgrid.sign)
 end
 
-function write(file::HDF5.File, positions::RegularGridPositions)
-  write(file,"/positionsType", "RegularGridPositions")
-  write(file, "/positionsShape", positions.shape)
-  write(file, "/positionsFov", Float64.(ustrip.(uconvert.(Unitful.m, positions.fov))) )
-  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
-end
-
-function toDict(positions::RegularGridPositions)
-  params = Dict{String,Any}()
-  params["positionsType"] = "RegularGridPositions"
-  params["positionsShape"] = positions.shape
-  params["positionsFov"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.fov)))
-  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
+function write(params::PosFromFileOrDict, positions::RegularGridPositions{T}) where T
+  params["type"] = "RegularGridPositions"
+  params["shape"] = Array(positions.shape)
+  params["fov"] = Array(ustrip.(positions.fov))
+  params["center"] = Array(ustrip.(positions.center))
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
   return params
 end
 
@@ -204,7 +208,7 @@ function getindex(grid::RegularGridPositions, i::Integer)
   return ((-shape(grid).+(2 .*idx.-1))./shape(grid)).*fieldOfView(grid)./2 + fieldOfViewCenter(grid)
 end
 
-function getindex(grid::RegularGridPositions, idx::Vector{T}) where T<:Number
+function getindex(grid::RegularGridPositions, idx::AbstractVector{T}) where T<:Number
   for d=1:length(idx)
     if grid.sign[d] == -1
       idx[d] = grid.shape[d]-idx[d]+1
@@ -238,49 +242,64 @@ function posToLinIdx(grid::RegularGridPositions, pos)
   return (LinearIndices(tuple(shape(grid)...)))[posToIdx(grid,pos)...]
 end
 
+"""
+Create a `RegularGridPositions` object from three axes definition the coordinates of the positions.
+
+Automatically checks that the axes all have regular spacing.
+
+- `axesToRegularGridPositions(axs::Tuple)`
+- `axesToRegularGridPositions(x, y, z)`
+"""
+axesToRegularGridPositions(axs::Tuple) = axesToRegularGridPositions(axs...)
+function axesToRegularGridPositions(x, y, z)
+  allsame(ax) = length(ax)==0 || all(≈(first(ax)),ax)
+  if !allsame(diff(x)) || !allsame(diff(y)) || !allsame(diff(z)) 
+    error("Axes do not produce a regular grid!")
+  end
+  shape = [length(ax) for ax in [x,y,z]]
+  fov = [abs(ax[end]-ax[1])*length(ax)/max(1,length(ax)-1) for ax in [x,y,z]]
+  center = [mean(ax) for ax in [x,y,z]]
+  sign = [if ax[end]<ax[1]; -1 else 1 end for ax in [x,y,z]]
+  return RegularGridPositions(shape, fov, center, sign)
+end
+
+
 # Chebyshev Grid
-mutable struct ChebyshevGridPositions{S,T} <: GridPositions where {S,T<:Unitful.Length}
-  shape::Vector{Int}
-  fov::Vector{S}
-  center::Vector{T}
+struct ChebyshevGridPositions{T, D} <: GridPositions{T, D}
+  shape::SVector{D, Int64}
+  fov::SVector{D, T}
+  center::SVector{D, T}
+  function ChebyshevGridPositions(shape::NTuple{D},
+                              fov::NTuple{D},
+                              center::NTuple{D}) where {D}
+    T = promote_type(typeof.(fov)..., typeof.(center)...)
+    if !isconcretetype(T)
+      throw(ArgumentError("Can't promote fov and center to a concrete data type. This is most likely caused by a mismatch in units"))
+    end
+    return new{T,D}(
+        SVector{D,Int64}(shape),
+        SVector{D,T}(T.(fov)),
+        SVector{D,T}(T.(center)))
+  end
 end
+ChebyshevGridPositions(shape::Tuple, fov::Tuple, center::Tuple) = throw(DimensionMismatch("Position arguments don't have matching dimensions"))
+ChebyshevGridPositions(shape, fov, center) = ChebyshevGridPositions(Tuple(shape), Tuple(fov), Tuple(center))
 
-function write(file::HDF5.File, positions::ChebyshevGridPositions)
-  write(file,"/positionsType", "ChebyshevGridPositions")
-  write(file, "/positionsShape", positions.shape)
-  write(file, "/positionsFov", Float64.(ustrip.(uconvert.(Unitful.m, positions.fov))) )
-  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
-end
-
-function toDict(positions::ChebyshevGridPositions)
-  params = Dict{String,Any}()
-  params["positionsType"] = "ChebyshevGridPositions"
-  params["positionsShape"] = positions.shape
-  params["positionsFov"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.fov)))
-  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
+function write(params::PosFromFileOrDict, positions::ChebyshevGridPositions{T}) where T
+  params["type"] = "ChebyshevGridPositions"
+  params["shape"] = Array(positions.shape)
+  params["fov"] = ustrip.(Array(positions.fov))
+  params["center"] = ustrip.(Array(positions.center))
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
   return params
 end
-
-function ChebyshevGridPositions(file::HDF5.File)
-  shape = read(file, "/positionsShape")
-  fov = read(file, "/positionsFov")*Unitful.m
-  center = read(file, "/positionsCenter")*Unitful.m
-  return ChebyshevGridPositions(shape,fov,center)
-end
-
-function ChebyshevGridPositions(params::Dict)
-  shape = params["positionsShape"]
-
-  fov = params["positionsFov"]
-  if !(eltype(fov) <: Quantity)
-    fov = fov.*Unitful.m
-  end
-
-  center = params["positionsCenter"]
-  if !(eltype(center) <: Quantity)
-    center = center.*Unitful.m
-  end
-
+function ChebyshevGridPositions(params::PosFromFileOrDict)
+  shape = getDictOrH5Value(params, "shape")
+  unit = getPositionUnit(params)
+  fov = getDictOrH5Value(params, "fov", unit)
+  center = getDictOrH5Value(params, "center", unit)
   return ChebyshevGridPositions(shape,fov,center)
 end
 
@@ -294,40 +313,19 @@ function getindex(grid::ChebyshevGridPositions, i::Integer)
 end
 
 # Meander regular grid positions
-mutable struct MeanderingGridPositions{T} <: GridPositions where {T<:GridPositions}
-  grid::T
+struct MeanderingGridPositions{T, D, G <: GridPositions{T, D}} <: NestedPositions{T, D, G}
+  grid::G
+end
+parent(grid::MeanderingGridPositions) = grid.grid
+
+function MeanderingGridPositions(params::PosFromFileOrDict)
+  pos = Positions(getDictOrH5Value(params, "positions"))
+  return MeanderingGridPositions(pos)
 end
 
-function MeanderingGridPositions(file::HDF5.File)
-  typ = read(file, "/positionsType")
-  if typ == "RegularGridPositions"
-    grid = RegularGridPositions(file)
-    return MeanderingGridPositions(grid)
-  elseif typ == "ChebyshevGridPositions"
-    grid = ChebyshevGridPositions(file)
-    return MeanderingGridPositions(grid)
-  end
-end
-
-function MeanderingGridPositions(params::Dict)
-  typ = params["positionsType"]
-  if typ == "RegularGridPositions"
-    grid = RegularGridPositions(params)
-    return MeanderingGridPositions(grid)
-  elseif typ == "ChebyshevGridPositions"
-    grid = ChebyshevGridPositions(params)
-    return MeanderingGridPositions(grid)
-  end
-end
-
-function write(file::HDF5.File, positions::MeanderingGridPositions)
-  write(file,"/positionsMeandering", Int8(1))
-  write(file, positions.grid)
-end
-
-function toDict(positions::MeanderingGridPositions)
-  params = toDict(positions.grid)
-  params["positionsMeandering"] = true
+function write(params::PosFromFileOrDict, positions::MeanderingGridPositions)
+  write(params, "positions", positions.grid)
+  params["type"] = "MeanderingGridPositions"
   return params
 end
 
@@ -358,72 +356,42 @@ function getPermutation(grid::MeanderingGridPositions)
   return vec(perm)
 end
 
-mutable struct BreakpointGridPositions{T,S} <: GridPositions where {T<:GridPositions}
-  grid::T
+struct BreakpointPositions{T, D, G} <: NestedPositions{T, D, G}
+  grid::G
   breakpointIndices::Vector{Int64}
-  breakpointPosition::Vector{S}
+  breakpointPosition::SVector{D, T}
+end
+const BreakpointGridPositions = BreakpointPositions
+BreakpointPositions(grid, indices, pos) = BreakpointPositions(grid, indices, SVector{length(pos)}(pos))
+parent(grid::BreakpointPositions) = grid.grid
+
+function BreakpointPositions(params::PosFromFileOrDict)
+  unit = getPositionUnit(params)
+  breakpointPosition = getDictOrH5Value(params, "breakpoint", unit)
+  breakpointIndices = getDictOrH5Value(params, "indices")
+  positions = Positions(getDictOrH5Value(params, "positions"))
+  return BreakpointGridPositions(positions, breakpointIndices, breakpointPosition)
 end
 
-function BreakpointGridPositions(file::HDF5.File)
-  typ = read(file, "/positionsType")
-  breakpointPosition = read(file, "/positionsBreakpoint") * Unitful.m
-  breakpointIndices = read(file, "/indicesBreakpoint")
-
-  if typ == "MeanderingGridPositions"
-    grid = MeanderingGridPositions(file)
-    return BreakpointGridPositions(grid,breakpointIndices, breakpointPosition)
-  elseif typ == "RegularGridPositions"
-    grid = RegularGridPositions(file)
-    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
-  elseif typ == "ChebyshevGridPositions"
-    grid = ChebyshevGridPositions(file)
-    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
+function write(params::PosFromFileOrDict, positions::BreakpointPositions{T}) where T
+  write(params, "positions", positions.grid)
+  params["type"] = "BreakpointPositions"
+  params["breakpoint"] = ustrip.(Array(positions.breakpointPosition))
+  params["indices"] = positions.breakpointIndices
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
   end
-end
-
-function BreakpointGridPositions(params::Dict)
-  typ = params["positionsType"]
-
-  breakpointPosition = params["positionsBreakpoint"]
-  if !(eltype(breakpointPosition) <: Quantity)
-    breakpointPosition = breakpointPosition.*Unitful.m
-  end
-
-  breakpointIndices = params["indicesBreakpoint"]
-
-  if haskey(params, "positionsMeandering")
-    grid = MeanderingGridPositions(params)
-    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
-  elseif typ == "RegularGridPositions"
-    grid = RegularGridPositions(params)
-    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
-  elseif typ == "ChebyshevGridPositions"
-    grid = ChebyshevGridPositions(params)
-    return BreakpointGridPositions(grid, breakpointIndices, breakpointPosition)
-  end
-end
-
-function write(file::HDF5.File, positions::BreakpointGridPositions)
-  write(file,"/positionsBreakpoint", Float64.(ustrip.(uconvert.(Unitful.m, positions.breakpointPosition))))
-  write(file,"/indicesBreakpoint", positions.breakpointIndices)
-  write(file, positions.grid)
-end
-
-function toDict(positions::BreakpointGridPositions)
-  params = toDict(positions.grid)
-  params["positionsBreakpoint"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.breakpointPosition)))
-  params["indicesBreakpoint"] = positions.breakpointIndices
   return params
 end
 
-function getmask(grid::BreakpointGridPositions)
+function getmask(grid::BreakpointPositions)
   bgind=grid.breakpointIndices
   mask = zeros(Bool, length(grid.grid)+length(bgind))
   mask[bgind] .= true
   return mask
 end
 
-function getindex(grid::BreakpointGridPositions, i::Integer)
+function getindex(grid::BreakpointPositions, i::Integer)
 
   bgind=grid.breakpointIndices
 
@@ -438,53 +406,84 @@ function getindex(grid::BreakpointGridPositions, i::Integer)
 end
 
 # Uniform random distributed positions
-abstract type SpatialDomain end
-
-struct AxisAlignedBox <: SpatialDomain
-  fov::Vector{S} where {S<:Unitful.Length}
-  center::Vector{T} where {T<:Unitful.Length}
+# Could also be SpatialDomain{T, D}
+abstract type SpatialDomain{T} end
+function toDict(pos::SpatialDomain)
+  params = Dict{String, Any}()
+  write(params, pos)
+  return params
+end 
+write(params::Dict, key::String, pos::SpatialDomain) = params[key] = toDict(pos)
+function write(params::H5IO, key::String, pos::SpatialDomain)
+  group = haskey(params, key) ? params[key] : create_group(params, key)
+  return write(group, pos)
 end
 
-function write(file::HDF5.File, domain::AxisAlignedBox)
-  write(file, "/positionsDomain", "AxisAlignedBox")
-  write(file, "/positionsDomainFieldOfView", Float64.(ustrip.(uconvert.(Unitful.m, domain.fov))) )
-  write(file, "/positionsDomainCenter", Float64.(ustrip.(uconvert.(Unitful.m, domain.center))) )
+struct AxisAlignedBox{T} <: SpatialDomain{T}
+  fov::Vector{T}
+  center::Vector{T}
 end
 
-function AxisAlignedBox(file::HDF5.File)
-  fov = read(file, "/positionsDomainFieldOfView")*Unitful.m
-  center = read(file, "/positionsDomainCenter")*Unitful.m
+function write(params::PosFromFileOrDict, domain::AxisAlignedBox{T}) where T
+  params["domain"] = "AxisAlignedBox"
+  params["fieldOfView"] = ustrip.(domain.fov)
+  params["center"] = ustrip.(domain.center)
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
+  return params
+end
+
+function AxisAlignedBox(params::PosFromFileOrDict)
+  unit = getPositionUnit(params)
+  fov = getDictOrH5Value(params, "fieldOfView", unit)
+  center = getDictOrH5Value(params, "center", unit)
   return AxisAlignedBox(fov,center)
 end
 
-struct Ball <: SpatialDomain
-  radius::S where {S<:Unitful.Length}
-  center::Vector{T} where {T<:Unitful.Length}
+struct Ball{T} <: SpatialDomain{T}
+  radius::T
+  center::Vector{T}
 end
 
-function write(file::HDF5.File, domain::Ball)
-  write(file, "/positionsDomain", "Ball")
-  write(file, "/positionsDomainRadius", Float64.(ustrip.(uconvert.(Unitful.m, domain.radius))) )
-  write(file, "/positionsDomainCenter", Float64.(ustrip.(uconvert.(Unitful.m, domain.center))) )
+function write(params::PosFromFileOrDict, domain::Ball{T}) where T
+  params["domain"] = "Ball"
+  params["radius"] = ustrip.(domain.radius)
+  params["center"] = ustrip.(domain.center)
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
 end
 
-function Ball(file::HDF5.File)
-  radius = read(file, "/positionsDomainRadius")*Unitful.m
-  center = read(file, "/positionsDomainCenter")*Unitful.m
+function Ball(params::PosFromFileOrDict)
+  unit = getPositionUnit(params)
+  radius = getDictOrH5Value(params, "radius", unit)
+  center = getDictOrH5Value(params, "center", unit)
   return Ball(radius,center)
 end
 
-
-mutable struct UniformRandomPositions{T} <: Positions where {T<:SpatialDomain}
-  N::UInt
-  seed::UInt32
-  domain::T
+function SpatialDomain(params::PosFromFileOrDict)
+  type = getDictOrH5Value(params, "domain")
+  if type == "Ball"
+    return Ball(params)
+  elseif type == "AxisAlignedBox"
+    return AxisAlignedBox(params)
+  else
+    throw(ArgumentError("Unknown SpatialDomain type $type"))
+  end
 end
 
-radius(rpos::UniformRandomPositions{Ball}) = rpos.domain.radius
+mutable struct UniformRandomPositions{T, D, S <: SpatialDomain} <: Positions{T, D}
+  N::UInt
+  seed::UInt32
+  domain::S
+end
+UniformRandomPositions(N, seed, domain::SpatialDomain{T}) where {T} = UniformRandomPositions{T, 3, typeof(domain)}(N, seed, domain)
+
+radius(rpos::UniformRandomPositions{T, D, <:Ball}) where {T, D} = rpos.domain.radius
 seed(rpos::UniformRandomPositions) = rpos.seed
 
-function getindex(rpos::UniformRandomPositions{AxisAlignedBox}, i::Integer)
+function getindex(rpos::UniformRandomPositions{T, D, <:AxisAlignedBox}, i::Integer) where {T, D}
   if i>length(rpos) || i<1
     throw(BoundsError(rpos,i))
   else
@@ -495,7 +494,7 @@ function getindex(rpos::UniformRandomPositions{AxisAlignedBox}, i::Integer)
   end
 end
 
-function getindex(rpos::UniformRandomPositions{Ball}, i::Integer)
+function getindex(rpos::UniformRandomPositions{T, Dim, <:Ball}, i::Integer) where {T, Dim}
   if i>length(rpos) || i<1
     throw(BoundsError(rpos,i))
   else
@@ -507,26 +506,19 @@ function getindex(rpos::UniformRandomPositions{Ball}, i::Integer)
   end
 end
 
-function write(file::HDF5.File, positions::UniformRandomPositions{T}) where {T<:SpatialDomain}
-  write(file, "/positionsType", "UniformRandomPositions")
-  write(file, "/positionsN", positions.N)
-  write(file, "/positionsSeed", positions.seed)
-  write(file, positions.domain)
+function write(params::PosFromFileOrDict, positions::UniformRandomPositions)
+  params["type"] =  "UniformRandomPositions"
+  params["n"] = positions.N
+  params["seed"] =  positions.seed
+  write(params, "domain", positions.domain)
+  return params
 end
 
-function UniformRandomPositions(file::HDF5.File)
-  N = read(file, "/positionsN")
-  seed = read(file, "/positionsSeed")
-  dom = read(file,"/positionsDomain")
-  if dom=="Ball"
-    domain = Ball(file)
-    return UniformRandomPositions(N,seed,domain)
-  elseif dom=="AxisAlignedBox"
-    domain = AxisAlignedBox(file)
-    return UniformRandomPositions(N,seed,domain)
-  else
-    throw(ErrorException("No method to read domain $domain"))
-  end
+function UniformRandomPositions(params::PosFromFileOrDict)
+  N = getDictOrH5Value(params, "n")
+  seed = getDictOrH5Value(params, "seed")
+  domain = SpatialDomain(getDictOrH5Value(params, "domain"))
+  UniformRandomPositions(N, seed, domain)
 end
 
 # TODO fix conversion methods
@@ -547,42 +539,41 @@ end
 
 # Tubular cartesian grid
 export TubularRegularGridPositions
-mutable struct TubularRegularGridPositions{T} <: GridPositions where {T<:Unitful.Length}
-  shape::Vector{Int}
-  fov::Vector{T}
-  center::Vector{T}
+struct TubularRegularGridPositions{T, D} <: GridPositions{T, D}
+  shape::SVector{D, Int64}
+  fov::SVector{D, T}
+  center::SVector{D, T}
   "Main axis of the tube; only effective in 3D grids"
   mainAxis::Int64
   "Radius-defining axis of the tube"
   radiusAxis::Int64
+  function TubularRegularGridPositions(shape::NTuple{D},
+                              fov::NTuple{D},
+                              center::NTuple{D},
+                              mainAxis, radius) where {D}
+    T = promote_type(typeof.(fov)..., typeof.(center)...)
+    if !isconcretetype(T)
+      throw(ArgumentError("Can't promote fov and center to a concrete data type. This is most likely caused by a mismatch in units"))
+    end
+    return new{T,D}(
+        SVector{D,Int64}(shape),
+        SVector{D,T}(T.(fov)),
+        SVector{D,T}(T.(center)),
+        mainAxis, radius)
+  end
+end
+TubularRegularGridPositions(shape::Tuple, fov::Tuple, center::Tuple, mainAxis, radius) = throw(DimensionMismatch("Position arguments don't have matching dimensions"))
+function TubularRegularGridPositions(shape, fov, center, mainAxis, radius) 
+  TubularRegularGridPositions(Tuple(shape), Tuple(fov), Tuple(center), mainAxis, radius)
 end
 
-function TubularRegularGridPositions(params::Dict)
-  shape = params["positionsShape"]
-
-  fov = params["positionsFov"]
-  if !(eltype(fov) <: Quantity)
-    fov = fov.*Unitful.m
-  end
-
-  center = params["positionsCenter"]
-  if !(eltype(center) <: Quantity)
-    center = center.*Unitful.m
-  end
-
-  mainAxis = params["positionsMainAxis"]
-  radiusAxis = params["positionsRadiusAxis"]
-
-  return TubularRegularGridPositions(shape, fov, center, mainAxis, radiusAxis)
-end
-
-function TubularRegularGridPositions(file::HDF5.File)
-  shape = read(file, "/positionsShape")
-  fov = read(file, "/positionsFov")*Unitful.m
-  center = read(file, "/positionsCenter")*Unitful.m
-  mainAxis = read(file, "positionsMainAxis")
-  radiusAxis = read(file, "positionsRadiusAxis")
-
+function TubularRegularGridPositions(params::PosFromFileOrDict)
+  shape = getDictOrH5Value(params,"shape")
+  unit = getPositionUnit(params)
+  fov = getDictOrH5Value(params,"fov", unit)
+  center = getDictOrH5Value(params,"center", unit)
+  mainAxis = getDictOrH5Value(params,"mainAxis")
+  radiusAxis = getDictOrH5Value(params,"radiusAxis")
   return TubularRegularGridPositions(shape, fov, center, mainAxis, radiusAxis)
 end
 
@@ -591,23 +582,16 @@ length(grid::TubularRegularGridPositions) = length(filteredPositions(grid))
 export radius
 radius(grid::TubularRegularGridPositions) = grid.fov[grid.radiusAxis] / 2
 
-function write(file::HDF5.File, positions::TubularRegularGridPositions)
-  write(file, "/positionsType", "TubularRegularGridPositions")
-  write(file, "/positionsShape", positions.shape)
-  write(file, "/positionsFov", Float64.(ustrip.(uconvert.(Unitful.m, positions.fov))) )
-  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
-  write(file, "/positionsMainAxis", positions.mainAxis)
-  write(file, "/positionsRadiusAxis", positions.radiusAxis)
-end
-
-function toDict(positions::TubularRegularGridPositions)
-  params = Dict{String,Any}()
-  params["positionsType"] = "TubularRegularGridPositions"
-  params["positionsShape"] = positions.shape
-  params["positionsFov"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.fov)))
-  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
-  params["positionsMainAxis"] = positions.mainAxis
-  params["positionsRadiusAxis"] = positions.radiusAxis
+function write(params::PosFromFileOrDict, positions::TubularRegularGridPositions{T}) where T
+  params["type"] = "TubularRegularGridPositions"
+  params["shape"] = Array(positions.shape)
+  params["fov"] = ustrip.(Array(positions.fov))
+  params["center"] = ustrip.(Array(positions.center))
+  params["mainAxis"] = positions.mainAxis
+  params["radiusAxis"] = positions.radiusAxis
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
   return params
 end
 
@@ -671,84 +655,48 @@ function posToLinIdx(grid::TubularRegularGridPositions, pos)
 end
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # General functions for handling grids
 fieldOfView(grid::GridPositions) = grid.fov
-fieldOfView(grid::UniformRandomPositions{AxisAlignedBox}) = grid.domain.fov
+fieldOfView(grid::UniformRandomPositions{T, D, <:AxisAlignedBox}) where {T, D} = grid.domain.fov
 fieldOfView(mgrid::MeanderingGridPositions) = fieldOfView(mgrid.grid)
-fieldOfView(bgrid::BreakpointGridPositions) = fieldOfView(bgrid.grid)
+fieldOfView(bgrid::BreakpointPositions) = fieldOfView(bgrid.grid)
 shape(grid::GridPositions) = grid.shape
 shape(mgrid::MeanderingGridPositions) = shape(mgrid.grid)
-shape(bgrid::BreakpointGridPositions) = shape(bgrid.grid)
+shape(bgrid::BreakpointPositions) = shape(bgrid.grid)
 fieldOfViewCenter(grid::GridPositions) = grid.center
 fieldOfViewCenter(grid::UniformRandomPositions) = grid.domain.center
 fieldOfViewCenter(mgrid::MeanderingGridPositions) = fieldOfViewCenter(mgrid.grid)
-fieldOfViewCenter(bgrid::BreakpointGridPositions) = fieldOfViewCenter(bgrid.grid)
+fieldOfViewCenter(bgrid::BreakpointPositions) = fieldOfViewCenter(bgrid.grid)
 
 spacing(grid::GridPositions) = grid.fov ./ grid.shape
 
-mutable struct SphericalTDesign{S,V} <: Positions where {S,V<:Unitful.Length}
-  T::Unsigned
-  radius::S
-  positions::Matrix
-  center::Vector{V}
+struct SphericalTDesign{T, D, N, EL} <: Positions{T, D}
+  T::UInt64
+  radius::T
+  positions::SMatrix{D, N, EL}
+  center::SVector{D, T}
 end
 
-function SphericalTDesign(file::HDF5.File)
-  T = read(file, "/positionsTDesignT")
-  N = read(file, "/positionsTDesignN")
-  radius = read(file, "/positionsTDesignRadius")*Unitful.m
-  center = read(file, "/positionsCenter")*Unitful.m
-  return loadTDesign(Int64(T),N,radius,center)
+function SphericalTDesign(params::PosFromFileOrDict)
+  T = getDictOrH5Value(params, "T")
+  N = getDictOrH5Value(params, "N")
+  unit = getPositionUnit(params)
+  radius = getDictOrH5Value(params, "radius", unit)
+  center = getDictOrH5Value(params, "center", unit)
+  return loadTDesign(T, N, radius, center)
 end
 
-function write(file::HDF5.File, positions::SphericalTDesign)
-  write(file,"/positionsType", "SphericalTDesign")
-  write(file, "/positionsTDesignT", positions.T)
-  write(file, "/positionsTDesignN", size(positions.positions,2))
-  write(file, "/positionsTDesignRadius", Float64.(ustrip.(uconvert.(Unitful.m, positions.radius))) )
-  write(file, "/positionsCenter", Float64.(ustrip.(uconvert.(Unitful.m, positions.center))) )
-end
-					
-function toDict(positions::SphericalTDesign)
-  params = Dict{String,Any}()
-  params["positionsType"] = "SphericalTDesign"
-  params["positionsTDesignT"] = positions.T
-  params["positionsTDesignN"] = size(positions.positions,2)
-  params["positionsTDesignRadius"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.radius)))
-  params["positionsCenter"] = Float64.(ustrip.(uconvert.(Unitful.m, positions.center)))
+function write(params::PosFromFileOrDict, positions::SphericalTDesign{T}) where T
+  params["type"] = "SphericalTDesign"
+  params["T"] = positions.T
+  params["N"] = size(positions.positions,2)
+  params["radius"] = ustrip.(positions.radius)
+  params["center"] = ustrip.(Array(positions.center))
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
   return params
-end					
+end
 
 getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] + tdes.center
 
@@ -760,20 +708,20 @@ const DEFAULT_TDESIGNS = @path joinpath(@__DIR__, "TDesigns.hd5")
 *Input:*
 - `t` - degree
 - `N` - number of points
-- `radius` - radius of the sphere (default: 10mm)
+- `radius` - radius of the sphere (default: 10.0mm)
 - `center` - center of the sphere (default: [0.0,0.0,0.0]mm)
 - `filename` - name of the file containing the t-designs (default loads TDesign.hd5)
 
 *Output:*
 - t-design of type SphericalTDesign in Cartesian coordinates containing t, radius, center and positions (which are located on the unit sphere unless `getindex(tdes,i)` is used)
 """
-function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{V}=[0.0,0.0,0.0]Unitful.mm, filename = DEFAULT_TDESIGNS) where {S,V<:Unitful.Length}
+function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=[0.0,0.0,0.0]Unitful.mm, filename = DEFAULT_TDESIGNS) where {S<:Unitful.Length}
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
   if haskey(h5file, address)
     positions = copy(transpose(read(h5file, address)))
-    return SphericalTDesign(UInt(t),radius,positions, center)
+    return SphericalTDesign(UInt(t),radius, SMatrix{3, size(positions, 2)}(positions), SVector{length(center)}(center))
   else
     if haskey(h5file, "/$t-Design/")
       Ns = Int[]
@@ -799,30 +747,78 @@ function loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{
 end
 
 # Unstructured collection of positions
-mutable struct ArbitraryPositions{T} <: Positions where {T<:Unitful.Length}
-  positions::Matrix{T}
+struct ArbitraryPositions{T, D, N} <: Positions{T, D}
+  positions::SMatrix{D, N, T}
 end
-
+ArbitraryPositions(pos::AbstractMatrix) = ArbitraryPositions(SMatrix{size(pos, 1), size(pos, 2)}(pos)) 
 getindex(apos::ArbitraryPositions, i::Integer) = apos.positions[:,i]
 
-function ArbitraryPositions(grid::GridPositions)
-  T = eltype(grid.fov)
-  positions = zeros(T,3,length(grid))
+function ArbitraryPositions(grid::GridPositions{T, D}) where {T, D}
+  positions = zeros(T,D,length(grid))
   for i=1:length(grid)
     positions[:,i] = grid[i]
   end
   return ArbitraryPositions(positions)
 end
 
-function write(file::HDF5.File, apos::ArbitraryPositions,)
-  write(file,"/positionsType", "ArbitraryPositions")
-  write(file, "/positionsPositions", Float64.(ustrip.(uconvert.(Unitful.m, apos.positions))) )
+function write(params::PosFromFileOrDict, apos::ArbitraryPositions{T}) where T
+  params["type"] = "ArbitraryPositions"
+  params["positions"] = ustrip.(Array(apos.positions))
+  if !isnothing(unit(T))
+    params["unit"] = string(unit(T))
+  end
+  return params
 end
 
-function ArbitraryPositions(file::HDF5.File)
-  pos = read(file, "/positionsPositions")*Unitful.m
+function ArbitraryPositions(params::PosFromFileOrDict)
+  unit = getPositionUnit(params)
+  pos = getDictOrH5Value(params, "positions", unit)
   return ArbitraryPositions(pos)
 end
+
+"""
+    SortedPositions{T, D, G} <: NestedPositions{T, D, G}
+    SortedPositions(grid::G, start::AbstractVector{T}=first(grid)) where {T, D, G <: Positions{T, D}}
+
+Positions container which returns all points of the parent `grid` in a greedy nearest-neighbor order.
+"""
+struct SortedPositions{T, D, G} <: NestedPositions{T, D, G}
+  parent::G
+  indices::Vector{Int64}
+end
+function SortedPositions(grid::G, start::AbstractVector{T} = first(grid)) where {T, D, G <: Positions{T, D}}
+  current = start
+  positions = collect(grid)
+  sortedpos = Vector{typeof(start)}()
+  indices = Int64[]
+  # Greedily pick next position with smallest value
+  while length(sortedpos) != length(grid)
+    (val, idx) = findmin(map(x-> norm(x - current), positions))
+    current = positions[idx]
+    push!(sortedpos, current)
+    push!(indices, idx)
+    positions[idx] = [typemax(T) for i = 1:D]
+  end
+  return SortedPositions{T, D, G}(grid, indices)
+end
+function SortedPositions(params::PosFromFileOrDict)
+  positions = Positions(getDictOrH5Value(params, "positions"))
+  indices = getDictOrH5Value(params, "indices")
+  return SortedPositions{eltype(first(positions)), ndims(positions), typeof(positions)}(positions, indices)
+end
+function write(params::PosFromFileOrDict, grid::SortedPositions)
+  params["type"] = "SortedPositions"
+  params["positions"] = toDict(parent(grid))
+  params["indices"] = parentindices(grid)
+end
+length(grid::SortedPositions) = length(grid.indices)
+parent(grid::SortedPositions) = grid.parent
+parentindices(grid::SortedPositions) = grid.indices
+getindex(grid::SortedPositions, i) = parent(grid)[grid.indices[i]]
+fieldOfView(grid::SortedPositions) = fieldOfView(parent(grid))
+fieldOfViewCenter(grid::SortedPositions) = fieldOfViewCenter(parent(grid))
+shape(grid::SortedPositions) = shape(parent(grid))
+spacing(grid::SortedPositions) = spacing(parent(grid))
 
 # TODO: Specialize to make it faster
 function Base.:(==)(val1::Positions, val2::Positions)
@@ -841,12 +837,13 @@ length(apos::ArbitraryPositions) = size(apos.positions,2)
 length(grid::GridPositions) = prod(grid.shape)
 length(rpos::UniformRandomPositions) = rpos.N
 length(mgrid::MeanderingGridPositions) = length(mgrid.grid)
-length(bgrid::BreakpointGridPositions) = length(bgrid.grid)+length(bgrid.breakpointIndices)
+length(bgrid::BreakpointPositions) = length(bgrid.grid)+length(bgrid.breakpointIndices)
 
 start_(grid::Positions) = 1
 next_(grid::Positions,state) = (grid[state],state+1)
 done_(grid::Positions,state) = state > length(grid)
 iterate(grid::Positions, s=start_(grid)) = done_(grid, s) ? nothing : next_(grid, s)
-
+eltype(grid::Positions{T, D}) where {T, D} = typeof(first(grid))
 
 include("Interpolation.jl")
+include("Subsampling.jl")
