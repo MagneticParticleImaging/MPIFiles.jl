@@ -24,7 +24,21 @@ struct MDFDatasetStore <: DatasetStore
   end
 end
 
-@static if ispath("/opt/mpidata/Bruker")
+function isBrukerWritable()
+  try
+    mkpath("/opt/data/Bruker")
+  catch e
+    if e isa Base.IOError
+      @warn "Bruker store not writable. Please check the access rights of `/opt/data/Bruker`."
+    end
+
+    return false
+  end
+
+  return true
+end
+
+@static if ispath("/opt/mpidata/Bruker") && isBrukerWritable()
   export MDFStore
   const MDFStore = MDFDatasetStore("/opt/data/Bruker")
 end
