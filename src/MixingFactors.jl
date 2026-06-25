@@ -31,7 +31,7 @@ function calcPrefactors(dfStrength, divider, baseFreq, cycle)
   divider = vec(divider)
   #mxyz = round.(Int64,divider.*mask./gcd(divider.*mask))
   mxyz_ = baseFreq*cycle./divider
-  mxyz = max.(1,round.(Int64,mxyz_.*mask))
+  mxyz = max.(0,round.(Int64,mxyz_.*mask))
 
   return Tuple(mxyz)
 end
