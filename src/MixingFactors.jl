@@ -64,7 +64,7 @@ function _mixingFactors(prefactors::NTuple{Nt,Int}, numFreqs::Integer, N::Intege
   loop = CartesianIndices(ntuple(x->(-N:N), length(prefactors)))
   for mixFactors in loop
     mixFactorsTup = Tuple(mixFactors)
-    k = sum(mixFactorsTup.*prefactors)
+    k = sum(mixFactorsTup.*prefactors)+1
     mixOrder = mapreduce(abs,+,mixFactorsTup)
     if 1<=k<=numFreqs && (mixingOrderList[k,end]<0 || mixingOrderList[k,end]>=mixOrder)
           mixingOrderList[k,1:end-1] .= mixFactorsTup
