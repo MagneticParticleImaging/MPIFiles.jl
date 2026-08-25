@@ -715,7 +715,7 @@ const DEFAULT_TDESIGNS = @path joinpath(@__DIR__, "TDesigns.hd5")
 *Output:*
 - t-design of type SphericalTDesign in Cartesian coordinates containing t, radius, center and positions (which are located on the unit sphere unless `getindex(tdes,i)` is used)
 """
-function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=[0.0,0.0,0.0]Unitful.mm, filename = DEFAULT_TDESIGNS) where {S<:Unitful.Length}
+function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=zeros(S, 3), filename = DEFAULT_TDESIGNS) where {S<:Unitful.Length}
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
@@ -726,7 +726,7 @@ function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=[0.0,0.0
     if haskey(h5file, "/$t-Design/")
       Ns = Int[]
       for N in keys(read(h5file, string("/$t-Design")))
-	push!(Ns,parse(Int,N))
+	      push!(Ns,parse(Int,N))
       end
       sort!(Ns)
       @info "No spherical $t-Design with $N points available!\nThere are spherical $t-Designs with following N:" Ns
@@ -734,9 +734,9 @@ function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=[0.0,0.0
     else
       ts = Int[]
       for d in keys(read(h5file))
-	m = match(r"(\d{1,})-(Design)",d)
-	if m != nothing
-	  push!(ts,parse(Int,m[1]))
+        m = match(r"(\d{1,})-(Design)",d)
+        if m != nothing
+          push!(ts,parse(Int,m[1]))
         end
       end
       sort!(ts)

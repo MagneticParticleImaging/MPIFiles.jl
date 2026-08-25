@@ -329,15 +329,15 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @test_throws DomainError loadTDesign(10,1)
   t = 1
   N = 2
-  radius = 5.0Unitful.mm
+  radius = 0.042Unitful.m
   tDesign = loadTDesign(t,N, radius)
   @test length(tDesign) == N
   @test length(collect(tDesign)) == length(tDesign)
   @test tDesign.T == t
   @test tDesign.radius == radius
   @test any(tDesign.positions .== [1 -1; 0 0; 0 0])
-  @test tDesign[1] == [5,0,0]Unitful.mm
-  @test tDesign[2] == [-5,0,0]Unitful.mm
+  @test tDesign[1] == [42,0,0]Unitful.mm
+  @test tDesign[2] == [-42,0,0]Unitful.mm
   h5open(pospath, "w") do file
     write(file, tDesign)
   end
@@ -362,13 +362,13 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   end
 
   @testset "Tubular regular grid positions" begin
-    grid = TubularRegularGridPositions([81, 81, 1], [40.0, 40.0 ,0.0]u"mm", [0.0, 0.0, 0.0]u"mm", 3, 1)
+    grid = TubularRegularGridPositions([81, 81, 1], [40.0, 40.0 ,0.0]u"mm", [0.0, 0.0, 0.0]u"m", 3, 1)
 
     params = Dict{String, Any}()
     params["type"] = "TubularRegularGridPositions"
     params["shape"] = [81, 81, 1]
     params["fov"] = [40, 40 ,0]u"mm"
-    params["center"] = [0, 0, 0]u"mm"
+    params["center"] = [0, 0, 0]u"m"
     params["mainAxis"] = 3
     params["radiusAxis"] = 1
     gridByParams = TubularRegularGridPositions(params)
@@ -381,9 +381,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     paramsFromGrid = toDict(grid)
     @test params["type"] == paramsFromGrid["type"] 
     @test all(params["shape"] .== paramsFromGrid["shape"])
-    @test all(ustrip.(params["fov"]) .≈ paramsFromGrid["fov"])
+    @test all(ustrip.(uconvert.(u"m", params["fov"])) .≈ paramsFromGrid["fov"])
     @test all(ustrip.(params["center"]) .≈ paramsFromGrid["center"])
-    @test paramsFromGrid["unit"] == string("mm")
+    @test paramsFromGrid["unit"] == string("m")
     @test params["mainAxis"] == paramsFromGrid["mainAxis"]
     @test params["radiusAxis"] == paramsFromGrid["radiusAxis"]
     
@@ -432,7 +432,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     params = Dict{String, Any}()
     params["shape"] = [3, 3, 3]
     params["fov"] = [3.0u"mm", 3.0u"mm", 3.0u"mm"]
-    params["center"] = [0.0u"mm", 0.0u"mm", 0.0u"mm"]
+    params["center"] = [0.0u"m", 0.0u"m", 0.0u"m"]
 
     positions = RegularGridPositions(params)
     @test eltype(positions[1]) <: Unitful.Length
