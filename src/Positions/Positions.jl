@@ -1,6 +1,6 @@
 export Positions, GridPositions, NestedPositions, RegularGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SortedPositions,
-       SphericalTDesign, BreakpointPositions, BreakpointGridPositions
+       TDesign, SphericalTDesign, BreakpointPositions, BreakpointGridPositions
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
@@ -43,8 +43,8 @@ function Positions(params::PosFromFileOrDict)
     positions = ChebyshevGridPositions(params)
   elseif type == "BreakpointPositions"
     positions = BreakpointPositions(params)
-  elseif type == "SphericalTDesign"
-    positions = SphericalTDesign(params)
+  elseif occursin("TDesign", type) # includes subtypes of TDesign
+    positions = TDesign(params)
   elseif type == "UniformRandomPositions"
     positions = UniformRandomPositions(params)
   elseif type == "ArbitraryPositions"
@@ -670,14 +670,15 @@ fieldOfViewCenter(bgrid::BreakpointPositions) = fieldOfViewCenter(bgrid.grid)
 
 spacing(grid::GridPositions) = grid.fov ./ grid.shape
 
-struct SphericalTDesign{T, D, N, EL} <: Positions{T, D}
-  T::UInt64
-  radius::T
-  positions::SMatrix{D, N, EL}
-  center::SVector{D, T}
-end
 
-function SphericalTDesign(params::PosFromFileOrDict)
+#############################################
+## t-designs including spherical t-designs ##
+#############################################
+
+## TDesign as abstract type
+abstract type TDesign{T, D, N, EL} <: Positions{T, D} end
+
+function TDesign(params::PosFromFileOrDict)
   T = getDictOrH5Value(params, "T")
   N = getDictOrH5Value(params, "N")
   unit = getPositionUnit(params)
@@ -686,17 +687,27 @@ function SphericalTDesign(params::PosFromFileOrDict)
   return loadTDesign(T, N, radius, center)
 end
 
-function write(params::PosFromFileOrDict, positions::SphericalTDesign{T}) where T
-  params["type"] = "SphericalTDesign"
+function write(params::PosFromFileOrDict, positions::TDesign{T}) where T
+  params["type"] = string(typeof(positions).name.wrapper) # use subtypes as type name
   params["T"] = positions.T
   params["N"] = size(positions.positions,2)
-  params["radius"] = ustrip.(positions.radius)
+  params["radius"] = ustrip.(collect(positions.radius))
   params["center"] = ustrip.(Array(positions.center))
   if !isnothing(unit(T))
     params["unit"] = string(unit(T))
   end
   return params
 end
+
+## Spherical t-design
+struct SphericalTDesign{T, D, N, EL} <: TDesign{T, D, N, EL}
+  T::UInt64
+  radius::T
+  positions::SMatrix{D, N, EL}
+  center::SVector{D, T}
+end
+
+SphericalTDesign(params::PosFromFileOrDict) = TDesign(params) 
 
 getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] + tdes.center
 
@@ -832,7 +843,7 @@ function Base.:(==)(val1::Positions, val2::Positions)
 end
 
 # fuction related to looping
-length(tdes::SphericalTDesign) = size(tdes.positions,2)
+length(tdes::TDesign) = size(tdes.positions,2)
 length(apos::ArbitraryPositions) = size(apos.positions,2)
 length(grid::GridPositions) = prod(grid.shape)
 length(rpos::UniformRandomPositions) = rpos.N
