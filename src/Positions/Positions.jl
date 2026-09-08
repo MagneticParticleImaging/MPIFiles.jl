@@ -707,7 +707,7 @@ struct SphericalTDesign{T, D, N, EL} <: TDesign{T, D, N, EL}
   center::SVector{D, T}
 end
 
-SphericalTDesign(params::PosFromFileOrDict) = TDesign(params) 
+SphericalTDesign(params::PosFromFileOrDict) = TDesign(params) # SphericalTDesign is the only subtype of TDesign
 
 getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] + tdes.center
 

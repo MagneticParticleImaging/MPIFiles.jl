@@ -324,33 +324,37 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   #TODO conversion methods dont work. Why?
   #rG = UniformRandomPositions(15,fov,ctr)
 
-  # the following 2 tests fail but should work
-  @test_throws DomainError loadTDesign(8,1)
-  @test_throws DomainError loadTDesign(10,1)
-  t = 1
-  N = 2
-  radius = 0.042Unitful.m
-  tDesign = loadTDesign(t,N, radius)
-  @test length(tDesign) == N
-  @test length(collect(tDesign)) == length(tDesign)
-  @test tDesign.T == t
-  @test tDesign.radius == radius
-  @test any(tDesign.positions .== [1 -1; 0 0; 0 0])
-  @test tDesign[1] == [42,0,0]Unitful.mm
-  @test tDesign[2] == [-42,0,0]Unitful.mm
-  h5open(pospath, "w") do file
-    write(file, tDesign)
+  @testset "Testing t-designs" begin
+    # test errors
+    @test_throws DomainError loadTDesign(8,1) # spherical 8-design with 1 position does not exist
+    @test_throws DomainError loadTDesign(10,1) # spherical 10-design with 1 position does not exist
+    @test_throws DomainError loadTDesign(18,1) # for t > 17 only designs for odd t are available
+
+    t = 1
+    N = 2
+    radius = 0.042Unitful.m
+    tDesign = loadTDesign(t, N, radius)
+    @test length(tDesign) == N
+    @test length(collect(tDesign)) == length(tDesign)
+    @test tDesign.T == t
+    @test tDesign.radius == radius
+    @test any(tDesign.positions .== [1 -1; 0 0; 0 0])
+    @test tDesign[1] == [42,0,0]Unitful.mm
+    @test tDesign[2] == [-42,0,0]Unitful.mm
+    h5open(pospath, "w") do file
+      write(file, tDesign)
+    end
+    h5open(pospath, "r") do file
+      tDesign1 = Positions(file)
+      @test typeof(tDesign1) <: SphericalTDesign
+      @test tDesign1.radius == tDesign.radius
+      @test tDesign1.center == tDesign.center
+      @test tDesign1.positions == tDesign.positions
+    end
+    dict = toDict(tDesign)
+    tDesign2 = SphericalTDesign(dict)
+    @test collect(tDesign) == collect(tDesign2)
   end
-  h5open(pospath, "r") do file
-    tDesign1 = Positions(file)
-    @test typeof(tDesign1) <: SphericalTDesign
-    @test tDesign1.radius == tDesign.radius
-    @test tDesign1.center == tDesign.center
-    @test tDesign1.positions == tDesign.positions
-  end
-  dict = toDict(tDesign)
-  tDesign2 = Positions(dict)
-  @test collect(tDesign) == collect(tDesign2)
 
   @test length(caG) == prod(shp)
   @test length(chG) == prod(shp)
