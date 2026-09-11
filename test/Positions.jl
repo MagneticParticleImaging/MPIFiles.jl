@@ -354,6 +354,19 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     dict = toDict(tDesign)
     tDesign2 = SphericalTDesign(dict)
     @test collect(tDesign) == collect(tDesign2)
+
+    # test loadTDesign with different inputs
+    tDesign = loadTDesign(t,N,42*u"mm",[0.0,0.0,0.0].*u"m") # different units and different number types
+    @test tDesign.radius == 0.042*u"m" # this should result after type promotion
+    @test_logs (:warn, r"Unit of the radius (mm) used for the center") 
+        tDesign = loadTDesign(t,N,42*u"mm",[0.0,0.0,0.0]) # only one with unit
+    @test tDesign.center == [0.0,0.0,0.0]*u"mm" # unit of radius used for center
+    @test_logs (:warn, r"Unit of the center (m) used for the radius") 
+        tDesign = loadTDesign(t,N,42,[0.0,0.0,0.0].*u"m") # only one with unit
+    @test tDesign.radius == 42.0*u"m" # unit of center used for radius
+    tDesign = loadTDesign(t,N,0.042,[0,0,0]) # no units
+    @test tDesign.center == [0.0,0.0,0.0] # change center to Float
+    @test_throws ArgumentError loadTDesign(t,N,42*u"m",[0.0,0.0,0.0].*u"s") # different units not allowed
   end
 
   @test length(caG) == prod(shp)

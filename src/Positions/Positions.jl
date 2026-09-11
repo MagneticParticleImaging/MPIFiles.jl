@@ -676,7 +676,7 @@ spacing(grid::GridPositions) = grid.fov ./ grid.shape
 #############################################
 
 ## TDesign as abstract type
-abstract type TDesign{T, D, N, EL} <: Positions{T, D} end
+abstract type TDesign{T, D, N} <: Positions{T, D} end
 
 function TDesign(params::PosFromFileOrDict)
   T = getDictOrH5Value(params, "T")
@@ -700,7 +700,7 @@ function write(params::PosFromFileOrDict, positions::TDesign{T}) where T
 end
 
 ## Spherical t-design
-struct SphericalTDesign{T, D, N, EL} <: TDesign{T, D, N, EL}
+struct SphericalTDesign{T, D, N, EL} <: TDesign{T, D, N} # T: type of radius/center; D x N: dimensions of positions (3 x number of positions)
   T::UInt64
   radius::T
   positions::SMatrix{D, N, EL}
@@ -726,7 +726,33 @@ const DEFAULT_TDESIGNS = @path joinpath(@__DIR__, "TDesigns.hd5")
 *Output:*
 - t-design of type SphericalTDesign in Cartesian coordinates containing t, radius, center and positions (which are located on the unit sphere unless `getindex(tdes,i)` is used)
 """
-function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=zeros(S, 3), filename = DEFAULT_TDESIGNS) where {S<:Unitful.Length}
+function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{T}=zeros(S, 3), filename = DEFAULT_TDESIGNS) where {S, T}
+
+  ## Promote radius and center to a common type
+  rdim = dimension(radius)
+  cdim = dimension(eltype(center))
+
+  # Test whether one variable has a unit (and use it for the other) or if units are not compatible
+  if rdim == Unitful.NoDims && cdim != Unitful.NoDims
+    # radius unitless, center unitful -> interpret radius in center's unit
+    radius = radius * unit(eltype(center))
+    @warn "Unit of the center ($(unit(eltype(center)))) is used for the radius."
+  elseif cdim == Unitful.NoDims && rdim != Unitful.NoDims
+    # center unitless, radius unitful -> interpret center in radius's unit
+    center = center .* unit(radius)
+    @warn "Unit of the radius ($(unit(eltype(radius)))) is used for the center."
+  elseif rdim != cdim
+    # Units not compatible
+    throw(ArgumentError("Types of radius and center are not compatible."))
+  end
+
+  # Promote to a common concrete type (includes a uconvert)
+  Tc = promote_type(typeof(radius), eltype(center))
+  isconcretetype(Tc) || throw(ArgumentError("Can't promote radius and center to a concrete data type. This is most likely caused by a mismatch in units"))
+  radius = Tc(radius)
+  center = Tc.(center)
+
+  ## load t-design
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
@@ -746,7 +772,7 @@ function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=zeros(S,
       ts = Int[]
       for d in keys(read(h5file))
         m = match(r"(\d{1,})-(Design)",d)
-        if m != nothing
+        if m !== nothing
           push!(ts,parse(Int,m[1]))
         end
       end
@@ -843,7 +869,7 @@ function Base.:(==)(val1::Positions, val2::Positions)
 end
 
 # fuction related to looping
-length(tdes::TDesign) = size(tdes.positions,2)
+length(tdes::TDesign{T, D, N}) where {T, D, N} = N
 length(apos::ArbitraryPositions) = size(apos.positions,2)
 length(grid::GridPositions) = prod(grid.shape)
 length(rpos::UniformRandomPositions) = rpos.N
