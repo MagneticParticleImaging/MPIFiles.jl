@@ -1,6 +1,6 @@
 export Positions, GridPositions, NestedPositions, RegularGridPositions, ChebyshevGridPositions,
        MeanderingGridPositions, UniformRandomPositions, ArbitraryPositions, SortedPositions,
-       SphericalTDesign, BreakpointPositions, BreakpointGridPositions
+       TDesign, SphericalTDesign, BreakpointPositions, BreakpointGridPositions
 export SpatialDomain, AxisAlignedBox, Ball
 export loadTDesign, getPermutation
 export fieldOfView, fieldOfViewCenter, shape
@@ -43,8 +43,8 @@ function Positions(params::PosFromFileOrDict)
     positions = ChebyshevGridPositions(params)
   elseif type == "BreakpointPositions"
     positions = BreakpointPositions(params)
-  elseif type == "SphericalTDesign"
-    positions = SphericalTDesign(params)
+  elseif occursin("TDesign", type) # includes subtypes of TDesign
+    positions = TDesign(params)
   elseif type == "UniformRandomPositions"
     positions = UniformRandomPositions(params)
   elseif type == "ArbitraryPositions"
@@ -670,14 +670,15 @@ fieldOfViewCenter(bgrid::BreakpointPositions) = fieldOfViewCenter(bgrid.grid)
 
 spacing(grid::GridPositions) = grid.fov ./ grid.shape
 
-struct SphericalTDesign{T, D, N, EL} <: Positions{T, D}
-  T::UInt64
-  radius::T
-  positions::SMatrix{D, N, EL}
-  center::SVector{D, T}
-end
 
-function SphericalTDesign(params::PosFromFileOrDict)
+#############################################
+## t-designs including spherical t-designs ##
+#############################################
+
+## TDesign as abstract type
+abstract type TDesign{T, D, N} <: Positions{T, D} end
+
+function TDesign(params::PosFromFileOrDict)
   T = getDictOrH5Value(params, "T")
   N = getDictOrH5Value(params, "N")
   unit = getPositionUnit(params)
@@ -686,17 +687,27 @@ function SphericalTDesign(params::PosFromFileOrDict)
   return loadTDesign(T, N, radius, center)
 end
 
-function write(params::PosFromFileOrDict, positions::SphericalTDesign{T}) where T
-  params["type"] = "SphericalTDesign"
+function write(params::PosFromFileOrDict, positions::TDesign{T}) where T
+  params["type"] = string(typeof(positions).name.wrapper) # use subtypes as type name
   params["T"] = positions.T
   params["N"] = size(positions.positions,2)
-  params["radius"] = ustrip.(positions.radius)
+  params["radius"] = ustrip.(collect(positions.radius))
   params["center"] = ustrip.(Array(positions.center))
   if !isnothing(unit(T))
     params["unit"] = string(unit(T))
   end
   return params
 end
+
+## Spherical t-design
+struct SphericalTDesign{T, D, N, EL} <: TDesign{T, D, N} # T: type of radius/center; D x N: dimensions of positions (3 x number of positions)
+  T::UInt64
+  radius::T
+  positions::SMatrix{D, N, EL}
+  center::SVector{D, T}
+end
+
+SphericalTDesign(params::PosFromFileOrDict) = TDesign(params) # SphericalTDesign is the only subtype of TDesign
 
 getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] + tdes.center
 
@@ -715,7 +726,33 @@ const DEFAULT_TDESIGNS = @path joinpath(@__DIR__, "TDesigns.hd5")
 *Output:*
 - t-design of type SphericalTDesign in Cartesian coordinates containing t, radius, center and positions (which are located on the unit sphere unless `getindex(tdes,i)` is used)
 """
-function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=[0.0,0.0,0.0]Unitful.mm, filename = DEFAULT_TDESIGNS) where {S<:Unitful.Length}
+function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{T}=zeros(S, 3), filename = DEFAULT_TDESIGNS) where {S, T}
+
+  ## Promote radius and center to a common type
+  rdim = dimension(radius)
+  cdim = dimension(eltype(center))
+
+  # Test whether one variable has a unit (and use it for the other) or if units are not compatible
+  if rdim == Unitful.NoDims && cdim != Unitful.NoDims
+    # radius unitless, center unitful -> interpret radius in center's unit
+    radius = radius * unit(eltype(center))
+    @warn "Unit of the center ($(unit(eltype(center)))) is used for the radius."
+  elseif cdim == Unitful.NoDims && rdim != Unitful.NoDims
+    # center unitless, radius unitful -> interpret center in radius's unit
+    center = center .* unit(radius)
+    @warn "Unit of the radius ($(unit(eltype(radius)))) is used for the center."
+  elseif rdim != cdim
+    # Units not compatible
+    throw(ArgumentError("Types of radius and center are not compatible."))
+  end
+
+  # Promote to a common concrete type (includes a uconvert)
+  Tc = promote_type(typeof(radius), eltype(center))
+  isconcretetype(Tc) || throw(ArgumentError("Can't promote radius and center to a concrete data type. This is most likely caused by a mismatch in units"))
+  radius = Tc(radius)
+  center = Tc.(center)
+
+  ## load t-design
   h5file = h5open(filename, "r")
   address = "/$t-Design/$N"
 
@@ -726,7 +763,7 @@ function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=[0.0,0.0
     if haskey(h5file, "/$t-Design/")
       Ns = Int[]
       for N in keys(read(h5file, string("/$t-Design")))
-	push!(Ns,parse(Int,N))
+	      push!(Ns,parse(Int,N))
       end
       sort!(Ns)
       @info "No spherical $t-Design with $N points available!\nThere are spherical $t-Designs with following N:" Ns
@@ -734,9 +771,9 @@ function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{S}=[0.0,0.0
     else
       ts = Int[]
       for d in keys(read(h5file))
-	m = match(r"(\d{1,})-(Design)",d)
-	if m != nothing
-	  push!(ts,parse(Int,m[1]))
+        m = match(r"(\d{1,})-(Design)",d)
+        if m !== nothing
+          push!(ts,parse(Int,m[1]))
         end
       end
       sort!(ts)
@@ -832,7 +869,7 @@ function Base.:(==)(val1::Positions, val2::Positions)
 end
 
 # fuction related to looping
-length(tdes::SphericalTDesign) = size(tdes.positions,2)
+length(tdes::TDesign{T, D, N}) where {T, D, N} = N
 length(apos::ArbitraryPositions) = size(apos.positions,2)
 length(grid::GridPositions) = prod(grid.shape)
 length(rpos::UniformRandomPositions) = rpos.N

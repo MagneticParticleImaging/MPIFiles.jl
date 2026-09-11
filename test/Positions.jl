@@ -324,33 +324,50 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   #TODO conversion methods dont work. Why?
   #rG = UniformRandomPositions(15,fov,ctr)
 
-  # the following 2 tests fail but should work
-  @test_throws DomainError loadTDesign(8,1)
-  @test_throws DomainError loadTDesign(10,1)
-  t = 1
-  N = 2
-  radius = 5.0Unitful.mm
-  tDesign = loadTDesign(t,N, radius)
-  @test length(tDesign) == N
-  @test length(collect(tDesign)) == length(tDesign)
-  @test tDesign.T == t
-  @test tDesign.radius == radius
-  @test any(tDesign.positions .== [1 -1; 0 0; 0 0])
-  @test tDesign[1] == [5,0,0]Unitful.mm
-  @test tDesign[2] == [-5,0,0]Unitful.mm
-  h5open(pospath, "w") do file
-    write(file, tDesign)
+  @testset "Testing t-designs" begin
+    # test errors
+    @test_throws DomainError loadTDesign(8,1) # spherical 8-design with 1 position does not exist
+    @test_throws DomainError loadTDesign(10,1) # spherical 10-design with 1 position does not exist
+    @test_throws DomainError loadTDesign(18,1) # for t > 17 only designs for odd t are available
+
+    t = 1
+    N = 2
+    radius = 0.042Unitful.m
+    tDesign = loadTDesign(t, N, radius)
+    @test length(tDesign) == N
+    @test length(collect(tDesign)) == length(tDesign)
+    @test tDesign.T == t
+    @test tDesign.radius == radius
+    @test any(tDesign.positions .== [1 -1; 0 0; 0 0])
+    @test tDesign[1] == [42,0,0]Unitful.mm
+    @test tDesign[2] == [-42,0,0]Unitful.mm
+    h5open(pospath, "w") do file
+      write(file, tDesign)
+    end
+    h5open(pospath, "r") do file
+      tDesign1 = Positions(file)
+      @test typeof(tDesign1) <: SphericalTDesign
+      @test tDesign1.radius == tDesign.radius
+      @test tDesign1.center == tDesign.center
+      @test tDesign1.positions == tDesign.positions
+    end
+    dict = toDict(tDesign)
+    tDesign2 = SphericalTDesign(dict)
+    @test collect(tDesign) == collect(tDesign2)
+
+    # test loadTDesign with different inputs
+    tDesign = loadTDesign(t,N,42*u"mm",[0.0,0.0,0.0].*u"m") # different units and different number types
+    @test tDesign.radius == 0.042*u"m" # this should result after type promotion
+    @test_logs (:warn, r"Unit of the radius (mm) used for the center") 
+        tDesign = loadTDesign(t,N,42*u"mm",[0.0,0.0,0.0]) # only one with unit
+    @test tDesign.center == [0.0,0.0,0.0]*u"mm" # unit of radius used for center
+    @test_logs (:warn, r"Unit of the center (m) used for the radius") 
+        tDesign = loadTDesign(t,N,42,[0.0,0.0,0.0].*u"m") # only one with unit
+    @test tDesign.radius == 42.0*u"m" # unit of center used for radius
+    tDesign = loadTDesign(t,N,0.042,[0,0,0]) # no units
+    @test tDesign.center == [0.0,0.0,0.0] # change center to Float
+    @test_throws ArgumentError loadTDesign(t,N,42*u"m",[0.0,0.0,0.0].*u"s") # different units not allowed
   end
-  h5open(pospath, "r") do file
-    tDesign1 = Positions(file)
-    @test typeof(tDesign1) <: SphericalTDesign
-    @test tDesign1.radius == tDesign.radius
-    @test tDesign1.center == tDesign.center
-    @test tDesign1.positions == tDesign.positions
-  end
-  dict = toDict(tDesign)
-  tDesign2 = Positions(dict)
-  @test collect(tDesign) == collect(tDesign2)
 
   @test length(caG) == prod(shp)
   @test length(chG) == prod(shp)
@@ -362,13 +379,13 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   end
 
   @testset "Tubular regular grid positions" begin
-    grid = TubularRegularGridPositions([81, 81, 1], [40.0, 40.0 ,0.0]u"mm", [0.0, 0.0, 0.0]u"mm", 3, 1)
+    grid = TubularRegularGridPositions([81, 81, 1], [40.0, 40.0 ,0.0]u"mm", [0.0, 0.0, 0.0]u"m", 3, 1)
 
     params = Dict{String, Any}()
     params["type"] = "TubularRegularGridPositions"
     params["shape"] = [81, 81, 1]
     params["fov"] = [40, 40 ,0]u"mm"
-    params["center"] = [0, 0, 0]u"mm"
+    params["center"] = [0, 0, 0]u"m"
     params["mainAxis"] = 3
     params["radiusAxis"] = 1
     gridByParams = TubularRegularGridPositions(params)
@@ -381,9 +398,9 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     paramsFromGrid = toDict(grid)
     @test params["type"] == paramsFromGrid["type"] 
     @test all(params["shape"] .== paramsFromGrid["shape"])
-    @test all(ustrip.(params["fov"]) .≈ paramsFromGrid["fov"])
+    @test all(ustrip.(uconvert.(u"m", params["fov"])) .≈ paramsFromGrid["fov"])
     @test all(ustrip.(params["center"]) .≈ paramsFromGrid["center"])
-    @test paramsFromGrid["unit"] == string("mm")
+    @test paramsFromGrid["unit"] == string("m")
     @test params["mainAxis"] == paramsFromGrid["mainAxis"]
     @test params["radiusAxis"] == paramsFromGrid["radiusAxis"]
     
@@ -432,7 +449,7 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     params = Dict{String, Any}()
     params["shape"] = [3, 3, 3]
     params["fov"] = [3.0u"mm", 3.0u"mm", 3.0u"mm"]
-    params["center"] = [0.0u"mm", 0.0u"mm", 0.0u"mm"]
+    params["center"] = [0.0u"m", 0.0u"m", 0.0u"m"]
 
     positions = RegularGridPositions(params)
     @test eltype(positions[1]) <: Unitful.Length
