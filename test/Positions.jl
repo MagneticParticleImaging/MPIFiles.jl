@@ -327,8 +327,10 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
   @testset "Testing t-designs" begin
     # test errors
     @test_throws DomainError loadTDesign(8,1) # spherical 8-design with 1 position does not exist
-    @test_throws DomainError loadTDesign(10,1) # spherical 10-design with 1 position does not exist
+    @test_throws DomainError loadTDesign(-10,1) # t-designs for negative t do not exist
     @test_throws DomainError loadTDesign(18,1) # for t > 17 only designs for odd t are available
+    @test_throws MethodError loadTDesign(1,2,42*u"m",[0.0,0.0,0.0].*u"s") # different units not allowed
+    @test_throws ArgumentError MPIFiles.promoteType(42*u"m",[0.0,0.0,0.0].*u"s") # different units not allowed
 
     t = 1
     N = 2
@@ -366,7 +368,6 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     @test tDesign.radius == 42.0*u"m" # unit of center used for radius
     tDesign = loadTDesign(t,N,0.042,[0,0,0]) # no units
     @test tDesign.center == [0.0,0.0,0.0] # change center to Float
-    @test_throws ArgumentError loadTDesign(t,N,42*u"m",[0.0,0.0,0.0].*u"s") # different units not allowed
   end
 
   @test length(caG) == prod(shp)

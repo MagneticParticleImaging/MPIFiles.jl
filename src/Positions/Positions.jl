@@ -713,44 +713,23 @@ getindex(tdes::SphericalTDesign, i::Integer) = tdes.radius.*tdes.positions[:,i] 
 
 const DEFAULT_TDESIGNS = @path joinpath(@__DIR__, "TDesigns.hd5")
 """
-    loadTDesign(t::Int64, N::Int64, radius::S=10Unitful.mm, center::Vector{V}=[0.0,0.0,0.0]Unitful.mm, filename::String=joinpath(@__DIR__, "TDesigns.hd5")) where {S,V<:Unitful.Length}
-*Description:* Returns the t-design array for chosen degree t and number of points N\\
+    loadTDesign(t::Integer, N::Integer, radius::S=10.00Unitful.mm, center::Vector{T}=zeros(S, 3), filename = DEFAULT_TDESIGNS) where {S <: Union{Unitful.Length, Real}, T <: Union{Unitful.Length, Real}}
+*Description:* Returns the spherical t-design array for chosen degree t and number of points N\\
 \\
 *Input:*
 - `t` - degree
 - `N` - number of points
 - `radius` - radius of the sphere (default: 10.0mm)
 - `center` - center of the sphere (default: [0.0,0.0,0.0]mm)
-- `filename` - name of the file containing the t-designs (default loads TDesign.hd5)
+- `filename` - name of the file containing the t-designs (default loads "TDesign.hd5")
 
 *Output:*
-- t-design of type SphericalTDesign in Cartesian coordinates containing t, radius, center and positions (which are located on the unit sphere unless `getindex(tdes,i)` is used)
+- Spherical t-design of type SphericalTDesign in Cartesian coordinates containing t, radius, center and positions (which are located on the unit sphere unless `getindex(tdes,i)` is used).
 """
-function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{T}=zeros(S, 3), filename = DEFAULT_TDESIGNS) where {S, T}
+function loadTDesign(t::Integer, N::Integer, radius::S=10.00Unitful.mm, center::Vector{T}=zeros(S, 3), filename = DEFAULT_TDESIGNS) where {S <: Union{Unitful.Length, Real}, T <: Union{Unitful.Length, Real}}
 
-  ## Promote radius and center to a common type
-  rdim = dimension(radius)
-  cdim = dimension(eltype(center))
-
-  # Test whether one variable has a unit (and use it for the other) or if units are not compatible
-  if rdim == Unitful.NoDims && cdim != Unitful.NoDims
-    # radius unitless, center unitful -> interpret radius in center's unit
-    radius = radius * unit(eltype(center))
-    @warn "Unit of the center ($(unit(eltype(center)))) is used for the radius."
-  elseif cdim == Unitful.NoDims && rdim != Unitful.NoDims
-    # center unitless, radius unitful -> interpret center in radius's unit
-    center = center .* unit(radius)
-    @warn "Unit of the radius ($(unit(eltype(radius)))) is used for the center."
-  elseif rdim != cdim
-    # Units not compatible
-    throw(ArgumentError("Types of radius and center are not compatible."))
-  end
-
-  # Promote to a common concrete type (includes a uconvert)
-  Tc = promote_type(typeof(radius), eltype(center))
-  isconcretetype(Tc) || throw(ArgumentError("Can't promote radius and center to a concrete data type. This is most likely caused by a mismatch in units"))
-  radius = Tc(radius)
-  center = Tc.(center)
+  # Promote radius and center to a common type
+  radius, center = promoteType(radius, center)
 
   ## load t-design
   h5file = h5open(filename, "r")
@@ -781,6 +760,35 @@ function loadTDesign(t, N, radius::S=10.00Unitful.mm, center::Vector{T}=zeros(S,
       throw(DomainError(1))
     end
   end
+end
+
+## Promote radius and center to a common type
+function promoteType(radius, center)
+
+  rdim = dimension(eltype(radius))
+  cdim = dimension(eltype(center))
+
+  # Test whether one variable has a unit (and use it for the other) or if units are not compatible
+  if rdim == Unitful.NoDims && cdim != Unitful.NoDims
+    # radius unitless, center unitful -> interpret radius in center's unit
+    radius = radius .* unit(eltype(center))
+    @warn "Unit of the center ($(unit(eltype(center)))) is used for the radius."
+  elseif cdim == Unitful.NoDims && rdim != Unitful.NoDims
+    # center unitless, radius unitful -> interpret center in radius's unit
+    center = center .* unit(eltype(radius))
+    @warn "Unit of the radius ($(unit(eltype(radius)))) is used for the center."
+  elseif rdim != cdim # fallback
+    # Units not compatible
+    throw(ArgumentError("Types of radius and center are not compatible."))
+  end
+
+  # Promote to a common concrete type (includes a uconvert)
+  Tc = promote_type(eltype(radius), eltype(center))
+  isconcretetype(Tc) || throw(ArgumentError("Can't promote radius and center to a concrete data type. This is most likely caused by a mismatch in units"))
+  radius = Tc.(radius)
+  center = Tc.(center)
+
+  return radius, center
 end
 
 # Unstructured collection of positions
