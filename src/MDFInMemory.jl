@@ -1,10 +1,10 @@
 using Unitful
 
-export MDFv2InMemoryPart, MDFv2Variables, MDFv2InMemoryPart, MDFv2Root, MDFv2Study,
+export MDFv2InMemoryPart, MDFv2Variables, MDFv2InMemoryPart, MDFv2Root, MDFv2Project, MDFv2Study,
        MDFv2Experiment, MDFv2Tracer, MDFv2Scanner, MDFv2Drivefield, MDFv2Receiver,
        MDFv2Acquisition, MDFv2Measurement, MDFv2Calibration, MDFv2Reconstruction, MDFv2InMemory
 
-export defaultMDFv2Root, defaultMDFv2Study, defaultMDFv2Experiment,
+export defaultMDFv2Root, defaultMDFv2Project, defaultMDFv2Study, defaultMDFv2Experiment,
        defaultMDFv2Tracer, defaultMDFv2Scanner, defaultMDFv2Drivefield,
        defaultMDFv2Receiver, defaultMDFv2Acquisition, defaultMDFv2Measurement,
        defaultMDFv2Calibration, defaultMDFv2Reconstruction, defaultMDFv2InMemory
@@ -121,6 +121,38 @@ mutable struct MDFv2Study <: MDFv2InMemoryPart
 end
 
 defaultMDFv2Study() = MDFv2Study(time=Dates.now(), uuid=UUIDs.uuid4())
+
+"""
+    $(TYPEDEF)
+
+Project group of an in-memory MDF
+"""
+mutable struct MDFv2Project <: MDFv2InMemoryPart
+  "Short description of the study"
+  description::Union{String, Missing}
+  "Name of the study"
+  name::Union{String, Missing}
+  "UTC creation time of study; optional"
+  time::Union{DateTime, Nothing}
+  "Universally Unique Identifier (RFC 4122) of study"
+  uuid::Union{UUID, Missing}
+
+  function MDFv2Project(;
+    description = missing,
+    name = missing,
+    time = nothing,
+    uuid = missing)
+    
+    return new(
+      description,
+      name,
+      time,
+      uuid
+    )
+  end
+end
+
+defaultMDFv2Project() = MDFv2Project(time=Dates.now(), uuid=UUIDs.uuid7())
 
 """
     $(TYPEDEF)
@@ -564,6 +596,7 @@ In-memory description of an MDF file.
 """
 mutable struct MDFv2InMemory <: MPIFile # TODO: Not sure, if MPIFile is a good fit
   root::Union{MDFv2Root, Missing}
+  project::Union{MDFv2Project, Missing}
   study::Union{MDFv2Study, Missing}
   experiment::Union{MDFv2Experiment, Missing}
   tracer::Union{MDFv2Tracer, Nothing}
@@ -577,6 +610,7 @@ mutable struct MDFv2InMemory <: MPIFile # TODO: Not sure, if MPIFile is a good f
 
   function MDFv2InMemory(;
     root = missing,
+    project = missing,
     study = missing,
     experiment = missing,
     tracer = nothing,
@@ -590,6 +624,7 @@ mutable struct MDFv2InMemory <: MPIFile # TODO: Not sure, if MPIFile is a good f
 
     return new(
       root,
+      project,
       study,
       experiment,
       tracer,
@@ -610,6 +645,7 @@ MDFv2InMemory(dict::Dict) = inMemoryMDFFromDict(dict)
 function defaultMDFv2InMemory()
   return MDFv2InMemory(
     root = defaultMDFv2Root(),
+    project = defaultMDFv2Project(),
     study = defaultMDFv2Study(),
     experiment = defaultMDFv2Experiment(),
     scanner = defaultMDFv2Scanner(),
@@ -619,6 +655,10 @@ end
 
 function check(part::MDFv2Root, variables::MDFv2Variables)
   @assert part.version >= VersionNumber("2") "The version should be at least version 2."
+end
+
+function check(part::MDFv2Project, variables::MDFv2Variables)
+  # nothing to check yet
 end
 
 function check(part::MDFv2Study, variables::MDFv2Variables)
@@ -1004,6 +1044,7 @@ aliases = Dict{Symbol, Symbol}(
 
 prefixes = Dict{String, String}(
   "MDFv2Root" => "",
+  "MDFv2Project" => "project",
   "MDFv2Study" => "study",
   "MDFv2Experiment" => "experiment",
   "MDFv2Tracer" => "tracer",

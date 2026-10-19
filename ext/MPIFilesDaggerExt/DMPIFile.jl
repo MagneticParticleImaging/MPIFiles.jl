@@ -16,6 +16,8 @@ MPIFiles.worker(dmdf::DaggerMPIFile) = dmdf.worker
 field_symbols = [
 # general
 :version, :uuid,
+# project parameters
+:projectName, :projectUuid, :projectDescription, :projectTime,
 # study parameters
 :studyName, :studyNumber, :studyUuid, :studyDescription, :studyTime,
 # experiment parameters

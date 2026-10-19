@@ -91,6 +91,28 @@ uuid(f::MDFFile)::Union{UUID, Missing} = @keyrequired UUID(f["/uuid"])
 time(f::MDFFileV1)::Union{DateTime, Missing} = @keyrequired DateTime( f["/date"] )
 time(f::MDFFileV2)::Union{DateTime, Missing} = @keyrequired DateTime( f["/time"] )
 
+# project parameters
+projectName(f::MDFFile) = @keyoptional f["/project/name"]
+projectUuid(f::MDFFileV1) = nothing
+function projectUuid(f::MDFFileV2) 
+  id = @keyoptional f["/project/uuid"]
+  if typeof(id) == String
+    return UUID(id)
+  else
+    return nothing
+  end
+end
+projectDescription(f::MDFFileV1) = "n.a."
+projectDescription(f::MDFFileV2) = @keyoptional f["/project/description"]
+function projectTime(f::MDFFile)
+  t = @keyoptional f["/project/time"]
+  if typeof(t) == String
+   return DateTime(t)
+  else
+   return nothing
+  end
+end
+
 # study parameters
 studyName(f::MDFFile)::Union{String, Missing} = @keyrequired f["/study/name"]
 studyNumber(f::MDFFileV1)::Union{Int, Missing} = 0

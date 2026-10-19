@@ -178,6 +178,13 @@ version(b::BrukerFile) = nothing
 uuid(b::BrukerFile) = nothing
 time(b::BrukerFile) = nothing
 
+# projectParameters
+projectName(b::BrukerFile) = nothing
+projectUuid(b::BrukerFile) = nothing
+projectDescription(b::BrukerFile) = nothing
+projectTime(b::BrukerFile) = nothing
+
+
 # study parameters
 studyName(b::BrukerFile) = latin1toutf8(b["VisuStudyId"])
 # old study name

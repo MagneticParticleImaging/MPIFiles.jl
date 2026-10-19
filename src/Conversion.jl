@@ -26,8 +26,9 @@ function loadDataset(f::MPIFile; experimentNumber=missing, kargs...)
   return params
 end
 
-const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, :studyName,
-          :studyNumber, :studyUuid, :studyTime, :studyDescription,
+const defaultParams =[:version, :uuid, :time, :dfStrength, :acqGradient, 
+          :projectName, :projectUuid, :projectTime, :projectDescription,
+          :studyName, :studyNumber, :studyUuid, :studyTime, :studyDescription,
           :experimentName, :experimentNumber, :experimentUuid, :experimentDescription,
           :experimentSubject,
           :experimentIsSimulation, :experimentIsCalibration,
@@ -852,6 +853,20 @@ function saveasMDF(file::HDF5.File, params::Dict{Symbol,Any})
   write(file, "/version", "2.0.1")
   write(file, "/uuid", string(get(params,:uuid,uuid4() )))
   write(file, "/time", "$( get(params,:time, Dates.unix2datetime(time())) )")
+
+  # study parameters
+  if hasKeyAndValue(params, :projectName)
+    write(file, "/_project/name", params[:projectName] )
+  end
+  if hasKeyAndValue(params,:projectUuid)
+    write(file, "/_project/uuid", string(params[:projectUuid]))
+  end
+  if hasKeyAndValue(params, :projectDescription)
+    write(file, "/_project/description", params[:projectDescription])
+  end
+  if hasKeyAndValue(params,:projectTime)
+    write(file, "/_project/time", string(params[:projectTime]))
+  end
 
   # study parameters
   write(file, "/study/name", get(params,:studyName,"default") )
