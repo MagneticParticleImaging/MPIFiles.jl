@@ -226,6 +226,13 @@ end
     @test rxUnit(mdf) == "V"
   end
 
+  @testset "Self-creation" begin
+    mdf = defaultMDFv2InMemory()
+    mdf_self = MDFv2InMemory(mdf)
+
+    @test typeof(mdf_self) == MDFv2InMemory
+  end
+
   @testset "Dict" begin
     @testset "String keys" begin
       dict = Dict{String, Any}()
