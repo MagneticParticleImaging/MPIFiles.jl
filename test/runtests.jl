@@ -104,11 +104,12 @@ mkpath(joinpath(tmpdir, "getMeas"))
 mkpath(joinpath(tmpdir,"positions"))
 mkpath(joinpath(tmpdir,"transferFunction"))
 mkpath(joinpath(tmpdir,"conversion"))
+mkpath(joinpath(tmpdir,"mdf_project"))
 
 @testset "Aqua" begin
   Aqua.test_all(MPIFiles)
 end
-
+@testset "MPIFiles" begin
 include("General.jl")
 include("Conversion.jl")
 include("Cartesian.jl")
@@ -126,5 +127,7 @@ include("FrequencyFilter.jl")
 include("MagneticFieldMeasurement.jl")
 include("DatasetStore.jl")
 include("Measurements.jl")
+include("Project.jl")
+end
 
 @info "The unit tests are done!"

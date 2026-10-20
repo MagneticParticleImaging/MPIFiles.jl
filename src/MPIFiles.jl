@@ -50,6 +50,9 @@ export MPIFile
 # general parameters
 export version, uuid
 
+# project parameters
+export projectName, projectUuid, projectDescription, projectTime
+
 # study parameters
 export studyName, studyNumber, studyUuid, studyDescription, studyTime
 
@@ -110,6 +113,12 @@ abstract type MPIFile end
 @mustimplement version(f::MPIFile)
 @mustimplement uuid(f::MPIFile)
 @mustimplement time(f::MPIFile)
+
+# project parameters
+@mustimplement projectName(f::MPIFile)
+@mustimplement projectUuid(f::MPIFile)
+@mustimplement projectDescription(f::MPIFile)
+@mustimplement projectTime(f::MPIFile)
 
 # study parameters
 @mustimplement studyName(f::MPIFile)
