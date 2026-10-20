@@ -109,7 +109,7 @@ mkpath(joinpath(tmpdir,"mdf_project"))
 @testset "Aqua" begin
   Aqua.test_all(MPIFiles)
 end
-
+@testset "MPIFiles" begin
 include("General.jl")
 include("Conversion.jl")
 include("Cartesian.jl")
@@ -128,5 +128,6 @@ include("MagneticFieldMeasurement.jl")
 include("DatasetStore.jl")
 include("Measurements.jl")
 include("Project.jl")
+end
 
 @info "The unit tests are done!"

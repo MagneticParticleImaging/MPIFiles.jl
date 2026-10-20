@@ -989,7 +989,8 @@ end
 set and if the dimensions of the fields match"
 function checkConsistency(mdf::MDFv2InMemory)
   for (fieldname, fieldtype) in zip(fieldnames(MDFv2InMemory), fieldtypes(MDFv2InMemory))
-    if !(fieldtype == MDFv2Variables || fieldname == :custom)
+    # Compat workaround: Disable project field for consistency checks
+    if !(fieldtype == MDFv2Variables || fieldname == :custom || MDFv2Project <: fieldtype) 
       # At the moment, this should be a Union
       fieldtype = (fieldtype.b <: MDFv2InMemoryPart) ? fieldtype.b : fieldtype.a
 
