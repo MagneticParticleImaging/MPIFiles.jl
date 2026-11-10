@@ -317,9 +317,8 @@ struct MeanderingGridPositions{T, D, G <: GridPositions{T, D}} <: NestedPosition
   grid::G
 end
 parent(grid::MeanderingGridPositions) = grid.grid
-											
 range(grid::MeanderingGridPositions, dim::Int) = range(parent(grid), dim)
-											
+
 function MeanderingGridPositions(params::PosFromFileOrDict)
   pos = Positions(getDictOrH5Value(params, "positions"))
   return MeanderingGridPositions(pos)

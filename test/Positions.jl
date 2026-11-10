@@ -130,6 +130,13 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     mG2 = Positions(dict)
     @test collect(mG) == collect(mG2)
   end
+
+  # range is forwarded to the underlying regular grid
+  mG = MeanderingGridPositions(caG)
+  for ax in 1:ndims(caG)
+    @test range(mG, ax) == range(caG, ax)
+    @test collect(range(mG, ax)) == unique(sort(getindex.(collect(mG), ax)))
+  end
 #BG Test
     bgInd = collect(1:4:37)
     bgPos = [10.0,10.0,10.0]Unitful.mm
