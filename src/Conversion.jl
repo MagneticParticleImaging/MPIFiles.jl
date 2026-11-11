@@ -243,7 +243,8 @@ function calibPostProcessing(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames
     @info "calculate SNR"
     snr = calculateSystemMatrixSNR(f, data, numPeriodAverages=numPeriodAverages, numPeriodGrouping=numPeriodGrouping)
   end
-  setparam!(params, :noiseEstimate, noiseEstimate(f)) # TODO, check if it is worth it to integrate into calculateSystemMatrixSNR to save time
+  # store the noise estimate without transfer function correction, noiseEstimate applies it when reading
+  setparam!(params, :noiseEstimate, noiseEstimate(f, tfCorrection=false)) # TODO, check if it is worth it to integrate into calculateSystemMatrixSNR to save time
   setparam!(params, :calibSNR, snr)
 
   # apply frame selection

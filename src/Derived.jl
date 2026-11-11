@@ -136,18 +136,22 @@ function measDataFD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
 end
 
 function noiseEstimate(f::MPIFile; frequencies=nothing, numPeriodGrouping=1, numPeriodAverages=1,tfCorrection=rxHasTransferFunction(f), kwargs...)
-  if hasfield(typeof(f), :file) && haskey(f.file, "/custom/noiseEstimate") && numPeriodGrouping==1 && numPeriodAverages==1
-    if tfCorrection
-      @warn "When reading the /custom/noiseEstimate no transfer function correction is applied!"
-    end
+  if f isa MDFFileV2 && haskey(f.file, "/custom/noiseEstimate") && numPeriodGrouping==1 && numPeriodAverages==1
+    # The stored estimate is not yet corrected by the transfer function, see calibPostProcessing
     if !isnothing(frequencies)
-      return f["/custom/noiseEstimate"][frequencies]
+      noise = f["/custom/noiseEstimate"][frequencies]
     else
-      return f["/custom/noiseEstimate"]
+      noise = f["/custom/noiseEstimate"]
     end
+    if tfCorrection
+      tf = rxTransferFunction(f)
+      noise = noise ./ abs.(isnothing(frequencies) ? tf : tf[frequencies])
+    end
+    return noise
   else
-    # Efficient shortcut useful for noise whitening during reconstruction
-    if measIsCalibProcessed(f) && numPeriodGrouping==1 && numPeriodAverages==1
+    # Efficient shortcut useful for noise whitening during reconstruction.
+    # It requires direct access to the raw data, which only MDF files provide.
+    if f isa Union{MDFFileV2, MDFv2InMemory} && measIsCalibProcessed(f) && numPeriodGrouping==1 && numPeriodAverages==1
       data_ = measDataRaw(f)
       if !measIsFastFrameAxis(f)
         data_ = permutedims(data_, [4, 1, 2, 3])

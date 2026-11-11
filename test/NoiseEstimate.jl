@@ -55,6 +55,10 @@
     f = MPIFile(fn)
     @test noiseEstimate(f, tfCorrection = false) == stored
     @test noiseEstimate(f, frequencies = freqs, tfCorrection = false) == stored[freqs]
+    # the stored estimate is uncorrected, the transfer function is applied when reading
+    tf = rxTransferFunction(f)
+    @test noiseEstimate(f) ≈ stored ./ abs.(tf)
+    @test noiseEstimate(f, frequencies = freqs) ≈ stored[freqs] ./ abs.(tf[freqs])
     close(f)
   end
 end
