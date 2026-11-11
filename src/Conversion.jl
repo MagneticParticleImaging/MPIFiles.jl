@@ -223,6 +223,9 @@ function calibPostProcessing(f, params=Dict{Symbol,Any}(); frames=1:acqNumFrames
   setparam!(params, :measIsFastFrameAxis, true)
   setparam!(params, :measIsFramePermutation, true)
   setparam!(params, :measFramePermutation, fullFramePermutation(f))
+  # The frames are now sorted along a regular grid, so the grid must no longer be marked as
+  # meandering. The original order can be recovered from measFramePermutation.
+  setparam!(params, :calibIsMeanderingGrid, false)
 
   if numPeriodAverages > 1
     params[:acqNumAverages] *= numPeriodAverages

@@ -139,6 +139,16 @@
     smv3 = MPIFile(fnSMV3)
     @test typeof(smv3) <: MDFFileV2
 
+    # calibration post processing sorts the frames, so the grid is no longer meandering (#163)
+    @test calibIsMeanderingGrid(smBrukerPretendToBeMeas)
+    @test !calibIsMeanderingGrid(smv3)
+    @test calibGrid(smv3) isa RegularGridPositions
+    # the frames of the processed file are already sorted, sorting them again must not change their order
+    freqSorted = collect(vec(CartesianIndices((10, 1))))
+    loadSorted(sortFrames) = getMeasurementsFD(smv3, frequencies=freqSorted, sortFrames=sortFrames,
+                                transposed=true, tfCorrection=false, spectralLeakageCorrection=false)
+    @test loadSorted(true) == loadSorted(false)
+
     # Bruker specific test
     @test rawDataLengthConsistent(smBruker)
 
