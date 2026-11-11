@@ -566,6 +566,18 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
       @test all(isapprox.(ustrip.(collect(cgrid)), collect(mgrid)))
       calibration.method = "robot"
     end
+
+    @testset "calibAxis" begin
+      for meandering in (false, true)
+        calibration.isMeanderingGrid = meandering
+        for ax in 1:3
+          @test calibAxis(mdf, ax) ≈ range(grid, ax)
+          @test unit(first(calibAxis(mdf, ax; attach_units = true))) == u"m"
+        end
+        @test_throws ErrorException calibAxis(mdf, 4)
+      end
+      calibration.isMeanderingGrid = false
+    end
   end
 
   @testset "Multi-Patch" begin
