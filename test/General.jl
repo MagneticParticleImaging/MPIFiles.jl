@@ -184,6 +184,14 @@
       end
       # test if relative deviation for most of the frequency components is below 0.003
       @test quantile(relativeDeviation, 0.95) < 0.003
+
+      # noise estimate works for all file types and matches the Bruker reference
+      nBruker = noiseEstimate(smBruker, tfCorrection=false)
+      n = noiseEstimate(sm, tfCorrection=false)
+      @test size(n) == (817, 3)
+      valid = nBruker .> 0
+      @test quantile(vec(abs.(n[valid] .- nBruker[valid]) ./ nBruker[valid]), 0.95) < 0.003
+      @test noiseEstimate(sm, frequencies=freq, tfCorrection=false) ≈ n[freq]
     end
 
     # Next test checks if the cached system matrix is the same as the one loaded
