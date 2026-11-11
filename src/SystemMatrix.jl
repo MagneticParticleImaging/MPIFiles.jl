@@ -1,14 +1,23 @@
 export getSystemMatrix, getSystemMatrixReshaped, calculateSystemMatrixSNR, calibAxis, calibGrid
 
 """
-  getSystemMatrix(f, [neglectBGFrames]; kargs...) => Array{ComplexF32,4}
+    getSystemMatrix(f::MPIFile, frequencies=nothing; kargs...) -> Array{ComplexF32}
 
-Load the system matrix in frequency domain
+Load the system matrix of the calibration file `f` in frequency domain.
 
-Supported keyword arguments:
-* frequencies
-* bgCorrection
-* loadasreal
+The rows of the returned matrix encode the spatial positions (foreground frames) and the
+columns encode the selected frequency components over all receive channels and patches.
+Since system matrices can be very large, it is recommended to load only the frequencies used
+for the reconstruction. `frequencies` defaults to `filterFrequencies(f)`, see [`filterFrequencies`](@ref).
+
+# Keyword arguments
+- `bgCorrection=false`: subtract the background measurements while loading.
+- `loadasreal=false`: return the matrix as real matrix, which is useful for solvers that cannot
+  handle complex numbers.
+- `tfCorrection=rxHasTransferFunction(f)`: correct the matrix with the transfer function of the
+  file. Ignored if the data is already corrected.
+- `numPeriodAverages=1`: number of consecutive periods that are averaged.
+- `numPeriodGrouping=1`: number of consecutive periods that are concatenated in time domain.
 """
 function getSystemMatrix(f::MPIFile, frequencies=nothing;
                          bgCorrection=false, loadasreal=false,

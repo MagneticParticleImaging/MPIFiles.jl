@@ -560,7 +560,16 @@ defaultMDFv2Reconstruction() = MDFv2Reconstruction(order="xyz")
 """
     $(TYPEDEF)
 
-In-memory description of an MDF file.
+In-memory description of an MDF file. It implements the same interface as file-based
+`MPIFile`s and additionally allows to set each parameter, e.g. `acqNumFrames(mdf, 100)`.
+Missing groups are created automatically when a parameter is set.
+
+# Constructors
+- `MDFv2InMemory(; root, study, experiment, ...)`: empty in-memory MDF, groups can be passed as keywords.
+- `MDFv2InMemory(f::MDFFileV2)`: load the complete content of an MDF file into memory.
+- `MDFv2InMemory(dict::Dict)`: create it from a `Dict` as returned by [`loadDataset`](@ref).
+
+See also [`defaultMDFv2InMemory`](@ref). It can be written to disk with [`saveasMDF`](@ref).
 """
 mutable struct MDFv2InMemory <: MPIFile # TODO: Not sure, if MPIFile is a good fit
   root::Union{MDFv2Root, Missing}
@@ -607,6 +616,13 @@ end
 MDFv2InMemory(mdfFile::MDFFileV2) = inMemoryMDFFromMDFFileV2(mdfFile)
 MDFv2InMemory(dict::Dict) = inMemoryMDFFromDict(dict)
 
+"""
+    defaultMDFv2InMemory() -> MDFv2InMemory
+
+Create an in-memory MDF whose root, study, experiment, scanner and acquisition groups are
+initialized with default values. This is a convenient starting point for writing an MDF
+during data acquisition.
+"""
 function defaultMDFv2InMemory()
   return MDFv2InMemory(
     root = defaultMDFv2Root(),

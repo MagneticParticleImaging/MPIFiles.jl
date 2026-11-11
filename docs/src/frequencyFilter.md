@@ -1,24 +1,18 @@
 # Frequency Filter
 
-A frequency filter can be calculated using the function
-```julia
-function filterFrequencies(f::MPIFile;
-                            SNRThresh = -1,
-                            minFreq = 0,
-                            maxFreq = rxBandwidth(f),
-                            recChannels = 1:rxNumChannels(f),
-                            numUsedFreqs = -1,
-                            stepsize = 1,
-                            maxMixingOrder = -1,
-                            numPeriodAverages = 1,
-                            numPeriodGrouping = 1,
-                            numSidebandFreqs = -1,
-                            stopBands = nothing)
-```
-Usually one will apply an SNR threshold `SNRThresh > 1.5` and a `minFreq` that
-is larger than the excitation frequencies. The frequencies are specified in Hz.
-Also useful is the opportunity to select specific receive channels by specifying
-`recChannels`.
+In MPI reconstruction usually only a subset of the frequency components is used, e.g. the
+components with a sufficiently large signal-to-noise ratio that are not disturbed by the
+excitation. [`filterFrequencies`](@ref) determines such a subset:
 
-The return value of `filterFrequencies` is of type `Vector{CartesianIndex{2}}` and can be directly
-passed to `getMeasurements`, `getMeasurementsFD`, and `getSystemMatrix`.
+```julia
+fSM = MPIFile("systemMatrix.mdf")
+freq = filterFrequencies(fSM, SNRThresh=5, minFreq=80e3, recChannels=1:2)
+```
+
+The SNR threshold requires the SNR estimate of a calibration file, see [`calibSNR`](@ref).
+The returned indices can be directly passed to [`getMeasurementsFD`](@ref) and
+[`getSystemMatrix`](@ref).
+
+```@docs
+filterFrequencies
+```
