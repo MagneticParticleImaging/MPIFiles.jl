@@ -192,6 +192,11 @@
       valid = nBruker .> 0
       @test quantile(vec(abs.(n[valid] .- nBruker[valid]) ./ nBruker[valid]), 0.95) < 0.003
       @test noiseEstimate(sm, frequencies=freq, tfCorrection=false) ≈ n[freq]
+      # with transfer function correction the efficient path for MDF files has to match getMeasurementsFD
+      nBrukerTF = noiseEstimate(smBruker, tfCorrection=true)
+      nTF = noiseEstimate(sm, tfCorrection=true)
+      validTF = isfinite.(nBrukerTF) .& (nBrukerTF .> 0)
+      @test quantile(vec(abs.(nTF[validTF] .- nBrukerTF[validTF]) ./ nBrukerTF[validTF]), 0.95) < 0.003
     end
 
     # Next test checks if the cached system matrix is the same as the one loaded

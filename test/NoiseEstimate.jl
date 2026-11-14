@@ -43,10 +43,23 @@
     @test noiseEstimate(mdf) ≈ expected ./ abs.(tf)
     @test noiseEstimate(mdf, frequencies = freqs) ≈ expected[freqs] ./ abs.(tf[freqs])
     @test noiseEstimate(mdf, tfCorrection = false) ≈ expected
+
+    inductionFactor = [2.0, -0.5]
+    rxInductionFactor(mdf, inductionFactor)
+    factor = abs.(tf) .* abs.(transpose(inductionFactor))
+    @test noiseEstimate(mdf) ≈ expected ./ factor
+    @test noiseEstimate(mdf, frequencies = freqs) ≈ expected[freqs] ./ factor[freqs]
+    @test noiseEstimate(mdf, tfCorrection = false) ≈ expected
+
+    # data that is already corrected is not corrected again
+    measIsTFCorrected(mdf, true)
+    @test noiseEstimate(mdf) ≈ expected
+    measIsTFCorrected(mdf, false)
   end
 
   @testset "Stored noise estimate" begin
     fn = joinpath(tmpdir, "noiseEstimate.mdf")
+    rxInductionFactor(mdf, nothing)
     saveasMDF(fn, mdf)
     stored = Float64[k + 10c for k = 1:K, c = 1:C]
     h5open(fn, "r+") do file

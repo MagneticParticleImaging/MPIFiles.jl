@@ -136,7 +136,7 @@ function measDataFD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
 end
 
 function noiseEstimate(f::MPIFile; frequencies=nothing, numPeriodGrouping=1, numPeriodAverages=1,tfCorrection=rxHasTransferFunction(f), kwargs...)
-  if f isa MDFFileV2 && haskey(f.file, "/custom/noiseEstimate") && numPeriodGrouping==1 && numPeriodAverages==1
+  if f isa MDFFileV2 && haskey(f.file, "/custom/noiseEstimate") && numPeriodGrouping==1 && numPeriodAverages==1 && isnothing(rxInductionFactor(f))
     # The stored estimate is not yet corrected by the transfer function, see calibPostProcessing
     if !isnothing(frequencies)
       noise = f["/custom/noiseEstimate"][frequencies]
@@ -151,7 +151,7 @@ function noiseEstimate(f::MPIFile; frequencies=nothing, numPeriodGrouping=1, num
   else
     # Efficient shortcut useful for noise whitening during reconstruction.
     # It requires direct access to the raw data, which only MDF files provide.
-    if f isa Union{MDFFileV2, MDFv2InMemory} && measIsCalibProcessed(f) && numPeriodGrouping==1 && numPeriodAverages==1
+    if f isa Union{MDFFileV2, MDFv2InMemory} && measIsCalibProcessed(f) && numPeriodGrouping==1 && numPeriodAverages==1 && isnothing(rxInductionFactor(f))
       data_ = measDataRaw(f)
       if !measIsFastFrameAxis(f)
         data_ = permutedims(data_, [4, 1, 2, 3])
@@ -161,13 +161,13 @@ function noiseEstimate(f::MPIFile; frequencies=nothing, numPeriodGrouping=1, num
           frequencies = rowsToSubsampledRows(f, frequencies)
         end
         noise = std(data_[measBGFrameIdx(f), frequencies, :],dims=1)[1,:,]
-        if tfCorrection
+        if tfCorrection && !measIsTFCorrected(f)
           noise = noise ./ abs.(rxTransferFunction(f)[frequencies])
         end
-        return noise 
-      else 
+        return noise
+      else
         noise = std(data_[measBGFrameIdx(f), :, :, :],dims=1)[1,:,:,]
-        if tfCorrection
+        if tfCorrection && !measIsTFCorrected(f)
           noise = noise ./ abs.(rxTransferFunction(f))
         end
         return noise
