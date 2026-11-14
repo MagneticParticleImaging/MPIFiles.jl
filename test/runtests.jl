@@ -126,5 +126,6 @@ include("FrequencyFilter.jl")
 include("MagneticFieldMeasurement.jl")
 include("DatasetStore.jl")
 include("Measurements.jl")
+include("NoiseEstimate.jl")
 
 @info "The unit tests are done!"

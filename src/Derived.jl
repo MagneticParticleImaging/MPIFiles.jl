@@ -2,7 +2,7 @@ export acqNumFGFrames, acqNumBGFrames, acqOffsetFieldShift, acqFramePeriod,
        acqNumPeriods, acqNumPatches, acqNumPeriodsPerPatch, acqFov,
        acqGradientDiag,
        rxNumFrequencies, rxFrequencies, rxTimePoints,
-       measFGFrameIdx, measBGFrameIdx, measBGFrameBlockLengths
+       measFGFrameIdx, measBGFrameIdx, measBGFrameBlockLengths, noiseEstimate
 
 rxNumFrequencies(f::MPIFile, numPeriodGrouping=1) = length(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping))
 
@@ -133,4 +133,50 @@ function measDataFD(f, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame
   end
 
   return dataFD
+end
+
+function noiseEstimate(f::MPIFile; frequencies=nothing, numPeriodGrouping=1, numPeriodAverages=1,tfCorrection=rxHasTransferFunction(f), kwargs...)
+  if f isa MDFFileV2 && haskey(f.file, "/custom/noiseEstimate") && numPeriodGrouping==1 && numPeriodAverages==1 && isnothing(rxInductionFactor(f))
+    # The stored estimate is not yet corrected by the transfer function, see calibPostProcessing
+    if !isnothing(frequencies)
+      noise = f["/custom/noiseEstimate"][frequencies]
+    else
+      noise = f["/custom/noiseEstimate"]
+    end
+    if tfCorrection
+      tf = rxTransferFunction(f)
+      noise = noise ./ abs.(isnothing(frequencies) ? tf : tf[frequencies])
+    end
+    return noise
+  else
+    # Efficient shortcut useful for noise whitening during reconstruction.
+    # It requires direct access to the raw data, which only MDF files provide.
+    if f isa Union{MDFFileV2, MDFv2InMemory} && measIsCalibProcessed(f) && numPeriodGrouping==1 && numPeriodAverages==1 && isnothing(rxInductionFactor(f))
+      data_ = measDataRaw(f)
+      if !measIsFastFrameAxis(f)
+        data_ = permutedims(data_, [4, 1, 2, 3])
+      end
+      if !isnothing(frequencies)
+        if measIsFrequencySelection(f)
+          frequencies = rowsToSubsampledRows(f, frequencies)
+        end
+        noise = std(data_[measBGFrameIdx(f), frequencies, :],dims=1)[1,:,]
+        if tfCorrection && !measIsTFCorrected(f)
+          noise = noise ./ abs.(rxTransferFunction(f)[frequencies])
+        end
+        return noise
+      else
+        noise = std(data_[measBGFrameIdx(f), :, :, :],dims=1)[1,:,:,]
+        if tfCorrection && !measIsTFCorrected(f)
+          noise = noise ./ abs.(rxTransferFunction(f))
+        end
+        return noise
+      end
+    end
+    if isnothing(frequencies)
+      return std(getMeasurementsFD(f, false, frames=measBGFrameIdx(f),bgCorrection = false; numPeriodAverages, numPeriodGrouping, tfCorrection, kwargs...),dims=(3,4))[:,:,1,1]
+    else
+      return std(getMeasurementsFD(f, false, frames=measBGFrameIdx(f),bgCorrection = false; frequencies, numPeriodAverages, numPeriodGrouping, tfCorrection, kwargs...),dims=(2,3))[:,1,1]
+    end
+  end
 end
