@@ -7,6 +7,12 @@ converttometer(x) = ustrip.(uconvert.(u"m",x))
 imcenter(img::AxisArray) = map(x->(0.5*(last(x)+first(x))), ImageAxes.filter_space_axes(AxisArrays.axes(img), axisvalues(img)))
 imcenter(img::ImageMeta) = imcenter(arraydata(img))
 
+"""
+    saveRecoData(filename, image::ImageMeta)
+
+Store the reconstructed `image` as MDF file `filename`. The metadata stored in the properties
+of `image`, e.g. by [`loadRecoData`](@ref), is written to the file as well.
+"""
 function saveRecoData(filename, image::ImageMeta)
   C = colordim(image) == 0 ? 1 : size(image,colordim(image))
   L = timedim(image) == 0 ? 1 : size(image,timedim(image))
@@ -34,6 +40,15 @@ function saveRecoData(filename, image::ImageMeta)
   end
 end
 
+"""
+    loadRecoData(filename::AbstractString) -> ImageMeta
+    loadRecoData(f::Union{MDFFile, BrukerFile}) -> ImageMeta
+
+Load the reconstruction results of an MDF or Bruker file as `ImageMeta` object from the
+[ImageMetadata.jl](https://github.com/JuliaImages/ImageMetadata.jl) package. The image axes
+carry the spatial positions and the properties contain the metadata of the file, so that the
+image can be stored again with [`saveRecoData`](@ref).
+"""
 function loadRecoData(filename::AbstractString)
   f = MPIFile(filename)
   imMeta = loadRecoData(f)

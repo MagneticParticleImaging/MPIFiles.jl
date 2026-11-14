@@ -4,19 +4,45 @@ export acqNumFGFrames, acqNumBGFrames, acqOffsetFieldShift, acqFramePeriod,
        rxNumFrequencies, rxFrequencies, rxTimePoints,
        measFGFrameIdx, measBGFrameIdx, measBGFrameBlockLengths
 
+"""
+    rxNumFrequencies(f::MPIFile, numPeriodGrouping=1) -> Int
+
+Number of frequencies of the real-valued Fourier transform of one drive-field period, or of
+`numPeriodGrouping` concatenated periods.
+"""
 rxNumFrequencies(f::MPIFile, numPeriodGrouping=1) = length(rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping))
 
+"""
+    rxFrequencies(f::MPIFile, numPeriodGrouping=1) -> Vector{Float64}
+
+Frequencies in Hz corresponding to the frequency dimension of [`getMeasurementsFD`](@ref).
+"""
 rxFrequencies(f::MPIFile, numPeriodGrouping=1) = rfftfreq(rxNumSamplingPoints(f)*numPeriodGrouping, 2rxBandwidth(f)) |> collect
 
+"""
+    rxTimePoints(f::MPIFile, numPeriodGrouping=1) -> Vector{Float64}
+
+Sampling time points in s corresponding to the time dimension of [`getMeasurements`](@ref).
+"""
 rxTimePoints(f::MPIFile, numPeriodGrouping=1) = range(0, step=1/2rxBandwidth(f), length=rxNumSamplingPoints(f)*numPeriodGrouping) |> collect
 
 
+"""
+    acqGradientDiag(f::MPIFile) -> Array{Float64,3}
+
+Diagonal entries of [`acqGradient`](@ref), size (3, Y, J).
+"""
 function acqGradientDiag(f::MPIFile)
   g = acqGradient(f)
   g_ = reshape(g,9,size(g,3),size(g,4))
   return g_[[1,5,9],:,:]
 end
 
+"""
+    acqFov(f::MPIFile)
+
+Field of view covered by the drive field in m, derived from [`dfStrength`](@ref) and [`acqGradient`](@ref).
+"""
 function acqFov(f::MPIFile)
   if size(dfStrength(f)[1,:,:],1) == 3
     return  2*dfStrength(f)[1,:,:] ./ abs.( acqGradientDiag(f)[:,1,:] )
@@ -25,21 +51,61 @@ function acqFov(f::MPIFile)
   end
 end
 
+"""
+    acqFramePeriod(f::MPIFile) -> Float64
+
+Duration of one frame in s, i.e. `dfCycle(f) * acqNumAverages(f) * acqNumPeriodsPerFrame(f)`.
+"""
 acqFramePeriod(b::MPIFile) = dfCycle(b) * acqNumAverages(b) * acqNumPeriodsPerFrame(b)
 
 # numPeriods is the total number of DF periods in a measurement.
+"""
+    acqNumPeriods(f::MPIFile) -> Int
+
+Total number of drive-field periods in the measurement, i.e. `acqNumFrames(f) * acqNumPeriodsPerFrame(f)`.
+"""
 acqNumPeriods(f::MPIFile) = acqNumFrames(f)*acqNumPeriodsPerFrame(f)
 
+"""
+    acqOffsetFieldShift(f::MPIFile) -> Array{Float64,3}
+
+Spatial shift in m caused by the offset field, derived from [`acqOffsetField`](@ref) and [`acqGradient`](@ref).
+"""
 function acqOffsetFieldShift(f::MPIFile)
     return -acqOffsetField(f) ./ reshape( acqGradient(f),9,1,:)[[1,5,9],:,:]
 end
 
+"""
+    acqNumFGFrames(f::MPIFile) -> Int
+
+Number of foreground frames, denoted by O.
+"""
 acqNumFGFrames(f::MPIFile) = acqNumFrames(f) - acqNumBGFrames(f)
+"""
+    acqNumBGFrames(f::MPIFile) -> Int
+
+Number of background frames, denoted by E.
+"""
 acqNumBGFrames(f::MPIFile) = sum(measIsBGFrame(f))
 
+"""
+    measBGFrameIdx(f::MPIFile) -> Vector{Int}
+
+Indices of the background frames, see [`measIsBGFrame`](@ref).
+"""
 measBGFrameIdx(f::MPIFile) = findall(measIsBGFrame(f))
+"""
+    measFGFrameIdx(f::MPIFile) -> Vector{Int}
+
+Indices of the foreground frames, see [`measIsBGFrame`](@ref).
+"""
 measFGFrameIdx(f::MPIFile) = findall(.!measIsBGFrame(f))
 
+"""
+    measBGFrameBlockLengths(mask) -> Vector{Int}
+
+Lengths of the consecutive blocks of `true` values in the background frame `mask`.
+"""
 function measBGFrameBlockLengths(mask)
   len = Vector{Int}(undef,0)
 
@@ -57,12 +123,22 @@ function measBGFrameBlockLengths(mask)
 end
 
 
+"""
+    acqNumPatches(f::MPIFile) -> Int
+
+Number of distinct patches, i.e. offset field positions. Not valid for varying gradients.
+"""
 function acqNumPatches(f::MPIFile)
   # not valid for varying gradients / multi gradient
   shifts = acqOffsetFieldShift(f)
   return size(unique(shifts,dims=3),3)
 end
 
+"""
+    acqNumPeriodsPerPatch(f::MPIFile) -> Int
+
+Number of drive-field periods per patch.
+"""
 function acqNumPeriodsPerPatch(f::MPIFile)
   return div(acqNumPeriodsPerFrame(f), acqNumPatches(f))
 end

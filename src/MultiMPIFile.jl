@@ -1,5 +1,20 @@
 export MultiMPIFile
 
+"""
+    MultiMPIFile(filenames::Vector{String})
+    MultiMPIFile(files::Vector{<:MPIFile})
+
+Combine several MPI files into one `MPIFile`. Indexing `f[i]`, `length(f)` and iteration
+give access to the individual files.
+
+For measurement data the frames of all files are treated as periods of a single frame, i.e.
+`acqNumFrames(f) == 1` and `acqNumPeriodsPerFrame(f)` is the number of files times the number of
+frames per file. This allows to combine several single-patch measurements into one multi-patch
+measurement. Patch-dependent parameters such as `acqOffsetField`, `acqGradient`, `dfStrength`
+and `dfPhase` are concatenated, all other parameters are taken from the first file.
+[MPIReco.jl](https://github.com/MagneticParticleImaging/MPIReco.jl) also uses a `MultiMPIFile` to
+pass one system matrix per patch to its multi-patch reconstruction.
+"""
 mutable struct MultiMPIFile <: MPIFile
   files::Vector{MPIFile}
 

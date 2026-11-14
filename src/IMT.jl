@@ -1,5 +1,15 @@
 export IMTFile, IMTFileCalib, IMTFileMeas, addTrailingSingleton
 
+"""
+    IMTFile(filename::String, file=h5open(filename, "r")) -> Union{IMTFileCalib, IMTFileMeas}
+
+File handle for HDF5 files created at the Institute of Medical Engineering in Lübeck.
+`IMTFile` is the abstract supertype of `IMTFileCalib` and `IMTFileMeas`; calling it returns
+`IMTFileMeas` if the file contains the group `/measurements` and `IMTFileCalib` otherwise.
+
+Usually an IMT file is opened with [`MPIFile`](@ref), which uses this type for `.h5`/`.hdf`/`.mdf`
+files without `/version`.
+"""
 abstract type IMTFile <: MPIFile end
 
 # We use a dedicated type for calib and meas. If both versions

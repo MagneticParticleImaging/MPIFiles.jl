@@ -38,11 +38,10 @@ Now let us load some measurement data. This can be done by calling
 ```julia
 u = getMeasurementsFD(f, frames=1:100, numAverages=100)
 ```
-Then we can display the data using the PyPlot package
+Then we can display the data using the [GLMakie](https://docs.makie.org/stable/) package
 ```julia
-using PyPlot
-figure(6, figsize=(6,4))
-semilogy(abs.(u[1:400,1,1,1]))
+using GLMakie
+lines(rxFrequencies(f)[1:400], abs.(u[1:400,1,1,1]), axis=(yscale=log10, xlabel="f / Hz"))
 ```
 ![Spectrum](./assets/spectrum1.png)
 

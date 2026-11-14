@@ -10,6 +10,14 @@ function setparam!(params::Dict, parameter, value)
 end
 
 # we do not support all conversion possibilities
+"""
+    loadDataset(f::MPIFile; kargs...) -> Dict{Symbol,Any}
+
+Load the complete data set of `f`, i.e. all metadata and the measurement data, into a `Dict`.
+The keys are the names of the corresponding accessor functions of the low level interface,
+e.g. `:acqNumAverages`. The `Dict` can be modified and stored with [`saveasMDF`](@ref).
+Keyword arguments are passed on to the functions loading the measurement data.
+"""
 function loadDataset(f::MPIFile; experimentNumber=missing, kargs...)
   params = loadMetadata(f)
 
@@ -291,6 +299,21 @@ function isConvertibleToMDF(f::BrukerFile)
   return true
 end
 
+"""
+    saveasMDF(filenameOut::String, filenameIn::String; kargs...)
+    saveasMDF(filenameOut::String, f::MPIFile; filenameBG=nothing, enforceConversion=false, kargs...)
+    saveasMDF(filenameOut::String, params::Dict)
+    saveasMDF(filenameOut::String, mdf::MDFv2InMemory; failOnInconsistent=false)
+
+Store a data set as MDF file `filenameOut`. The data set can be given as path to a file in any
+supported format, as `MPIFile` handle, as `Dict` returned by [`loadDataset`](@ref) or as
+in-memory MDF.
+
+When converting a file, `filenameBG` can point to a separate background measurement that is
+appended to the data set. `enforceConversion=true` skips the check whether the file can be
+converted. For an in-memory MDF the data set is checked for consistency first, and
+`failOnInconsistent=true` turns a failed check into an error instead of a warning.
+"""
 function saveasMDF(filenameOut::String, filenameIn::String; kargs...)
   MPIFile(filenameIn) do f
     saveasMDF(filenameOut, f; kargs...)
