@@ -130,6 +130,13 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
     mG2 = Positions(dict)
     @test collect(mG) == collect(mG2)
   end
+
+  # range is forwarded to the underlying regular grid
+  mG = MeanderingGridPositions(caG)
+  for ax in 1:ndims(caG)
+    @test range(mG, ax) == range(caG, ax)
+    @test collect(range(mG, ax)) == unique(sort(getindex.(collect(mG), ax)))
+  end
 #BG Test
     bgInd = collect(1:4:37)
     bgPos = [10.0,10.0,10.0]Unitful.mm
@@ -558,6 +565,18 @@ pospath = joinpath(tmpdir,"positions","Positions.h5")
       @test unit(first(cgrid[1])) == u"T"
       @test all(isapprox.(ustrip.(collect(cgrid)), collect(mgrid)))
       calibration.method = "robot"
+    end
+
+    @testset "calibAxis" begin
+      for meandering in (false, true)
+        calibration.isMeanderingGrid = meandering
+        for ax in 1:3
+          @test calibAxis(mdf, ax) ≈ range(grid, ax)
+          @test unit(first(calibAxis(mdf, ax; attach_units = true))) == u"m"
+        end
+        @test_throws ErrorException calibAxis(mdf, 4)
+      end
+      calibration.isMeanderingGrid = false
     end
   end
 
