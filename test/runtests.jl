@@ -110,6 +110,7 @@ mkpath(joinpath(tmpdir,"conversion"))
 end
 
 include("General.jl")
+include("ForwardRef.jl")
 include("Conversion.jl")
 include("Cartesian.jl")
 include("Positions.jl")
