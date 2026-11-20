@@ -247,7 +247,12 @@ function MPIFile(filename::AbstractString; kargs...)
   else
     if isfile(joinpath(filename, "mdf"))
       filenameMDF = readline(joinpath(filename, "mdf"))
-      return MDFFile(filenameMDF)
+      if isfile(filenameMDF)
+        return MDFFile(filenameMDF)
+      else
+        @warn "The Bruker file contains a forward ref to an MDF file which does not exist, opening Bruker file!"
+        return BrukerFile(filename; kargs...)
+      end
     else
       return BrukerFile(filename; kargs...)
     end
