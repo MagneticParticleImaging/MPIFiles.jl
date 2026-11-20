@@ -305,19 +305,34 @@ end
 
 
 """
-  getMeasurements(f, [neglectBGFrames]; kargs...) => Array{Float32,4}
+    getMeasurements(f::MPIFile, neglectBGFrames=true; kargs...) -> Array{Float32,4}
 
-Load the measurement data in time domain
+Load the measurement data of `f` in time domain. This is the high level counterpart
+of [`measData`](@ref) and works independently of the processing stage the data is stored in.
 
-Supported keyword arguments:
-* frames
-* bgCorrection
-* interpolateBG
-* tfCorrection
-* sortFrames
-* numAverages
-* numPeriodAverages
-* spectralLeakageCorrection
+The returned array has the dimensions
+1. time (over one or `numPeriodGrouping` periods)
+2. receive channel
+3. patch (period)
+4. frame
+
+If `neglectBGFrames` is `true`, only foreground frames are returned and `frames` indexes
+the foreground frames. Otherwise all frames are returned.
+
+# Keyword arguments
+- `frames`: frames to load, defaults to all (foreground) frames.
+- `numAverages=1`: number of consecutive frames that are averaged (block averaging).
+- `numPeriodAverages=1`: number of consecutive periods that are averaged.
+- `numPeriodGrouping=1`: number of consecutive periods that are concatenated in time domain.
+- `bgCorrection=false`: subtract the mean of the background frames.
+- `bgFrames`: background frames used for the background correction, defaults to all.
+- `interpolateBG=false`: average each block of background frames separately, which is useful
+  if the measurement contains multiple background intervals.
+- `sortFrames=false`: move all background frames to the end of the returned data.
+- `tfCorrection=rxHasTransferFunction(f)`: correct the data with the transfer function of the
+  file, see [`rxTransferFunction`](@ref). Ignored if the data is already corrected.
+- `spectralLeakageCorrection=false`: apply a spectral leakage correction.
+- `fixDistortions=false`: detect and correct distortions in the time signal, see also `distortionThresh=0.3`.
 """
 function getMeasurements(f::MPIFile, args...;
       tfCorrection=rxHasTransferFunction(f), numPeriodGrouping=1, kargs...)
@@ -391,22 +406,29 @@ function requireTimeDomainProcessing(kwargs)
   end
 end
 """
-  getMeasurementsFD(f, [neglectBGFrames]; kargs...) => Array{ComplexF32,4}
+    getMeasurementsFD(f::MPIFile, neglectBGFrames=true; kargs...) -> Array{ComplexF32,4}
 
-Load the measurement data in frequency domain
+Load the measurement data of `f` in frequency domain.
 
-Supported keyword arguments:
-* frames
-* bgCorrection
-* interpolateBG
-* tfCorrection
-* amplitudeScaling, determines if the spectrum should be normalized to reflect the correct amplitudes
-* sortFrames
-* numAverages
-* spectralLeakageCorrection
-* loadasreal
-* transposed
-* frequencies
+The returned array has the dimensions
+1. frequency
+2. receive channel
+3. patch (period)
+4. frame
+
+If the data is stored in time domain, or if a keyword requires time-domain processing
+(`spectralLeakageCorrection`, `fixDistortions` or `numPeriodGrouping > 1`), the data is loaded with
+[`getMeasurements`](@ref) and transformed with an `rfft`.
+
+# Keyword arguments
+All keyword arguments of [`getMeasurements`](@ref) are supported. Additionally:
+- `frequencies=nothing`: frequency indices to load, e.g. the result of [`filterFrequencies`](@ref).
+  If given, the frequency and channel dimensions are merged into one and the result has three dimensions.
+- `loadasreal=false`: return the data as real array, which is useful for solvers that cannot
+  handle complex numbers.
+- `transposed=false`: move the frame dimension to the front.
+- `amplitudeScaling=false`: normalize the spectrum such that its values match the amplitudes
+  in the time signal, i.e. a sine wave with an amplitude of 1 V has an absolute value of 1.
 """
 function getMeasurementsFD(f::MPIFile, args...;
       loadasreal=false, transposed=false, frequencies=nothing,

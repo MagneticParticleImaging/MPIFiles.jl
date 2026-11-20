@@ -16,21 +16,29 @@ function getCalibSNR(f::MPIFile; numPeriodGrouping = 1, stepsize = 1)
 end
 
 """
-  filterFrequencies(f; kargs...) => Vector{Int64}
+    filterFrequencies(f::MPIFile; kargs...) -> Vector{CartesianIndex{2}}
 
-Supported keyword arguments:
-* SNRThresh
-* minFreq
-* maxFreq
-* recChannels
-* sortBySNR
-* numUsedFreqs
-* stepsize
-* maxMixingOrder
-* sortByMixFactors
-* numPeriodGrouping
-* numSideBandFreqs
-* stopBands
+Select frequency components of `f`. Each entry of the result is a
+`CartesianIndex(frequency, channel)`. The result can be passed as `frequencies` to
+[`getMeasurementsFD`](@ref) and [`getSystemMatrix`](@ref). Without keyword arguments
+all frequencies of all receive channels are selected.
+
+# Keyword arguments
+- `SNRThresh=-1`: keep only frequencies whose SNR, see [`calibSNR`](@ref), is at least the threshold.
+  Requires a calibration file. A typical value is larger than 1.5.
+- `minFreq=0`, `maxFreq=rxBandwidth(f)`: keep only frequencies in this range, given in Hz.
+  `minFreq` is usually chosen above the excitation frequencies.
+- `recChannels=1:rxNumChannels(f)`: receive channels to use.
+- `stepsize=1`: keep only the frequency indices `1:stepsize:end`.
+- `maxMixingOrder=-1`: keep only frequencies up to this mixing order. Not supported
+  together with `numPeriodGrouping > 1`.
+- `numPeriodGrouping=1`: select frequencies for data loaded with the same `numPeriodGrouping`.
+- `numSidebandFreqs=-1`: with `numPeriodGrouping > 1`, keep only frequencies that are at most
+  this many frequency bins away from a frequency of the ungrouped data.
+- `stopBands=nothing`: remove frequencies in the given bands. A band is given in Hz as
+  integer vector `[fmin, fmax]`, tuple `(fmin, fmax)` or range `fmin:fmax`. Multiple bands
+  can be passed as a vector of bands.
+- `numUsedFreqs=-1`: currently not implemented.
 """
 function filterFrequencies(f::MPIFile; SNRThresh=-1, minFreq=0,
                maxFreq=rxBandwidth(f), recChannels=1:rxNumChannels(f),numUsedFreqs=-1, stepsize=1,

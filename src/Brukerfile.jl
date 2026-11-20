@@ -15,6 +15,23 @@ function latin1toutf8(str::Nothing)
   error("Can not convert noting to UTF8!")
 end
 
+"""
+    BrukerFile(path::String; isCalib, fastMode=false, pretendToBeSinglePatch=false, handleSubPeriodsAsFrames=false)
+
+File handle for a data set of the preclinical MPI scanner from Bruker. `path` is the
+directory of the experiment. `BrukerFile` is the abstract supertype of `BrukerFileMeas` and
+`BrukerFileCalib`; calling it returns the matching concrete type. Parameters are read lazily
+from the Bruker parameter files when they are first accessed.
+
+# Keyword arguments
+- `isCalib`: treat the data set as calibration measurement. By default this is detected from the
+  `acqp` file; a file named `ismeasurement` in `path` forces a measurement.
+- `fastMode=false`: read only a predefined subset of parameters, which speeds up opening
+  many data sets, e.g. when browsing a study. See also `BrukerFileFast(path)`.
+- `pretendToBeSinglePatch=false`: treat a multi-patch measurement as single-patch measurement,
+  i.e. `acqNumPatches` and `acqNumPeriodsPerFrame` return 1.
+- `handleSubPeriodsAsFrames=false`: treat the sub-periods of a measurement as separate frames.
+"""
 abstract type BrukerFile <: MPIFile end
 
 mutable struct BrukerFileMeas <: BrukerFile

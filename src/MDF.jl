@@ -1,9 +1,25 @@
 export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton
 
+"""
+    MDFFile(filename::String, file=h5open(filename, "r")) -> Union{MDFFileV1, MDFFileV2}
+
+File handle for files in the [Magnetic Particle Imaging Data Format (MDF)](https://github.com/MagneticParticleImaging/MDF).
+`MDFFile` is the abstract supertype of [`MDFFileV1`](@ref) and [`MDFFileV2`](@ref); calling it
+reads `/version` and returns the matching concrete type.
+
+Usually an MDF file is opened with [`MPIFile`](@ref), which dispatches on the file extension.
+The measurement data is memory mapped and only read on demand.
+"""
 abstract type MDFFile <: MPIFile end
 
 # We use a dedicated type for v1 and v2. If both versions
 # are the same we use the abstract type MDFFile
+"""
+    MDFFileV1(filename::String, file=h5open(filename, "r"))
+
+File handle for MDF files with a version below 2.0. Parameters that were renamed in version 2
+are mapped to the current interface.
+"""
 mutable struct MDFFileV1{T} <: MDFFile
   filename::String
   file::HDF5.File
@@ -25,6 +41,12 @@ function MDFFileV1(filename::String, file=h5open(filename,"r"))
   f = MDFFileV1(filename, file, mmap_measData)
 end
 
+"""
+    MDFFileV2(filename::String, file=h5open(filename, "r"))
+
+File handle for MDF files with version 2.0 or later. An in-memory copy can be created with
+`MDFv2InMemory(f::MDFFileV2)`, see [`MDFv2InMemory`](@ref).
+"""
 mutable struct MDFFileV2{T} <: MDFFile
   filename::String
   file::HDF5.File

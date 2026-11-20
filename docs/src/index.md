@@ -27,7 +27,7 @@ Start julia and open the package mode by entering `]`. Then enter
 ```julia
 add MPIFiles
 ```
-This will install the packages `MPIFiles.jl` and all its dependencies.
+This will install the package `MPIFiles.jl` and all its dependencies.
 
 ## License / Terms of Usage
 
@@ -44,9 +44,11 @@ We welcome community contributions to `MPIFiles.jl`. Simply create a [pull reque
 
 * [Tobias Knopp](https://www.tuhh.de/ibi/people/tobias-knopp-head-of-institute.html) (maintainer)
 * [Martin Möddel](https://www.tuhh.de/ibi/people/martin-moeddel.html)
-* [Patryk Szwargulski](https://www.tuhh.de/ibi/people/patryk-szwargulski.html)
-* [Florian Griese](https://www.tuhh.de/ibi/people/florian-griese.html)
-* [Franziska Werner](https://www.tuhh.de/ibi/people/franziska-werner.html)
-* [Nadine Gdaniec](https://www.tuhh.de/ibi/people/nadine-gdaniec.html)
+* Patryk Szwargulski
+* Florian Griese
+* Franziska Werner
+* Nadine Gdaniec
 * [Marija Boberg](https://www.tuhh.de/ibi/people/marija-boberg.html)
 * [Jonas Schumacher](https://www.imt.uni-luebeck.de/institute/staff/jonas-schumacher.html)
+* Niklas Hackelberg
+* Justin Ackers
