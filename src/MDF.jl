@@ -60,7 +60,11 @@ function MDFFile(filename::String, file = h5open(filename,"r"))
   end
 end
 
-Base.close(f::MDFFile) = close(f.file)
+function Base.close(f::MDFFile)
+  f.mmap_measData = zeros(eltype(f.mmap_measData), (1, 1, 1, 1))
+  close(f.file)
+  GC.gc()
+end
 
 
 function h5haskey(filename, parameter)
