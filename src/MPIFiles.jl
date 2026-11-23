@@ -5,7 +5,7 @@ using Graphics: @mustimplement
 using RelocatableFolders
 
 using LinearOperatorCollection
-using FFTW
+using FFTL
 using AxisArrays
 const axes = Base.axes
 using Interpolations
