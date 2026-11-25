@@ -7,8 +7,11 @@ abstract type MDFFile <: MPIFile end
 mutable struct MDFFileV1{T} <: MDFFile
   filename::String
   file::HDF5.File
-  mmap_measData::T
+  mmap_measData::Union{T, Nothing} # `nothing` after close()
+  MDFFileV1{T}(filename, file, mmap_measData) where T = _register!(new{T}(filename, file, mmap_measData))
 end
+
+MDFFileV1(filename::String, file::HDF5.File, mmap_measData) = MDFFileV1{typeof(mmap_measData)}(filename, file, mmap_measData)
 
 function _mmapMeasData(::Type{<:MDFFileV1}, file::HDF5.File)
   if haskey(file, "/measurement/dataTD")
@@ -22,13 +25,17 @@ function _mmapMeasData(::Type{<:MDFFileV1}, file::HDF5.File)
   end
 end
 
-MDFFileV1(filename::String, file=h5open(filename,"r")) = MDFFileV1(filename, file, _mmapMeasData(MDFFileV1, file))
+MDFFileV1(filename::String) = _openWithRecovery(file -> MDFFileV1(filename, file), filename)
+MDFFileV1(filename::String, file::HDF5.File) = MDFFileV1(filename, file, _mmapMeasData(MDFFileV1, file))
 
 mutable struct MDFFileV2{T} <: MDFFile
   filename::String
   file::HDF5.File
-  mmap_measData::T
+  mmap_measData::Union{T, Nothing} # `nothing` after close()
+  MDFFileV2{T}(filename, file, mmap_measData) where T = _register!(new{T}(filename, file, mmap_measData))
 end
+
+MDFFileV2(filename::String, file::HDF5.File, mmap_measData) = MDFFileV2{typeof(mmap_measData)}(filename, file, mmap_measData)
 
 function _mmapMeasData(::Type{<:MDFFileV2}, file::HDF5.File)
   parameter = "/measurement/data"
@@ -41,77 +48,127 @@ function _mmapMeasData(::Type{<:MDFFileV2}, file::HDF5.File)
   end
 end
 
-MDFFileV2(filename::String, file=h5open(filename,"r")) = MDFFileV2(filename, file, _mmapMeasData(MDFFileV2, file))
+MDFFileV2(filename::String) = _openWithRecovery(file -> MDFFileV2(filename, file), filename)
+MDFFileV2(filename::String, file::HDF5.File) = MDFFileV2(filename, file, _mmapMeasData(MDFFileV2, file))
 
 # This dispatches on the file extension and automatically
 # generates the correct type
-function MDFFile(filename::String, file = h5open(filename,"r"))
+MDFFile(filename::String) = _openWithRecovery(file -> MDFFile(filename, file), filename)
+
+function MDFFile(filename::String, file::HDF5.File)
+  vers = VersionNumber( read(file, "/version") )
+  if vers < v"2.0"
+    return MDFFileV1(filename, file)
+  else
+    return MDFFileV2(filename, file)
+  end
+end
+
+function Base.close(f::MDFFile)
+  _unregister!(f)
+  f.mmap_measData = nothing
   try
-    vers = VersionNumber( read(file, "/version") )
-    if vers < v"2.0"
-      return MDFFileV1(filename, file)
-    else
-      return MDFFileV2(filename, file)
-    end
+    close(f.file)
   catch e
-    e isa HDF5.API.H5Error && _throwIfSharedHandle(file, filename, 1, closeFile = true)
+    # Invalidate the handle so that the finalizer of `f.file` does not try to close it again
+    e isa HDF5.API.H5Error && (f.file.id = -1)
     rethrow()
   end
 end
 
-_releaseMmap(::Nothing) = nothing
-_releaseMmap(data::AbstractArray) = similar(data, ntuple(_ -> 0, ndims(data)))
+#=
+Recovery from broken HDF5 file handles, e.g. after an interrupted connection to a network drive.
 
-function Base.close(f::MDFFile)
-  f.mmap_measData = _releaseMmap(f.mmap_measData)
-  close(f.file)
+HDF5 shares one low-level file between all handles of the same file within a process, including handles
+opened after the low-level file broke. Only the first failing read reports an error. Later reads of the same
+objects can silently return wrong data (e.g. an empty string) from HDF5's caches, for every handle of that file.
+Therefore all handles of a broken file are closed together, which releases the low-level file, and reopened.
+This is only possible for the handles owned by MDFFiles. If other handles of the file are open, the low-level
+file is marked as broken and every access through an MDFFile of that file throws until they are closed.
+=#
+
+# All open MDFFiles. Its lock also protects `_brokenFilenos`.
+const _openMDFFiles = WeakKeyDict{MDFFile, Nothing}()
+# File numbers (`H5Fget_fileno`) of broken low-level files that are shared with handles outside of MDFFiles
+const _brokenFilenos = Set{Culong}()
+
+function _register!(f::MDFFile)
+  lock(() -> _openMDFFiles[f] = nothing, _openMDFFiles)
+  return f
 end
 
-_numHandles(file::HDF5.File) = isopen(file) ? Int(HDF5.API.h5f_get_obj_count(file, HDF5.API.H5F_OBJ_FILE)) : 0
+_unregister!(f::MDFFile) = lock(() -> delete!(_openMDFFiles, f), _openMDFFiles)
+
+function _fileno(file::HDF5.File)
+  fileno = Ref{Culong}()
+  HDF5.API.h5f_get_fileno(file, fileno)
+  return fileno[]
+end
+
+_numHandles(file::HDF5.File) = Int(HDF5.API.h5f_get_obj_count(file, HDF5.API.H5F_OBJ_FILE))
+
+_openMDFFilesOf(fileno) = lock(_openMDFFiles) do
+  MDFFile[g for g in keys(_openMDFFiles) if isopen(g.file) && _fileno(g.file) == fileno]
+end
+
+_isBroken(file::HDF5.File) = lock(() -> !isempty(_brokenFilenos) && _fileno(file) in _brokenFilenos, _openMDFFiles)
 
 function _forceClose(file::HDF5.File)
   try
     close(file)
-  catch
-    # A broken handle cannot be closed cleanly, drop it so that the finalizer does not retry
+  catch e
+    e isa HDF5.API.H5Error || rethrow()
+    # HDF5 releases a broken handle even though closing it fails. Invalidate it so that the finalizer does not retry.
     file.id = -1
   end
 end
 
-function _throwIfSharedHandle(file::HDF5.File, filename, numOwn::Int; closeFile::Bool = false)
-  numOther = _numHandles(file) - numOwn
-  numOther > 0 || return
-  closeFile && _forceClose(file)
+function _throwSharedHandleError(filename, numOther)
   error("Could not recover from an HDF5 error while accessing $filename. " *
-        "The file is opened $numOther more time(s) in this Julia session and HDF5 shares the " *
-        "possibly broken file handle (e.g. after an interrupted network connection) between all of them. " *
-        "Please close() all other MPIFiles of this file and try again.")
+        "The file is opened $numOther more time(s) in this Julia session outside of MDFFiles, and HDF5 shares " *
+        "the broken file handle (e.g. after an interrupted network connection) between all of them. " *
+        "Please close all other handles of this file (e.g. IMTFiles or files opened with h5open) and try again.")
 end
-
-_handlesToReset(f::MDFFile) = MDFFile[f]
 
 """
     reopen!(f::MDFFile)
 
-Close and reopen the underlying HDF5 file of `f`, e.g. after the connection to a network drive was interrupted.
-This is done automatically if accessing the file fails with an HDF5 error.
+Close and reopen the underlying HDF5 file of `f` and of all other open `MDFFile`s of the same file, e.g. after
+the connection to a network drive was interrupted. This is done automatically if accessing the file fails with an
+HDF5 error. Throws an error if the file is also opened outside of `MDFFile`s, since HDF5 shares the file handle
+between all of them.
 """
 function reopen!(f::MDFFile)
-  fs = _handlesToReset(f)
-  _throwIfSharedHandle(f.file, f.filename, length(fs))
-  for g in fs
-    g.mmap_measData = _releaseMmap(g.mmap_measData)
-    _forceClose(g.file)
-  end
-  GC.gc()
-  for g in fs
-    g.file = h5open(g.filename, "r")
-    g.mmap_measData = _mmapMeasData(typeof(g), g.file)
+  lock(_openMDFFiles) do
+    fs = MDFFile[f]
+    if isopen(f.file)
+      fileno = _fileno(f.file)
+      union!(fs, _openMDFFilesOf(fileno))
+      numOther = _numHandles(f.file) - length(fs)
+      if numOther > 0
+        push!(_brokenFilenos, fileno)
+        _throwSharedHandleError(f.filename, numOther)
+      end
+      delete!(_brokenFilenos, fileno)
+    end
+    for g in fs
+      _unregister!(g)
+      g.mmap_measData = nothing
+      _forceClose(g.file)
+    end
+    # Unmap the released measurement data
+    GC.gc()
+    for g in fs
+      g.file = h5open(g.filename, "r")
+      g.mmap_measData = _mmapMeasData(typeof(g), g.file)
+      _register!(g)
+    end
   end
   return f
 end
 
 function _withReopen(fun, f::MDFFile)
+  _isBroken(f.file) && reopen!(f)
   try
     return fun()
   catch e
@@ -119,6 +176,45 @@ function _withReopen(fun, f::MDFFile)
     reopen!(f)
     return fun()
   end
+end
+
+# Open `filename` and call `fun` on the HDF5 file. If this fails with an HDF5 error, the low-level file is
+# considered broken: it is reset together with all MDFFiles of that file and `fun` is called once more.
+function _openWithRecovery(fun, filename)
+  file = _h5openUnbroken(filename)
+  try
+    return fun(file)
+  catch e
+    if !(e isa HDF5.API.H5Error)
+      _forceClose(file)
+      rethrow()
+    end
+    fileno = _fileno(file)
+    _forceClose(file)
+    lock(() -> push!(_brokenFilenos, fileno), _openMDFFiles)
+  end
+  file = _h5openUnbroken(filename)
+  try
+    return fun(file)
+  catch
+    _forceClose(file)
+    rethrow()
+  end
+end
+
+# Open `filename`, resetting its low-level file first if it is known to be broken
+function _h5openUnbroken(filename)
+  file = h5open(filename, "r")
+  _isBroken(file) || return file
+  lock(_openMDFFiles) do
+    fileno = _fileno(file)
+    fs = _openMDFFilesOf(fileno)
+    numOther = _numHandles(file) - 1 - length(fs)
+    _forceClose(file)
+    numOther > 0 && _throwSharedHandleError(filename, numOther)
+    isempty(fs) ? delete!(_brokenFilenos, fileno) : reopen!(first(fs))
+  end
+  return h5open(filename, "r")
 end
 
 function h5haskey(filename, parameter)
