@@ -239,7 +239,13 @@ function MPIFile(filename::AbstractString; kargs...)
   filenamebase, ext = splitext(filename)
   if ext == ".mdf" || ext == ".hdf" || ext == ".h5"
     file = h5open(filename, "r")
-    if haskey(file, "/version")
+    isMDF = try
+      haskey(file, "/version")
+    catch e
+      e isa HDF5.API.H5Error && _throwIfSharedHandle(file, filename, 1, closeFile = true)
+      rethrow()
+    end
+    if isMDF
       return MDFFile(filename, file) # MDFFile currently has no kargs
     else
       return IMTFile(filename, file; kargs...)
