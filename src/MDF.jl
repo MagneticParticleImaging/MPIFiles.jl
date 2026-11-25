@@ -1,4 +1,4 @@
-export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton
+export MDFFile, MDFFileV1, MDFFileV2, addTrailingSingleton, addLeadingSingleton, reopen!
 
 abstract type MDFFile <: MPIFile end
 
@@ -7,51 +7,55 @@ abstract type MDFFile <: MPIFile end
 mutable struct MDFFileV1{T} <: MDFFile
   filename::String
   file::HDF5.File
-  mmap_measData::T
+  mmap_measData::Union{T, Nothing} # `nothing` after close()
+  MDFFileV1{T}(filename, file, mmap_measData) where T = _register!(new{T}(filename, file, mmap_measData))
 end
 
-function MDFFileV1(filename::String, file=h5open(filename,"r"))
-  tdExists = haskey(file, "/measurement/dataTD")
+MDFFileV1(filename::String, file::HDF5.File, mmap_measData) = MDFFileV1{typeof(mmap_measData)}(filename, file, mmap_measData)
+
+function _mmapMeasData(::Type{<:MDFFileV1}, file::HDF5.File)
   if haskey(file, "/measurement/dataTD")
-    mmap_measData = HDF5.readmmap(file["/measurement/dataTD"])
+    return HDF5.readmmap(file["/measurement/dataTD"])
   elseif haskey(file, "/measurement/dataFD")
-    mmap_measData = HDF5.readmmap(file["/measurement/dataFD"])
+    return HDF5.readmmap(file["/measurement/dataFD"])
   elseif haskey(file, "/calibration/dataFD")
-    mmap_measData = HDF5.readmmap(file["/calibration/dataFD"])
+    return HDF5.readmmap(file["/calibration/dataFD"])
   else
-    mmap_measData = nothing
+    return nothing
   end
-
-  f = MDFFileV1(filename, file, mmap_measData)
 end
+
+MDFFileV1(filename::String) = _openWithRecovery(file -> MDFFileV1(filename, file), filename)
+MDFFileV1(filename::String, file::HDF5.File) = MDFFileV1(filename, file, _mmapMeasData(MDFFileV1, file))
 
 mutable struct MDFFileV2{T} <: MDFFile
   filename::String
   file::HDF5.File
-  mmap_measData::T
+  mmap_measData::Union{T, Nothing} # `nothing` after close()
+  MDFFileV2{T}(filename, file, mmap_measData) where T = _register!(new{T}(filename, file, mmap_measData))
 end
 
-function MDFFileV2(filename::String, file=h5open(filename,"r"))
+MDFFileV2(filename::String, file::HDF5.File, mmap_measData) = MDFFileV2{typeof(mmap_measData)}(filename, file, mmap_measData)
+
+function _mmapMeasData(::Type{<:MDFFileV2}, file::HDF5.File)
   parameter = "/measurement/data"
-  if haskey(file, "/measurement/data")
-    if !isComplexArray(file, parameter)
-      mmap_measData = HDF5.readmmap(file[parameter])
-    else
-      #mmap_measData = HDF5.readmmap(file[parameter], Array{getComplexType(file,parameter)} )
-      mmap_measData = HDF5.readmmap(file[parameter], getComplexType(file,parameter) )
-    end
+  if !haskey(file, parameter)
+    return nothing
+  elseif !isComplexArray(file, parameter)
+    return HDF5.readmmap(file[parameter])
   else
-    mmap_measData = nothing
+    return HDF5.readmmap(file[parameter], getComplexType(file,parameter))
   end
-
-  f = MDFFileV2(filename, file, mmap_measData)
-
-  return f
 end
+
+MDFFileV2(filename::String) = _openWithRecovery(file -> MDFFileV2(filename, file), filename)
+MDFFileV2(filename::String, file::HDF5.File) = MDFFileV2(filename, file, _mmapMeasData(MDFFileV2, file))
 
 # This dispatches on the file extension and automatically
 # generates the correct type
-function MDFFile(filename::String, file = h5open(filename,"r"))
+MDFFile(filename::String) = _openWithRecovery(file -> MDFFile(filename, file), filename)
+
+function MDFFile(filename::String, file::HDF5.File)
   vers = VersionNumber( read(file, "/version") )
   if vers < v"2.0"
     return MDFFileV1(filename, file)
@@ -60,8 +64,158 @@ function MDFFile(filename::String, file = h5open(filename,"r"))
   end
 end
 
-Base.close(f::MDFFile) = close(f.file)
+function Base.close(f::MDFFile)
+  _unregister!(f)
+  f.mmap_measData = nothing
+  try
+    close(f.file)
+  catch e
+    # Invalidate the handle so that the finalizer of `f.file` does not try to close it again
+    e isa HDF5.API.H5Error && (f.file.id = -1)
+    rethrow()
+  end
+end
 
+#=
+Recovery from broken HDF5 file handles, e.g. after an interrupted connection to a network drive.
+
+HDF5 shares one low-level file between all handles of the same file within a process, including handles
+opened after the low-level file broke. Only the first failing read reports an error. Later reads of the same
+objects can silently return wrong data (e.g. an empty string) from HDF5's caches, for every handle of that file.
+Therefore all handles of a broken file are closed together, which releases the low-level file, and reopened.
+This is only possible for the handles owned by MDFFiles. If other handles of the file are open, the low-level
+file is marked as broken and every access through an MDFFile of that file throws until they are closed.
+=#
+
+# All open MDFFiles. Its lock also protects `_brokenFilenos`.
+const _openMDFFiles = WeakKeyDict{MDFFile, Nothing}()
+# File numbers (`H5Fget_fileno`) of broken low-level files that are shared with handles outside of MDFFiles
+const _brokenFilenos = Set{Culong}()
+
+function _register!(f::MDFFile)
+  lock(() -> _openMDFFiles[f] = nothing, _openMDFFiles)
+  return f
+end
+
+_unregister!(f::MDFFile) = lock(() -> delete!(_openMDFFiles, f), _openMDFFiles)
+
+function _fileno(file::HDF5.File)
+  fileno = Ref{Culong}()
+  HDF5.API.h5f_get_fileno(file, fileno)
+  return fileno[]
+end
+
+_numHandles(file::HDF5.File) = Int(HDF5.API.h5f_get_obj_count(file, HDF5.API.H5F_OBJ_FILE))
+
+_openMDFFilesOf(fileno) = lock(_openMDFFiles) do
+  MDFFile[g for g in keys(_openMDFFiles) if isopen(g.file) && _fileno(g.file) == fileno]
+end
+
+_isBroken(file::HDF5.File) = lock(() -> !isempty(_brokenFilenos) && _fileno(file) in _brokenFilenos, _openMDFFiles)
+
+function _forceClose(file::HDF5.File)
+  try
+    close(file)
+  catch e
+    e isa HDF5.API.H5Error || rethrow()
+    # HDF5 releases a broken handle even though closing it fails. Invalidate it so that the finalizer does not retry.
+    file.id = -1
+  end
+end
+
+function _throwSharedHandleError(filename, numOther)
+  error("Could not recover from an HDF5 error while accessing $filename. " *
+        "The file is opened $numOther more time(s) in this Julia session outside of MDFFiles, and HDF5 shares " *
+        "the broken file handle (e.g. after an interrupted network connection) between all of them. " *
+        "Please close all other handles of this file (e.g. IMTFiles or files opened with h5open) and try again.")
+end
+
+"""
+    reopen!(f::MDFFile)
+
+Close and reopen the underlying HDF5 file of `f` and of all other open `MDFFile`s of the same file, e.g. after
+the connection to a network drive was interrupted. This is done automatically if accessing the file fails with an
+HDF5 error. Throws an error if the file is also opened outside of `MDFFile`s, since HDF5 shares the file handle
+between all of them.
+"""
+function reopen!(f::MDFFile)
+  lock(_openMDFFiles) do
+    fs = MDFFile[f]
+    if isopen(f.file)
+      fileno = _fileno(f.file)
+      union!(fs, _openMDFFilesOf(fileno))
+      numOther = _numHandles(f.file) - length(fs)
+      if numOther > 0
+        push!(_brokenFilenos, fileno)
+        _throwSharedHandleError(f.filename, numOther)
+      end
+      delete!(_brokenFilenos, fileno)
+    end
+    for g in fs
+      _unregister!(g)
+      g.mmap_measData = nothing
+      _forceClose(g.file)
+    end
+    # Unmap the released measurement data
+    GC.gc()
+    for g in fs
+      g.file = h5open(g.filename, "r")
+      g.mmap_measData = _mmapMeasData(typeof(g), g.file)
+      _register!(g)
+    end
+  end
+  return f
+end
+
+function _withReopen(fun, f::MDFFile)
+  _isBroken(f.file) && reopen!(f)
+  try
+    return fun()
+  catch e
+    e isa HDF5.API.H5Error || rethrow()
+    reopen!(f)
+    return fun()
+  end
+end
+
+# Open `filename` and call `fun` on the HDF5 file. If this fails with an HDF5 error, the low-level file is
+# considered broken: it is reset together with all MDFFiles of that file and `fun` is called once more.
+function _openWithRecovery(fun, filename)
+  file = _h5openUnbroken(filename)
+  try
+    return fun(file)
+  catch e
+    if !(e isa HDF5.API.H5Error)
+      _forceClose(file)
+      rethrow()
+    end
+    fileno = _fileno(file)
+    _forceClose(file)
+    lock(() -> push!(_brokenFilenos, fileno), _openMDFFiles)
+  end
+  file = _h5openUnbroken(filename)
+  try
+    return fun(file)
+  catch
+    _forceClose(file)
+    rethrow()
+  end
+end
+
+# Open `filename`, resetting its low-level file first if it is known to be broken
+function _h5openUnbroken(filename)
+  file = h5open(filename, "r")
+  _isBroken(file) || return file
+  lock(_openMDFFiles) do
+    fileno = _fileno(file)
+    fs = _openMDFFilesOf(fileno)
+    numOther = _numHandles(file) - 1 - length(fs)
+    _forceClose(file)
+    numOther > 0 && _throwSharedHandleError(filename, numOther)
+    isempty(fs) ? delete!(_brokenFilenos, fileno) : reopen!(first(fs))
+  end
+  return h5open(filename, "r")
+end
 
 function h5haskey(filename, parameter)
   return h5open(filename) do file
@@ -69,17 +223,13 @@ function h5haskey(filename, parameter)
   end
 end
 
-getindex(f::MDFFile, parameter) = read(f.file, parameter)
+Base.haskey(f::MDFFile, parameter) = _withReopen(() -> haskey(f.file, parameter), f)
+
+getindex(f::MDFFile, parameter) = _withReopen(() -> read(f.file, parameter), f)
 
 function getindex(f::MDFFile, parameter, default)
-  #if !haskey(f.param_cache,parameter)
-  #  f.param_cache[parameter] = h5read_(f.filename, parameter, default)
-  #end
-  #return f.param_cache[parameter]
-  if haskey(f.file, parameter)
-    return read(f.file, parameter)
-  else
-    return default
+  return _withReopen(f) do
+    haskey(f.file, parameter) ? read(f.file, parameter) : default
   end
 end
 
@@ -121,11 +271,11 @@ experimentSubject(f::MDFFileV1)::Union{String, Missing} = @keyrequired f["/study
 experimentSubject(f::MDFFileV2)::Union{String, Missing} = @keyrequired f["/experiment/subject"]
 experimentIsSimulation(f::MDFFileV2)::Union{Bool, Missing} = @keyrequired Bool( f["/experiment/isSimulation"] )
 experimentIsSimulation(f::MDFFileV1)::Union{Bool, Missing} = @keyrequired Bool( f["/study/simulation"] )
-experimentIsCalibration(f::MDFFile)::Bool = haskey(f.file, "/calibration") && haskey(f.file, "/calibration/method") # Last part is a little workaround for the testcases, since the file somehow contains a `deltaSampleSize` field
-experimentHasReconstruction(f::MDFFile)::Bool = haskey(f.file, "/reconstruction")
-experimentHasMeasurement(f::MDFFileV1)::Bool = haskey(f.file, "/measurement") ||
-                                         haskey(f.file, "/calibration")
-experimentHasMeasurement(f::MDFFileV2)::Bool = haskey(f.file, "/measurement")
+experimentIsCalibration(f::MDFFile)::Bool = haskey(f, "/calibration") && haskey(f, "/calibration/method") # Last part is a little workaround for the testcases, since the file somehow contains a `deltaSampleSize` field
+experimentHasReconstruction(f::MDFFile)::Bool = haskey(f, "/reconstruction")
+experimentHasMeasurement(f::MDFFileV1)::Bool = haskey(f, "/measurement") ||
+                                         haskey(f, "/calibration")
+experimentHasMeasurement(f::MDFFileV2)::Bool = haskey(f, "/measurement")
 
 _makeStringArray(s::String) = [s]
 _makeStringArray(s::Vector{T}) where {T<:AbstractString} = s
@@ -182,9 +332,9 @@ end
 acqNumFrames(f::MDFFileV2)::Union{Int, Missing} = @keyrequired f["/acquisition/numFrames"]
 acqNumPeriodsPerFrame(f::MDFFileV1)::Union{Int, Missing} = 1
 function acqNumPeriodsPerFrame(f::MDFFileV2)::Union{Int, Missing}
-  if haskey(f.file, "/acquisition/numPeriodsPerFrame")
+  if haskey(f, "/acquisition/numPeriodsPerFrame")
     return f["/acquisition/numPeriodsPerFrame"]
-  elseif haskey(f.file, "/acquisition/numPeriods")
+  elseif haskey(f, "/acquisition/numPeriods")
     return f["/acquisition/numPeriods"]
   else
     return 1
@@ -246,14 +396,14 @@ rxBandwidth(f::MDFFile)::Union{Float64, Missing} = @keyrequired f["/acquisition/
 rxNumSamplingPoints(f::MDFFile)::Union{Int64, Missing}= @keyrequired f["/acquisition/receiver/numSamplingPoints"]
 function rxTransferFunction(f::MDFFile)
   parameter = "/acquisition/receiver/transferFunction"
-  if haskey(f.file, parameter)
-    return readComplexArray(f.filename, parameter)
+  if haskey(f, parameter)
+    return _withReopen(() -> readComplexArray(f.file, parameter), f)
   else
     return nothing
   end
 end
 rxTransferFunctionFileName(f::MDFFile) = @keyoptional f["/acquisition/receiver/transferFunctionFileName"]
-rxHasTransferFunction(f::MDFFile) = haskey(f.file, "/acquisition/receiver/transferFunction")
+rxHasTransferFunction(f::MDFFile) = haskey(f, "/acquisition/receiver/transferFunction")
 
 rxInductionFactor(f::MDFFileV1) = nothing
 rxInductionFactor(f::MDFFileV2) = @keyoptional f["/acquisition/receiver/inductionFactor"]
@@ -266,7 +416,7 @@ rxDataConversionFactor(f::MDFFileV2) = @keyoptional f["/acquisition/receiver/dat
 # measurements
 function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriodsPerFrame(f),
                   receivers=1:rxNumChannels(f))
-  if !haskey(f.file, "/measurement")
+  if !haskey(f, "/measurement")
     # the V1 file is a calibration
     data = f["/calibration/dataFD"]
     if ndims(data) == 4
@@ -275,7 +425,7 @@ function measData(f::MDFFileV1, frames=1:acqNumFrames(f), periods=1:acqNumPeriod
       return reshape(reinterpret(Complex{eltype(data)}, vec(data)), (size(data,2),size(data,3),size(data,4),size(data,5)))
     end
   end
-  tdExists = haskey(f.file, "/measurement/dataTD")
+  tdExists = haskey(f, "/measurement/dataTD")
 
   if tdExists
     data = zeros(Float64, rxNumSamplingPoints(f), length(receivers), length(frames))
@@ -301,7 +451,7 @@ measDataRaw(f::MDFFileV2) = f.mmap_measData
 
 function measDataTDPeriods(f::MDFFileV1, periods=1:acqNumPeriods(f),
   receivers=1:rxNumChannels(f))
-  tdExists = haskey(f.file, "/measurement/dataTD")
+  tdExists = haskey(f, "/measurement/dataTD")
 
   if tdExists
   data = f.mmap_measData[:, receivers, periods]
@@ -355,7 +505,7 @@ measFrequencySelection(f::MDFFileV2)::Union{Vector{Int64}, Nothing} = @keyoption
 
 measIsSparsityTransformed(f::MDFFileV1) = false
 function measIsSparsityTransformed(f::MDFFileV2)
-  if haskey(f.file, "/measurement/isSparsityTransformed")
+  if haskey(f, "/measurement/isSparsityTransformed")
     Bool(f["/measurement/isSparsityTransformed"])
   else
     return false
@@ -371,7 +521,7 @@ function measIsFastFrameAxis(f::MDFFileV1)
 end
 
 function measIsFastFrameAxis(f::MDFFileV2)
-  if haskey(f.file, "/measurement/isFastFrameAxis")
+  if haskey(f, "/measurement/isFastFrameAxis")
     return Bool(f["/measurement/isFastFrameAxis"])
   else
     @warn "/measurement/isFastFrameAxis missing in MDF data set. `measIsFastFrameAxis` returning false per default."
@@ -431,10 +581,10 @@ recoIsOverscanRegion(f::MDFFileV2)::Union{Vector{Bool}, Nothing} = @keyoptional 
 
 # this is non-standard
 function recoParameters(f::MDFFile)
-  if !haskey(f.file, "/reconstruction/_parameters")
+  if !haskey(f, "/reconstruction/_parameters")
     return nothing
   else
-    return loadParams(f.file, "/reconstruction/_parameters")
+    return _withReopen(() -> loadParams(f.file, "/reconstruction/_parameters"), f)
   end
 end
 

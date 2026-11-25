@@ -238,11 +238,12 @@ include("IMT.jl")
 function MPIFile(filename::AbstractString; kargs...)
   filenamebase, ext = splitext(filename)
   if ext == ".mdf" || ext == ".hdf" || ext == ".h5"
-    file = h5open(filename, "r")
-    if haskey(file, "/version")
-      return MDFFile(filename, file) # MDFFile currently has no kargs
-    else
-      return IMTFile(filename, file; kargs...)
+    return _openWithRecovery(filename) do file
+      if haskey(file, "/version")
+        MDFFile(filename, file) # MDFFile currently has no kargs
+      else
+        IMTFile(filename, file; kargs...)
+      end
     end
   else
     if isfile(joinpath(filename, "mdf"))
